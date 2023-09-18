@@ -16,7 +16,7 @@ jobs:
       - id: 'auth'
         uses: 'google-github-actions/auth@v1'
         with:
-          workload_identity_provider: 'projects/1016395581837/locations/global/workloadIdentityPools/github-actions/providers/deploy'
-          service_account: 'deploy@daily-illini-api.iam.gserviceaccount.com'
+          workload_identity_provider: 'projects/983096734619/locations/global/workloadIdentityPools/github-actions/providers/deploy'
+          service_account: 'deploy@central-backend-399421.iam.gserviceaccount.com'
       - id: 'deploy'
         uses: 'google-github-actions/deploy-appengine@v1'
