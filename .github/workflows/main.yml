@@ -1,0 +1,22 @@
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to Google App Engine
+    runs-on: ubuntu-latest
+    permissions:
+        contents: 'read'
+        id-token: 'write'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - id: 'auth'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          workload_identity_provider: 'projects/1016395581837/locations/global/workloadIdentityPools/github-actions/providers/deploy'
+          service_account: 'deploy@daily-illini-api.iam.gserviceaccount.com'
+      - id: 'deploy'
+        uses: 'google-github-actions/deploy-appengine@v1'
