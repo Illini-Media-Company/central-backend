@@ -18,5 +18,8 @@ jobs:
         with:
           workload_identity_provider: 'projects/983096734619/locations/global/workloadIdentityPools/github-actions/providers/deploy'
           service_account: 'deploy@central-backend-399421.iam.gserviceaccount.com'
+          env_vars: |-
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
       - id: 'deploy'
         uses: 'google-github-actions/deploy-appengine@v1'
