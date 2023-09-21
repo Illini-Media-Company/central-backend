@@ -19,7 +19,7 @@ from oauth import get_google_provider_cfg
 
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', None)
 GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', None)
-logging.warn('GOOGLE_CLIENT_ID: ' + GOOGLE_CLIENT_ID)
+logging.warn('GOOGLE_CLIENT_ID: ' + str(GOOGLE_CLIENT_ID))
 
 
 app = Flask(__name__)
