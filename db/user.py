@@ -23,6 +23,12 @@ def add_user(id, name, email):
     return LoggedInUser(user)
 
 
+def get_all_users():
+    with client.context():
+        users = [user.to_dict() for user in User.query().fetch()]
+    return users
+
+
 def get_user(id=None):
     if id is None:
         return None
