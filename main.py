@@ -13,7 +13,7 @@ from flask_login import (
 from oauthlib.oauth2 import WebApplicationClient
 import requests
 
-from db import add_user, get_user
+from db.user import add_user, get_user
 from oauth import get_google_provider_cfg
 
 
