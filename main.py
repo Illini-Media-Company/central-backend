@@ -8,13 +8,15 @@ from flask_login import (
     current_user,
     login_required,
     login_user,
-    logout_user,
+    logout_user
 )
 from oauthlib.oauth2 import WebApplicationClient
 import requests
 
+# Local imports
 from db.user import add_user, get_user
 from oauth import get_google_provider_cfg
+from views.users import users_routes
 
 
 load_dotenv()
@@ -24,6 +26,7 @@ GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', None)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY') or os.urandom(24)
+app.register_blueprint(users_routes)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
