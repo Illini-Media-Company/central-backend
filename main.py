@@ -1,7 +1,7 @@
 import json
-import logging
 import os
 
+from dotenv import load_dotenv
 from flask import Flask, redirect, request, url_for
 from flask_login import (
     LoginManager,
@@ -13,13 +13,13 @@ from flask_login import (
 from oauthlib.oauth2 import WebApplicationClient
 import requests
 
-from db import User
+from db import add_user, get_user
 from oauth import get_google_provider_cfg
 
 
+load_dotenv()
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', None)
 GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', None)
-logging.warn('GOOGLE_CLIENT_ID: ' + str(GOOGLE_CLIENT_ID))
 
 
 app = Flask(__name__)
@@ -33,7 +33,7 @@ client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.get(user_id)
+    return get_user(user_id)
 
 
 @app.route('/')
@@ -102,7 +102,6 @@ def callback():
     # You want to make sure their email is verified.
     # The user authenticated with Google, authorized your
     # app, and now you've verified their email through Google!
-    print(userinfo_response)
     if userinfo_response.get('email_verified'):
         unique_id = userinfo_response['sub']
         users_email = userinfo_response['email']
@@ -110,10 +109,9 @@ def callback():
 
         # Create a user in your db with the information provided
         # by Google
-        user = User(
-            id_=unique_id, name=users_name, email=users_email
-        )
-        print(user)
+        user = get_user(unique_id)
+        if user is None:
+            user = add_user(id=unique_id, name=users_name, email=users_email)
 
         # Begin user session by logging the user in
         login_user(user)
