@@ -1,4 +1,6 @@
 Flask ~= 2.0
 Flask-Login
+google-cloud-ndb ~= 2.0
 oauthlib ~= 3.0
+python-dotenv
 requests ~= 2.0
