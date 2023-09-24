@@ -1,0 +1,24 @@
+@keyframes grow {
+    from {
+        opacity: 0;
+        width: 0px;
+        height: 0px;
+    }
+    to {
+        opacity: 1;
+        width: 400px;
+        height: 400px;
+    }
+}
+
+#yurr {
+    width: 400px;
+    height: 400px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation-name: grow;
+    animation-duration: 10s;
+    animation-timing-function: ease-in;
+}

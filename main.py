@@ -1,8 +1,15 @@
+import urllib
 import json
 import os
 
 from dotenv import load_dotenv
-from flask import Flask, redirect, request, url_for
+from flask import (
+    Flask,
+    redirect,
+    render_template,
+    request,
+    url_for
+)
 from flask_login import (
     LoginManager,
     current_user,
@@ -16,6 +23,8 @@ import requests
 # Local imports
 from db.user import add_user, get_user
 from oauth import get_google_provider_cfg
+from views.illordle import illordle_routes
+from views.socials import socials_routes
 from views.users import users_routes
 
 
@@ -26,6 +35,8 @@ GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', None)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY') or os.urandom(24)
+app.register_blueprint(illordle_routes)
+app.register_blueprint(socials_routes)
 app.register_blueprint(users_routes)
 
 login_manager = LoginManager()
@@ -39,21 +50,20 @@ def load_user(user_id):
     return get_user(user_id)
 
 
+@login_manager.unauthorized_handler
+def unauthorized_callback():
+    return redirect('/login?state=' + urllib.parse.quote(request.path))
+
+
 @app.route('/')
 def index():
-    if current_user.is_authenticated:
-        return (
-            '<p>Hello, {}! You\'re logged in! Email: {}</p>'
-            '<a class="button" href="/logout">Logout</a>'.format(
-                current_user.name, current_user.email
-            )
-        )
-    else:
-        return '<a class="button" href="/login">Google Login</a>'
+    return render_template('index.html')
 
 
 @app.route('/login')
 def login():
+    state = request.args.get('state')
+
     # Find out what URL to hit for Google login
     google_provider_cfg = get_google_provider_cfg()
     authorization_endpoint = google_provider_cfg['authorization_endpoint']
@@ -64,6 +74,7 @@ def login():
         authorization_endpoint,
         redirect_uri=request.base_url + '/callback',
         scope=['openid', 'email', 'profile'],
+        state=state
     )
     return redirect(request_uri)
 
@@ -72,6 +83,7 @@ def login():
 def callback():
     # Get authorization code Google sent back to you
     code = request.args.get('code')
+    state = request.args.get('state')
 
     # Find out what URL to hit to get tokens that allow you to ask for
     # things on behalf of a user
@@ -119,17 +131,34 @@ def callback():
         # Begin user session by logging the user in
         login_user(user)
 
-        # Send user back to homepage
+        if state is not None:
+            return redirect(urllib.parse.unquote(state))
+
         return redirect(url_for('index'))
     else:
         return 'User email not available or not verified by Google.', 400
 
 
+@app.route('/api-query')
+@login_required
+def api_query():
+    return render_template('api_query.html')
+
+
 @app.route('/logout')
 @login_required
 def logout():
-    logout_user()
-    return redirect(url_for('index'))
+    if current_user.email.endswith('@illinimedia.com'):
+        logout_user()
+        return redirect(url_for('yurr'))
+    else:
+        logout_user()
+        return redirect(url_for('index'))
+
+
+@app.route('/logout-success')
+def yurr():
+    return render_template('yurr.html')
 
 
 if __name__ == '__main__':
