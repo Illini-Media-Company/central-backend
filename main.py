@@ -19,6 +19,7 @@ from flask_login import (
 )
 from oauthlib.oauth2 import WebApplicationClient
 import requests
+from talisman import Talisman
 
 # Local imports
 from db.user import add_user, get_user
@@ -38,6 +39,11 @@ app.secret_key = os.environ.get('SECRET_KEY') or os.urandom(24)
 app.register_blueprint(illordle_routes)
 app.register_blueprint(socials_routes)
 app.register_blueprint(users_routes)
+
+csp = {
+    'default-src': '*'
+}
+Talisman(app, content_security_policy=csp)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -126,7 +132,10 @@ def callback():
         # by Google
         user = get_user(unique_id)
         if user is None:
-            user = add_user(id=unique_id, name=users_name, email=users_email)
+            if users_email.endswith('@illinimedia.com'):
+                user = add_user(id=unique_id, name=users_name, email=users_email)
+            else:
+                return 'User email must end with @illinimedia.com for automatic registration.', 403
 
         # Begin user session by logging the user in
         login_user(user)
