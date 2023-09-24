@@ -5,4 +5,22 @@ API Query
 {% endblock %}
 
 {% block content %}
+<p style="font-family: Courier New;">hello</p>
+<div class="d-flex justify-content-center">
+    <form class="card w-75 m-4 p-3">
+        <div class="mb-3">
+            <label for="exampleInputEmail1" class="form-label">Request Method & URL</label>
+            <input type="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp">
+        </div>
+        <div class="mb-3">
+            <label for="requestBody" class="form-label">Request Body</label>
+            <textarea class="form-control text-monospace" id="requestBody" rows="8"></textarea>
+        </div>
+        <div class="mb-3">
+            <label for="response" class="form-label">Response</label>
+            <textarea class="form-control text-monospace" id="response" rows="8"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+</div>
 {% endblock %}

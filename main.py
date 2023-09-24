@@ -17,6 +17,7 @@ from flask_login import (
     login_user,
     logout_user
 )
+from flask_seasurf import SeaSurf
 from oauthlib.oauth2 import WebApplicationClient
 import requests
 from talisman import Talisman
@@ -44,6 +45,7 @@ csp = {
     'default-src': '*'
 }
 Talisman(app, content_security_policy=csp)
+csrf = SeaSurf(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -141,7 +143,12 @@ def callback():
         login_user(user)
 
         if state is not None:
-            return redirect(urllib.parse.unquote(state))
+            url = urllib.parse.unquote(state)
+            parsed_url = urllib.parse.urlparse(url)
+            if not (parsed_url.scheme or parsed_url.netloc):
+                return redirect(url)
+            else:
+                return 'Illegal redirect URL.', 400
 
         return redirect(url_for('index'))
     else:
