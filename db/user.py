@@ -12,13 +12,17 @@ class User(ndb.Model):
 
 class LoggedInUser(UserMixin):
     def __init__(self, db_user):
-        self.id = db_user.sub
+        self.id = db_user.email
+        self.sub = db_user.sub
         self.name = db_user.name
         self.email = db_user.email
 
 
 def add_user(sub, name, email):
     with client.context():
+        user = User.query().filter(User.email == email).get()
+        if user is not None:
+            user.key.delete()
         user = User(sub=sub, name=name, email=email)
         user.put()
     return LoggedInUser(user)
@@ -30,11 +34,11 @@ def get_all_users():
     return users
 
 
-def get_user(sub=None, email=None):
-    if sub is None:
+def get_user(email):
+    if email is None:
         return None
     with client.context():
-        user = User.query().filter(User.sub == sub).get()
+        user = User.query().filter(User.email == email).get()
     if user is None:
         return None
     return LoggedInUser(user)

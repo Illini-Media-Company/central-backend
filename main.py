@@ -130,14 +130,15 @@ def callback():
         users_email = userinfo_response['email']
         users_name = userinfo_response['name']
 
-        # Create a user in your db with the information provided
-        # by Google
-        user = get_user(unique_id)
+        # Create a user in your db with the information provided by Google
+        user = get_user(users_email)
         if user is None:
             if users_email.endswith('@illinimedia.com'):
-                user = add_user(id=unique_id, name=users_name, email=users_email)
+                user = add_user(sub=unique_id, name=users_name, email=users_email)
             else:
                 return 'User email must end with @illinimedia.com for automatic registration.', 403
+        elif user.sub is None:
+            user = add_user(sub=unique_id, name=users_name, email=users_email)
 
         # Begin user session by logging the user in
         login_user(user)
