@@ -41,10 +41,10 @@ app.register_blueprint(illordle_routes)
 app.register_blueprint(socials_routes)
 app.register_blueprint(users_routes)
 
-csp = {
-    'default-src': '*'
-}
-Talisman(app, content_security_policy=csp)
+# csp = {
+#     'default-src': '*'
+# }
+Talisman(app, content_security_policy=[])
 csrf = SeaSurf(app)
 
 login_manager = LoginManager()
@@ -179,3 +179,4 @@ def yurr():
 
 if __name__ == '__main__':
     app.run(ssl_context='adhoc')
+    app.run()

@@ -17,9 +17,9 @@ class LoggedInUser(UserMixin):
         self.email = db_user.email
 
 
-def add_user(id, name, email):
+def add_user(sub, name, email):
     with client.context():
-        user = User(sub=id, name=name, email=email)
+        user = User(sub=sub, name=name, email=email)
         user.put()
     return LoggedInUser(user)
 
@@ -30,11 +30,11 @@ def get_all_users():
     return users
 
 
-def get_user(id=None):
-    if id is None:
+def get_user(sub=None, email=None):
+    if sub is None:
         return None
     with client.context():
-        user = User.query().filter(User.sub == id).get()
+        user = User.query().filter(User.sub == sub).get()
     if user is None:
         return None
     return LoggedInUser(user)

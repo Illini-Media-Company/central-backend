@@ -5,22 +5,57 @@ API Query
 {% endblock %}
 
 {% block content %}
-<p style="font-family: Courier New;">hello</p>
+<script>
+function setMethod(item) {
+    document.getElementById('submitRequest').innerHTML = item.innerHTML;
+}
+
+async function sendRequest(form, event) {
+    event.preventDefault();
+    const fields = new FormData(form);
+    const csrfToken = fields.get('_csrf_token');
+    const requestPath = fields.get('requestPath');
+    const requestBody = `_csrf_token=${csrfToken}&${fields.get('requestBody')}`;
+    const method = document.getElementById('submitRequest').innerHTML;
+
+    const response = await fetch(requestPath, {
+        method,
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: method === "POST" ? requestBody : null,
+    });
+    document.getElementById('response').innerHTML = await response.text();
+}
+</script>
+
 <div class="d-flex justify-content-center">
-    <form class="card w-75 m-4 p-3">
+    <form class="card w-75 m-4 p-3" onsubmit="sendRequest(this, event)">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <div class="mb-3">
-            <label for="exampleInputEmail1" class="form-label">Request Method & URL</label>
-            <input type="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp">
+            <label for="requestPath" class="form-label">Request Path</label>
+            <div class="d-flex">
+                <input name="requestPath" type="text" class="form-control" id="requestPath">
+                <div class="btn-group ms-3">
+                    <button type="submit" class="btn btn-primary" id="submitRequest">GET</button>
+                    <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="visually-hidden">Toggle Dropdown</span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end">
+                        <button type="button" class="dropdown-item" onclick="setMethod(this)">GET</button>
+                        <button type="button" class="dropdown-item" onclick="setMethod(this)">POST</button>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="mb-3">
             <label for="requestBody" class="form-label">Request Body</label>
-            <textarea class="form-control text-monospace" id="requestBody" rows="8"></textarea>
+            <textarea name="requestBody" class="form-control font-monospace" id="requestBody" rows="4" placeholder="key1=value1&key2=value2"></textarea>
         </div>
         <div class="mb-3">
             <label for="response" class="form-label">Response</label>
-            <textarea class="form-control text-monospace" id="response" rows="8"></textarea>
+            <textarea class="form-control font-monospace" id="response" rows="8"></textarea>
         </div>
-        <button type="submit" class="btn btn-primary">Submit</button>
     </form>
 </div>
 {% endblock %}
