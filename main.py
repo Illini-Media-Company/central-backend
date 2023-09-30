@@ -183,4 +183,4 @@ if __name__ == '__main__':
     if os.environ.get('DATASTORE_EMULATOR_HOST') is None:
         logging.fatal('DATASTORE_EMULATOR_HOST environment variable must be set!')
         exit(1)
-    app.run(ssl_context='adhoc')
+    app.run(port=5001, ssl_context='adhoc')
