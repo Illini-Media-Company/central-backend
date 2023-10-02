@@ -48,4 +48,4 @@ Windows:
 .\scripts\run.bat
 ```
 
-7. Open your favorite browser and navigate to <https://localhost:5001>. Ignore the "your connection is not private" warning; that's not an issue because no data is sent over the internet, since the server is running on your computer.
+7. Open your favorite browser and navigate to <https://localhost:5001>. Ignore the "your connection is not private" warning; that's not an issue because no data is sent over the internet (the server is running on your computer).
