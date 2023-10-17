@@ -18,7 +18,7 @@ def get_google_provider_cfg():
 
 def get_groups_for_user(user_email):
     with build('admin', 'directory_v1') as service:
-        response = service.groups().list(domain='illinimedia.com', userKey='rohitc3@illinimedia.com').execute()
+        response = service.groups().list(domain='illinimedia.com', userKey=user_email).execute()
         groups = response.get('groups', [])
         groups = [ group['email'].split('@')[0] for group in groups ]
 
