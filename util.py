@@ -1,6 +1,12 @@
 from functools import wraps
 
 from flask_login import current_user
+from google.auth import (
+    default,
+    iam,
+    transport,
+)
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import requests
 
@@ -10,6 +16,10 @@ from constants import ENV
 GOOGLE_DISCOVERY_URL = (
     'https://accounts.google.com/.well-known/openid-configuration'
 )
+TOKEN_URL = 'https://accounts.google.com/o/oauth2/token'
+SCOPES = [
+    'https://www.googleapis.com/auth/admin.directory.group.readonly'
+]
 
 
 def get_google_provider_cfg():
@@ -17,8 +27,27 @@ def get_google_provider_cfg():
 
 
 def get_groups_for_user(user_email):
-    with build('admin', 'directory_v1') as service:
-        response = service.groups().list(domain='illinimedia.com', userKey='rohitc3@illinimedia.com').execute()
+    if ENV == 'dev':
+        return []
+
+    creds, _ = default()
+    request = transport.requests.Request()
+    creds.refresh(request)
+    signer = iam.Signer(
+        request,
+        creds,
+        creds.service_account_email
+    )
+    creds = service_account.Credentials(
+        signer,
+        creds.service_account_email,
+        TOKEN_URL,
+        scopes=SCOPES,
+        subject='di_admin@illinimedia.com'
+    )
+
+    with build('admin', 'directory_v1', credentials=creds) as service:
+        response = service.groups().list(domain='illinimedia.com', userKey=user_email).execute()
         groups = response.get('groups', [])
         groups = [ group['email'].split('@')[0] for group in groups ]
 
