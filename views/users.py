@@ -22,5 +22,5 @@ def list_users():
 def create_user():
     name = request.form['name']
     email = request.form['email']
-    add_user(sub=None, name=name, email=email)
+    add_user(sub=None, name=name, email=email, groups=[])
     return 'User created.', 200
