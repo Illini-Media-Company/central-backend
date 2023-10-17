@@ -23,6 +23,7 @@ def get_google_provider_cfg():
 
 def get_groups_for_user(user_email):
     creds = google.auth.default(scopes=SCOPES)
+    print(creds)
     if isinstance(creds, service_account.Credentials):
         creds = creds.with_subject('di_admin@illinimedia.com')
     else:
