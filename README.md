@@ -1,6 +1,6 @@
 # central-backend
 
-<app.dailyillini.com>
+[app.dailyillini.com](https://app.dailyillini.com)
 
 ## Local Setup
 
