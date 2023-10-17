@@ -3,20 +3,19 @@ import logging
 import os
 import urllib
 
-from dotenv import load_dotenv
 from flask import (
     Flask,
     redirect,
     render_template,
     request,
-    url_for
+    url_for,
 )
 from flask_login import (
     LoginManager,
     current_user,
     login_required,
     login_user,
-    logout_user
+    logout_user,
 )
 from flask_seasurf import SeaSurf
 from oauthlib.oauth2 import WebApplicationClient
@@ -24,16 +23,22 @@ import requests
 from talisman import Talisman
 
 # Local imports
-from db.user import add_user, get_user
-from oauth import get_google_provider_cfg
+from constants import (
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET,
+)
+from db.user import (
+    add_user,
+    get_user,
+    update_user_groups,
+)
+from util import (
+    get_google_provider_cfg,
+    get_groups_for_user,
+)
 from views.illordle import illordle_routes
 from views.socials import socials_routes
 from views.users import users_routes
-
-
-load_dotenv()
-GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', None)
-GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', None)
 
 
 app = Flask(__name__)
@@ -104,7 +109,7 @@ def callback():
         token_endpoint,
         authorization_response=request.url,
         redirect_url=request.base_url,
-        code=code
+        code=code,
     )
     token_response = requests.post(
         token_url,
@@ -128,18 +133,21 @@ def callback():
     # app, and now you've verified their email through Google!
     if userinfo_response.get('email_verified'):
         unique_id = userinfo_response['sub']
-        users_email = userinfo_response['email']
-        users_name = userinfo_response['name']
+        user_email = userinfo_response['email']
+        user_name = userinfo_response['name']
+        user_groups = get_groups_for_user(user_email)
 
-        # Create a user in your db with the information provided by Google
-        user = get_user(users_email)
+        # Create or update user in db
+        user = get_user(user_email)
         if user is None:
-            if users_email.endswith('@illinimedia.com'):
-                user = add_user(sub=unique_id, name=users_name, email=users_email)
+            if user_email.endswith('@illinimedia.com'):
+                user = add_user(sub=unique_id, name=user_name, email=user_email, groups=user_groups)
             else:
                 return 'User email must end with @illinimedia.com for automatic registration.', 403
         elif user.sub is None:
-            user = add_user(sub=unique_id, name=users_name, email=users_email)
+            user = add_user(sub=unique_id, name=user_name, email=user_email, groups=user_groups)
+        elif user_groups != user.groups:
+            update_user_groups(user, user_groups)
 
         # Begin user session by logging the user in
         login_user(user)
