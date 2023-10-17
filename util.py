@@ -16,7 +16,7 @@ from constants import ENV
 GOOGLE_DISCOVERY_URL = (
     'https://accounts.google.com/.well-known/openid-configuration'
 )
-TOKEN_URI = 'https://accounts.google.com/o/oauth2/token'
+TOKEN_URL = 'https://accounts.google.com/o/oauth2/token'
 SCOPES = [
     'https://www.googleapis.com/auth/admin.directory.group.readonly'
 ]
@@ -27,11 +27,10 @@ def get_google_provider_cfg():
 
 
 def get_groups_for_user(user_email):
-    # if ENV == 'dev':
-    #     return []
+    if ENV == 'dev':
+        return []
 
     creds, _ = default()
-    print(creds)
     request = transport.requests.Request()
     creds.refresh(request)
     signer = iam.Signer(
@@ -42,7 +41,7 @@ def get_groups_for_user(user_email):
     creds = service_account.Credentials(
         signer,
         creds.service_account_email,
-        TOKEN_URI,
+        TOKEN_URL,
         scopes=SCOPES,
         subject='di_admin@illinimedia.com'
     )
