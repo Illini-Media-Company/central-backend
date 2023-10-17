@@ -2,6 +2,7 @@ from functools import wraps
 
 from flask_login import current_user
 import google.auth
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import requests
 
@@ -21,7 +22,12 @@ def get_google_provider_cfg():
 
 
 def get_groups_for_user(user_email):
-    creds, _ = google.auth.default(scopes=SCOPES)
+    creds = google.auth.default(scopes=SCOPES)
+    if isinstance(creds, service_account.Credentials):
+        creds = creds.with_subject('di_admin@illinimedia.com')
+    else:
+        return []
+
     with build('admin', 'directory_v1', credentials=creds) as service:
         response = service.groups().list(domain='illinimedia.com', userKey=user_email).execute()
         groups = response.get('groups', [])
