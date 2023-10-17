@@ -1,6 +1,7 @@
 from functools import wraps
 
 from flask_login import current_user
+import google.auth
 from googleapiclient.discovery import build
 import requests
 
@@ -10,6 +11,9 @@ from constants import ENV
 GOOGLE_DISCOVERY_URL = (
     'https://accounts.google.com/.well-known/openid-configuration'
 )
+SCOPES = [
+    'https://www.googleapis.com/auth/admin.directory.group.readonly'
+]
 
 
 def get_google_provider_cfg():
@@ -17,7 +21,8 @@ def get_google_provider_cfg():
 
 
 def get_groups_for_user(user_email):
-    with build('admin', 'directory_v1') as service:
+    creds, _ = google.auth.default(scopes=SCOPES)
+    with build('admin', 'directory_v1', credentials=creds) as service:
         response = service.groups().list(domain='illinimedia.com', userKey=user_email).execute()
         groups = response.get('groups', [])
         groups = [ group['email'].split('@')[0] for group in groups ]
