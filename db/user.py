@@ -8,6 +8,7 @@ class User(ndb.Model):
     sub = ndb.StringProperty()
     name = ndb.StringProperty()
     email = ndb.StringProperty()
+    groups = ndb.JsonProperty()
 
 
 class LoggedInUser(UserMixin):
@@ -16,16 +17,26 @@ class LoggedInUser(UserMixin):
         self.sub = db_user.sub
         self.name = db_user.name
         self.email = db_user.email
+        self.groups = db_user.groups
 
 
-def add_user(sub, name, email):
+def add_user(sub, name, email, groups):
     with client.context():
         user = User.query().filter(User.email == email).get()
         if user is not None:
             user.key.delete()
-        user = User(sub=sub, name=name, email=email)
+        user = User(sub=sub, name=name, email=email, groups=groups)
         user.put()
     return LoggedInUser(user)
+
+
+def update_user_groups(logged_in_user, groups):
+    logged_in_user.groups = groups
+    with client.context():
+        user = User.query().filter(User.email == logged_in_user.email).get()
+        if user is not None:
+            user.groups = groups
+            user.put()
 
 
 def get_all_users():
