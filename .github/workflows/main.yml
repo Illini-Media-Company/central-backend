@@ -22,6 +22,7 @@ jobs:
         uses: 'google-github-actions/deploy-appengine@v1'
         with:
           env_vars: |-
+            ENV=prod
             GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
             SECRET_KEY=${{ secrets.SECRET_KEY }}
