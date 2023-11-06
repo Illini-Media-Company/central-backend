@@ -5,4 +5,36 @@ Socials
 {% endblock %}
 
 {% block content %}
+<style>
+    .container {
+        width: 80%;
+        margin: 0 auto;
+        margin-top: 25px;
+    }
+</style>
+
+<div class="container">
+    <h3>Story Database</h3>
+</div>
+
+<div class="container">
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Story</th>
+                <th>Date Posted</th>
+                <th>Posted To</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for story in stories %}
+                <tr>
+                    <td><a href="{{ story.url }}">{{ story.title }}</a></td>
+                    <td>{{ story.posted_at.strftime('%m/%d/%Y') }}</td>
+                    <td>{{ story.posted_to }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endblock %}
