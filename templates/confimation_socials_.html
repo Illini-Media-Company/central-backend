@@ -2,7 +2,25 @@
 <html>
     <head>
         <style> 
+            .submitted{ left: 30%;
+              position:absolute;
+             }
+             .view_Reddit{
+               left: 60%;
+               top: 25%;
+              position:absolute;
+              }
             .sBar{
+            border-width: 2px;
+            width: 550px;
+            height: 20px;
+            font-size: 20px;
+            top: 200px;
+            left:30%;
+            position: absolute;
+            }
+
+            .tBar{
             border-width: 2px;
             width: 550px;
             height: 20px;
@@ -10,19 +28,19 @@
             top: 130px;
             left:30%;
             position: absolute;
-          }
-          
-          .post-button {background-color: #0d71fc;
+            }
+
+            .post-button {background-color: #0d71fc;
             border-color: transparent;
             color: white;
             border-radius: 8px;
             width: 120px;
             height: 40px;
             font-size: 20px;
-            top: 160px;
+            top: 195px;
             left:70%;
             position: absolute;
-          }
+            }
           
           
           </style>
@@ -78,16 +96,29 @@ Socials
         </nav>
     
       
-      <div class="sBar">
-        <label class= "urlHead"> Story URL:</label>
-           
-        <textarea name="searchBar" class="form-control font-monospace" rows="1" placeholder="https://..."></textarea>
-      </div>
+        <div class="tBar">
+            <label class= "titleHead"> Story Title:</label>
+               
+            <textarea name="titleBar" class="form-control font-monospace" rows="1" placeholder="Title goes here:"></textarea>
+          </div>   
+          
+          
+          <div class="sBar">
+            <label class= "urlHead"> Story URL:</label>
+               
+            <textarea name="searchBar" class="form-control font-monospace" rows="1" placeholder="https://..."></textarea>
+          </div>
       
 <div>
   <button class="post-button">POST</button>
       </div>
-       
+      <div>
+      <h1 class="submitted"> Reddit Post Submitted</h1>
+ 
+      </div> 
+      <div>
+      <a class= "view_Reddit" href="https://www.reddit.com/r/test_com23" target="_blank">View on Reddit</a>
+     </div>
 
 
         <script 
