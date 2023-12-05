@@ -8,33 +8,149 @@ Socials
 <style>
     .container {
         width: 80%;
-        margin: 0 auto;
+        margin-bottom: 10px;
+    }
+    label {
+        margin-right: 5px;
+    }
+    #title,
+    #url,
+    #posted_to {
+        width: 100%;
+        padding: 6px;
         margin-top: 25px;
+        box-sizing: border-box;
+    }
+    #posted_to {
+        width: 15%;
+    }
+    button {
+        padding: 10px;
+        background-color: #1d78da;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        margin-left: 15px;
+    }
+    button:hover {
+        background-color: #103c6c;
+    }
+    #delete-all-button {
+        padding: 10px;
+        background-color: #c43240;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        margin-bottom: 15px;
+    }
+    #delete-all-button:hover {
+        background-color: #711b24;
     }
 </style>
 
-<div class="container">
+<div class="container">    
+    <div class="input-container d-flex justify-content-between align-items-center">
+        <label for="title">Title:</label>
+        <input type="text" id="title" name="title">
+    </div>
+
+    <div class="input-container d-flex justify-content-between align-items-center">
+        <label for="url">URL:</label>
+        <input type="text" id="url" name="url">
+    </div>
+
+    <div class="input-container ">
+        <label for="posted_to">Posted To:</label>
+        <select id="posted_to" name="posted_to">
+            <option value="Illinois App">Illinois App</option>
+            <option value="Reddit">Reddit</option>
+        </select>
+        <button onclick="submitForm()">Submit</button>
+    </div>
+</div>
+
+<div class="container d-flex justify-content-between align-items-center">
     <h3>Story Database</h3>
+    <button id="delete-all-button" onclick="deleteAllStories()">Delete All Stories</button>
 </div>
 
 <div class="container">
     <table class="table table-bordered">
         <thead>
-            <tr>
-                <th>Story</th>
-                <th>Date Posted</th>
-                <th>Posted To</th>
-            </tr>
+        <tr>
+            <th>Story</th>
+            <th>Date Posted</th>
+            <th>Posted To</th>
+        </tr>
         </thead>
         <tbody>
-            {% for story in stories %}
-                <tr>
-                    <td><a href="{{ story.url }}">{{ story.title }}</a></td>
-                    <td>{{ story.posted_at.strftime('%m/%d/%Y') }}</td>
-                    <td>{{ story.posted_to }}</td>
-                </tr>
-            {% endfor %}
+        {% for story in stories %}
+        <tr>
+            <td><a href="{{ story.url }}">{{ story.title }}</a></td>
+            <td>{{ story.posted_at.strftime('%m/%d/%Y') }}</td>
+            <td>{{ story.posted_to }}</td>
+        </tr>
+        {% endfor %}
         </tbody>
     </table>
 </div>
+
+<script>
+    function submitForm() {
+        var title = document.getElementById('title').value;
+        var url = document.getElementById('url').value;
+        var postedTo = document.getElementById('posted_to').value;
+
+        var endpoint = '/socials';
+        if (postedTo === 'Illinois App') {
+            endpoint += '/illinoisapp';
+        } else if (postedTo === 'Reddit') {
+            endpoint += '/reddit';
+        }
+
+        fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `_csrf_token={{ csrf_token() }}&title=${title}&url=${url}`,
+        })
+        .then(response => response.text())
+        .then(data => {
+            console.log(data);
+            if (data.startsWith('ERROR:')) {
+                alert(data);
+            } else {
+                window.location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('ERROR:', error);
+            alert(error);
+        });
+    }
+    function deleteAllStories() {
+        var confirmation = confirm("Are you sure you want to delete ALL stories in the database?");
+        var confirmation2 = confirm("Are you SURE sure? Everything?");
+        if (confirmation & confirmation2) {
+            fetch('/socials/delete_all', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `_csrf_token={{ csrf_token() }}`,
+            })
+            .then(response => response.text())
+            .then(data => {
+                console.log(data);
+                alert(data);
+                window.location.reload();
+            })
+            .catch(error => {
+                console.error('ERROR:', error);
+                alert(error);
+            });
+        }
+    }
+</script>
 {% endblock %}
