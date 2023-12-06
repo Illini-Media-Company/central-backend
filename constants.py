@@ -14,4 +14,4 @@ REDDIT_USERNAME = 'TheDailyIllini'
 REDDIT_PASSWORD = os.environ.get('REDDIT_PASSWORD', None)
 REDDIT_CLIENT_ID = os.environ.get('REDDIT_CLIENT_ID', None)
 REDDIT_CLIENT_SECRET = os.environ.get('REDDIT_CLIENT_SECRET', None)
-SUBREDDIT = 'test_backend432'
+SUBREDDIT = 'UIUC'

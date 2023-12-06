@@ -77,6 +77,6 @@ def restrict_to(groups):
             if set(groups) & set(current_user.groups) or ENV == 'dev':
                 return func(*args, **kwargs)
             else:
-                return 'Access denied.', 403
+                return 'You must be a member of a Google group that this action is restricted to.', 403
         return wrapper
     return decorator
