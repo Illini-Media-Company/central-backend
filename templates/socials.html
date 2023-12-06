@@ -59,11 +59,11 @@ Socials
         <input type="text" id="url" name="url">
     </div>
 
-    <div class="input-container ">
+    <div class="input-container">
         <label for="posted_to">Posted To:</label>
         <select id="posted_to" name="posted_to">
-            <option value="Illinois App">Illinois App</option>
             <option value="Reddit">Reddit</option>
+            <option value="Illinois app">Illinois app</option>
         </select>
         <button onclick="submitForm()">Submit</button>
     </div>
@@ -95,38 +95,33 @@ Socials
 </div>
 
 <script>
-    function submitForm() {
+    async function submitForm() {
         var title = document.getElementById('title').value;
         var url = document.getElementById('url').value;
         var postedTo = document.getElementById('posted_to').value;
 
         var endpoint = '/socials';
-        if (postedTo === 'Illinois App') {
+        if (postedTo === 'Illinois app') {
             endpoint += '/illinois-app';
         } else if (postedTo === 'Reddit') {
             endpoint += '/reddit';
         }
 
-        fetch(endpoint, {
+        const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
             body: `_csrf_token={{ csrf_token() }}&title=${title}&url=${url}`,
-        })
-        .then(response => response.text())
-        .then(data => {
-            console.log(data);
-            if (data.startsWith('ERROR:')) {
-                alert(data);
-            } else {
-                window.location.reload();
-            }
-        })
-        .catch(error => {
-            console.error('ERROR:', error);
-            alert(error);
         });
+
+        if (response.status === 200) {
+            window.location.reload();
+        } else {
+            const message = await response.text();
+            console.error(message);
+            alert(message);
+        }
     }
     function deleteAllStories() {
         var confirmation = confirm("Are you sure you want to delete ALL stories in the database?");
