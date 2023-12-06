@@ -44,18 +44,14 @@ def delete_all_story():
 @restrict_to(['editors'])
 def create_push_notification():
     if check_limit():
-        return "ERROR: 3 push notifications have been sent in the past 7 days.", 200
+        return "ERROR: 3 push notifications have been sent in the past 7 days.", 403
     title = request.form['title']
     url = request.form['url']
-    posted_to = "Illinois App"
-    if (len(title) < 1):
-        return "ERROR: Empty title.", 200
-    if (len(url) < 1):
-        return "ERROR: Empty URL.", 200
-    if not is_valid_url(url):
-        return "ERROR: Invalid URL.", 200
-    add_story(title=title, url=url, posted_to=posted_to)
-    return 'Illinois App push notification created.', 200
+    err = validate_and_add_story(title, url, "Illinois app")
+    if err:
+        return err, 400
+    else:
+        return "Illinois App push notification sent.", 200
 
 
 @socials_routes.route('/reddit', methods=['POST'])
@@ -64,15 +60,22 @@ def create_push_notification():
 def create_reddit_post():
     title = request.form['title']
     url = request.form['url']
-    posted_to = "Reddit"
+    err = validate_and_add_story(title, url, "Reddit")
+    if err:
+        return err, 400
+    else:
+        return "Posted to Reddit.", 200
+
+
+def validate_and_add_story(title, url, posted_to):
     if (len(title) < 1):
-        return "ERROR: Empty title.", 200
+        return "ERROR: Empty title."
     if (len(url) < 1):
-        return "ERROR: Empty URL.", 200
+        return "ERROR: Empty URL."
     if not is_valid_url(url):
-        return "ERROR: Invalid URL.", 200
+        return "ERROR: Invalid URL."
     add_story(title=title, url=url, posted_to=posted_to)
-    return 'Reddit post created.', 200
+    return None
 
 
 def is_valid_url(url):
