@@ -96,7 +96,7 @@ def post_to_reddit(title, url):
     )
     subreddit = reddit.subreddit(SUBREDDIT)
     submission = subreddit.submit(title, url=url)
-    return submission.url
+    return "https://www.reddit.com" + submission.permalink
 
 
 def validate_story(title, url):
