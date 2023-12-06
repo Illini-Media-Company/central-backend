@@ -1,7 +1,11 @@
+import re
+
 from flask import (
     Blueprint,
     render_template,
     request,
+    redirect,
+    url_for
 )
 from flask_login import login_required
 from db.story import (
@@ -11,8 +15,16 @@ from db.story import (
     delete_all_stories,
     check_limit,
 )
+import praw
+
+from constants import (
+    REDDIT_USERNAME,
+    REDDIT_PASSWORD,
+    REDDIT_CLIENT_ID,
+    REDDIT_CLIENT_SECRET,
+    SUBREDDIT
+)
 from util import restrict_to
-import re
 
 
 socials_routes = Blueprint('socials_routes', __name__, url_prefix='/socials')
@@ -47,11 +59,12 @@ def create_push_notification():
         return "ERROR: 3 push notifications have been sent in the past 7 days.", 403
     title = request.form['title']
     url = request.form['url']
-    err = validate_and_add_story(title, url, "Illinois app")
+    err = validate_story(title, url)
     if err:
         return err, 400
-    else:
-        return "Illinois App push notification sent.", 200
+
+    add_story(title=title, url=url, posted_to="Illinois app")
+    return "Illinois App push notification sent.", 200
 
 
 @socials_routes.route('/reddit', methods=['POST'])
@@ -60,21 +73,39 @@ def create_push_notification():
 def create_reddit_post():
     title = request.form['title']
     url = request.form['url']
-    err = validate_and_add_story(title, url, "Reddit")
+    err = validate_story(title, url)
     if err:
         return err, 400
-    else:
-        return "Posted to Reddit.", 200
+
+    try:
+        reddit_url = post_to_reddit(title, url)
+    except Exception as e:
+        return str(e), 500
+
+    add_story(title=title, url=reddit_url, posted_to="Reddit")
+    return "Posted to Reddit.", 200
 
 
-def validate_and_add_story(title, url, posted_to):
+def post_to_reddit(title, url):
+    reddit = praw.Reddit(
+        client_id=REDDIT_CLIENT_ID,
+        client_secret=REDDIT_CLIENT_SECRET,
+        user_agent=f"story submission by u/{REDDIT_USERNAME}",
+        username=REDDIT_USERNAME,
+        password=REDDIT_PASSWORD,
+    )
+    subreddit = reddit.subreddit(SUBREDDIT)
+    submission = subreddit.submit(title, url=url)
+    return submission.url
+
+
+def validate_story(title, url):
     if (len(title) < 1):
         return "ERROR: Empty title."
     if (len(url) < 1):
         return "ERROR: Empty URL."
     if not is_valid_url(url):
         return "ERROR: Invalid URL."
-    add_story(title=title, url=url, posted_to=posted_to)
     return None
 
 
@@ -84,3 +115,21 @@ def is_valid_url(url):
         re.IGNORECASE
     )
     return bool(re.match(url_pattern, url))
+
+
+@socials_routes.route('/submit-story', methods=['POST'])
+def submit_story():
+    print('text')
+    if request.method == 'POST':
+        title = request.form['title']
+        url = request.form['url']
+
+        submission_url = post_to_reddit(title, url, subreddit, client_id, client_secret, user_agent, reddit_username, reddit_password)
+        print('anything')
+        print(submission_url)
+        if submission_url:
+            return redirect(url_for('socials_routes.dashboard', url=submission_url))
+        else:
+            return "Error posting to Reddit."
+
+    return render_template('socials.html')
