@@ -42,7 +42,7 @@ from views.users import users_routes
 
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY') or os.urandom(24)
+app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 app.register_blueprint(illordle_routes)
 app.register_blueprint(socials_routes)
 app.register_blueprint(users_routes)
@@ -66,43 +66,43 @@ def load_user(user_id):
 
 @login_manager.unauthorized_handler
 def unauthorized_callback():
-    return redirect('/login?state=' + urllib.parse.quote(request.path))
+    return redirect("/login?state=" + urllib.parse.quote(request.path))
 
 
-@app.route('/')
+@app.route("/")
 def index():
-    return render_template('index.html')
+    return render_template("index.html")
 
 
-@app.route('/login')
+@app.route("/login")
 def login():
-    state = request.args.get('state')
+    state = request.args.get("state")
 
     # Find out what URL to hit for Google login
     google_provider_cfg = get_google_provider_cfg()
-    authorization_endpoint = google_provider_cfg['authorization_endpoint']
+    authorization_endpoint = google_provider_cfg["authorization_endpoint"]
 
     # Use library to construct the request for Google login and provide
     # scopes that let you retrieve user's profile from Google
     request_uri = client.prepare_request_uri(
         authorization_endpoint,
-        redirect_uri=request.base_url + '/callback',
-        scope=['openid', 'email', 'profile'],
-        state=state
+        redirect_uri=request.base_url + "/callback",
+        scope=["openid", "email", "profile"],
+        state=state,
     )
     return redirect(request_uri)
 
 
-@app.route('/login/callback')
+@app.route("/login/callback")
 def callback():
     # Get authorization code Google sent back to you
-    code = request.args.get('code')
-    state = request.args.get('state')
+    code = request.args.get("code")
+    state = request.args.get("state")
 
     # Find out what URL to hit to get tokens that allow you to ask for
     # things on behalf of a user
     google_provider_cfg = get_google_provider_cfg()
-    token_endpoint = google_provider_cfg['token_endpoint']
+    token_endpoint = google_provider_cfg["token_endpoint"]
 
     # Prepare and send a request to get tokens! Yay tokens!
     token_url, headers, body = client.prepare_token_request(
@@ -124,7 +124,7 @@ def callback():
     # Now that you have tokens (yay) let's find and hit the URL
     # from Google that gives you the user's profile information,
     # including their Google profile image and email
-    userinfo_endpoint = google_provider_cfg['userinfo_endpoint']
+    userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]
     uri, headers, body = client.add_token(userinfo_endpoint)
     userinfo_response = requests.get(uri, headers=headers, data=body).json()
 
@@ -143,7 +143,10 @@ def callback():
             if user_email.endswith('@illinimedia.com'):
                 user = add_user(sub=unique_id, name=user_name, email=user_email, groups=user_groups)
             else:
-                return 'User email must end with @illinimedia.com for automatic registration.', 403
+                return (
+                    "User email must end with @illinimedia.com for automatic registration.",
+                    403,
+                )
         elif user.sub is None:
             user = add_user(sub=unique_id, name=user_name, email=user_email, groups=user_groups)
         elif user_groups != user.groups:
@@ -158,37 +161,39 @@ def callback():
             if not (parsed_url.scheme or parsed_url.netloc):
                 return redirect(url)
             else:
-                return 'Illegal redirect URL.', 400
+                return "Illegal redirect URL.", 400
 
-        return redirect(url_for('index'))
+        return redirect(url_for("index"))
     else:
-        return 'User email not available or not verified by Google.', 400
+        return "User email not available or not verified by Google.", 400
 
 
-@app.route('/api-query')
+@app.route("/api-query")
 @login_required
 def api_query():
-    return render_template('api_query.html')
+    return render_template("api_query.html")
 
 
-@app.route('/logout')
+@app.route("/logout")
 @login_required
 def logout():
-    if current_user.email.endswith('@illinimedia.com'):
+    if current_user.email.endswith("@illinimedia.com"):
         logout_user()
-        return redirect(url_for('yurr'))
+        return redirect(url_for("yurr"))
     else:
         logout_user()
-        return redirect(url_for('index'))
+        return redirect(url_for("index"))
 
 
-@app.route('/logout-success')
+@app.route("/logout-success")
 def yurr():
-    return render_template('yurr.html')
+    return render_template("yurr.html")
 
 
-if __name__ == '__main__':
-    if os.environ.get('DATASTORE_EMULATOR_HOST') is None:
-        logging.fatal('DATASTORE_EMULATOR_HOST environment variable must be set!')
+if __name__ == "__main__":
+    if os.environ.get("DATASTORE_EMULATOR_HOST") is None:
+        logging.fatal("DATASTORE_EMULATOR_HOST environment variable must be set!")
         exit(1)
-    app.run(port=5001, ssl_context='adhoc')
+    app.jinja_env.auto_reload = True
+    app.config["TEMPLATES_AUTO_RELOAD"] = True
+    app.run(port=5001, ssl_context="adhoc")
