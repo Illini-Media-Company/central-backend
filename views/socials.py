@@ -69,7 +69,7 @@ def create_push_notification():
 
 @socials_routes.route('/reddit', methods=['POST'])
 @login_required
-@restrict_to(['editors', 'social'])
+@restrict_to(['mediumchungus'])
 def create_reddit_post():
     title = request.form['title']
     url = request.form['url']
