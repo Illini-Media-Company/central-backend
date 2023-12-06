@@ -1,13 +1,19 @@
 from flask import (
     Blueprint,
     render_template,
-    request
+    request,
 )
 from flask_login import login_required
-from datetime import datetime
-from db.story import get_all_stories, add_story, delete_all_stories, check_limit
+from db.story import (
+    get_all_stories,
+    get_recent_stories,
+    add_story,
+    delete_all_stories,
+    check_limit,
+)
 from util import restrict_to
 import re
+
 
 socials_routes = Blueprint('socials_routes', __name__, url_prefix='/socials')
 
@@ -15,22 +21,25 @@ socials_routes = Blueprint('socials_routes', __name__, url_prefix='/socials')
 @socials_routes.route('/dashboard')
 @login_required
 def dashboard():
-    stories = get_all_stories()
-    return render_template('socials.html', stories = stories)
+    stories = get_recent_stories(10)
+    return render_template('socials.html', stories=stories)
+
 
 @socials_routes.route('', methods=['GET'])
 @login_required
 def list_stories():
     return get_all_stories()
 
-@socials_routes.route('/delete_all', methods=['POST'])
+
+@socials_routes.route('/delete-all', methods=['POST'])
 @login_required
-@restrict_to(['webdev'])
+@restrict_to(['editors'])
 def delete_all_story():
     delete_all_stories()
     return 'All stories deleted.'
 
-@socials_routes.route('/illinoisapp', methods=['POST'])
+
+@socials_routes.route('/illinois-app', methods=['POST'])
 @login_required
 @restrict_to(['editors'])
 def create_push_notification():
@@ -48,9 +57,10 @@ def create_push_notification():
     add_story(title=title, url=url, posted_to=posted_to)
     return 'Illinois App push notification created.', 200
 
+
 @socials_routes.route('/reddit', methods=['POST'])
 @login_required
-@restrict_to(['editors', 'di-section-editors', 'social'])
+@restrict_to(['editors', 'social'])
 def create_reddit_post():
     title = request.form['title']
     url = request.form['url']
@@ -63,6 +73,7 @@ def create_reddit_post():
         return "ERROR: Invalid URL.", 200
     add_story(title=title, url=url, posted_to=posted_to)
     return 'Reddit post created.', 200
+
 
 def is_valid_url(url):
     url_pattern = re.compile(
