@@ -10,62 +10,39 @@ Socials
         width: 80%;
         margin-bottom: 10px;
     }
-    label {
-        margin-right: 5px;
-    }
-    #title,
-    #url,
-    #posted_to {
-        width: 100%;
-        padding: 6px;
-        margin-top: 25px;
-        box-sizing: border-box;
-    }
-    #posted_to {
-        width: 15%;
-    }
-    button {
-        padding: 10px;
-        background-color: #1d78da;
-        color: #fff;
-        border: none;
-        cursor: pointer;
-        margin-left: 15px;
-    }
-    button:hover {
-        background-color: #103c6c;
-    }
-    #delete-all-button {
-        padding: 10px;
-        background-color: #c43240;
-        color: #fff;
-        border: none;
-        cursor: pointer;
-        margin-bottom: 15px;
-    }
-    #delete-all-button:hover {
-        background-color: #711b24;
+    .form-control, .form-select {
+        border-color: #a8a8a8;
     }
 </style>
 
 <div class="container">    
-    <div class="input-container d-flex justify-content-between align-items-center">
-        <label for="title">Title:</label>
-        <input type="text" id="title" name="title">
+    <div class="row my-4">
+        <label for="title" class="col-sm-1 col-form-label">Story Title</label>
+        <div class="col-sm-11">
+            <input type="text" id="title" class="form-control" name="title">
+        </div>
     </div>
 
-    <div class="input-container d-flex justify-content-between align-items-center">
-        <label for="url">URL:</label>
-        <input type="text" id="url" name="url">
+    <div class="row my-4">
+        <label for="url" class="col-sm-1 col-form-label">URL</label>
+        <div class="col-sm-11">
+            <input type="text" id="url" class="form-control" name="url">
+        </div>
     </div>
 
-    <div class="input-container">
-        <label for="posted_to">Posted To:</label>
-        <select id="posted_to" name="posted_to">
-            <option value="Reddit">Reddit</option>
-            <option value="Illinois app">Illinois app</option>
-        </select>
-        <button onclick="submitForm()">Submit</button>
+    <div class="row my-4">
+        <div class="col-sm-1">
+            <label for="posted_to" class="col-form-label">Post to:</label>
+        </div>
+        <div class="col-sm-2">
+            <select id="posted_to" class="form-select" name="posted_to">
+                <option value="Reddit">Reddit</option>
+                <option value="Illinois app">Illinois app</option>
+            </select>
+        </div>
+        <div class="col-sm-2">
+            <button class="btn btn-primary" onclick="submitForm(this)">Submit</button>
+        </div>
     </div>
 </div>
 
@@ -95,12 +72,15 @@ Socials
 </div>
 
 <script>
-    async function submitForm() {
-        var title = document.getElementById('title').value;
-        var url = document.getElementById('url').value;
-        var postedTo = document.getElementById('posted_to').value;
+    async function submitForm(button) {
+        button.disabled = true;
+        button.innerHTML = 'Please wait...';
 
-        var endpoint = '/socials';
+        const title = document.getElementById('title').value;
+        const url = document.getElementById('url').value;
+        const postedTo = document.getElementById('posted_to').value;
+
+        let endpoint = '/socials';
         if (postedTo === 'Illinois app') {
             endpoint += '/illinois-app';
         } else if (postedTo === 'Reddit') {
@@ -121,11 +101,14 @@ Socials
             const message = await response.text();
             console.error(message);
             alert(message);
+
+            button.disabled = false;
+            button.innerHTML = 'Submit';
         }
     }
     function deleteAllStories() {
-        var confirmation = confirm("Are you sure you want to delete ALL stories in the database?");
-        var confirmation2 = confirm("Are you SURE sure? Everything?");
+        const confirmation = confirm("Are you sure you want to delete ALL stories in the database?");
+        const confirmation2 = confirm("Are you SURE sure? Everything?");
         if (confirmation & confirmation2) {
             fetch('/socials/delete-all', {
                 method: 'POST',
