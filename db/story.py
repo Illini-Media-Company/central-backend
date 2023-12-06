@@ -4,6 +4,7 @@ from google.cloud import ndb
 
 from . import client
 
+
 class Story(ndb.Model):
     id = ndb.StringProperty()
     title = ndb.StringProperty()
@@ -26,12 +27,20 @@ def get_all_stories():
         stories = [story.to_dict() for story in Story.query().fetch()]
     return stories
 
+
+def get_recent_stories(count):
+    with client.context():
+        stories = [story.to_dict() for story in Story.query().order(-Story.posted_at).fetch(limit=count)]
+    return stories
+
+
 def delete_all_stories():
     with client.context():
         stories = Story.query().fetch()
         for story in stories:
             story.key.delete()
     return stories
+
 
 def get_story(id):
     if id is None:
@@ -42,6 +51,7 @@ def get_story(id):
         return None
     return story
 
+
 def check_limit():
     with client.context():
         current_datetime = datetime.now()
@@ -51,4 +61,4 @@ def check_limit():
             Story.posted_at >= seven_days_ago,
             Story.posted_at <= current_datetime
         ).fetch()
-    return (len(recent_stories) >= 3)
+    return len(recent_stories) >= 3
