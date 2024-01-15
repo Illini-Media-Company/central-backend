@@ -2,9 +2,11 @@ from google.cloud import ndb
 from . import client
 import datetime
 
+
 class IllordleWord(ndb.Model):
     date = ndb.DateProperty()
     word = ndb.StringProperty()
+
 
 def add_word(word, date):
     with client.context():
@@ -16,6 +18,7 @@ def add_word(word, date):
         illordle_word.put()
         return illordle_word.to_dict()
 
+
 def get_word(date):
     with client.context():
         query = IllordleWord.query().filter(IllordleWord.date == date)
@@ -25,11 +28,13 @@ def get_word(date):
         else:
             return "No word available for that date."
 
+
 def get_all_words():
     with client.context():
         query = IllordleWord.query()
         words = query.fetch()
         return [w.to_dict() for w in words]
+
 
 def delete_all_words():
     with client.context():

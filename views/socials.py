@@ -118,12 +118,6 @@ def submit_story():
         submission_url = post_to_reddit(
             title,
             url,
-            subreddit,
-            client_id,
-            client_secret,
-            user_agent,
-            reddit_username,
-            reddit_password,
         )
         print("anything")
         print(submission_url)
