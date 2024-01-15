@@ -2,6 +2,8 @@ import re
 
 from flask import Blueprint, render_template, request, redirect, url_for
 from flask_login import login_required
+import praw
+
 from db.story import (
     get_all_stories,
     get_recent_stories,
@@ -9,8 +11,6 @@ from db.story import (
     delete_all_stories,
     check_limit,
 )
-import praw
-
 from util.constants import (
     REDDIT_USERNAME,
     REDDIT_PASSWORD,
@@ -26,7 +26,7 @@ socials_routes = Blueprint("socials_routes", __name__, url_prefix="/socials")
 
 @socials_routes.route("/dashboard")
 @login_required
-def dashboard():
+def socials_dashboard():
     stories = get_recent_stories(10)
     return render_template("socials.html", stories=stories)
 
@@ -35,14 +35,6 @@ def dashboard():
 @login_required
 def list_stories():
     return get_all_stories()
-
-
-@socials_routes.route("/delete-all", methods=["POST"])
-@login_required
-@restrict_to(["editors"])
-def delete_all_story():
-    delete_all_stories()
-    return "All stories deleted."
 
 
 @socials_routes.route("/illinois-app", methods=["POST"])
@@ -80,6 +72,14 @@ def create_reddit_post():
     return "Posted to Reddit.", 200
 
 
+@socials_routes.route("/delete-all", methods=["POST"])
+@login_required
+@restrict_to(["editors"])
+def socials_delete_all():
+    delete_all_stories()
+    return "All stories deleted.", 200
+
+
 def post_to_reddit(title, url):
     reddit = praw.Reddit(
         client_id=REDDIT_CLIENT_ID,
@@ -106,24 +106,3 @@ def validate_story(title, url):
 def is_valid_url(url):
     url_pattern = re.compile(r"^(https?|ftp):\/\/[^\s/$.?#].[^\s]*$", re.IGNORECASE)
     return bool(re.match(url_pattern, url))
-
-
-@socials_routes.route("/submit-story", methods=["POST"])
-def submit_story():
-    print("text")
-    if request.method == "POST":
-        title = request.form["title"]
-        url = request.form["url"]
-
-        submission_url = post_to_reddit(
-            title,
-            url,
-        )
-        print("anything")
-        print(submission_url)
-        if submission_url:
-            return redirect(url_for("socials_routes.dashboard", url=submission_url))
-        else:
-            return "Error posting to Reddit."
-
-    return render_template("socials.html")

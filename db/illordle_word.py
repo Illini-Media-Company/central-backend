@@ -26,7 +26,7 @@ def get_word(date):
         if illordle_word is not None:
             return illordle_word.to_dict()
         else:
-            return "No word available for that date."
+            return None
 
 
 def get_all_words():
