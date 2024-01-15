@@ -23,7 +23,7 @@ import requests
 from talisman import Talisman
 
 # Local imports
-from constants import (
+from util.constants import (
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
 )
@@ -32,10 +32,8 @@ from db.user import (
     get_user,
     update_user_groups,
 )
-from util import (
-    get_google_provider_cfg,
-    get_groups_for_user,
-)
+from util.security import get_google_provider_cfg, get_groups_for_user, require_internal
+from util.user_setup import setup_user
 from views.illordle import illordle_routes
 from views.socials import socials_routes
 from views.users import users_routes
@@ -131,24 +129,28 @@ def callback():
     # You want to make sure their email is verified.
     # The user authenticated with Google, authorized your
     # app, and now you've verified their email through Google!
-    if userinfo_response.get('email_verified'):
-        unique_id = userinfo_response['sub']
-        user_email = userinfo_response['email']
-        user_name = userinfo_response['name']
+    if userinfo_response.get("email_verified"):
+        unique_id = userinfo_response["sub"]
+        user_email = userinfo_response["email"]
+        user_name = userinfo_response["name"]
         user_groups = get_groups_for_user(user_email)
 
         # Create or update user in db
         user = get_user(user_email)
         if user is None:
-            if user_email.endswith('@illinimedia.com'):
-                user = add_user(sub=unique_id, name=user_name, email=user_email, groups=user_groups)
+            if user_email.endswith("@illinimedia.com"):
+                user = add_user(
+                    sub=unique_id, name=user_name, email=user_email, groups=user_groups
+                )
             else:
                 return (
                     "User email must end with @illinimedia.com for automatic registration.",
                     403,
                 )
         elif user.sub is None:
-            user = add_user(sub=unique_id, name=user_name, email=user_email, groups=user_groups)
+            user = add_user(
+                sub=unique_id, name=user_name, email=user_email, groups=user_groups
+            )
         elif user_groups != user.groups:
             update_user_groups(user, user_groups)
 
@@ -172,6 +174,14 @@ def callback():
 @login_required
 def api_query():
     return render_template("api_query.html")
+
+
+@app.route("/user-setup")
+@login_required
+@require_internal
+def user_setup():
+    setup_user(current_user.name, current_user.email, current_user.groups)
+    return render_template("user_setup.html")
 
 
 @app.route("/logout")

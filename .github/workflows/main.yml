@@ -7,11 +7,12 @@ jobs:
   deploy:
     name: Deploy to Google App Engine
     runs-on: ubuntu-latest
+    environment: prod
     permissions:
         contents: 'read'
         id-token: 'write'
     steps:
-      - name: Checkout
+      - name: Check out repo
         uses: actions/checkout@v3
       - id: 'auth'
         uses: 'google-github-actions/auth@v1'
@@ -23,6 +24,9 @@ jobs:
         with:
           env_vars: |-
             ENV=prod
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
             GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
-            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            REDDIT_PASSWORD=${{ secrets.REDDIT_PASSWORD }}
+            REDDIT_CLIENT_ID=${{ secrets.REDDIT_CLIENT_ID }}
+            REDDIT_CLIENT_SECRET=${{ secrets.REDDIT_CLIENT_SECRET }}
