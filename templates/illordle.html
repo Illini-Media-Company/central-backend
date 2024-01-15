@@ -6,138 +6,138 @@ Illordle Admin
 
 {% block content %}
 <style>
-  .container {
-      width: 80%;
-      margin: 0 auto;
-      margin-top: 25px;
-  }
-  .modifiable-input {
-    display: none;
-  }
-  .table th:nth-child(1),
-  .table td:nth-child(1) {
-    width: 30%; /* Set a fixed width for the Date column */
-  }
-  .table th:nth-child(2),
-  .table td:nth-child(2) {
-    width: 50%; /* Set a fixed width for the Word column */
-  }
-  .table th:nth-child(3),
-  .table td:nth-child(3) {
-    width: 20%; /* Set a fixed width for the Actions column */
-  }
-  .error-message {
-    color: red;
-  }
+    .container {
+        width: 80%;
+        margin: 0 auto;
+        margin-top: 25px;
+    }
+    .modifiable-input {
+        display: none;
+    }
+    .table th:nth-child(1),
+    .table td:nth-child(1) {
+        width: 30%; /* Set a fixed width for the Date column */
+    }
+    .table th:nth-child(2),
+    .table td:nth-child(2) {
+        width: 50%; /* Set a fixed width for the Word column */
+    }
+    .table th:nth-child(3),
+    .table td:nth-child(3) {
+        width: 20%; /* Set a fixed width for the Actions column */
+    }
+    .error-message {
+        color: red;
+    }
 </style>
 
 <div class="container">
-  <div class="d-flex justify-content-center">
-    <div class="w-100">
-      <h3>Illordle Dashboard</h3>
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Word</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for word in words %}
-            <tr>
-              <td>{{ word.date.strftime("%m/%d/%Y") }}</td>
-              <td>
-                <span class="word-value">{{ word.word }}</span>
-                <input type="text" class="form-control modifiable-input" value="{{ word.word }}" />
-                <div class="error-message" style="display: none;"></div> <!-- Error message div -->
-              </td>
-              <td>
-                <button class="btn btn-primary modify-button">Modify</button>
-                <button class="btn btn-success update-button" style="display: none;">Update</button>
-                <button class="btn btn-danger cancel-button" style="display: none;">Cancel</button>
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="d-flex justify-content-center">
+        <div class="w-100">
+            <h3>Illordle Dashboard</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Word</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for word in words %}
+                    <tr>
+                        <td>{{ word.date.strftime("%m/%d/%Y") }}</td>
+                        <td>
+                            <span class="word-value">{{ word.word }}</span>
+                            <input type="text" class="form-control modifiable-input" value="{{ word.word }}" />
+                            <div class="error-message" style="display: none;"></div> <!-- Error message div -->
+                        </td>
+                        <td>
+                            <button class="btn btn-primary modify-button">Modify</button>
+                            <button class="btn btn-success update-button" style="display: none;">Update</button>
+                            <button class="btn btn-danger cancel-button" style="display: none;">Cancel</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
-  </div>
 </div>
 <script>
-  // Add event listeners to enable modification and update
-  const modifyButtons = document.querySelectorAll('.modify-button');
-  const updateButtons = document.querySelectorAll('.update-button');
-  const cancelButtons = document.querySelectorAll('.cancel-button');
-  const wordValues = document.querySelectorAll('.word-value');
-  const modifiableInputs = document.querySelectorAll('.modifiable-input');
-  const errorMessages = document.querySelectorAll('.error-message'); // Error message elements
+    // Add event listeners to enable modification and update
+    const modifyButtons = document.querySelectorAll('.modify-button');
+    const updateButtons = document.querySelectorAll('.update-button');
+    const cancelButtons = document.querySelectorAll('.cancel-button');
+    const wordValues = document.querySelectorAll('.word-value');
+    const modifiableInputs = document.querySelectorAll('.modifiable-input');
+    const errorMessages = document.querySelectorAll('.error-message'); // Error message elements
 
-  modifyButtons.forEach((button, index) => {
-    button.addEventListener('click', () => {
-      // Show the text input, update button, and cancel button; hide the word and modify button
-      modifiableInputs[index].style.display = 'block';
-      updateButtons[index].style.display = 'inline-block';
-      cancelButtons[index].style.display = 'inline-block'; // Show the cancel button
-      wordValues[index].style.display = 'none';
-      modifyButtons[index].style.display = 'none';
+    modifyButtons.forEach((button, index) => {
+        button.addEventListener('click', () => {
+            // Show the text input, update button, and cancel button; hide the word and modify button
+            modifiableInputs[index].style.display = 'block';
+            updateButtons[index].style.display = 'inline-block';
+            cancelButtons[index].style.display = 'inline-block'; // Show the cancel button
+            wordValues[index].style.display = 'none';
+            modifyButtons[index].style.display = 'none';
 
-      // Hide the error message
-      errorMessages[index].style.display = 'none';
-    });
-  });
-
-  updateButtons.forEach((button, index) => {
-    button.addEventListener('click', () => {
-      const today = new Date();
-      today.setDate(today.getDate() + index);
-      const date = today.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
-
-      const newWord = modifiableInputs[index].value;
-
-      fetch('/illordle/word', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `_csrf_token={{ csrf_token() }}&word=${newWord}&date=${date}`,
-      })
-        .then(response => response.text())
-        .then(data => {
-          if (data.startsWith('ERROR:')) {
-            errorMessages[index].textContent = data;
-            errorMessages[index].style.display = 'block';
-            wordValues[index].style.display = 'block';
-            modifiableInputs[index].style.display = 'none';
-            modifyButtons[index].style.display = 'inline-block';
-            updateButtons[index].style.display = 'none';
-            cancelButtons[index].style.display = 'none';
-          } else {
-            wordValues[index].textContent = newWord;
-            wordValues[index].style.display = 'block';
-            modifiableInputs[index].style.display = 'none';
-            modifyButtons[index].style.display = 'inline-block';
-            updateButtons[index].style.display = 'none';
-            cancelButtons[index].style.display = 'none';
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          alert('Failed to update the word.');
+            // Hide the error message
+            errorMessages[index].style.display = 'none';
         });
     });
-  });
 
-  cancelButtons.forEach((button, index) => {
-    button.addEventListener('click', () => {
-      wordValues[index].style.display = 'block';
-      modifiableInputs[index].style.display = 'none';
-      modifyButtons[index].style.display = 'inline-block';
-      updateButtons[index].style.display = 'none';
-      cancelButtons[index].style.display = 'none';
-      errorMessages[index].style.display = 'none';
+    updateButtons.forEach((button, index) => {
+        button.addEventListener('click', () => {
+            const today = new Date();
+            today.setDate(today.getDate() + index);
+            const date = today.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+
+            const newWord = modifiableInputs[index].value;
+
+            fetch('/illordle/word', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `_csrf_token={{ csrf_token() }}&word=${newWord}&date=${date}`,
+            })
+            .then(response => response.text())
+            .then(data => {
+                if (data.startsWith('ERROR:')) {
+                    errorMessages[index].textContent = data;
+                    errorMessages[index].style.display = 'block';
+                    wordValues[index].style.display = 'block';
+                    modifiableInputs[index].style.display = 'none';
+                    modifyButtons[index].style.display = 'inline-block';
+                    updateButtons[index].style.display = 'none';
+                    cancelButtons[index].style.display = 'none';
+                } else {
+                    wordValues[index].textContent = newWord;
+                    wordValues[index].style.display = 'block';
+                    modifiableInputs[index].style.display = 'none';
+                    modifyButtons[index].style.display = 'inline-block';
+                    updateButtons[index].style.display = 'none';
+                    cancelButtons[index].style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to update the word.');
+            });
+        });
     });
-  });
+
+    cancelButtons.forEach((button, index) => {
+        button.addEventListener('click', () => {
+            wordValues[index].style.display = 'block';
+            modifiableInputs[index].style.display = 'none';
+            modifyButtons[index].style.display = 'inline-block';
+            updateButtons[index].style.display = 'none';
+            cancelButtons[index].style.display = 'none';
+            errorMessages[index].style.display = 'none';
+        });
+    });
 </script>
 
 {% endblock %}
