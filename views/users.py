@@ -5,7 +5,7 @@ from flask import (
 from flask_login import login_required
 
 from db.user import get_all_users, add_user
-from util import restrict_to
+from util.security import restrict_to
 
 
 users_routes = Blueprint('users_routes', __name__, url_prefix='/users')

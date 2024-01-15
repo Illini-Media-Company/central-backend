@@ -5,6 +5,7 @@ on:
 
 jobs:
   deploy:
+    needs: run-linters
     name: Deploy to Google App Engine
     runs-on: ubuntu-latest
     environment: prod
@@ -12,7 +13,7 @@ jobs:
         contents: 'read'
         id-token: 'write'
     steps:
-      - name: Checkout
+      - name: Check out repo
         uses: actions/checkout@v3
       - id: 'auth'
         uses: 'google-github-actions/auth@v1'

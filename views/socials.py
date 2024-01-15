@@ -17,14 +17,14 @@ from db.story import (
 )
 import praw
 
-from constants import (
+from util.constants import (
     REDDIT_USERNAME,
     REDDIT_PASSWORD,
     REDDIT_CLIENT_ID,
     REDDIT_CLIENT_SECRET,
     SUBREDDIT
 )
-from util import restrict_to
+from util.security import restrict_to
 
 
 socials_routes = Blueprint('socials_routes', __name__, url_prefix='/socials')
