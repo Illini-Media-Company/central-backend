@@ -10,7 +10,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import requests
 
-from constants import ENV
+from util.constants import ENV
 
 
 GOOGLE_DISCOVERY_URL = (
@@ -70,6 +70,16 @@ def get_groups_for_user(user_email):
         return derived_groups
 
 
+def require_internal(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if current_user.email.endswith("@illinimedia.com"):
+            return func(*args, **kwargs)
+        else:
+            return 'This action is restricted to Illini Media staff.'
+    return wrapper
+
+
 def restrict_to(groups):
     def decorator(func):
         @wraps(func)
@@ -77,6 +87,6 @@ def restrict_to(groups):
             if set(groups) & set(current_user.groups) or ENV == 'dev':
                 return func(*args, **kwargs)
             else:
-                return 'You must be a member of a Google group that this action is restricted to.', 403
+                return 'This action is restricted to specific Google groups.', 403
         return wrapper
     return decorator
