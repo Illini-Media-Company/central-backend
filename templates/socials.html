@@ -63,7 +63,7 @@ Socials
         {% for story in stories %}
         <tr>
             <td><a href="{{ story.url }}">{{ story.title }}</a></td>
-            <td>{{ story.posted_at.strftime('%m/%d/%Y') }}</td>
+            <td>{{ story.posted_at.strftime("%m/%d/%Y") }}</td>
             <td>{{ story.posted_to }}</td>
         </tr>
         {% endfor %}
