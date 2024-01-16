@@ -11,7 +11,7 @@ illordle_routes = Blueprint("illordle_routes", __name__, url_prefix="/illordle")
 
 @illordle_routes.route("/dashboard")
 @login_required
-def illordle_dashboard():
+def dashboard():
     today = datetime.now(tz=ZoneInfo("America/Chicago")).date()
     next_two_weeks = [today + timedelta(days=i) for i in range(15)]
     words = []
@@ -55,7 +55,7 @@ def get_todays_word():
     today = datetime.now(tz=ZoneInfo("America/Chicago")).date()
     word = get_word(today)
     if word != None:
-        return word
+        return word["word"]
     else:
         return "No word has been set for today.", 404
 
@@ -69,11 +69,11 @@ def create_word():
     try:
         date = datetime.strptime(date_str, "%m/%d/%Y").date()
     except ValueError:  # HTML depends on these error messages. Check before modify.
-        return "ERROR: Invalid date format. Please use MM/DD/YYYY format."
+        return "ERROR: Invalid date format. Please use MM/DD/YYYY format.", 400
     if date < datetime.now().date():
-        return "ERROR: Date cannot be in the past."
+        return "ERROR: Date cannot be in the past.", 400
     if len(word) < 5 or len(word) > 8:
-        return "ERROR: Word must be between 5 and 8 characters long."
+        return "ERROR: Word must be between 5 and 8 characters long.", 400
 
     return add_word(word=word, date=date)
 
@@ -81,6 +81,6 @@ def create_word():
 @illordle_routes.route("/delete-all", methods=["POST"])
 @login_required
 @restrict_to(["editors"])
-def illordle_delete_all():
+def delete_all():
     delete_all_words()
     return "All words deleted."
