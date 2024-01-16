@@ -33,7 +33,6 @@ from db.user import (
     update_user_groups,
 )
 from util.security import get_google_provider_cfg, get_groups_for_user, require_internal
-from util.user_setup import setup_user
 from views.illordle import illordle_routes
 from views.socials import socials_routes
 from views.users import users_routes
@@ -174,14 +173,6 @@ def callback():
 @login_required
 def api_query():
     return render_template("api_query.html")
-
-
-@app.route("/user-setup")
-@login_required
-@require_internal
-def user_setup():
-    setup_user(current_user.name, current_user.email, current_user.groups)
-    return render_template("user_setup.html")
 
 
 @app.route("/logout")

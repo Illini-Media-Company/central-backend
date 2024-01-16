@@ -1,6 +1,6 @@
 import re
 
-from flask import Blueprint, render_template, request, redirect, url_for
+from flask import Blueprint, render_template, request
 from flask_login import login_required
 import praw
 
@@ -26,7 +26,7 @@ socials_routes = Blueprint("socials_routes", __name__, url_prefix="/socials")
 
 @socials_routes.route("/dashboard")
 @login_required
-def socials_dashboard():
+def dashboard():
     stories = get_recent_stories(10)
     return render_template("socials.html", stories=stories)
 
@@ -75,7 +75,7 @@ def create_reddit_post():
 @socials_routes.route("/delete-all", methods=["POST"])
 @login_required
 @restrict_to(["editors"])
-def socials_delete_all():
+def delete_all():
     delete_all_stories()
     return "All stories deleted.", 200
 

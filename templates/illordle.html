@@ -46,10 +46,10 @@ Illordle Admin
                 <tbody>
                     {% for word in words %}
                     <tr>
-                        <td>{{ word.date.strftime("%m/%d/%Y") }}</td>
+                        <td>{{ word['date'].strftime("%m/%d/%Y") }}</td>
                         <td>
-                            <span class="word-value">{{ word.word }}</span>
-                            <input type="text" class="form-control modifiable-input" value="{{ word.word }}" />
+                            <span class="word-value">{{ "*****" if word['word'] != "" else "" }}</span>
+                            <input type="text" class="form-control modifiable-input" value="{{ word['word'] }}" />
                             <div class="error-message" style="display: none;"></div> <!-- Error message div -->
                         </td>
                         <td>
@@ -88,43 +88,39 @@ Illordle Admin
     });
 
     updateButtons.forEach((button, index) => {
-        button.addEventListener('click', () => {
+        button.addEventListener('click', async () => {
             const today = new Date();
             today.setDate(today.getDate() + index);
             const date = today.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 
             const newWord = modifiableInputs[index].value;
 
-            fetch('/illordle/word', {
+            const response = await fetch('/illordle/word', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/x-www-form-urlencoded',
                 },
                 body: `_csrf_token={{ csrf_token() }}&word=${newWord}&date=${date}`,
             })
-            .then(response => response.text())
-            .then(data => {
-                if (data.startsWith('ERROR:')) {
-                    errorMessages[index].textContent = data;
-                    errorMessages[index].style.display = 'block';
-                    wordValues[index].style.display = 'block';
-                    modifiableInputs[index].style.display = 'none';
-                    modifyButtons[index].style.display = 'inline-block';
-                    updateButtons[index].style.display = 'none';
-                    cancelButtons[index].style.display = 'none';
-                } else {
-                    wordValues[index].textContent = newWord;
-                    wordValues[index].style.display = 'block';
-                    modifiableInputs[index].style.display = 'none';
-                    modifyButtons[index].style.display = 'inline-block';
-                    updateButtons[index].style.display = 'none';
-                    cancelButtons[index].style.display = 'none';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Failed to update the word.');
-            });
+
+            if (response.status === 200) {
+                wordValues[index].textContent = newWord;
+                wordValues[index].style.display = 'block';
+                modifiableInputs[index].style.display = 'none';
+                modifyButtons[index].style.display = 'inline-block';
+                updateButtons[index].style.display = 'none';
+                cancelButtons[index].style.display = 'none';
+            } else {
+                const message = await response.text();
+                console.error(message);
+                errorMessages[index].textContent = message;
+                errorMessages[index].style.display = 'block';
+                wordValues[index].style.display = 'block';
+                modifiableInputs[index].style.display = 'none';
+                modifyButtons[index].style.display = 'inline-block';
+                updateButtons[index].style.display = 'none';
+                cancelButtons[index].style.display = 'none';
+            }
         });
     });
 
