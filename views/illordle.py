@@ -72,7 +72,7 @@ def create_word():
         date = datetime.strptime(date_str, "%m/%d/%Y").date()
     except ValueError:  # HTML depends on these error messages. Check before modify.
         return "ERROR: Invalid date format. Please use MM/DD/YYYY format.", 400
-    if date < datetime.now().date():
+    if date < datetime.now(tz=ZoneInfo("America/Chicago")).date():
         return "ERROR: Date cannot be in the past.", 400
     if len(word) < 5 or len(word) > 8:
         return "ERROR: Word must be between 5 and 8 characters long.", 400
