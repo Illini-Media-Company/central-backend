@@ -1,10 +1,10 @@
 from google.cloud import ndb
-
 from . import client
+import datetime
 
 
 class IllordleWord(ndb.Model):
-    date = ndb.StringProperty()
+    date = ndb.DateProperty()
     word = ndb.StringProperty()
 
 
@@ -21,14 +21,24 @@ def add_word(word, date):
 
 def get_word(date):
     with client.context():
-        query = IllordleWord.query(IllordleWord.date == date)
-        word = query.get()
-        if word is None:
+        query = IllordleWord.query().filter(IllordleWord.date == date)
+        illordle_word = query.get()
+        if illordle_word is not None:
+            return illordle_word.to_dict()
+        else:
             return None
-        return word.to_dict()
 
 
 def get_all_words():
     with client.context():
-        words = [word.to_dict() for word in IllordleWord.query().fetch()]
+        query = IllordleWord.query()
+        words = query.fetch()
+        return [w.to_dict() for w in words]
+
+
+def delete_all_words():
+    with client.context():
+        words = IllordleWord.query().fetch()
+        for w in words:
+            w.key.delete()
     return words
