@@ -1,4 +1,5 @@
-from flask import Blueprint, render_template, request, abort
+from flask import Blueprint, render_template, request
+from flask_cors import cross_origin
 from flask_login import login_required
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -51,6 +52,7 @@ def retrieve_word():
 
 
 @illordle_routes.route("/word/today", methods=["GET"])
+@cross_origin()
 def get_todays_word():
     today = datetime.now(tz=ZoneInfo("America/Chicago")).date()
     word = get_word(today)
