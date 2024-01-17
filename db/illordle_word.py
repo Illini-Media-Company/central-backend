@@ -36,6 +36,23 @@ def get_all_words():
         return [w.to_dict() for w in words]
 
 
+def get_words_in_date_range(start_date, end_date):
+    with client.context():
+        if start_date is None and end_date is None:
+            return get_all_words()
+        elif start_date is None:
+            query = IllordleWord.query().filter(IllordleWord.date <= end_date)
+        elif end_date is None:
+            query = IllordleWord.query().filter(IllordleWord.date >= start_date)
+        else:
+            query = IllordleWord.query().filter(
+                start_date <= IllordleWord.date <= end_date
+            )
+
+        words = query.fetch()
+        return [w.to_dict() for w in words]
+
+
 def delete_all_words():
     with client.context():
         words = IllordleWord.query().fetch()
