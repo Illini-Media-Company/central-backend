@@ -65,7 +65,7 @@ def get_todays_word():
     if word != None:
         return word
     else:
-        return "No word has been set for today.", 404
+        return {"date": today, "word": ""}
 
 
 @illordle_routes.route("/word", methods=["POST"])
