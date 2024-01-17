@@ -85,7 +85,7 @@ def create_word():
 
     today = datetime.now(tz=ZoneInfo("America/Chicago")).date()
     old_words = get_words_in_date_range(today - timedelta(days=180), None)
-    if sum(old_word["word"] == word["word"] for old_word in old_words) > 0:
+    if sum(old_word["word"] == word for old_word in old_words) > 0:
         return "ERROR: Word cannot be used in the last 180 days.", 400
 
     return add_word(word=word, date=date)
