@@ -4,7 +4,13 @@ from flask_login import login_required
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from db.illordle_word import add_word, get_word, get_all_words, delete_all_words
+from db.illordle_word import (
+    add_word,
+    get_word,
+    get_all_words,
+    get_words_in_date_range,
+    delete_all_words,
+)
 from util.security import restrict_to
 
 illordle_routes = Blueprint("illordle_routes", __name__, url_prefix="/illordle")
@@ -57,7 +63,7 @@ def get_todays_word():
     today = datetime.now(tz=ZoneInfo("America/Chicago")).date()
     word = get_word(today)
     if word != None:
-        return word["word"]
+        return word
     else:
         return "No word has been set for today.", 404
 
@@ -70,12 +76,17 @@ def create_word():
     date_str = request.form["date"]
     try:
         date = datetime.strptime(date_str, "%m/%d/%Y").date()
-    except ValueError:  # HTML depends on these error messages. Check before modify.
+    except ValueError:
         return "ERROR: Invalid date format. Please use MM/DD/YYYY format.", 400
     if date < datetime.now(tz=ZoneInfo("America/Chicago")).date():
         return "ERROR: Date cannot be in the past.", 400
     if len(word) < 5 or len(word) > 8:
         return "ERROR: Word must be between 5 and 8 characters long.", 400
+
+    today = datetime.now(tz=ZoneInfo("America/Chicago")).date()
+    old_words = get_words_in_date_range(today - timedelta(days=180), None)
+    if sum(old_word["word"] == word["word"] for old_word in old_words) > 0:
+        return "ERROR: Word cannot be used in the last 180 days.", 400
 
     return add_word(word=word, date=date)
 
