@@ -10,7 +10,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import requests
 
-from util.constants import ENV
+from constants import ENV
 
 
 GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
