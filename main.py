@@ -23,7 +23,7 @@ import requests
 from talisman import Talisman
 
 # Local imports
-from util.constants import (
+from constants import (
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
 )
@@ -132,18 +132,19 @@ def callback():
         unique_id = userinfo_response["sub"]
         user_email = userinfo_response["email"]
         user_name = userinfo_response["name"]
+        user_domain = userinfo_response.get("hd", "")
         user_groups = get_groups_for_user(user_email)
 
         # Create or update user in db
         user = get_user(user_email)
         if user is None:
-            if user_email.endswith("@illinimedia.com"):
+            if user_domain == "@illinimedia.com":
                 user = add_user(
                     sub=unique_id, name=user_name, email=user_email, groups=user_groups
                 )
             else:
                 return (
-                    "User email must end with @illinimedia.com for automatic registration.",
+                    "User must be a member of Illini Media for automatic registration.",
                     403,
                 )
         elif user.sub is None:

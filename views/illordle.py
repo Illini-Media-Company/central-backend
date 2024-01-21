@@ -1,8 +1,9 @@
-from flask import Blueprint, render_template, request
-from flask_cors import cross_origin
-from flask_login import login_required
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+
+from flask import Blueprint, render_template, request
+from flask_cors import cross_origin
+from flask_login import current_user, login_required
 
 from db.illordle_word import (
     add_word,
@@ -12,6 +13,7 @@ from db.illordle_word import (
     delete_all_words,
 )
 from util.security import restrict_to
+from util.stories import get_title_from_url
 
 illordle_routes = Blueprint("illordle_routes", __name__, url_prefix="/illordle")
 
@@ -72,23 +74,45 @@ def get_todays_word():
 @login_required
 @restrict_to(["editors", "di-section-editors"])
 def create_word():
-    word = request.form["word"]
     date_str = request.form["date"]
+    word = request.form["word"].lower()
+    story_url = request.form["url"]
+
     try:
         date = datetime.strptime(date_str, "%m/%d/%Y").date()
     except ValueError:
         return "ERROR: Invalid date format. Please use MM/DD/YYYY format.", 400
     if date < datetime.now(tz=ZoneInfo("America/Chicago")).date():
         return "ERROR: Date cannot be in the past.", 400
-    if len(word) < 5 or len(word) > 8:
-        return "ERROR: Word must be between 5 and 8 characters long.", 400
+    if len(word) < 5 or len(word) > 6:
+        return "ERROR: Word must be 5 or 6 letters long.", 400
+    if not word.isalpha():
+        return "ERROR: Word must contain only letters.", 400
 
-    today = datetime.now(tz=ZoneInfo("America/Chicago")).date()
-    old_words = get_words_in_date_range(today - timedelta(days=180), None)
-    if sum(old_word["word"] == word for old_word in old_words) > 0:
+    if story_url != "":
+        story_title = get_title_from_url(story_url)
+        if story_title is None:
+            return "ERROR: Story cannot be found.", 400
+    else:
+        story_title = ""
+
+    old_words = get_words_in_date_range(date - timedelta(days=180), None)
+    if (
+        sum(
+            (old_word["word"] == word and old_word["date"] != date)
+            for old_word in old_words
+        )
+        > 0
+    ):
         return "ERROR: Word cannot be used in the last 180 days.", 400
 
-    return add_word(word=word, date=date)
+    return add_word(
+        word=word,
+        date=date,
+        author=current_user.name,
+        story_url=story_url,
+        story_title=story_title,
+    )
 
 
 @illordle_routes.route("/delete-all", methods=["POST"])

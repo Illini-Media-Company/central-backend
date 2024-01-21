@@ -14,16 +14,23 @@ Illordle Admin
     .modifiable-input {
         display: none;
     }
+    .modifiable-url-input {
+        display: none;
+    }
     .table th:nth-child(1),
     .table td:nth-child(1) {
-        width: 30%; /* Set a fixed width for the Date column */
+        width: 15%; /* Set a fixed width for the Date column */
     }
     .table th:nth-child(2),
     .table td:nth-child(2) {
-        width: 50%; /* Set a fixed width for the Word column */
+        width: 15%; /* Set a fixed width for the Word column */
     }
     .table th:nth-child(3),
     .table td:nth-child(3) {
+        width: 50%; /* Set a fixed width for the Related Story column */
+    }
+    .table th:nth-child(4),
+    .table td:nth-child(4) {
         width: 20%; /* Set a fixed width for the Actions column */
     }
     .error-message {
@@ -40,6 +47,7 @@ Illordle Admin
                     <tr>
                         <th>Date</th>
                         <th>Word</th>
+                        <th>Related Story</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -50,6 +58,10 @@ Illordle Admin
                         <td>
                             <span class="word-value">{{ "*****" if word['word'] != "" else "" }}</span>
                             <input type="text" class="form-control modifiable-input" value="{{ word['word'] }}" />
+                        </td>
+                        <td>
+                            <a href="{{ word['story_url'] }}" class="story-title">{{ word['story_title'] }}</a>
+                            <input type="text" class="form-control modifiable-url-input" placeholder="Paste URL" value="{{ word['story_url'] }}" />
                             <div class="error-message" style="display: none;"></div> <!-- Error message div -->
                         </td>
                         <td>
@@ -70,16 +82,20 @@ Illordle Admin
     const updateButtons = document.querySelectorAll('.update-button');
     const cancelButtons = document.querySelectorAll('.cancel-button');
     const wordValues = document.querySelectorAll('.word-value');
+    const storyTitles = document.querySelectorAll('.story-title');
     const modifiableInputs = document.querySelectorAll('.modifiable-input');
+    const modifiableUrlInputs = document.querySelectorAll('.modifiable-url-input');
     const errorMessages = document.querySelectorAll('.error-message'); // Error message elements
 
     modifyButtons.forEach((button, index) => {
         button.addEventListener('click', () => {
             // Show the text input, update button, and cancel button; hide the word and modify button
             modifiableInputs[index].style.display = 'block';
+            modifiableUrlInputs[index].style.display = 'block';
             updateButtons[index].style.display = 'inline-block';
             cancelButtons[index].style.display = 'inline-block'; // Show the cancel button
             wordValues[index].style.display = 'none';
+            storyTitles[index].style.display = 'none';
             modifyButtons[index].style.display = 'none';
 
             // Hide the error message
@@ -89,24 +105,34 @@ Illordle Admin
 
     updateButtons.forEach((button, index) => {
         button.addEventListener('click', async () => {
+            button.disabled = true;
+            button.innerHTML = 'Updating...';
+
             const today = new Date();
             today.setDate(today.getDate() + index);
             const date = today.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 
             const newWord = modifiableInputs[index].value;
+            const newUrl = modifiableUrlInputs[index].value;
 
             const response = await fetch('/illordle/word', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: `_csrf_token={{ csrf_token() }}&word=${newWord}&date=${date}`,
+                body: `_csrf_token={{ csrf_token() }}&word=${newWord}&date=${date}&url=${newUrl}`,
             })
 
             if (response.status === 200) {
+                const responseData = await response.json();
+
                 wordValues[index].textContent = newWord;
+                storyTitles[index].textContent = responseData['story_title'];
+                storyTitles[index].href = newUrl;
                 wordValues[index].style.display = 'block';
+                storyTitles[index].style.display = 'block';
                 modifiableInputs[index].style.display = 'none';
+                modifiableUrlInputs[index].style.display = 'none';
                 modifyButtons[index].style.display = 'inline-block';
                 updateButtons[index].style.display = 'none';
                 cancelButtons[index].style.display = 'none';
@@ -116,18 +142,24 @@ Illordle Admin
                 errorMessages[index].textContent = message;
                 errorMessages[index].style.display = 'block';
                 wordValues[index].style.display = 'block';
+                storyTitles[index].style.display = 'block';
                 modifiableInputs[index].style.display = 'none';
+                modifiableUrlInputs[index].style.display = 'none';
                 modifyButtons[index].style.display = 'inline-block';
                 updateButtons[index].style.display = 'none';
                 cancelButtons[index].style.display = 'none';
             }
+            button.disabled = false;
+            button.innerHTML = 'Update';
         });
     });
 
     cancelButtons.forEach((button, index) => {
         button.addEventListener('click', () => {
             wordValues[index].style.display = 'block';
+            storyTitles[index].style.display = 'block';
             modifiableInputs[index].style.display = 'none';
+            modifiableUrlInputs[index].style.display = 'none';
             modifyButtons[index].style.display = 'inline-block';
             updateButtons[index].style.display = 'none';
             cancelButtons[index].style.display = 'none';
