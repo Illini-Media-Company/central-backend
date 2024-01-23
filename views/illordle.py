@@ -76,7 +76,7 @@ def get_todays_word():
 def create_word():
     date_str = request.form["date"]
     word = request.form["word"].lower()
-    story_url = request.form["url"]
+    story_url = request.form["url"].partition("?")[0]
 
     try:
         date = datetime.strptime(date_str, "%m/%d/%Y").date()

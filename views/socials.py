@@ -36,7 +36,7 @@ def list_stories():
 def create_push_notification():
     if check_limit():
         return "ERROR: 3 push notifications have been sent in the past 7 days.", 403
-    url = request.form["url"]
+    url = request.form["url"].partition("?")[0]
     title, err = validate_story(url)
     if err:
         return err, 400
@@ -51,7 +51,7 @@ def create_push_notification():
 @login_required
 @restrict_to(["editors", "social"])
 def create_reddit_post():
-    url = request.form["url"]
+    url = request.form["url"].partition("?")[0]
     title, err = validate_story(url)
     if err:
         return err, 400
