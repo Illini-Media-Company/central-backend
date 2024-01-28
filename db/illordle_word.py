@@ -12,18 +12,19 @@ class IllordleWord(ndb.Model):
 
 
 def add_word(word, date, author, story_url, story_title):
+    args = {
+        "date": date,
+        "word": word,
+        "author": author,
+        "story_url": story_url,
+        "story_title": story_title,
+    }
     with client.context():
         query = IllordleWord.query().filter(IllordleWord.date == date)
         illordle_word = query.get()
         if illordle_word is not None:
-            illordle_word.key.delete()
-        illordle_word = IllordleWord(
-            date=date,
-            word=word,
-            author=author,
-            story_url=story_url,
-            story_title=story_title,
-        )
+            args["key"] = illordle_word.key  # replace existing word
+        illordle_word = IllordleWord(**args)
         illordle_word.put()
         return illordle_word.to_dict()
 
