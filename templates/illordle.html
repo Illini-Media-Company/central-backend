@@ -19,7 +19,7 @@ Illordle Admin
     }
     .table th:nth-child(1),
     .table td:nth-child(1) {
-        width: 15%; /* Set a fixed width for the Date column */
+        width: 12.5%; /* Set a fixed width for the Date column */
     }
     .table th:nth-child(2),
     .table td:nth-child(2) {
@@ -27,11 +27,15 @@ Illordle Admin
     }
     .table th:nth-child(3),
     .table td:nth-child(3) {
-        width: 50%; /* Set a fixed width for the Related Story column */
+        width: 10%; /* Set a fixed width for the Word column */
     }
     .table th:nth-child(4),
     .table td:nth-child(4) {
-        width: 20%; /* Set a fixed width for the Actions column */
+        width: 45%; /* Set a fixed width for the Related Story column */
+    }
+    .table th:nth-child(5),
+    .table td:nth-child(5) {
+        width: 17.5%; /* Set a fixed width for the Actions column */
     }
     .error-message {
         color: red;
@@ -46,6 +50,7 @@ Illordle Admin
                 <thead>
                     <tr>
                         <th>Date</th>
+                        <th>Author</th>
                         <th>Word</th>
                         <th>Related Story</th>
                         <th>Actions</th>
@@ -55,6 +60,9 @@ Illordle Admin
                     {% for word in words %}
                     <tr>
                         <td>{{ word['date'].strftime("%m/%d/%Y") }}</td>
+                        <td>
+                            <span class="word-author"></span>{{ word['author'] }}</span>
+                        </td>
                         <td>
                             <span class="word-value">{{ "*****" if word['word'] != "" else "" }}</span>
                             <input type="text" class="form-control modifiable-input" value="{{ word['word'] }}" />
@@ -82,6 +90,7 @@ Illordle Admin
     const updateButtons = document.querySelectorAll('.update-button');
     const cancelButtons = document.querySelectorAll('.cancel-button');
     const wordValues = document.querySelectorAll('.word-value');
+    const wordAuthors = document.querySelectorAll('.word-author');
     const storyTitles = document.querySelectorAll('.story-title');
     const modifiableInputs = document.querySelectorAll('.modifiable-input');
     const modifiableUrlInputs = document.querySelectorAll('.modifiable-url-input');
@@ -127,6 +136,7 @@ Illordle Admin
                 const responseData = await response.json();
 
                 wordValues[index].textContent = newWord;
+                wordAuthors[index].textContent = responseData['author'];
                 storyTitles[index].textContent = responseData['story_title'];
                 storyTitles[index].href = newUrl;
                 wordValues[index].style.display = 'block';
