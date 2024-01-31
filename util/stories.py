@@ -8,6 +8,7 @@ from constants import (
     REDDIT_CLIENT_ID,
     REDDIT_CLIENT_SECRET,
     SUBREDDIT,
+    FLAIR_ID,
 )
 
 
@@ -29,5 +30,5 @@ def post_to_reddit(title, url):
         password=REDDIT_PASSWORD,
     )
     subreddit = reddit.subreddit(SUBREDDIT)
-    submission = subreddit.submit(title, url=url)
+    submission = subreddit.submit(title, url=url, flair_id=FLAIR_ID)
     return "https://www.reddit.com" + submission.permalink
