@@ -33,7 +33,6 @@ def post_to_reddit(title, url):
     submission = subreddit.submit(title, url=url, flair_id=FLAIR_ID)
     return "https://www.reddit.com" + submission.permalink
 
-
 def get_published_url(url):
     post_id_match = re.search(r'post=(\d+)', url)
     if not post_id_match:
