@@ -36,7 +36,6 @@ from util.security import get_google_provider_cfg, get_groups_for_user, require_
 from views.illordle import illordle_routes
 from views.socials import socials_routes
 from views.users import users_routes
-from views.editorial import editorial_routes
 
 
 app = Flask(__name__)
@@ -44,7 +43,6 @@ app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 app.register_blueprint(illordle_routes)
 app.register_blueprint(socials_routes)
 app.register_blueprint(users_routes)
-app.register_blueprint(editorial_routes)
 
 # csp = {
 #     'default-src': '*'
