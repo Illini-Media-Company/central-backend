@@ -181,8 +181,6 @@ def api_query():
 #TODO implement constant contact backend
 
 #remove later
-client_id = "d0d8d364-b7b6-497a-a8e7-6e89ac0c754d"
-client_secret = "A5sErJbUHdPu6pAHxo7x0w"
 redirect_uri = "https://cavemanfury.github.io/"
 
 """
