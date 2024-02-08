@@ -5,8 +5,18 @@ Constant-Contact
 {% endblock %}
 
 {% block content %}
-{% endblock %}
+<style>
+    .container {
+        width: 80%;
+        margin-bottom: 10px;
+    }
+    .form-control, .form-select {
+        border-color: #a8a8a8;
+    }
+</style>
 
-<body>
-    <button type="button">Add AuthCode</button>
-</body>
+<div class = "container"> 
+    <h3>AuthCode is... {{code}}</h3>
+</div>
+
+{% endblock %}
