@@ -5,10 +5,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ENV = "dev" #os.environ.get("ENV", "dev")
+ENV = os.environ.get("ENV", "dev")
 
-GOOGLE_CLIENT_ID = "***REMOVED***"#os.environ.get("GOOGLE_CLIENT_ID", None)
-GOOGLE_CLIENT_SECRET = "***REMOVED***"#os.environ.get("GOOGLE_CLIENT_SECRET", None)
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", None)
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", None)
 
 REDDIT_USERNAME = "TheDailyIllini"
 REDDIT_PASSWORD = os.environ.get("REDDIT_PASSWORD", None)
