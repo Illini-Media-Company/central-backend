@@ -23,7 +23,7 @@ def get_google_provider_cfg():
     return requests.get(GOOGLE_DISCOVERY_URL).json()
 
 
-def get_creds():
+def get_creds(scopes):
     creds, _ = default()
     if ENV == "dev":
         creds = impersonated_credentials.Credentials(
@@ -41,14 +41,14 @@ def get_creds():
         signer,
         creds.service_account_email,
         TOKEN_URL,
-        scopes=SCOPES,
+        scopes=scopes,
         subject="di_admin@illinimedia.com",
     )
     return creds
 
 
 def get_groups_for_user(user_email):
-    with build("admin", "directory_v1", credentials=get_creds()) as service:
+    with build("admin", "directory_v1", credentials=get_creds(SCOPES)) as service:
         response = (
             service.groups()
             .list(domain="illinimedia.com", userKey=user_email)
