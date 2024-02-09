@@ -14,6 +14,7 @@ from db.illordle_word import (
 )
 from util.security import restrict_to
 from util.stories import get_title_from_url
+from illordle_modify import random_words
 
 illordle_routes = Blueprint("illordle_routes", __name__, url_prefix="/illordle")
 
@@ -67,7 +68,7 @@ def get_todays_word():
     if word != None:
         return word
     else:
-        return {"date": today, "word": ""}
+        return {"date": today, "word": random_words}
 
 
 @illordle_routes.route("/word", methods=["POST"])
