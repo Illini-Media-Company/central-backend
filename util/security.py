@@ -71,10 +71,9 @@ def get_groups_for_user(user_email):
                 "graphics",
                 "social",
                 "copy",
+                "webdev",
             ]:
-                derived_groups.extend(f"di-staff-{group}", "di-section-editors")
-            if group == "online-team":
-                derived_groups.extend(["webdev", "di-section-editors"])
+                derived_groups.extend([f"di-staff-{group}", "di-section-editors"])
         return derived_groups
 
 
