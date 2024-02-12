@@ -49,7 +49,7 @@ def create_push_notification():
 
 @socials_routes.route("/reddit", methods=["POST"])
 @login_required
-@restrict_to(["editors", "social"])
+@restrict_to(["editors", "di-staff-social"])
 def create_reddit_post():
     url = request.form["url"].partition("?")[0]
     title, err = validate_story(url)
