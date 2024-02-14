@@ -9,9 +9,4 @@ def word_random():
 
 
 
-import os
 
-# Get directory
-script_directory = os.path.dirname(os.path.realpath(__file__))
-# Print the directory
-print("Directory of the main script:", script_directory)

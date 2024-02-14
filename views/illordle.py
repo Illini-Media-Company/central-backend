@@ -1,15 +1,5 @@
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-import os
-
-import os
-
-# Get the directory of the current script
-script_directory = os.path.dirname(os.path.realpath(__file__))
-
-# Print the directory
-print("Directory of the main script:", script_directory)
-
 
 from flask import Blueprint, render_template, request
 from flask_cors import cross_origin
