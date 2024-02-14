@@ -7,3 +7,11 @@ def word_random():
     return random.choice(rand_wordle_list)
     
 
+
+
+import os
+
+# Get directory
+script_directory = os.path.dirname(os.path.realpath(__file__))
+# Print the directory
+print("Directory of the main script:", script_directory)

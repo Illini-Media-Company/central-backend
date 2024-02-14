@@ -1,9 +1,20 @@
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+import os
+
+import os
+
+# Get the directory of the current script
+script_directory = os.path.dirname(os.path.realpath(__file__))
+
+# Print the directory
+print("Directory of the main script:", script_directory)
+
 
 from flask import Blueprint, render_template, request
 from flask_cors import cross_origin
 from flask_login import current_user, login_required
+from views.rand_wordle_list import word_random
 
 from db.illordle_word import (
     add_word,
@@ -14,7 +25,6 @@ from db.illordle_word import (
 )
 from util.security import restrict_to
 from util.stories import get_title_from_url
-from illordle_modify import random_words
 
 illordle_routes = Blueprint("illordle_routes", __name__, url_prefix="/illordle")
 
@@ -68,8 +78,12 @@ def get_todays_word():
     if word != None:
         return word
     else:
-        return {"date": today, "word": random_words}
-
+        word = word_random()
+        add_word(word, today, '', story_url, story_title)
+        return {"date": today, "word": word }
+        
+        
+        
 
 @illordle_routes.route("/word", methods=["POST"])
 @login_required
@@ -122,3 +136,4 @@ def create_word():
 def delete_all():
     delete_all_words()
     return "All words deleted."
+
