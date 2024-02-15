@@ -6,7 +6,6 @@ from . import client
 
 
 class Story(ndb.Model):
-    id = ndb.StringProperty()
     title = ndb.StringProperty()
     url = ndb.StringProperty()
     posted_to = ndb.StringProperty()
