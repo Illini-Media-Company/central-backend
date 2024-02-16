@@ -1,7 +1,8 @@
 from bs4 import BeautifulSoup
 import praw
 import requests
-import tweepy
+import requests
+from requests_oauthlib import OAuth1
 
 from constants import (
     REDDIT_USERNAME,
@@ -39,25 +40,22 @@ def post_to_reddit(title, url):
     return "https://www.reddit.com" + submission.permalink
 
 def post_to_twitter(title, url):
-    API_KEY = TWITTER_API_KEY
-    API_SECRET_KEY = TWITTER_API_SECRET_KEY
-    ACCESS_TOKEN = TWITTER_ACCESS_TOKEN
-    ACCESS_TOKEN_SECRET = TWITTER_ACCESS_TOKEN_SECRET
-
-    # Handling Twitter authentication
-    auth = tweepy.OAuthHandler(API_KEY, API_SECRET_KEY)
-    auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
-
-    # Creating API object
-    api = tweepy.API(auth)
-
-    # Combining title and URL to form tweet content
-    tweet = f"{title} {url}"
-
-    # Tweeting
-    status = api.update_status(status=tweet)
-
-    # Return the tweet URL (assuming tweet was successful)
-    tweet_id = status.id
-    tweet_url = f"https://twitter.com/user/status/{tweet_id}"
-    return tweet_url
+    # Setup OAuth1 authentication
+    oauth = OAuth1(TWITTER_API_KEY, TWITTER_API_SECRET_KEY, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET)
+    
+    # Endpoint for tweeting
+    api_url = "https://api.twitter.com/2/tweets"
+    
+    # Prepare the tweet
+    tweet_text = f"{title} {url}"
+    
+    # Make a POST request to TwitterAPI
+    response = requests.post(api_url, json={"text": tweet_text}, auth=oauth)
+    
+    if response.status_code == 201:
+        tweet_data = response.json()
+        tweet_id = tweet_data["data"]["id"]
+        tweet_url = f"https://twitter.com/user/status/{tweet_id}"
+        return tweet_url
+    else:
+        raise Exception(f"Failed to post tweet: {response.text}")
