@@ -13,3 +13,5 @@ praw ~= 7.0
 python-dotenv
 requests ~= 2.0
 talisman
+requests
+requests_oauthlib
