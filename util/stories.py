@@ -1,7 +1,6 @@
 from bs4 import BeautifulSoup
 import praw
 import requests
-import requests
 from requests_oauthlib import OAuth1
 
 from constants import (
