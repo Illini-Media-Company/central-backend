@@ -69,10 +69,10 @@ def get_todays_word():
         return word
     else:
         word = word_random()
-        add_word(word, today, '', story_url, story_title)
-        return {"date": today, "word": word }
+        add_word(word, today, '', '', '')
+        return word
         
-        
+
         
 
 @illordle_routes.route("/word", methods=["POST"])
