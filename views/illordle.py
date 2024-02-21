@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 from flask import Blueprint, render_template, request
 from flask_cors import cross_origin
 from flask_login import current_user, login_required
+from util.illordle_generate_word import random_word
 
 from db.illordle_word import (
     add_word,
@@ -49,7 +50,8 @@ def get_todays_word():
     if word != None:
         return word
     else:
-        return {"date": today, "word": ""}
+        word = add_word(random_word(), today, "", "", "")
+        return word
 
 
 @illordle_routes.route("/word/<mm>/<dd>/<yyyy>", methods=["GET"])
