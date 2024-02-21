@@ -30,7 +30,7 @@ def get_editor_email():
     
     # Getting editor emails from events, then sorts them based on the last_edited value.
     # TODO: replace defaultdict implementation with Google Cloud user DB for checking last_edited field
-    last_edited_list = [(event.attendees[0].email, get_user_last_edited(event.attendees[0].email) or datetime.min, event.attendees[0].display_name) for event in events if event.end.replace(tzinfo=pytz.utc) > curr_time + timedelta(minutes=10) and len(event.attendees) != 0] # If statement for skipping events where the time remaining is less than a given num of minutes (i.e. shift is about to end)
+    last_edited_list = [(event.attendees[0].email, get_user_last_edited(event.attendees[0].email) or datetime.min, event.attendees[0].display_name) for event in events if event.end.replace(tzinfo=pytz.utc) < (curr_time + timedelta(minutes=10)) and len(event.attendees) != 0] # If statement for skipping events where the time remaining is less than a given num of minutes (i.e. shift is about to end)
 
     # Returns email for the copy editor if list isn't empty and updates last_edited field
     if len(last_edited_list) == 1:
