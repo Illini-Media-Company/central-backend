@@ -17,7 +17,7 @@ Socials
 
 <div class="container">
     <div class="row my-4">
-        <label for="url" class="col-sm-1 col-form-label">Story URL</label>
+        <label for="url" class="col-sm-1 col-form-label">Post URL</label>
         <div class="col-sm-11">
             <input type="text" id="url" class="form-control" name="url">
         </div>
@@ -25,12 +25,13 @@ Socials
 
     <div class="row my-4">
         <div class="col-sm-1">
-            <label for="posted_to" class="col-form-label">Post to:</label>
+            <label for="post_to" class="col-form-label">Post to:</label>
         </div>
         <div class="col-sm-2">
-            <select id="posted_to" class="form-select" name="posted_to">
-                <option value="Reddit">Reddit</option>
-                <option value="Illinois app">Illinois app</option>
+            <select id="post_to" class="form-select" name="post_to">
+                {% for platform in platforms %}
+                <option value="{{ platform }}">{{ platform }}</option>
+                {% endfor %}
             </select>
         </div>
         <div class="col-sm-2">
@@ -40,24 +41,24 @@ Socials
 </div>
 
 <div class="container d-flex justify-content-between align-items-center">
-    <h3>Recent Stories</h3>
+    <h3>Recent Posts</h3>
 </div>
 
 <div class="container">
     <table class="table table-bordered">
         <thead>
         <tr>
-            <th>Story</th>
+            <th>Post</th>
             <th>Date Posted</th>
             <th>Posted To</th>
         </tr>
         </thead>
         <tbody>
-        {% for story in stories %}
+        {% for post in posts %}
         <tr>
-            <td><a href="{{ story.url }}">{{ story.title }}</a></td>
-            <td>{{ story.posted_at.strftime("%m/%d/%Y") }}</td>
-            <td>{{ story.posted_to }}</td>
+            <td><a href="{{ post.url }}">{{ post.title }}</a></td>
+            <td>{{ post.created_at.strftime("%m/%d/%Y") }}</td>
+            <td>{{ post.platform }}</td>
         </tr>
         {% endfor %}
         </tbody>
@@ -82,13 +83,15 @@ Socials
         button.innerHTML = 'Submitting...';
 
         const url = document.getElementById('url').value;
-        const postedTo = document.getElementById('posted_to').value;
+        const postTo = document.getElementById('post_to').value;
 
         let endpoint = '/socials';
-        if (postedTo === 'Illinois app') {
+        if (postTo === 'Illinois app') {
             endpoint += '/illinois-app';
-        } else if (postedTo === 'Reddit') {
+        } else if (postTo === 'Reddit') {
             endpoint += '/reddit';
+        } else if (postTo === 'Twitter') {
+            endpoint += '/twitter'
         }
 
         const response = await fetch(endpoint, {
@@ -110,8 +113,8 @@ Socials
             button.innerHTML = 'Submit';
         }
     }
-    function deleteAllStories() {
-        const confirmation = confirm("Are you sure you want to delete ALL stories in the database?");
+    function deleteAllPosts() {
+        const confirmation = confirm("Are you sure you want to delete ALL social posts in the database?");
         const confirmation2 = confirm("Are you SURE sure? Everything?");
         if (confirmation & confirmation2) {
             fetch('/socials/delete-all', {

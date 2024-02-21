@@ -1,6 +1,5 @@
 from google.cloud import ndb
 from . import client
-import datetime
 
 
 class IllordleWord(ndb.Model):
