@@ -19,8 +19,8 @@ socials_routes = Blueprint("socials_routes", __name__, url_prefix="/socials")
 @socials_routes.route("/dashboard")
 @login_required
 def dashboard():
-    stories = get_recent_posts(10)
-    return render_template("socials.html", stories=stories)
+    posts = get_recent_posts(10)
+    return render_template("socials.html", posts=posts)
 
 
 @socials_routes.route("", methods=["GET"])
