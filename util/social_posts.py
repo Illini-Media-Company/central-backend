@@ -77,7 +77,7 @@ def post_to_twitter(title, url):
             TWITTER_ACCESS_TOKEN,
             TWITTER_ACCESS_TOKEN_SECRET,
         )
-        tweet_text = f"{title} {url}"
+        tweet_text = f"{title}\n\n📲 Click the link to read more: {url}"
         response = requests.post(TWITTER_API_URL, json={"text": tweet_text}, auth=oauth)
         if response.status_code != 201:
             return None, (response.text, 500)
