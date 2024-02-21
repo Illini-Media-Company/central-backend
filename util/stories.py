@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 import requests
+from requests_oauthlib import OAuth1
 
 
 def get_title_from_url(url):
