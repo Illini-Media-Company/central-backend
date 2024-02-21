@@ -50,8 +50,7 @@ def get_todays_word():
     if word != None:
         return word
     else:
-        word = random_word()
-        add_word(word, today, "", "", "")
+        word = add_word(random_word(), today, "", "", "")
         return word
 
 
