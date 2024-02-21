@@ -129,6 +129,9 @@ python-env/
 env.bak/
 venv.bak/
 set_vars.cmd
+env
+.env *
+env *
 
 # Spyder project settings
 .spyderproject
