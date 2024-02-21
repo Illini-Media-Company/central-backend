@@ -25,12 +25,13 @@ Socials
 
     <div class="row my-4">
         <div class="col-sm-1">
-            <label for="posted_to" class="col-form-label">Post to:</label>
+            <label for="post_to" class="col-form-label">Post to:</label>
         </div>
         <div class="col-sm-2">
-            <select id="posted_to" class="form-select" name="posted_to">
-                <option value="Reddit">Reddit</option>
-                <option value="Illinois app">Illinois app</option>
+            <select id="post_to" class="form-select" name="post_to">
+                {% for platform in platforms %}
+                <option value="{{ platform }}">{{ platform }}</option>
+                {% endfor %}
             </select>
         </div>
         <div class="col-sm-2">
@@ -70,13 +71,15 @@ Socials
         button.innerHTML = 'Submitting...';
 
         const url = document.getElementById('url').value;
-        const postedTo = document.getElementById('posted_to').value;
+        const postTo = document.getElementById('post_to').value;
 
         let endpoint = '/socials';
-        if (postedTo === 'Illinois app') {
+        if (postTo === 'Illinois app') {
             endpoint += '/illinois-app';
-        } else if (postedTo === 'Reddit') {
+        } else if (postTo === 'Reddit') {
             endpoint += '/reddit';
+        } else if (postTo === 'Twitter') {
+            endpoint += '/twitter'
         }
 
         const response = await fetch(endpoint, {

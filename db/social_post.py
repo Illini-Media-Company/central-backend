@@ -7,9 +7,9 @@ from . import client
 
 
 class SocialPlatform(StrEnum):
-    ILLINOIS_APP = "Illinois app"
     REDDIT = "Reddit"
     TWITTER = "Twitter"
+    ILLINOIS_APP = "Illinois app"
 
 
 class SocialPost(ndb.Model):
