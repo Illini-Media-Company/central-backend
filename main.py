@@ -138,7 +138,7 @@ def callback():
         # Create or update user in db
         user = get_user(user_email)
         if user is None:
-            if user_domain == "@illinimedia.com":
+            if user_domain == "illinimedia.com":
                 user = add_user(
                     sub=unique_id, name=user_name, email=user_email, groups=user_groups
                 )

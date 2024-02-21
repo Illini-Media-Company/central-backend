@@ -1,14 +1,7 @@
-from bs4 import BeautifulSoup
-import praw
-import requests
+import re
 
-from constants import (
-    REDDIT_USERNAME,
-    REDDIT_PASSWORD,
-    REDDIT_CLIENT_ID,
-    REDDIT_CLIENT_SECRET,
-    SUBREDDIT,
-)
+from bs4 import BeautifulSoup
+import requests
 
 
 def get_title_from_url(url):
@@ -20,14 +13,17 @@ def get_title_from_url(url):
         return None
 
 
-def post_to_reddit(title, url):
-    reddit = praw.Reddit(
-        client_id=REDDIT_CLIENT_ID,
-        client_secret=REDDIT_CLIENT_SECRET,
-        user_agent=f"story submission by u/{REDDIT_USERNAME}",
-        username=REDDIT_USERNAME,
-        password=REDDIT_PASSWORD,
-    )
-    subreddit = reddit.subreddit(SUBREDDIT)
-    submission = subreddit.submit(title, url=url)
-    return "https://www.reddit.com" + submission.permalink
+def get_published_url(editor_url):
+    post_id_match = re.search(r"post=(\d+)", editor_url)
+    if not post_id_match:
+        return None
+
+    post_id = post_id_match.group(1)
+    api_url = f"https://dailyillini.com/wp-json/wp/v2/posts/{post_id}"
+    response = requests.get(api_url)
+
+    data = response.json()
+    if "link" in data:
+        return data["link"]
+    else:
+        return None

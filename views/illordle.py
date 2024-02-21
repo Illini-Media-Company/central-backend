@@ -39,25 +39,7 @@ def dashboard():
 @login_required
 def list_words():
     words = get_all_words()
-    if words:
-        return words
-    else:
-        return "No words in database.", 404
-
-
-@illordle_routes.route("/word", methods=["GET"])
-@login_required
-def retrieve_word():
-    date_str = request.args.get("date")
-    if date_str:
-        try:
-            date = datetime.strptime(date_str, "%m-%d-%Y").date()
-            word = get_word(date)
-            return word
-        except ValueError:
-            return "Invalid date format. Please use MM-DD-YYYY format.", 400
-    else:
-        return "No date was provided to search.", 400
+    return words
 
 
 @illordle_routes.route("/word/today", methods=["GET"])
@@ -75,20 +57,39 @@ def get_todays_word():
 
         
 
-@illordle_routes.route("/word", methods=["POST"])
+@illordle_routes.route("/word/<mm>/<dd>/<yyyy>", methods=["GET"])
+@login_required
+def retrieve_word(mm, dd, yyyy):
+    try:
+        year = int(yyyy)
+        month = int(mm)
+        day = int(dd)
+        date = datetime(year, month, day).date()
+        word = get_word(date)
+        if word is not None:
+            return word
+        else:
+            return "No word set for date.", 404
+    except ValueError:
+        return "Invalid date format. Please use MM/DD/YYYY format.", 400
+
+
+@illordle_routes.route("/word/<mm>/<dd>/<yyyy>", methods=["POST"])
 @login_required
 @restrict_to(["editors", "di-section-editors"])
-def create_word():
-    date_str = request.form["date"]
+def create_word(mm, dd, yyyy):
     word = request.form["word"].lower()
     story_url = request.form["url"].partition("?")[0]
 
     try:
-        date = datetime.strptime(date_str, "%m/%d/%Y").date()
+        year = int(yyyy)
+        month = int(mm)
+        day = int(dd)
+        date = datetime(year, month, day).date()
     except ValueError:
         return "ERROR: Invalid date format. Please use MM/DD/YYYY format.", 400
-    if date < datetime.now(tz=ZoneInfo("America/Chicago")).date():
-        return "ERROR: Date cannot be in the past.", 400
+    # if date < datetime.now(tz=ZoneInfo("America/Chicago")).date():
+    #     return "ERROR: Date cannot be in the past.", 400
     if len(word) < 5 or len(word) > 6:
         return "ERROR: Word must be 5 or 6 letters long.", 400
     if not word.isalpha():
