@@ -1,10 +1,7 @@
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
-from dotenv import load_dotenv
 import signal
 import os
-
-load_dotenv()
 
 print("\n\n\n")
 
@@ -331,7 +328,6 @@ app = App(
 
 )
 
-#correct event?
 @app.event("app_mention")
 def handle_mention(event, say):
     channel:"C06GADGT60Z"
@@ -386,6 +382,29 @@ def member_joined_channel(event):
     else:
         print("  Not a channel of interest. No messages sent.")
 
+def buttonWrapper(buttonName, buttonHashtag, channel, userName, userId):
+    print("User " + userName +" clicked "+ buttonName +" Button")
+
+    try:
+        app.client.conversations_invite(
+            token=os.environ.get("SLACK_BOT_TOKEN"),
+            channel=channel,
+            users=userId,
+            force=True
+        )
+        app.client.chat_postMessage(
+            token=os.environ.get("SLACK_BOT_TOKEN"),
+            channel=userId,
+            text=userName + ", you have been added to "+ buttonHashtag
+        )
+        print("  User " + userName + " has been added to "+ buttonHashtag +"\n")
+    except Exception as e:
+        app.client.chat_postMessage(
+            token=os.environ.get("SLACK_BOT_TOKEN"),
+            channel=userId,
+            text=userName + ", you are already in "+ buttonHashtag
+        )
+        print("Users "+ userName+" is already in "+ buttonHashtag+"\n")
 
 #Executed if a user clicks the "The Daily Illini" button
 @app.action("daily_illini_button")
@@ -394,33 +413,7 @@ def dailyIlliniButton(ack, body, logger):
     logger.info(body)
     userName = body["user"]["name"]
     userId = body["user"]["id"]
-    print("User " + userName +" clicked Daily Illini Button")
-
-    try:
-        app.client.conversations_invite(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=diAnnouncementsID,
-            users=userId,
-            force=True
-        )
-
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you have been added to #di_announcements"
-        )
-
-        print("  User " + userName + " has been added to #di_announcements\n")
-
-    except Exception as e:
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you are already in #di_announcements"
-        )
-
-        print("Users "+ userName+" is already in #di_announcements\n")
-
+    buttonWrapper("Daily Illini", "#di_announcements", diAnnouncementsID, userName, userId)
 
 #Executed if a user clicks the "WPGU 107.1 FM" button
 @app.action("wpgu_button")
@@ -429,32 +422,7 @@ def wpguButton(ack, body, logger):
     logger.info(body)
     userName = body["user"]["name"]
     userId = body["user"]["id"]
-    print("User " + userName +" clicked WPGU button")
-
-    try:
-        app.client.conversations_invite(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=wpguAnnouncementsID,
-            users=userId,
-            force=True
-        )
-
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you have been added to #wpgu_announcements"
-        )
-        print("  User " + userName + " has been added to #wpgu_announcements\n")
-
-    except Exception as e:
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you are already in #wpgu_announcements"
-        )
-
-        print("Users "+ userName+" is already in #wpgu_announcements\n")
-
+    buttonWrapper("WPGU", "#wpgu_announcements", wpguAnnouncementsID, userName, userId)
 
 #Executed if a user clicks the "Illio Yearbook" button
 @app.action("illio_button")
@@ -463,33 +431,7 @@ def illioButton(ack, body, logger):
     logger.info(body)
     userName = body["user"]["name"]
     userId = body["user"]["id"]
-    print("User " + userName +" clicked Illio button")
-
-    try:
-        app.client.conversations_invite(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=illioAnnouncementsID,
-            users=userId,
-            force=True
-        )
-
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you have been added to #illio_announcements"
-        )
-
-        print("  User " + userName + " has been added to #illio_announcements\n")
-
-    except Exception as e:
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you are already in #illio_announcements"
-        )
-
-        print("Users "+ userName+" is already in #illio_announcements\n")
-
+    buttonWrapper("Illio", "#illio_announcements", illioAnnouncementsID, userName, userId)
 
 #Executed if a user clicks the "Creative Works Agency" button
 @app.action("cwa_button")
@@ -498,31 +440,7 @@ def cwaButton(ack, body, logger):
     logger.info(body)
     userName = body["user"]["name"]
     userId = body["user"]["id"]
-    print("User " + userName +" clicked Creative Works Agency Button")
-
-    try:
-        app.client.conversations_invite(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=cwaGeneralID,
-            users=userId,
-            force=True
-        )
-
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you have been added to #cwa_general"
-        )
-        print("  User " + userName + " has been added to #cwa_general\n")
-
-    except Exception as e:
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName +  ", you are already in #cwa_general"
-        )
-        print("Users "+ userName+" is already in #cwa_general\n")
-
+    buttonWrapper("Creative Works Agency", "#cwa_general", cwaGeneralID, userName, userId)
 
 #Executed if a user clicks the "IMC Business" button
 @app.action('imc_business_button')   
@@ -544,99 +462,34 @@ def imcBusinessButton(ack,body, logger):
 
     print("    Section choose message sent.\n")
 
-
 #ILLIO BUTTONS
-#Executed if a user clicks the Illio Design button
     
+#Executed if a user clicks the Illio Design button  
 @app.action("illioDesignButton")
 def illioDesignButton(ack, body, logger):
     ack()
     logger.info(body)
     userName = body["user"]["name"]
     userId = body["user"]["id"]
-    print("User " + userName +" clicked Illio Design Button")
+    buttonWrapper("Illio Design", "#illio_design", illioDesignID, userName, userId)
 
-    try:
-        app.client.conversations_invite(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=illioDesignID,
-            users=userId,
-            force=True
-        )
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you have been added to #illio_design"
-        )
-        print("  User " + userName + " has been added to #illio_design\n")
-
-    except Exception as e:
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you already are in #illio_design"
-        )
-        print("Users "+ userName+" is already in #illio_design\n")
-
+#Executed if a user clicks the Illio Photo button
 @app.action("illioPhotoButton")
 def illioPhotoButton(ack, body, logger):
     ack()
     logger.info(body)
     userName = body["user"]["name"]
     userId = body["user"]["id"]
-    print("User " + userName +" clicked Illio Photo Button")
+    buttonWrapper("Illio Photo", "#illio_photo", illioPhotoID, userName, userId)
 
-    try:
-        app.client.conversations_invite(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=illioPhotoID,
-            users=userId,
-            force=True
-        )
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you have been added to #illio_photo"
-        )
-        print("  User " + userName + " has been added to #illio_photo\n")
-
-    except Exception as e:
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you already are in #illio_photo"
-        )
-        print("Users "+ userName+" is already in #illio_photo\n")
-
+#Executed if a user clicks the Illio Writer button
 @app.action("illioWriterButton")
 def illioWriterButton(ack, body, logger):
     ack()
     logger.info(body)
     userName = body["user"]["name"]
     userId = body["user"]["id"]
-    print("User " + userName +" clicked Illio Writer Button")
-
-    try:
-        app.client.conversations_invite(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=illioWriterID,
-            users=userId,
-            force=True
-        )
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you have been added to #illio_writer"
-        )
-        print("  User " + userName + " has been added to #illio_writer\n")
-
-    except Exception as e:
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you already are in #illio_writer"
-        )
-        print("Users "+ userName+" is already in #illio_writer\n")
+    buttonWrapper("Illio Writer", "#illio_writer", illioWriterID, userName, userId)
 
 #WPGU BUTTONS
         
@@ -647,29 +500,7 @@ def wpguEngineeringButton(ack, body, logger):
     logger.info(body)
     userName = body["user"]["name"]
     userId = body["user"]["id"]
-    print("User " + userName +" clicked WPGU Engineering Button")
-
-    try:
-        app.client.conversations_invite(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=wpguEngineeringID,
-            users=userId,
-            force=True
-        )
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you have been added to #wpgu_engineering"
-        )
-        print("  User " + userName + " has been added to #wpgu_engineering\n")
-
-    except Exception as e:
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you already are in #wpgu_engineering"
-        )
-        print("Users "+ userName+" is already in #wpgu_engineering\n")
+    buttonWrapper("WPGU Engineering", "#wpgu_engineering", wpguEngineeringID, userName, userId)
 
 #Executed if a user clicks the WPGU IlliniDriveButton
 @app.action("wpguIlliniDriveButton")
@@ -678,29 +509,7 @@ def wpguIlliniDriveButton(ack, body, logger):
     logger.info(body)
     userName = body["user"]["name"]
     userId = body["user"]["id"]
-    print("User " + userName +" clicked WPGU Illini Drive Button")
-
-    try:
-        app.client.conversations_invite(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=wpguIlliniDriveID,
-            users=userId,
-            force=True
-        )
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you have been added to #wpgu_illinidrive"
-        )
-        print("  User " + userName + " has been added to #wpgu_illinidrive\n")
-
-    except Exception as e:
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you already are in #wpgu_illinidrive"
-        )
-        print("Users "+ userName+" is already in #wpgu_illinidrive\n")
+    buttonWrapper("WPGU Illini Drive", "#wpgu_illinidrive", wpguIlliniDriveID, userName, userId)
 
 #Executed if a user clicks the WPGU Marketing button
 @app.action("wpguMarketingButton")
@@ -709,29 +518,7 @@ def wpguMarketingButton(ack, body, logger):
     logger.info(body)
     userName = body["user"]["name"]
     userId = body["user"]["id"]
-    print("User " + userName +" clicked WPGU Marketing Button")
-
-    try:
-        app.client.conversations_invite(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=wpguMarketingID,
-            users=userId,
-            force=True
-        )
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you have been added to #wpgu_marketing"
-        )
-        print("  User " + userName + " has been added to #wpgu_marketing\n")
-
-    except Exception as e:
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you already are in #wpgu_marketing"
-        )
-        print("Users "+ userName+" is already in #wpgu_marketing\n")
+    buttonWrapper("WPGU Marketing", "#wpgu_marketing", wpguMarketingID, userName, userId)
   
 #Executed if a user clicks on the WPGU Music button
 @app.action("wpguMusicButton")
@@ -740,29 +527,7 @@ def wpguMusicButton(ack, body, logger):
     logger.info(body)
     userName = body["user"]["name"]
     userId = body["user"]["id"]
-    print("User " + userName +" clicked WPGU Music Button")
-
-    try:
-        app.client.conversations_invite(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=wpguMusicID,
-            users=userId,
-            force=True
-        )
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you have been added to #wpgu_music"
-        )
-        print("  User " + userName + " has been added to #wpgu_music\n")
-
-    except Exception as e:
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you already are in #wpgu_music"
-        )
-        print("Users "+ userName+" is already in #wpgu_music\n")
+    buttonWrapper("WPGU Music", "#wpgu_music", wpguMusicID, userName, userId)
 
 #executed if a user clicks the WPGU News Button
 @app.action("wpguNewsButton")
@@ -771,29 +536,7 @@ def wpguNewsButton(ack, body, logger):
     logger.info(body)
     userName = body["user"]["name"]
     userId = body["user"]["id"]
-    print("User " + userName +" clicked WPGU News Button")
-
-    try:
-        app.client.conversations_invite(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=wpguNewsID,
-            users=userId,
-            force=True
-        )
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you have been added to #wpgu_news"
-        )
-        print("  User " + userName + " has been added to #wpgu_news\n")
-
-    except Exception as e:
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you already are in #wpgu_news"
-        )
-        print("Users "+ userName+" is already in #wpgu_news\n")
+    buttonWrapper("WPGU News", "#wpgu_news", wpguNewsID, userName, userId)
 
 #Executed if a user clicks the WPGU On-Air button
 @app.action("wpguOnAirButton")
@@ -802,29 +545,7 @@ def wpguOnAirButton(ack, body, logger):
     logger.info(body)
     userName = body["user"]["name"]
     userId = body["user"]["id"]
-    print("User " + userName +" clicked WPGU On-air Button")
-
-    try:
-        app.client.conversations_invite(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=wpguOnAirID,
-            users=userId,
-            force=True
-        )
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you have been added to #wpgu_on-air"
-        )
-        print("  User " + userName + " has been added to #wpgu_on-air\n")
-
-    except Exception as e:
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you already are in #wpgu_on-air"
-        )
-        print("Users "+ userName+" is already in #wpgu_on-air\n")
+    buttonWrapper("WPGU On-Air", "#wpgu_on-air", wpguOnAirID, userName, userId)
 
 #Executed if a user clicks the WPGU Production button
 @app.action("wpguProductionButton")
@@ -833,29 +554,7 @@ def wpguProductionButton(ack, body, logger):
     logger.info(body)
     userName = body["user"]["name"]
     userId = body["user"]["id"]
-    print("User " + userName +" clicked WPGU Production Button")
-
-    try:
-        app.client.conversations_invite(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=wpguProductionID,
-            users=userId,
-            force=True
-        )
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you have been added to #wpgu_production"
-        )
-        print("  User " + userName + " has been added to #wpgu_production\n")
-
-    except Exception as e:
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you already are in #wpgu_production"
-        )
-        print("Users "+ userName+" is already in #wpgu_production\n")
+    buttonWrapper("WPGU Production", "#wpgu_production", wpguProductionID, userName, userId)
 
 #IMC Business Button
         
@@ -866,31 +565,7 @@ def imcAdvertisingButton(ack, body, logger):
     logger.info(body)
     userName = body["user"]["name"]
     userId = body["user"]["id"]
-    print("User " + userName +" clicked IMC Advertising Button")
-
-    try:
-        app.client.conversations_invite(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=imcAdvertisingID,
-            users=userId,
-            force=True
-        )
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you have been added to #imc_advertising"
-        )
-        print("  User " + userName + " has been added to #imc_advertising\n")
-
-    except Exception as e:
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you already are in #imc_advertising"
-        )
-        print("Users "+ userName+" is already in #imc_advertising\n")
-
-
+    buttonWrapper("IMC Advertising", "#imc_advertising", imcAdvertisingID, userName, userId)
 
 #Executed if a user clicks the IMC Marketing button
 @app.action("imcMarketingButton")
@@ -899,29 +574,7 @@ def imcMarketingButton(ack, body, logger):
     logger.info(body)
     userName = body["user"]["name"]
     userId = body["user"]["id"]
-    print("User " + userName +" clicked IMC Marketing Button")
-
-    try:
-        app.client.conversations_invite(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=imcMarketingID,
-            users=userId,
-            force=True
-        )
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you have been added to #imc_marketing"
-        )
-        print("  User " + userName + " has been added to #imc_marketing\n")
-
-    except Exception as e:
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you already are in #imc_marketing"
-        )
-        print("Users "+ userName+" is already in #imc_marketing\n")
+    buttonWrapper("IMC Marketing", "#imc_marketing", imcMarketingID, userName, userId)
 
 #executed if a user clicks the IMC Front Desk button
 @app.action("imcFrontDeskButton")
@@ -930,29 +583,7 @@ def imcFrontDeskButton(ack, body, logger):
     logger.info(body)
     userName = body["user"]["name"]
     userId = body["user"]["id"]
-    print("User " + userName +" clicked IMC Front Desk Button")
-
-    try:
-        app.client.conversations_invite(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=imcFrontDeskButton,
-            users=userId,
-            force=True
-        )
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you have been added to #imc_frontdesk"
-        )
-        print("  User " + userName + " has been added to #imc_frontdesk\n")
-
-    except Exception as e:
-        app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
-            channel=userId,
-            text=userName + ", you already are in #imc_frontdesk"
-        )
-        print("Users "+ userName+" is already in #imc_frontdesk\n")
+    buttonWrapper("IMC Front Desk", "#imc_frontdesk", imcFrontDeskButton, userName, userId)
 
 def handle_sigint():
     print("Stopping IMC Welcome Bot...")
