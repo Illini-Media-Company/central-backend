@@ -21,8 +21,10 @@ from db.kv_store import (
 import requests
 import base64
 
+# Defined functions
+
 cc_routes = Blueprint("cc_routes", __name__, url_prefix="/constant-contact")
-def get_access_token(redirect_uri, client_id, client_secret, auth_code):
+def get_refresh_token(redirect_uri, client_id, client_secret, auth_code):
     base_url = "https://authz.constantcontact.com/oauth2/default/v1/token"
     to_b64 = client_id + ":" + client_secret
     auth_headers = {
@@ -39,14 +41,36 @@ def get_access_token(redirect_uri, client_id, client_secret, auth_code):
     request_uri =  base_url + "?" + urllib.parse.urlencode(params)
     print(request_uri)
     a = requests.post(request_uri, headers=auth_headers)
-    print(a.json())
-    return a.json()["access_token"]
+    return a.json()
 
+def get_access_token_ref(redirect_uri, client_id, client_secret, ref_token):
+    base_url = "https://authz.constantcontact.com/oauth2/default/v1/token"
+    to_b64 = client_id + ":" + client_secret
+    auth_headers = {
+        "Accept": "application/json",
+        "Content-type": "application/x-www-form-urlencoded",
+        "Authorization": "Basic " + base64.b64encode(bytes(to_b64, 'utf-8')).decode('utf-8'),
+        "create_source": "Account"
+    }
+    params = {
+        "refresh_token": ref_token,
+        "redirect_uri": redirect_uri,
+        "grant_type": "refresh_token"
+    }
+    request_uri =  base_url + "?" + urllib.parse.urlencode(params)
+    print(request_uri)
+    a = requests.post(request_uri, headers=auth_headers)
+    print(a.json())
+    return a.json()
+
+#==============================================================================================================================================================
+
+# Defined Endpoints
 
 @cc_routes.route("/dashboard")
 @login_required
 def dashboard():
-    code = None if kv_store_get("AUTH_CODE") == None else kv_store_get("AUTH_CODE")
+    code = "NOT SET" if kv_store_get('REF_TOKEN') == None else "SET"
     return render_template("cc.html", code = code)
 
 
@@ -63,7 +87,7 @@ def cc_login():
         "client_id": CC_CLIENT_ID,
         "client_secret": CC_CLIENT_SECRET,
         "redirect_uri": redirect_uri,
-        "scope": "contact_data",
+        "scope": "contact_data offline_access",
         "response_type": "code",
         "state": state
     }
@@ -74,7 +98,10 @@ def cc_login():
 @login_required
 def cc_callback():
     auth_code = request.args.get("code")
+    print(auth_code)
+    ref_token = get_refresh_token(redirect_uri, CC_CLIENT_ID, CC_CLIENT_SECRET, auth_code)["refresh_token"]
     kv_store_set('AUTH_CODE', auth_code)
+    kv_store_set('REF_TOKEN', ref_token)
     return redirect(url_for('index'))
 
 
@@ -85,8 +112,12 @@ def cc_create_contact():
     url = base_url + endpoint
     email = request.args.get("email")
     newsletter = request.args.get("newsletter")
-    auth_code = kv_store_get('AUTH_CODE')
-    access_token = get_access_token(redirect_uri, CC_CLIENT_ID, CC_CLIENT_SECRET, auth_code)
+    ref_token = kv_store_get('REF_TOKEN')
+    keys_json = get_access_token_ref(redirect_uri, CC_CLIENT_ID, CC_CLIENT_SECRET, ref_token)
+    access_token = keys_json["access_token"]
+    new_ref_token = keys_json["refresh_token"]
+    kv_store_set('REF_TOKEN', new_ref_token)
+    kv_store_set('ACCESS_TOKEN', access_token)
 
     headers = {
         "Content-Type": "application/json",
