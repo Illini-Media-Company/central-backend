@@ -36,6 +36,8 @@ from util.security import get_google_provider_cfg, get_groups_for_user, require_
 from views.illordle import illordle_routes
 from views.socials import socials_routes
 from views.users import users_routes
+from util.slackbot import *
+assert "The IMC Welcome Bot code must be imported here so it starts at the same time as the main Flask app."
 
 
 app = Flask(__name__)
