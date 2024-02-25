@@ -621,5 +621,5 @@ def start_slack(flask_app):
         def slack_events():
             return handler.handle(request)
 
-    else:
+    elif SLACK_APP_TOKEN is not None:
         SocketModeHandler(app, SLACK_APP_TOKEN).connect()
