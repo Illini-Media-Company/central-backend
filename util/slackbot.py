@@ -1,29 +1,32 @@
+from flask import request
 from slack_bolt import App
+from slack_bolt.adapter.flask import SlackRequestHandler
 from slack_bolt.adapter.socket_mode import SocketModeHandler
-import os
+
+from constants import ENV, SLACK_BOT_TOKEN, SLACK_APP_TOKEN, SLACK_SIGNING_SECRET
 
 
-IMC_GENERAL_ID = "C06GADGT60Z"
-DI_ANNOUNCEMENTS_ID = "C06G089F8S0"
-ILLIO_ANNOUNCEMENTS_ID = "C06FXMB42MR"
-WPGU_ANNOUNCEMENTS_ID = "C06G08KP11S"
-CWA_GENERAL_ID = "C06FXQSRB5G"
+IMC_GENERAL_ID = "C06LDL7RG3X" if ENV == "prod" else "C06GADGT60Z"
+DI_ANNOUNCEMENTS_ID = "C06LDL7RG3X" if ENV == "prod" else "C06G089F8S0"
+ILLIO_ANNOUNCEMENTS_ID = "C06BVLLQPAP" if ENV == "prod" else "C06FXMB42MR"
+WPGU_ANNOUNCEMENTS_ID = "C06BY7S6F44" if ENV == "prod" else "C06G08KP11S"
+CWA_GENERAL_ID = "C06CB7QMZ97" if ENV == "prod" else "C06FXQSRB5G"
 
-IMC_ADVERTISING_ID = "C06FR635SPQ"
-IMC_MARKETING_ID = "C06FR63HURL"
-IMC_FRONTDESK_ID = "C06FUT4LHHT"
+IMC_ADVERTISING_ID = "C06C12D8H6Y" if ENV == "prod" else "C06FR635SPQ"
+IMC_MARKETING_ID = "C06BYF9TD99" if ENV == "prod" else "C06FR63HURL"
+IMC_FRONTDESK_ID = "C0696V7DMJQ" if ENV == "prod" else "C06FUT4LHHT"
 
-ILLIO_DESIGN_ID = "C06FXMHUQ3V"
-ILLIO_PHOTO_ID = "C06GAE3QKMX"
-ILLIO_WRITER_ID = "C06FH8HF46B"
+ILLIO_DESIGN_ID = "C06BV3CL1B4" if ENV == "prod" else "C06FXMHUQ3V"
+ILLIO_PHOTO_ID = "C06BV033D4K" if ENV == "prod" else "C06GAE3QKMX"
+ILLIO_WRITER_ID = "C06BXGP8Y12" if ENV == "prod" else "C06FH8HF46B"
 
-WPGU_ENGINEERING_ID = "C06G08SQZEG"
-WPGU_ILLINI_DRIVE_ID = "C06FXMKG97D"
-WPGU_MARKETING_ID = "C06FXMKPMU3"
-WPGU_MUSIC_ID = "C06GLJD5VUY"
-WPGU_NEWS_ID = "C06FXML7BHR"
-WPGU_ON_AIR_ID = "C06FR61KDJS"
-WPGU_PRODUCTION_ID = "C06FXQXKJAE"
+WPGU_ENGINEERING_ID = "C06C11L8C8L" if ENV == "prod" else "C06G08SQZEG"
+WPGU_ILLINI_DRIVE_ID = "C06BJ1XSPK9" if ENV == "prod" else "C06FXMKG97D"
+WPGU_MARKETING_ID = "C06BJ1VEAMV" if ENV == "prod" else "C06FXMKPMU3"
+WPGU_MUSIC_ID = "C06CB6ZC8JV" if ENV == "prod" else "C06GLJD5VUY"
+WPGU_NEWS_ID = "C06BYEFRJ03" if ENV == "prod" else "C06FXML7BHR"
+WPGU_ON_AIR_ID = "C06BRUCMUG6" if ENV == "prod" else "C06FR61KDJS"
+WPGU_PRODUCTION_ID = "C06BVKXSJ0M" if ENV == "prod" else "C06FXQXKJAE"
 
 ILLIO_MESSAGE = [
     {
@@ -316,8 +319,8 @@ IMC_WELCOME_MESSAGE_TEXT = "Welcome to Illini Media Company!"
 
 
 app = App(
-    token=os.environ.get("SLACK_BOT_TOKEN"),
-    signing_secret=os.environ.get("SLACK_SIGNING_SECRET"),
+    token=SLACK_BOT_TOKEN,
+    signing_secret=SLACK_SIGNING_SECRET,
 )
 
 
@@ -336,7 +339,7 @@ def member_joined_channel(event):
         directMessage = user_id
         print("   User ID: " + user_id)
         app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
+            token=SLACK_BOT_TOKEN,
             channel=directMessage,
             blocks=IMC_WELCOME_MESSAGE,
             text=IMC_WELCOME_MESSAGE_TEXT,
@@ -346,7 +349,7 @@ def member_joined_channel(event):
         directMessage = user_id
         print("   User ID: " + user_id)
         app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
+            token=SLACK_BOT_TOKEN,
             channel=directMessage,
             blocks=ILLIO_MESSAGE,
             text=ILLIO_MESSAGE_TEXT,
@@ -356,7 +359,7 @@ def member_joined_channel(event):
         directMessage = user_id
         print("   User ID: " + user_id)
         app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
+            token=SLACK_BOT_TOKEN,
             channel=directMessage,
             blocks=WPGU_MESSAGE,
             text=WPGU_MESSAGE_TEXT,
@@ -371,20 +374,20 @@ def buttonWrapper(buttonName, buttonHashtag, channel, userName, userId):
 
     try:
         app.client.conversations_invite(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
+            token=SLACK_BOT_TOKEN,
             channel=channel,
             users=userId,
             force=True,
         )
         app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
+            token=SLACK_BOT_TOKEN,
             channel=userId,
             text=userName + ", you have been added to " + buttonHashtag,
         )
         print("  User " + userName + " has been added to " + buttonHashtag + "\n")
     except Exception as e:
         app.client.chat_postMessage(
-            token=os.environ.get("SLACK_BOT_TOKEN"),
+            token=SLACK_BOT_TOKEN,
             channel=userId,
             text=userName + ", you are already in " + buttonHashtag,
         )
@@ -450,7 +453,7 @@ def imc_business_button(ack, body, logger):
 
     # direct message the user
     app.client.chat_postMessage(
-        token=os.environ.get("SLACK_BOT_TOKEN"),
+        token=SLACK_BOT_TOKEN,
         channel=userId,
         blocks=IMC_MESSAGE,
         text=IMC_MESSAGE_TEXT,
@@ -610,5 +613,13 @@ def wpgu_production_button(ack, body, logger):
     )
 
 
-def start_slack():
-    SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"]).connect()
+def start_slack(flask_app):
+    if ENV == "prod":
+        handler = SlackRequestHandler(flask_app)
+
+        @flask_app.route("/slack/events")
+        def slack_events():
+            return handler.handle(request)
+
+    else:
+        SocketModeHandler(app, SLACK_APP_TOKEN).connect()
