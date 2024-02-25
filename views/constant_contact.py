@@ -1,12 +1,13 @@
 import base64
 
-from flask import Blueprint, redirect, render_template, request, url_for
+from flask import Blueprint, redirect, request, url_for
 from flask_login import login_required
 import requests
 import urllib
 
-from constants import CC_CLIENT_ID, CC_CLIENT_SECRET
+from constants import CC_CLIENT_ID, CC_CLIENT_SECRET, CC_LIST_MAPPING
 from db.kv_store import kv_store_get, kv_store_set
+from util.security import csrf
 
 
 CC_AUTHORIZATION_URL = "https://authz.constantcontact.com/oauth2/default/v1/authorize"
@@ -17,20 +18,13 @@ constant_contact_routes = Blueprint(
     "constant_contact_routes", __name__, url_prefix="/constant-contact"
 )
 
-from main import csrf  # Must be after blueprint
-
-
-@constant_contact_routes.route("/dashboard")
-@login_required
-def dashboard():
-    code = "NOT SET" if kv_store_get("CC_REFRESH_TOKEN") == None else "SET"
-    return render_template("cc.html", code=code)
-
 
 @constant_contact_routes.route("/login", methods=["GET"])
 @login_required
 def cc_login():
-    redirect_url = url_for("constant_contact_routes.cc_login_callback")
+    redirect_url = request.url_root[:-1] + url_for(
+        "constant_contact_routes.cc_login_callback"
+    )
     params = {
         "client_id": CC_CLIENT_ID,
         "client_secret": CC_CLIENT_SECRET,
@@ -48,8 +42,9 @@ def cc_login():
 def cc_login_callback():
     auth_code = request.args.get("code")
 
-    redirect_url = url_for("constant_contact_routes.cc_login_callback")
-    print(auth_code)
+    redirect_url = request.url_root[:-1] + url_for(
+        "constant_contact_routes.cc_login_callback"
+    )
     ref_token = get_refresh_token(
         redirect_url, CC_CLIENT_ID, CC_CLIENT_SECRET, auth_code
     )["refresh_token"]
@@ -63,7 +58,14 @@ def cc_create_contact():
     email = request.form["email"]
     newsletter = request.form["newsletter"]
 
-    redirect_url = url_for("constant_contact_routes.cc_login_callback")
+    if newsletter in CC_LIST_MAPPING:
+        newsletter_id = CC_LIST_MAPPING[newsletter]
+    else:
+        return "Invalid newsletter.", 400
+
+    redirect_url = request.url_root[:-1] + url_for(
+        "constant_contact_routes.cc_login_callback"
+    )
     ref_token = kv_store_get("CC_REFRESH_TOKEN")
     keys_json = get_access_token(
         redirect_url, CC_CLIENT_ID, CC_CLIENT_SECRET, ref_token
@@ -77,27 +79,16 @@ def cc_create_contact():
         "Authorization": f"Bearer {access_token}",
     }
     data = {
-        "first_name": "Joe",
-        "last_name": "Joe",
         "create_source": "Account",
         "email_address": email,
-        "list_memberships": ["c69be490-79c8-11ee-9cf7-fa163e1ce73c"],
-        "custom_fields": [
-            {
-                "custom_field_id": "57637580-9006-11ee-b3f6-fa163e56233d",
-                "value": newsletter,
-            }
-        ],
+        "list_memberships": [newsletter_id],
     }
 
     response = requests.post(CC_SUBSCRIBE_URL, headers=headers, json=data)
     if response.status_code == 201 or response.status_code == 200:
-        print("Contact created successfully!")
+        return "Contact created successfully!", 200
     else:
-        print(f"Failed to create contact. Status code: {response.status_code}")
-        print(response.text)
-
-    return redirect(url_for("index"))
+        return "Failed to create contact.", response.status_code
 
 
 def get_refresh_token(redirect_uri, client_id, client_secret, auth_code):
@@ -116,7 +107,6 @@ def get_refresh_token(redirect_uri, client_id, client_secret, auth_code):
         "grant_type": "authorization_code",
     }
     request_url = base_url + "?" + urllib.parse.urlencode(params)
-    print(request_url)
     a = requests.post(request_url, headers=auth_headers)
     return a.json()
 
@@ -137,7 +127,5 @@ def get_access_token(redirect_uri, client_id, client_secret, ref_token):
         "grant_type": "refresh_token",
     }
     request_url = base_url + "?" + urllib.parse.urlencode(params)
-    print(request_url)
     a = requests.post(request_url, headers=auth_headers)
-    print(a.json())
     return a.json()

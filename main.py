@@ -17,7 +17,6 @@ from flask_login import (
     login_user,
     logout_user,
 )
-from flask_seasurf import SeaSurf
 from oauthlib.oauth2 import WebApplicationClient
 import requests
 from talisman import Talisman
@@ -32,7 +31,11 @@ from db.user import (
     get_user,
     update_user_groups,
 )
-from util.security import get_google_provider_cfg, get_groups_for_user, require_internal
+from util.security import (
+    csrf,
+    get_google_provider_cfg,
+    get_groups_for_user,
+)
 from util.slackbot import start_slack
 from views.constant_contact import constant_contact_routes
 from views.illordle import illordle_routes
@@ -42,23 +45,24 @@ from views.users import users_routes
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
-app.register_blueprint(constant_contact_routes)
-app.register_blueprint(illordle_routes)
-app.register_blueprint(socials_routes)
-app.register_blueprint(users_routes)
 
 # csp = {
 #     'default-src': '*'
 # }
 Talisman(app, content_security_policy=[])
-csrf = SeaSurf(app)
+csrf.init_app(app)
+
+app.register_blueprint(constant_contact_routes)
+app.register_blueprint(illordle_routes)
+app.register_blueprint(socials_routes)
+app.register_blueprint(users_routes)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 
 client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
-start_slack(app, csrf)
+start_slack(app)
 
 
 @login_manager.user_loader
