@@ -615,7 +615,7 @@ def wpgu_production_button(ack, body, logger):
 
 def start_slack(flask_app, csrf):
     if ENV == "prod":
-        handler = SlackRequestHandler(flask_app)
+        handler = SlackRequestHandler(app)
 
         @csrf.exempt
         @flask_app.route("/slack/events", methods=["POST"])
