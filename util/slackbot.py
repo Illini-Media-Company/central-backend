@@ -617,7 +617,7 @@ def start_slack(flask_app):
     if ENV == "prod":
         handler = SlackRequestHandler(flask_app)
 
-        @flask_app.route("/slack/events")
+        @flask_app.route("/slack/events", methods=["POST"])
         def slack_events():
             return handler.handle(request)
 
