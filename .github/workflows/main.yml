@@ -36,3 +36,5 @@ jobs:
             TWITTER_ACCESS_TOKEN_SECRET=${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
             SLACK_BOT_TOKEN=${{ secrets.SLACK_BOT_TOKEN }}
             SLACK_SIGNING_SECRET=${{ secrets.SLACK_SIGNING_SECRET }}
+            CC_CLIENT_ID=${{ secrets.CC_CLIENT_ID }}
+            CC_CLIENT_SECRET=${{ secrets.CC_CLIENT_SECRET }}
