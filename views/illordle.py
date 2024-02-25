@@ -16,6 +16,7 @@ from db.illordle_word import (
 from util.security import restrict_to
 from util.stories import get_title_from_url
 
+
 illordle_routes = Blueprint("illordle_routes", __name__, url_prefix="/illordle")
 
 
