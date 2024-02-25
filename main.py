@@ -2,8 +2,6 @@ import json
 import logging
 import os
 import urllib
-import base64
-
 
 from flask import (
     Flask,
@@ -39,7 +37,6 @@ from util.slackbot import start_slack
 from views.illordle import illordle_routes
 from views.socials import socials_routes
 from views.users import users_routes
-from views.cc import cc_routes
 
 
 app = Flask(__name__)
@@ -47,7 +44,6 @@ app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 app.register_blueprint(illordle_routes)
 app.register_blueprint(socials_routes)
 app.register_blueprint(users_routes)
-app.register_blueprint(cc_routes)
 
 # csp = {
 #     'default-src': '*'
@@ -139,18 +135,19 @@ def callback():
         unique_id = userinfo_response["sub"]
         user_email = userinfo_response["email"]
         user_name = userinfo_response["name"]
+        user_domain = userinfo_response.get("hd", "")
         user_groups = get_groups_for_user(user_email)
 
         # Create or update user in db
         user = get_user(user_email)
         if user is None:
-            if user_email.endswith("@illinimedia.com"):
+            if user_domain == "illinimedia.com":
                 user = add_user(
                     sub=unique_id, name=user_name, email=user_email, groups=user_groups
                 )
             else:
                 return (
-                    "User email must end with @illinimedia.com for automatic registration.",
+                    "User must be a member of Illini Media for automatic registration.",
                     403,
                 )
         elif user.sub is None:
@@ -202,4 +199,6 @@ if __name__ == "__main__":
     if os.environ.get("DATASTORE_EMULATOR_HOST") is None:
         logging.fatal("DATASTORE_EMULATOR_HOST environment variable must be set!")
         exit(1)
+    app.jinja_env.auto_reload = True
+    app.config["TEMPLATES_AUTO_RELOAD"] = True
     app.run(port=5001, ssl_context="adhoc")
