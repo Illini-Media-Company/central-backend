@@ -2,5 +2,6 @@
 
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
+pip install --upgrade -r requirements.txt
+pip install --upgrade -r requirements-dev.txt
+gcloud auth application-default login

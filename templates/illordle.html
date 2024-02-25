@@ -124,12 +124,12 @@ Illordle Admin
             const newWord = modifiableInputs[index].value;
             const newUrl = modifiableUrlInputs[index].value;
 
-            const response = await fetch('/illordle/word', {
+            const response = await fetch(`/illordle/word/${date}`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: `_csrf_token={{ csrf_token() }}&word=${newWord}&date=${date}&url=${newUrl}`,
+                body: `_csrf_token={{ csrf_token() }}&word=${newWord}&url=${newUrl}`,
             })
 
             if (response.status === 200) {

@@ -4,13 +4,14 @@ from flask_login import current_user
 from google.auth import (
     default,
     iam,
+    impersonated_credentials,
     transport,
 )
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import requests
 
-from constants import ENV
+from constants import ENV, GOOGLE_POJECT_ID
 
 
 GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
@@ -22,11 +23,17 @@ def get_google_provider_cfg():
     return requests.get(GOOGLE_DISCOVERY_URL).json()
 
 
-def get_groups_for_user(user_email):
-    if ENV == "dev":
-        return []
-
+def get_creds(scopes):
     creds, _ = default()
+    if ENV == "dev":
+        creds = impersonated_credentials.Credentials(
+            source_credentials=creds,
+            target_principal=f"{GOOGLE_POJECT_ID}@appspot.gserviceaccount.com",
+            delegates=[],
+            target_scopes=["https://www.googleapis.com/auth/cloud-platform"],
+            lifetime=300,
+        )
+
     request = transport.requests.Request()
     creds.refresh(request)
     signer = iam.Signer(request, creds, creds.service_account_email)
@@ -34,11 +41,14 @@ def get_groups_for_user(user_email):
         signer,
         creds.service_account_email,
         TOKEN_URL,
-        scopes=SCOPES,
+        scopes=scopes,
         subject="di_admin@illinimedia.com",
     )
+    return creds
 
-    with build("admin", "directory_v1", credentials=creds) as service:
+
+def get_groups_for_user(user_email):
+    with build("admin", "directory_v1", credentials=get_creds(SCOPES)) as service:
         response = (
             service.groups()
             .list(domain="illinimedia.com", userKey=user_email)
@@ -71,10 +81,9 @@ def get_groups_for_user(user_email):
                 "graphics",
                 "social",
                 "copy",
+                "webdev",
             ]:
-                derived_groups.append("di-section-editors")
-            if group == "online-team":
-                derived_groups.extend(["webdev", "di-section-editors"])
+                derived_groups.extend([f"di-staff-{group}", "di-section-editors"])
         return derived_groups
 
 
