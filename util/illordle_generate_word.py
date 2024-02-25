@@ -1,6 +1,7 @@
 import random
 
-rand_wordle_list = [
+
+WORDLE_WORD_LIST = [
     "scowl",
     "wager",
     "tying",
@@ -2320,4 +2321,4 @@ rand_wordle_list = [
 
 
 def random_word():
-    return random.choice(rand_wordle_list)
+    return random.choice(WORDLE_WORD_LIST)
