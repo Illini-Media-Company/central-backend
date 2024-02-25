@@ -386,12 +386,12 @@ def buttonWrapper(buttonName, buttonHashtag, channel, userName, userId):
         )
         print("  User " + userName + " has been added to " + buttonHashtag + "\n")
     except Exception as e:
+        print(e)
         app.client.chat_postMessage(
             token=SLACK_BOT_TOKEN,
             channel=userId,
             text=userName + ", you are already in " + buttonHashtag,
         )
-        print("Users " + userName + " is already in " + buttonHashtag + "\n")
 
 
 # Executed if a user clicks the "The Daily Illini" button
