@@ -27,3 +27,10 @@ TWITTER_ACCESS_TOKEN_SECRET = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET", None
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", None)
 SLACK_APP_TOKEN = os.environ.get("SLACK_APP_TOKEN", None)
 SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET", None)
+
+CC_CLIENT_ID = os.environ.get("CC_CLIENT_ID", None)
+CC_CLIENT_SECRET = os.environ.get("CC_CLIENT_SECRET", None)
+CC_LIST_MAPPING = {
+    "headline_news": "01d15d60-4c11-11e3-826c-d4ae52725666",
+    "sports": "0fa0f9d0-f33e-11e8-bed9-d4ae52733d3a",
+}

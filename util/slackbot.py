@@ -4,6 +4,7 @@ from slack_bolt.adapter.flask import SlackRequestHandler
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 from constants import ENV, SLACK_BOT_TOKEN, SLACK_APP_TOKEN, SLACK_SIGNING_SECRET
+from util.security import csrf
 
 
 IMC_GENERAL_ID = "C06LDL7RG3X" if ENV == "prod" else "C06GADGT60Z"
@@ -613,7 +614,7 @@ def wpgu_production_button(ack, body, logger):
     )
 
 
-def start_slack(flask_app, csrf):
+def start_slack(flask_app):
     if ENV == "prod":
         handler = SlackRequestHandler(app)
 

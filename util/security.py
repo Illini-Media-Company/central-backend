@@ -1,6 +1,7 @@
 from functools import wraps
 
 from flask_login import current_user
+from flask_seasurf import SeaSurf
 from google.auth import (
     default,
     iam,
@@ -17,6 +18,9 @@ from constants import ENV, GOOGLE_POJECT_ID
 GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
 TOKEN_URL = "https://accounts.google.com/o/oauth2/token"
 SCOPES = ["https://www.googleapis.com/auth/admin.directory.group.readonly"]
+
+
+csrf = SeaSurf()
 
 
 def get_google_provider_cfg():
