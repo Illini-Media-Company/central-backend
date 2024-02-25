@@ -56,7 +56,7 @@ login_manager.init_app(app)
 
 client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
-start_slack(app)
+start_slack(app, csrf)
 
 
 @login_manager.user_loader
