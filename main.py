@@ -33,11 +33,10 @@ from db.user import (
     update_user_groups,
 )
 from util.security import get_google_provider_cfg, get_groups_for_user, require_internal
+from util.slackbot import start_slack
 from views.illordle import illordle_routes
 from views.socials import socials_routes
 from views.users import users_routes
-
-# from util.slackbot import start_slack
 
 
 app = Flask(__name__)
@@ -57,7 +56,7 @@ login_manager.init_app(app)
 
 client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
-# start_slack(app)
+start_slack(app)
 
 
 @login_manager.user_loader
