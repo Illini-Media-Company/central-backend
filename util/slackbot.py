@@ -7,8 +7,9 @@ from constants import ENV, SLACK_BOT_TOKEN, SLACK_APP_TOKEN, SLACK_SIGNING_SECRE
 from util.security import csrf
 
 
-IMC_GENERAL_ID = "C06LDL7RG3X" if ENV == "prod" else "C06GADGT60Z"
-DI_ANNOUNCEMENTS_ID = "C06LDL7RG3X" if ENV == "prod" else "C06G089F8S0"
+IMC_GENERAL_ID = "C13TEC3QE" if ENV == "prod" else "C06GADGT60Z"
+IMC_GENERAL_TEST_ID = "C06LDL7RG3X" if ENV == "prod" else None
+DI_ANNOUNCEMENTS_ID = "C06BSL71W2Z" if ENV == "prod" else "C06G089F8S0"
 ILLIO_ANNOUNCEMENTS_ID = "C06BVLLQPAP" if ENV == "prod" else "C06FXMB42MR"
 WPGU_ANNOUNCEMENTS_ID = "C06BY7S6F44" if ENV == "prod" else "C06G08KP11S"
 CWA_GENERAL_ID = "C06CB7QMZ97" if ENV == "prod" else "C06FXQSRB5G"
@@ -336,7 +337,7 @@ def member_joined_channel(event):
     channel_id = event["channel"]
     print("\nUser " + user_id + " joined channel " + channel_id)
     print(channel_id + " Here")
-    if channel_id == IMC_GENERAL_ID:
+    if channel_id in [IMC_GENERAL_ID, IMC_GENERAL_TEST_ID]:
         directMessage = user_id
         print("   User ID: " + user_id)
         app.client.chat_postMessage(
