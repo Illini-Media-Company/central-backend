@@ -1,5 +1,6 @@
 from flask_login import UserMixin
 from google.cloud import ndb
+from zoneinfo import ZoneInfo
 
 from . import client
 
@@ -9,7 +10,7 @@ class User(ndb.Model):
     name = ndb.StringProperty()
     email = ndb.StringProperty()
     groups = ndb.JsonProperty()
-    last_edited = ndb.DateProperty()
+    last_edited = ndb.DateTimeProperty(tzinfo=ZoneInfo("UTC"))
 
 class LoggedInUser(UserMixin):
     def __init__(self, db_user):
