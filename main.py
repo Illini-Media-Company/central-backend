@@ -33,6 +33,7 @@ from db.user import (
     update_user_groups,
 )
 from util.security import get_google_provider_cfg, get_groups_for_user, require_internal
+from util.copyedit_gcal import get_editor_email
 from views.illordle import illordle_routes
 from views.socials import socials_routes
 from views.users import users_routes
@@ -175,6 +176,11 @@ def callback():
 def api_query():
     return render_template("api_query.html")
 
+@app.route("/copy-edit-email")
+@login_required
+@require_internal
+def copy_edit_email():
+    return get_editor_email()
 
 @app.route("/logout")
 @login_required
@@ -190,7 +196,6 @@ def logout():
 @app.route("/logout-success")
 def yurr():
     return render_template("yurr.html")
-
 
 if __name__ == "__main__":
     if os.environ.get("DATASTORE_EMULATOR_HOST") is None:
