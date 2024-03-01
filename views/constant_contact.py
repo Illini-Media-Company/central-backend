@@ -1,6 +1,7 @@
 import base64
 
 from flask import Blueprint, redirect, request, url_for
+from flask_cors import cross_origin
 from flask_login import login_required
 import requests
 import urllib
@@ -52,8 +53,9 @@ def cc_login_callback():
     return redirect(url_for("index"))
 
 
-@csrf.exempt
 @constant_contact_routes.route("/subscribe", methods=["POST"])
+@csrf.exempt
+@cross_origin()
 def cc_create_contact():
     email = request.form["email"]
     newsletter = request.form["newsletter"]
