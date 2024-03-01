@@ -621,8 +621,8 @@ def start_slack(flask_app):
     if ENV == "prod":
         handler = SlackRequestHandler(app)
 
-        @csrf.exempt
         @flask_app.route("/slack/events", methods=["POST"])
+        @csrf.exempt
         def slack_events():
             return handler.handle(request)
 
