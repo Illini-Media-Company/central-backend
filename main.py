@@ -41,6 +41,7 @@ from views.constant_contact import constant_contact_routes
 from views.illordle import illordle_routes
 from views.socials import socials_routes
 from views.users import users_routes
+from views.retool import retool_routes
 
 
 app = Flask(__name__)
@@ -56,6 +57,7 @@ app.register_blueprint(constant_contact_routes)
 app.register_blueprint(illordle_routes)
 app.register_blueprint(socials_routes)
 app.register_blueprint(users_routes)
+app.register_blueprint(retool_routes)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
