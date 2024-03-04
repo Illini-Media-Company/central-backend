@@ -17,7 +17,6 @@ from flask_login import (
     login_user,
     logout_user,
 )
-from flask_seasurf import SeaSurf
 from oauthlib.oauth2 import WebApplicationClient
 import requests
 from talisman import Talisman
@@ -32,8 +31,14 @@ from db.user import (
     get_user,
     update_user_groups,
 )
-from util.security import get_google_provider_cfg, get_groups_for_user, require_internal
-from util.copyedit_gcal import get_editor_email
+from util.security import (
+    csrf,
+    get_google_provider_cfg,
+    get_groups_for_user,
+    require_internal
+)
+from util.slackbot import start_slack
+from util.copyedit_gcal import get_editor_email, copy_edit_messaging
 from views.illordle import illordle_routes
 from views.socials import socials_routes
 from views.users import users_routes
@@ -41,20 +46,23 @@ from views.users import users_routes
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
-app.register_blueprint(illordle_routes)
-app.register_blueprint(socials_routes)
-app.register_blueprint(users_routes)
 
 # csp = {
 #     'default-src': '*'
 # }
 Talisman(app, content_security_policy=[])
-csrf = SeaSurf(app)
+csrf.init_app(app)
+
+app.register_blueprint(illordle_routes)
+app.register_blueprint(socials_routes)
+app.register_blueprint(users_routes)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 
 client = WebApplicationClient(GOOGLE_CLIENT_ID)
+
+start_slack(app)
 
 
 @login_manager.user_loader
@@ -171,16 +179,28 @@ def callback():
         return "User email not available or not verified by Google.", 400
 
 
-@app.route("/api-query")
-@login_required
-def api_query():
-    return render_template("api_query.html")
-
 @app.route("/copy-edit-email")
 @login_required
 @require_internal
 def copy_edit_email():
     return get_editor_email()
+
+@app.route("/copy-edit-slack-msg", methods=['POST', 'GET'])
+@login_required
+@require_internal
+def send_copy_edit_slack():
+    story_url = request.args['url']
+    try:
+        copy_edit_messaging(story_url)
+        return 'OK', 200
+    except Exception as e:
+        return str(e), 500
+
+@app.route("/api-query")
+@login_required
+def api_query():
+    return render_template("api_query.html")
+
 
 @app.route("/logout")
 @login_required
