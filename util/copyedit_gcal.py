@@ -2,8 +2,9 @@ from zoneinfo import ZoneInfo
 from datetime import datetime, timedelta
 from gcsa.google_calendar import GoogleCalendar
 
-from constants import COPY_CHIEF_EMAIL, COPY_EDIT_GCAL_ID
+from constants import COPY_CHIEF_EMAIL, COPY_EDIT_GCAL_ID, SLACK_BOT_TOKEN
 from util.security import get_creds
+from util.slackbot import app
 from db.user import get_user_last_edited, update_user_last_edited
 
 ZONE_UTC = ZoneInfo("UTC")
@@ -32,7 +33,7 @@ def get_editor_email(is_urgent=False):
         update_user_last_edited(name, email, curr_time)
         return email
     elif len(events) == 1: # if there is only a single shift AND it is about to end, then return default email
-        return COPY_CHIEF_EMAIL
+        return None
 
     # List of tuples: [(editor email, last edited, name), ...] for cases with are multiple events
     last_edited_list = [(event.attendees[0].email, get_user_last_edited(event.attendees[0].email) or datetime.min.replace(tzinfo=ZONE_UTC), event.attendees[0].display_name) 
@@ -54,4 +55,17 @@ def get_editor_email(is_urgent=False):
         return email
 
     # otherwise returns default email
-    return COPY_CHIEF_EMAIL
+    return None
+
+def copy_edit_messaging(edit_link):
+    if app == None:
+        raise ValueError("Slackbolt app cannot be None")
+    userEmail = get_editor_email() or COPY_CHIEF_EMAIL
+    userInfo = app.client.users_lookupByEmail(email=userEmail)
+    userId = userInfo["user"]["id"]
+    app.client.chat_postMessage(
+        token=SLACK_BOT_TOKEN,
+        username="Copy Bot",
+        channel=userId,
+        text="A new story is ready for copyediting: " + edit_link
+    )
