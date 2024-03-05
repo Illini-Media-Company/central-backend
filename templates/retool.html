@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Retool
+{% endblock %}
+
+{% block content %}
+
+<div class="w-100 h-100">
+  {% if embed_url %}
+  <iframe
+    src="{{ embed_url }}"
+    class="w-100 h-100"
+    frameborder="0"
+  ></iframe>
+  {% else %}
+  <p>Retool Dashboard is currently not available.</p>
+  {% endif %}
+</div>
+
+{% endblock %}

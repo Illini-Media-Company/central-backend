@@ -35,3 +35,5 @@ CC_LIST_MAPPING = {
     "sports": "0fa0f9d0-f33e-11e8-bed9-d4ae52733d3a",
     "wpgu": "01ff9950-4c11-11e3-826c-d4ae52725666",
 }
+
+RETOOL_API_KEY = os.environ.get("RETOOL_API_KEY", None)
