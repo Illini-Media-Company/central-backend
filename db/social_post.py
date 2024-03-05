@@ -33,7 +33,7 @@ def create_post(title, url, platform, created_by):
             created_at=datetime.now(),
         )
         post.put()
-    return post
+    return post.to_dict()
 
 
 def get_all_posts():

@@ -12,4 +12,6 @@ retool_routes = Blueprint("retool_routes", __name__, url_prefix="/retool")
 @login_required
 def wpgu_website():
     embed_url = fetch_retool_embed_url("0afdf92e-b0d4-11ee-ab5f-83b642f596fa")
-    return render_template("retool.html", embed_url=embed_url)
+    return render_template(
+        "retool.html", title="WPGU Website Settings", embed_url=embed_url
+    )

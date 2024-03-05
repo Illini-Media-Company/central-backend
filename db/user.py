@@ -24,8 +24,12 @@ def add_user(sub, name, email, groups):
     with client.context():
         user = User.query().filter(User.email == email).get()
         if user is not None:
-            user.key.delete()
-        user = User(sub=sub, name=name, email=email, groups=groups)
+            user.sub = sub
+            user.name = name
+            user.email = email
+            user.groups = groups
+        else:
+            user = User(sub=sub, name=name, email=email, groups=groups)
         user.put()
     return LoggedInUser(user)
 
