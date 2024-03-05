@@ -34,14 +34,15 @@ from db.user import (
 from util.security import (
     csrf,
     get_google_provider_cfg,
-    get_groups_for_user,
+    get_immediate_groups_for_user,
 )
 from util.slackbot import start_slack
 from views.constant_contact import constant_contact_routes
 from views.illordle import illordle_routes
 from views.socials import socials_routes
-from views.users import users_routes
 from views.retool_apps import retool_routes
+from views.users import users_routes
+from views.groups import groups_routes
 
 
 app = Flask(__name__)
@@ -56,8 +57,9 @@ csrf.init_app(app)
 app.register_blueprint(constant_contact_routes)
 app.register_blueprint(illordle_routes)
 app.register_blueprint(socials_routes)
-app.register_blueprint(users_routes)
 app.register_blueprint(retool_routes)
+app.register_blueprint(users_routes)
+app.register_blueprint(groups_routes)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -144,7 +146,7 @@ def callback():
         user_email = userinfo_response["email"]
         user_name = userinfo_response["name"]
         user_domain = userinfo_response.get("hd", "")
-        user_groups = get_groups_for_user(user_email)
+        user_groups = get_immediate_groups_for_user(user_email)
 
         # Create or update user in db
         user = get_user(user_email)
