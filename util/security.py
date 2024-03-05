@@ -122,7 +122,7 @@ def restrict_to(groups):
             if is_user_in_group(current_user, groups) or ENV == "dev":
                 return func(*args, **kwargs)
             else:
-                return "This action is restricted to specific Google groups.", 403
+                return "This action is restricted to specific Google Groups.", 403
 
         return wrapper
 
