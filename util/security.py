@@ -95,7 +95,7 @@ def get_immediate_groups_for_user(user_email):
         groups = response.get("groups", [])
         groups = [group["email"].split("@")[0] for group in groups]
         thread = Thread(target=update_groups, args=[groups])
-        thread.run()
+        thread.start()
         return groups
 
 
