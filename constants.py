@@ -36,4 +36,4 @@ CC_LIST_MAPPING = {
     "wpgu": "01ff9950-4c11-11e3-826c-d4ae52725666",
 }
 
-RETOOL_TOKEN = os.environ.get("RETOOL_TOKEN", None)
+RETOOL_API_KEY = os.environ.get("RETOOL_API_KEY", None)

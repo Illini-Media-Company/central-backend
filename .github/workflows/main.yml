@@ -38,3 +38,4 @@ jobs:
             SLACK_SIGNING_SECRET=${{ secrets.SLACK_SIGNING_SECRET }}
             CC_CLIENT_ID=${{ secrets.CC_CLIENT_ID }}
             CC_CLIENT_SECRET=${{ secrets.CC_CLIENT_SECRET }}
+            RETOOL_API_KEY=${{ secrets.RETOOL_API_KEY }}

@@ -41,7 +41,7 @@ from views.constant_contact import constant_contact_routes
 from views.illordle import illordle_routes
 from views.socials import socials_routes
 from views.users import users_routes
-from views.retool import retool_routes
+from views.retool_apps import retool_routes
 
 
 app = Flask(__name__)
