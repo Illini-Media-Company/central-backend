@@ -24,7 +24,7 @@ def kv_store_set(key, value, replace=True):
         store_obj = KVStore.get_by_id(key)
         if store_obj is None:
             now = datetime.now()
-            store_obj = KVStore(value=value, created_at=now, updated_at=now)
+            store_obj = KVStore(id=key, value=value, created_at=now, updated_at=now)
         elif not replace:
             return False
         else:

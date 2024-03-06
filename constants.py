@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 ENV = os.environ.get("ENV", "dev")
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", None)
@@ -18,8 +19,23 @@ REDDIT_CLIENT_SECRET = os.environ.get("REDDIT_CLIENT_SECRET", None)
 SUBREDDIT = "UIUC"
 FLAIR_ID = "a3994b2e-d384-11ea-bf32-0e7e74729027"  # News flair
 
-SNO_ADMIN_USERNAME = "di_admin"
-SNO_ADMIN_PASSWORD = os.environ.get("SNO_ADMIN_PASSWORD", None)
+TWITTER_API_KEY = os.environ.get("TWITTER_API_KEY", None)
+TWITTER_API_KEY_SECRET = os.environ.get("TWITTER_API_KEY_SECRET", None)
+TWITTER_ACCESS_TOKEN = os.environ.get("TWITTER_ACCESS_TOKEN", None)
+TWITTER_ACCESS_TOKEN_SECRET = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET", None)
 
-COPY_EDIT_GCAL_ID = "c_7f9830c5fef0310931ee81c0c61b63bb05612190984b8bc15652a34bffffa618@group.calendar.google.com" # Google Calendar ID for copy editing schedule
-COPY_CHIEF_EMAIL = "***REMOVED***" if ENV != "dev" else "default@test.test"
+SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", None)
+SLACK_APP_TOKEN = os.environ.get("SLACK_APP_TOKEN", None)
+SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET", None)
+
+CC_CLIENT_ID = os.environ.get("CC_CLIENT_ID", None)
+CC_CLIENT_SECRET = os.environ.get("CC_CLIENT_SECRET", None)
+CC_LIST_MAPPING = {
+    "headline_news": "01d15d60-4c11-11e3-826c-d4ae52725666",
+    "sports": "0fa0f9d0-f33e-11e8-bed9-d4ae52733d3a",
+    "wpgu": "01ff9950-4c11-11e3-826c-d4ae52725666",
+}
+
+RETOOL_API_KEY = os.environ.get("RETOOL_API_KEY", None)
+
+COPY_EDITING_GCAL_ID = "c_ce11637c04b9e766b04cf09ca41c971bd6b567648308d2ee53823cea6672ae4a@group.calendar.google.com"

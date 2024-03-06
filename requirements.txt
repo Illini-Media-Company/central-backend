@@ -4,13 +4,16 @@ Flask ~= 2.0
 Flask-Cors
 Flask-Login
 Flask-SeaSurf
+gcsa ~= 2.0
 google-api-python-client ~= 2.0
 google-auth ~= 2.0
 google-cloud-ndb ~= 2.0
 lxml
+networkx ~= 3.0
 oauthlib ~= 3.0
 praw ~= 7.0
 python-dotenv
 requests ~= 2.0
+slack-bolt ~= 1.0
 talisman
-gcsa
+requests_oauthlib
