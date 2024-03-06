@@ -37,6 +37,7 @@ from util.security import (
     get_immediate_groups_for_user,
 )
 from util.slackbot import start_slack
+from views.content_doc import content_doc_routes
 from views.constant_contact import constant_contact_routes
 from views.illordle import illordle_routes
 from views.socials import socials_routes
@@ -54,6 +55,7 @@ app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 Talisman(app, content_security_policy=[])
 csrf.init_app(app)
 
+app.register_blueprint(content_doc_routes)
 app.register_blueprint(constant_contact_routes)
 app.register_blueprint(illordle_routes)
 app.register_blueprint(socials_routes)
