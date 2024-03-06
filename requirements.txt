@@ -4,6 +4,7 @@ Flask ~= 2.0
 Flask-Cors
 Flask-Login
 Flask-SeaSurf
+gcsa ~= 2.0
 google-api-python-client ~= 2.0
 google-auth ~= 2.0
 google-cloud-ndb ~= 2.0

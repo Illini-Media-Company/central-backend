@@ -8,6 +8,7 @@ load_dotenv()
 
 ENV = os.environ.get("ENV", "dev")
 
+ADMIN_EMAIL = "di_admin@illinimedia.com"
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", None)
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", None)
 GOOGLE_POJECT_ID = os.environ.get("DATASTORE_PROJECT_ID", None)
@@ -37,3 +38,10 @@ CC_LIST_MAPPING = {
 }
 
 RETOOL_API_KEY = os.environ.get("RETOOL_API_KEY", None)
+
+COPY_EDITING_GCAL_ID = "c_ce11637c04b9e766b04cf09ca41c971bd6b567648308d2ee53823cea6672ae4a@group.calendar.google.com"
+
+APPS_SCRIPT_RUNNER_EMAIL = "apps-script-runner@illinimedia.com"
+CONTEND_DOC_AUD = (
+    "465894457481-3gkq5vetlh4nmvdj7e88kfdgghtodh9c.apps.googleusercontent.com"
+)
