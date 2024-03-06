@@ -1,6 +1,7 @@
 from functools import wraps
 from threading import Thread
 
+from flask import request
 from flask_login import current_user
 from flask_seasurf import SeaSurf
 from google.auth import (
@@ -9,12 +10,12 @@ from google.auth import (
     impersonated_credentials,
     transport,
 )
-from google.oauth2 import service_account
+from google.oauth2 import id_token, service_account
 from googleapiclient.discovery import build
 import networkx as nx
 import requests
 
-from constants import ENV, GOOGLE_POJECT_ID
+from constants import ENV, ADMIN_EMAIL, GOOGLE_POJECT_ID
 from db.group import add_group, get_extended_groups
 
 
@@ -56,7 +57,7 @@ def get_admin_creds(scopes):
         creds.service_account_email,
         TOKEN_URL,
         scopes=scopes,
-        subject="di_admin@illinimedia.com",
+        subject=ADMIN_EMAIL,
     )
     return creds
 
@@ -117,19 +118,40 @@ def require_internal(func):
         if current_user.email.endswith("@illinimedia.com"):
             return func(*args, **kwargs)
         else:
-            return "This action is restricted to Illini Media staff."
+            return "This action is restricted to specific users or groups.", 403
 
     return wrapper
 
 
-def restrict_to(groups):
+# Restrict an endpoint to specifc user email addresses or Google Groups.
+# Optionally allow OIDC ID tokens from an external source.
+# ID token email must be included in users_or_groups.
+def restrict_to(users_or_groups, google_id_token_aud=None):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            if is_user_in_group(current_user, groups) or ENV == "dev":
-                return func(*args, **kwargs)
+            if current_user.is_authenticated:
+                if current_user.email in users_or_groups or is_user_in_group(
+                    current_user, users_or_groups
+                ):
+                    return func(*args, **kwargs)
+                else:
+                    return "This action is restricted to specific users or groups.", 403
+            elif google_id_token_aud and "X-ID-Token" in request.headers:
+                token = request.headers["X-ID-Token"]
+                try:
+                    claims = id_token.verify_oauth2_token(token, http_request)
+                except:
+                    return "Invalid ID token.", 401
+
+                if claims["aud"] != google_id_token_aud:
+                    return "The provided ID token audience is not allowed.", 403
+                elif claims["email"] not in users_or_groups:
+                    return "This action is restricted to specific users or groups.", 403
+                else:
+                    return func(*args, **kwargs)
             else:
-                return "This action is restricted to specific Google Groups.", 403
+                return "You must be logged in to perform this action.", 401
 
         return wrapper
 

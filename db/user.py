@@ -65,17 +65,9 @@ def update_user_groups(logged_in_user, groups):
             user.put()
 
 
-def get_user_last_edited(email):
-    with client.context():
-        user = User.query().filter(User.email == email).get()
-    if user is None:
-        return None
-    return user.last_edited
-
-
-def update_user_last_edited(email, timestamp):
+def update_user_last_edited(email, last_edited):
     with client.context():
         user = User.query().filter(User.email == email).get()
         if user is not None:
-            user.last_edited = timestamp
+            user.last_edited = last_edited
             user.put()
