@@ -34,14 +34,16 @@ from db.user import (
 from util.security import (
     csrf,
     get_google_provider_cfg,
-    get_groups_for_user,
-    require_internal
+    get_immediate_groups_for_user,
 )
 from util.slackbot import start_slack
-from util.copyedit_gcal import get_editor_email, copy_edit_messaging
+from views.content_doc import content_doc_routes
+from views.constant_contact import constant_contact_routes
 from views.illordle import illordle_routes
 from views.socials import socials_routes
+from views.retool_apps import retool_routes
 from views.users import users_routes
+from views.groups import groups_routes
 
 
 app = Flask(__name__)
@@ -53,9 +55,13 @@ app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 Talisman(app, content_security_policy=[])
 csrf.init_app(app)
 
+app.register_blueprint(content_doc_routes)
+app.register_blueprint(constant_contact_routes)
 app.register_blueprint(illordle_routes)
 app.register_blueprint(socials_routes)
+app.register_blueprint(retool_routes)
 app.register_blueprint(users_routes)
+app.register_blueprint(groups_routes)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -142,7 +148,7 @@ def callback():
         user_email = userinfo_response["email"]
         user_name = userinfo_response["name"]
         user_domain = userinfo_response.get("hd", "")
-        user_groups = get_groups_for_user(user_email)
+        user_groups = get_immediate_groups_for_user(user_email)
 
         # Create or update user in db
         user = get_user(user_email)
@@ -179,23 +185,6 @@ def callback():
         return "User email not available or not verified by Google.", 400
 
 
-@app.route("/copy-edit-email")
-@login_required
-@require_internal
-def copy_edit_email():
-    return get_editor_email()
-
-@app.route("/copy-edit-slack-msg", methods=['POST', 'GET'])
-@login_required
-@require_internal
-def send_copy_edit_slack():
-    story_url = request.args['url']
-    try:
-        copy_edit_messaging(story_url)
-        return 'OK', 200
-    except Exception as e:
-        return str(e), 500
-
 @app.route("/api-query")
 @login_required
 def api_query():
@@ -216,6 +205,7 @@ def logout():
 @app.route("/logout-success")
 def yurr():
     return render_template("yurr.html")
+
 
 if __name__ == "__main__":
     if os.environ.get("DATASTORE_EMULATOR_HOST") is None:

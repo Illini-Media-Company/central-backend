@@ -6,6 +6,7 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 from constants import ENV, SLACK_BOT_TOKEN, SLACK_APP_TOKEN, SLACK_SIGNING_SECRET
 from util.security import csrf
 
+
 IMC_GENERAL_ID = "C13TEC3QE" if ENV == "prod" else "C06GADGT60Z"
 IMC_GENERAL_TEST_ID = "C06LDL7RG3X" if ENV == "prod" else None
 DI_ANNOUNCEMENTS_ID = "C06BSL71W2Z" if ENV == "prod" else "C06G089F8S0"
@@ -319,7 +320,11 @@ IMC_WELCOME_MESSAGE = [
 IMC_WELCOME_MESSAGE_TEXT = "Welcome to Illini Media Company!"
 
 
-app = App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET) if SLACK_BOT_TOKEN else None
+app = (
+    App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
+    if SLACK_BOT_TOKEN
+    else None
+)
 
 
 @app.event("app_mention")
@@ -426,6 +431,7 @@ def illioButton(ack, body, logger):
     buttonWrapper(
         "Illio", "#illio_announcements", ILLIO_ANNOUNCEMENTS_ID, userName, userId
     )
+
 
 # Executed if a user clicks the "Creative Works Agency" button
 @app.action("cwa_button")
@@ -614,8 +620,8 @@ def start_slack(flask_app):
     if ENV == "prod":
         handler = SlackRequestHandler(app)
 
-        @csrf.exempt
         @flask_app.route("/slack/events", methods=["POST"])
+        @csrf.exempt
         def slack_events():
             return handler.handle(request)
 
