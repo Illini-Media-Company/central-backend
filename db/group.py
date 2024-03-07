@@ -24,12 +24,3 @@ def get_all_groups():
     with client.context():
         groups = [group.to_dict() for group in Group.query().fetch()]
     return groups
-
-
-def get_extended_groups(group_names):
-    extended_group_names = group_names.copy()
-    with client.context():
-        groups = Group.query().filter(Group.name.IN(group_names)).fetch()
-    for group in groups:
-        extended_group_names.extend(group.ancestors)
-    return extended_group_names

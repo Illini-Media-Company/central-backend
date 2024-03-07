@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from threading import Thread
 import urllib
 
 from flask import (
@@ -29,12 +30,11 @@ from constants import (
 from db.user import (
     add_user,
     get_user,
-    update_user_groups,
 )
 from util.security import (
     csrf,
     get_google_provider_cfg,
-    get_immediate_groups_for_user,
+    update_groups,
 )
 from util.slackbot import start_slack
 from views.content_doc import content_doc_routes
@@ -148,14 +148,13 @@ def callback():
         user_email = userinfo_response["email"]
         user_name = userinfo_response["name"]
         user_domain = userinfo_response.get("hd", "")
-        user_groups = get_immediate_groups_for_user(user_email)
 
         # Create or update user in db
         user = get_user(user_email)
         if user is None:
             if user_domain == "illinimedia.com":
                 user = add_user(
-                    sub=unique_id, name=user_name, email=user_email, groups=user_groups
+                    sub=unique_id, name=user_name, email=user_email, groups=[]
                 )
             else:
                 return (
@@ -163,11 +162,11 @@ def callback():
                     403,
                 )
         elif user.sub is None:
-            user = add_user(
-                sub=unique_id, name=user_name, email=user_email, groups=user_groups
-            )
-        elif user_groups != user.groups:
-            update_user_groups(user, user_groups)
+            user = add_user(sub=unique_id, name=user_name, email=user_email, groups=[])
+
+        # Create new thread to sync user's group memberships
+        thread = Thread(target=update_groups, args=[user_email])
+        thread.start()
 
         # Begin user session by logging the user in
         login_user(user)

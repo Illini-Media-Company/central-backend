@@ -1,5 +1,4 @@
 from functools import wraps
-from threading import Thread
 
 from flask import request
 from flask_login import current_user
@@ -16,7 +15,8 @@ import networkx as nx
 import requests
 
 from constants import ENV, ADMIN_EMAIL, GOOGLE_POJECT_ID
-from db.group import add_group, get_extended_groups
+from db.group import add_group
+from db.user import update_user_groups
 
 
 GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
@@ -42,11 +42,11 @@ def get_creds(scopes):
             target_scopes=scopes,
             lifetime=300,
         )
-        creds.refresh(http_request)
-        return creds
     else:
-        default_creds.refresh(http_request)
-        return default_creds
+        creds = default_creds.with_scopes(scopes)
+
+    creds.refresh(http_request)
+    return creds
 
 
 def get_admin_creds(scopes):
@@ -62,54 +62,42 @@ def get_admin_creds(scopes):
     return creds
 
 
-def update_groups(groups):
+def update_groups(user_email):
     graph = nx.DiGraph()
-    queue = set(groups.copy())
+    queue = set([user_email])
 
     def update_graph(request_id, response, exception):
         parent_groups = response.get("groups", [])
-        parent_groups = [group["email"].split("@")[0] for group in parent_groups]
-        for group in parent_groups:
-            graph.add_edge(group, request_id)
-            queue.add(group)
+        parent_emails = [group["email"] for group in parent_groups]
+        for email in parent_emails:
+            graph.add_edge(email, request_id)
+            queue.add(email)
 
     with build("admin", "directory_v1", credentials=get_admin_creds(SCOPES)) as service:
         while len(queue) > 0:
             batch = service.new_batch_http_request()
-            for group in queue:
+            for email in queue:
                 batch.add(
                     service.groups().list(
                         domain="illinimedia.com",
-                        query=(f"memberKey={group}@illinimedia.com"),
+                        query=(f"memberKey={email}"),
                     ),
                     callback=update_graph,
-                    request_id=group,
+                    request_id=email,
                 )
             queue = set()
             batch.execute()
 
-    for group in graph:
-        ancestors = list(nx.ancestors(graph, group))
-        add_group(name=group, ancestors=ancestors)
-
-
-def get_immediate_groups_for_user(user_email):
-    with build("admin", "directory_v1", credentials=get_admin_creds(SCOPES)) as service:
-        response = (
-            service.groups()
-            .list(domain="illinimedia.com", userKey=user_email)
-            .execute()
-        )
-        groups = response.get("groups", [])
-        groups = [group["email"].split("@")[0] for group in groups]
-        thread = Thread(target=update_groups, args=[groups])
-        thread.start()
-        return groups
+    for email in graph:
+        ancestors = [ancestor.split("@")[0] for ancestor in nx.ancestors(graph, email)]
+        if email == user_email:
+            update_user_groups(email=email, groups=ancestors)
+        else:
+            add_group(name=email.split("@")[0], ancestors=ancestors)
 
 
 def is_user_in_group(user, groups):
-    user_groups = get_extended_groups(user.groups)
-    return len(set(user_groups) & set(groups)) > 0
+    return len(set(user.groups) & set(groups)) > 0
 
 
 def require_internal(func):
