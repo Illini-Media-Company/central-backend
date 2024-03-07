@@ -56,10 +56,9 @@ def get_all_users():
     return users
 
 
-def update_user_groups(logged_in_user, groups):
-    logged_in_user.groups = groups
+def update_user_groups(email, groups):
     with client.context():
-        user = User.query().filter(User.email == logged_in_user.email).get()
+        user = User.query().filter(User.email == email).get()
         if user is not None:
             user.groups = groups
             user.put()
