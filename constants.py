@@ -43,5 +43,5 @@ COPY_EDITING_GCAL_ID = "c_ce11637c04b9e766b04cf09ca41c971bd6b567648308d2ee53823c
 
 APPS_SCRIPT_RUNNER_EMAIL = "apps-script-runner@illinimedia.com"
 CONTEND_DOC_AUD = (
-    "465894457481-3gkq5vetlh4nmvdj7e88kfdgghtodh9c.apps.googleusercontent.com"
+    "906651552672-3vsqi0s6ggr50gs1u7chgcn15hqlgg4e.apps.googleusercontent.com"
 )
