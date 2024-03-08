@@ -112,7 +112,7 @@ def require_internal(func):
 
 
 # Restrict an endpoint to specifc user email addresses or Google Groups.
-# Optionally allow OIDC ID tokens from an external source.
+# Optionally allow Google OIDC ID tokens from an external source.
 # ID token email must be included in users_or_groups.
 def restrict_to(users_or_groups, google_id_token_aud=None):
     def decorator(func):
