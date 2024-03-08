@@ -320,11 +320,7 @@ IMC_WELCOME_MESSAGE = [
 IMC_WELCOME_MESSAGE_TEXT = "Welcome to Illini Media Company!"
 
 
-app = (
-    App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
-    if SLACK_BOT_TOKEN
-    else None
-)
+app = App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
 
 
 @app.event("app_mention")
