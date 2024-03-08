@@ -61,3 +61,4 @@ def notify_current_copy_editor(story_url, copy_chief_email):
         channel=user_id,
         text="A new story is ready to be copy edited.\n" + story_url,
     )
+    print(f"Slack message sent to {email}.")
