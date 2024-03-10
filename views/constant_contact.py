@@ -90,7 +90,7 @@ def cc_create_contact():
     if response.status_code == 201 or response.status_code == 200:
         return "Contact created successfully!", 200
     else:
-        return "Failed to create contact.", response.status_code
+        return "Failed to create contact.", 500
 
 
 def get_refresh_token(redirect_uri, client_id, client_secret, auth_code):
