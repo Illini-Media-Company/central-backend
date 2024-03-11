@@ -16,7 +16,7 @@ from constants import (
     TWITTER_ACCESS_TOKEN,
     TWITTER_ACCESS_TOKEN_SECRET,
 )
-from db.social_post import SocialPlatform, create_post, check_limit
+from db.social_post import SocialPlatform, add_post, check_limit
 
 
 TWITTER_API_URL = "https://api.twitter.com/2/tweets"
@@ -30,7 +30,7 @@ def send_illinois_app_notification(title, url):
         )
     # TODO implement this
 
-    create_post(
+    add_post(
         title=title,
         url=url,
         platform=SocialPlatform.ILLINOIS_APP,
@@ -57,7 +57,7 @@ def post_to_reddit(title, url):
         except Exception as e:
             return None, (str(e), 500)
 
-    create_post(
+    add_post(
         title=title,
         url=post_url,
         platform=SocialPlatform.REDDIT,
@@ -86,7 +86,7 @@ def post_to_twitter(title, url):
         tweet_id = tweet_data["data"]["id"]
         tweet_url = f"https://twitter.com/user/status/{tweet_id}"
 
-    create_post(
+    add_post(
         title=title,
         url=tweet_url,
         platform=SocialPlatform.TWITTER,
