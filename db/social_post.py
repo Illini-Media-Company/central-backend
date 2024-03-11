@@ -1,5 +1,4 @@
 from enum import StrEnum
-import uuid
 from datetime import datetime, timedelta
 from google.cloud import ndb
 
