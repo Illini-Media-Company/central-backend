@@ -1,5 +1,5 @@
 {% macro nav_item(url, text) %}
-<li class="nav-item">
+<li class="nav-item px-1">
     {% if request.path.startswith(url) %}
     <a class="nav-link active" aria-current="page" href="{{ url }}">{{ text }}</a>
     {% else %}
@@ -8,9 +8,10 @@
 </li>
 {% endmacro %}
 
-{% macro nav_dropdown_item(url, text) %}
+{% macro nav_dropdown_item(url, text, target) %}
 <li>
-    <a class="dropdown-item" href="{{ url }}">{{ text }}</a>
+    {% set target = target|default('_self') %}
+    <a class="dropdown-item" href="{{ url }}" target="{{ target }}">{{ text }}</a>
 </li>
 {% endmacro %}
 
@@ -29,14 +30,25 @@
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                         {{ nav_item(url_for('socials_routes.dashboard'), 'Socials') }}
                         {{ nav_item(url_for('illordle_routes.dashboard'), 'Illordle') }}
-                        {{ nav_item(url_for('api_query'), 'API Query') }}
-                        <li class="nav-item dropdown">
+                        {{ nav_item(get_gcal_url(constants.COPY_EDITING_GCAL_ID), 'Copy Editing') }}
+
+                        <li class="nav-item px-1 dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                More
+                                WPGU
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                {{ nav_dropdown_item(url_for('constant_contact_routes.cc_login'), 'Authorize Constant Contact') }}
+                                {{ nav_dropdown_item(get_gcal_url(constants.WPGU_ON_AIR_GCAL_ID), 'WPGU On-Air Calendar', '_blank') }}
                                 {{ nav_dropdown_item(url_for('retool_routes.wpgu_website'), 'WPGU Website Settings') }}
+                            </ul>
+                        </li>
+
+                        <li class="nav-item px-1 dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Developer Tools
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                {{ nav_dropdown_item(url_for('api_query'), 'API Query') }}
+                                {{ nav_dropdown_item(url_for('constant_contact_routes.cc_login'), 'Authorize Constant Contact') }}
                             </ul>
                         </li>
                     </ul>

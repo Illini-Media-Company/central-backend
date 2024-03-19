@@ -23,6 +23,7 @@ import requests
 from talisman import Talisman
 
 # Local imports
+import constants
 from constants import (
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
@@ -79,6 +80,14 @@ def load_user(user_id):
 @login_manager.unauthorized_handler
 def unauthorized_callback():
     return redirect("/login?state=" + urllib.parse.quote(request.path))
+
+
+@app.context_processor
+def add_template_context():
+    def get_gcal_url(gcal_id):
+        return f"https://calendar.google.com/calendar?cid={gcal_id}"
+
+    return dict(get_gcal_url=get_gcal_url, constants=constants)
 
 
 @app.route("/")
