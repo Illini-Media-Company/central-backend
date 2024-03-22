@@ -91,7 +91,7 @@ def cc_create_contact():
         return "Contact created successfully!", 200
     else:
         print(f"failed to create contact for {email}:")
-        print(response)
+        print(response.text)
         return "Failed to create contact.", 500
 
 
