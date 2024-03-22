@@ -73,7 +73,9 @@ Breaking
     </table>
 </div>
 
+
 <script>
+    
     async function submitForm(button) {
         button.disabled = true;
         button.innerHTML = 'Submitting...';
@@ -89,7 +91,7 @@ Breaking
             endpoint += '/twitter'
         }
 
-        const response = await fetch(endpoint, {
+        const response = await fetch('/submit_story', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',

@@ -9,7 +9,7 @@ class Story(ndb.Model):
     url = ndb.StringProperty()
     post_to_reddit = ndb.BooleanProperty()
     post_to_twitter = ndb.BooleanProperty()
-    slack_message_id = ndb.StringProperty()
+    slack_message_id = None
     created_by = ndb.StringProperty()
     created_at = ndb.DateTimeProperty()
 
