@@ -90,6 +90,8 @@ def cc_create_contact():
     if response.status_code == 201 or response.status_code == 200:
         return "Contact created successfully!", 200
     else:
+        print(f"failed to create contact for {email}:")
+        print(response)
         return "Failed to create contact.", 500
 
 
