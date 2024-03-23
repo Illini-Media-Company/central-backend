@@ -8,7 +8,7 @@ import urllib
 
 from constants import CC_CLIENT_ID, CC_CLIENT_SECRET, CC_LIST_MAPPING
 from db.kv_store import kv_store_get, kv_store_set
-from util.security import csrf
+from util.security import csrf, verify_recaptcha
 
 
 CC_AUTHORIZATION_URL = "https://authz.constantcontact.com/oauth2/default/v1/authorize"
@@ -59,6 +59,8 @@ def cc_login_callback():
 def cc_create_contact():
     email = request.form["email"]
     newsletter = request.form["newsletter"]
+    recaptcha_token = request.form["grecaptcha_token"]
+    recaptcha_score = verify_recaptcha(recaptcha_token)
 
     if newsletter in CC_LIST_MAPPING:
         newsletter_id = CC_LIST_MAPPING[newsletter]
@@ -88,11 +90,18 @@ def cc_create_contact():
 
     response = requests.post(CC_SUBSCRIBE_URL, headers=headers, json=data)
     if response.status_code == 201 or response.status_code == 200:
+        print(f"Contact created successfully for {email}")
+        print(f"reCAPTCHA score: {recaptcha_score}")
         return "Contact created successfully!", 200
     else:
-        print(f"failed to create contact for {email}:")
+        print(f"failed to create contact for {email}")
         print(response.text)
-        return "Failed to create contact.", 500
+        print(f"reCAPTCHA score: {recaptcha_score}")
+        if response.json()[0]["error_key"] == "contacts.api.validation.error":
+            # We don't want spambots to know
+            return "Contact created successfully!", 200
+        else:
+            return "Failed to create contact.", 500
 
 
 def get_refresh_token(redirect_uri, client_id, client_secret, auth_code):

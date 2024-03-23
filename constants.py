@@ -29,6 +29,8 @@ SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", None)
 SLACK_APP_TOKEN = os.environ.get("SLACK_APP_TOKEN", None)
 SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET", None)
 
+RECAPTCHA_SECRET_KEY = os.environ.get("RECAPTCHA_SECRET_KEY", None)
+
 CC_CLIENT_ID = os.environ.get("CC_CLIENT_ID", None)
 CC_CLIENT_SECRET = os.environ.get("CC_CLIENT_SECRET", None)
 CC_LIST_MAPPING = {
