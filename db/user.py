@@ -65,6 +65,7 @@ def update_user_groups(email, groups):
 
 
 def update_user_last_edited(email, last_edited):
+    last_edited = last_edited.astimezone(tz=None).replace(tzinfo=None)
     with client.context():
         user = User.query().filter(User.email == email).get()
         if user is not None:

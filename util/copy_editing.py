@@ -12,23 +12,37 @@ SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
 SHIFT_OFFSET = timedelta(
     minutes=10
 )  # Threshold to skip shift if there is SHIFT_END_BUFFER minutes or less remaining in shift
+BREAKING_SHIFTS = [0, 1, 2, 3]
+CONTENT_DOC_SHIFTS = [3, 4]
 
 
 # Returns the email address of the copy editor on shift who has edited a story least recently, or None if there's no copy editor on shift.
-def get_current_copy_editor():
+def get_copy_editor(is_breaking):
     # Generate credentials for service account
     creds = get_creds(SCOPES)
     gc = GoogleCalendar(COPY_EDITING_GCAL_ID, credentials=creds)
 
-    # Get current shift(s)
-    current_time = datetime.now()
-    events = gc.get_events(
-        current_time - SHIFT_OFFSET, current_time, single_events=True
-    )
+    # Get today's shifts
+    current_time = datetime.now(tz=ZoneInfo("America/Chicago"))
+    current_time_offset = current_time + SHIFT_OFFSET
+    today = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
+    tomorrow = today + timedelta(days=1)
+    shifts = gc.get_events(today, tomorrow, single_events=True, order_by="startTime")
+
+    current_shift = None
+    for i, shift in enumerate(shifts):
+        if is_breaking and i in BREAKING_SHIFTS:
+            if shift.start <= current_time_offset <= shift.end:
+                current_shift = shift
+                break
+        elif not is_breaking and i in CONTENT_DOC_SHIFTS:
+            if current_time_offset <= shift.end:
+                current_shift = shift
+                break
 
     editor = None
-    for event in events:
-        for attendee in event.attendees:
+    if current_shift:
+        for attendee in current_shift.attendees:
             user = get_user(attendee.email)
             if user is None:
                 user = add_user(
@@ -49,10 +63,10 @@ def get_current_copy_editor():
         return None
 
 
-def notify_current_copy_editor(story_url, copy_chief_email):
+def notify_copy_editor(story_url, copy_chief_email, is_breaking):
     if app == None:
         raise ValueError("Slack app cannot be None!")
-    editor = get_current_copy_editor()
+    editor = get_copy_editor(is_breaking)
     email = editor.email if editor else copy_chief_email
     user_id = app.client.users_lookupByEmail(email=email)["user"]["id"]
     app.client.chat_postMessage(

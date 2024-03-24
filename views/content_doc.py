@@ -2,7 +2,7 @@ from flask import Blueprint, request
 from flask_cors import cross_origin
 
 from constants import APPS_SCRIPT_RUNNER_EMAIL, CONTEND_DOC_AUD
-from util.copy_editing import notify_current_copy_editor
+from util.copy_editing import notify_copy_editor
 from util.security import csrf, restrict_to
 
 
@@ -21,5 +21,5 @@ def send_story_to_copy():
     story_url = request.form["story_url"]
     copy_chief_email = request.form["copy_chief_email"]
 
-    notify_current_copy_editor(story_url, copy_chief_email)
+    notify_copy_editor(story_url, copy_chief_email, is_breaking=False)
     return "Slack message sent.", 200
