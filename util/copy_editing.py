@@ -68,19 +68,24 @@ def notify_copy_editor(story_url, copy_chief_email, is_breaking):
         raise ValueError("Slack app cannot be None!")
     editor = get_copy_editor(is_breaking)
     email = editor.email if editor else copy_chief_email
-    user = app.client.users_lookupByEmail(email=email)["user"]["id"]
+    slack_profile = app.client.users_lookupByEmail(email=email)["user"]
     app.client.chat_postMessage(
         token=SLACK_BOT_TOKEN,
         username="IMC Notification Bot",
-        channel=user["id"],
+        channel=slack_profile["id"],
         text="A new story is ready to be copy edited.\n" + story_url,
     )
     if email != copy_chief_email:
-        copy_chief = app.client.users_lookupByEmail(email=copy_chief_email)["user"]
         app.client.chat_postMessage(
             token=SLACK_BOT_TOKEN,
             username="IMC Notification Bot",
-            channel=copy_chief["id"],
-            text=f"A new story is ready to be copy edited. {user['name']} has also been notified.\n",
+            channel=app.client.users_lookupByEmail(email=copy_chief_email)["user"][
+                "id"
+            ],
+            text=(
+                "A new story is ready to be copy edited."
+                f"{slack_profile['name']} has also been notified.\n"
+            )
+            + story_url,
         )
     print(f"Slack message sent to {email}.")
