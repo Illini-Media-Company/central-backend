@@ -81,5 +81,6 @@ def notify_copy_editor(story_url, copy_chief_email, is_breaking):
             token=SLACK_BOT_TOKEN,
             username="IMC Notification Bot",
             channel=copy_chief["id"],
+            text=f"A new story is ready to be copy edited. {user['name']} has also been notified.\n",
         )
     print(f"Slack message sent to {email}.")
