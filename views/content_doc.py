@@ -21,5 +21,5 @@ def send_story_to_copy():
     story_url = request.form["story_url"]
     copy_chief_email = request.form["copy_chief_email"]
 
-    notify_copy_editor(story_url, copy_chief_email, is_breaking=False)
+    notify_copy_editor(story_url, False, copy_chief_email)
     return "Slack message sent.", 200
