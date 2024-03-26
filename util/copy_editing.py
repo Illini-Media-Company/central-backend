@@ -68,8 +68,8 @@ def notify_copy_editor(story_url, is_breaking, copy_chief_email=None):
     if app is None:
         raise ValueError("Slack app cannot be None!")
 
-    # Get cached copy chief email
     if copy_chief_email is None:
+        # Get cached copy chief email
         copy_chief_email = kv_store_get("COPY_CHIEF_EMAIL")
     else:
         kv_store_set("COPY_CHIEF_EMAIL", copy_chief_email)
