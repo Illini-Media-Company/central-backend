@@ -10,8 +10,8 @@ from db.user import add_user, get_user, update_user_last_edited
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
 SHIFT_OFFSET = timedelta(
-    minutes=10
-)  # Threshold to skip shift if there is SHIFT_END_BUFFER minutes or less remaining in shift
+    minutes=15
+)  # Threshold to skip shift if there are SHIFT_OFFSET minutes or less remaining in shift
 BREAKING_SHIFTS = [0, 1, 2, 3]
 CONTENT_DOC_SHIFTS = [3, 4]
 
@@ -68,11 +68,18 @@ def notify_copy_editor(story_url, copy_chief_email, is_breaking):
         raise ValueError("Slack app cannot be None!")
     editor = get_copy_editor(is_breaking)
     email = editor.email if editor else copy_chief_email
-    user_id = app.client.users_lookupByEmail(email=email)["user"]["id"]
+    user = app.client.users_lookupByEmail(email=email)["user"]["id"]
     app.client.chat_postMessage(
         token=SLACK_BOT_TOKEN,
         username="IMC Notification Bot",
-        channel=user_id,
+        channel=user["id"],
         text="A new story is ready to be copy edited.\n" + story_url,
     )
+    if email != copy_chief_email:
+        copy_chief = app.client.users_lookupByEmail(email=copy_chief_email)["user"]
+        app.client.chat_postMessage(
+            token=SLACK_BOT_TOKEN,
+            username="IMC Notification Bot",
+            channel=copy_chief["id"],
+        )
     print(f"Slack message sent to {email}.")
