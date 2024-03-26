@@ -3,9 +3,10 @@ from datetime import datetime, timedelta
 from gcsa.google_calendar import GoogleCalendar
 
 from constants import COPY_EDITING_GCAL_ID, SLACK_BOT_TOKEN
+from db.kv_store import kv_store_get, kv_store_set
+from db.user import add_user, get_user, update_user_last_edited
 from util.security import get_creds
 from util.slackbot import app
-from db.user import add_user, get_user, update_user_last_edited
 
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
@@ -63,9 +64,16 @@ def get_copy_editor(is_breaking):
         return None
 
 
-def notify_copy_editor(story_url, copy_chief_email, is_breaking):
-    if app == None:
+def notify_copy_editor(story_url, is_breaking, copy_chief_email=None):
+    if app is None:
         raise ValueError("Slack app cannot be None!")
+
+    # Get cached copy chief email
+    if copy_chief_email is None:
+        copy_chief_email = kv_store_get("COPY_CHIEF_EMAIL")
+    else:
+        kv_store_set("COPY_CHIEF_EMAIL", copy_chief_email)
+
     editor = get_copy_editor(is_breaking)
     email = editor.email if editor else copy_chief_email
     slack_id = app.client.users_lookupByEmail(email=email)["user"]["id"]
