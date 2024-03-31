@@ -38,6 +38,7 @@ from util.security import (
     update_groups,
 )
 from util.slackbot import start_slack
+from util.breaking_slackbot import breaking_news_routes
 from views.content_doc import content_doc_routes
 from views.constant_contact import constant_contact_routes
 from views.illordle import illordle_routes
@@ -56,6 +57,7 @@ app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 Talisman(app, content_security_policy=[])
 csrf.init_app(app)
 
+app.register_blueprint(breaking_news_routes)
 app.register_blueprint(content_doc_routes)
 app.register_blueprint(constant_contact_routes)
 app.register_blueprint(illordle_routes)
