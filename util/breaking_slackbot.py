@@ -100,11 +100,9 @@ NOT_POSTED = [
     {"type": "divider"},
 ]
 
-breaking_news_routes = Blueprint(
-    "breaking_news_routes", __name__, url_prefix="/breaking" 
-)
+slack_breaking_routes = Blueprint("slack_breaking_routes", __name__, url_prefix="/bot_breaking")
 
-@breaking_news_routes.route("/post", methods=["POST"])
+@slack_breaking_routes.route("/post", methods=["POST"])
 @login_required
 def post_message():
     story_url = request.form["story_url"]
