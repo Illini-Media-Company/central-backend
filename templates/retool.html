@@ -7,15 +7,15 @@
 {% block content %}
 
 <div class="w-100 h-100">
-  {% if embed_url %}
-  <iframe
-    src="{{ embed_url }}"
-    class="w-100 h-100"
-    frameborder="0"
-  ></iframe>
-  {% else %}
-  <p>Retool Dashboard is currently not available.</p>
-  {% endif %}
+    {% if embed_url %}
+    <iframe
+        src="{{ embed_url }}"
+        class="w-100 h-100"
+        frameborder="0"
+    ></iframe>
+    {% else %}
+    <p>Retool dashboard is currently not available.</p>
+    {% endif %}
 </div>
 
 {% endblock %}

@@ -1,17 +1,31 @@
-{% macro nav_item(url, text) %}
+{% macro nav_item(text, url) %}
 <li class="nav-item px-1">
     {% if request.path.startswith(url) %}
-    <a class="nav-link active" aria-current="page" href="{{ url }}">{{ text }}</a>
+        <a class="nav-link active" aria-current="page" href="{{ url }}">{{ text }}</a>
     {% else %}
-    <a class="nav-link" href="{{ url }}">{{ text }}</a>
+        <a class="nav-link" href="{{ url }}">{{ text }}</a>
     {% endif %}
 </li>
 {% endmacro %}
 
-{% macro nav_dropdown_item(url, text, target) %}
+{% macro nav_dropdown(text) %}
+<li class="nav-item px-1 dropdown">
+    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+        {{ text }}
+    </a>
+    <ul class="dropdown-menu dropdown-menu-end">
+        {{ caller() }}
+    </ul>
+</li>
+{% endmacro %}
+
+{% macro nav_dropdown_item(text, url, target, groups) %}
 <li>
     {% set target = target|default('_self') %}
-    <a class="dropdown-item" href="{{ url }}" target="{{ target }}">{{ text }}</a>
+
+    {% if not groups or is_current_user_in_group(groups) %}
+        <a class="dropdown-item" href="{{ url }}" target="{{ target }}">{{ text }}</a>
+    {% endif %}
 </li>
 {% endmacro %}
 
@@ -20,37 +34,42 @@
     <head>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
         <link rel="stylesheet" href="/static/style.css">
-        <title>{% block title %}{% endblock %} - The Daily Illini</title>
+        <title>{% block title %}{% endblock %} - Illini Media Company</title>
     </head>
     <body class="d-flex flex-column vh-100">
         <nav class="navbar navbar-expand-lg bg-body-tertiary">
             <div class="container-fluid">
-                <a class="navbar-brand" href="#">The Daily Illini</a>
+                <a class="navbar-brand" href="/">Illini Media Company</a>
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                        {{ nav_item(url_for('socials_routes.dashboard'), 'Socials') }}
-                        {{ nav_item(url_for('illordle_routes.dashboard'), 'Illordle') }}
-                        {{ nav_item(get_gcal_url(constants.COPY_EDITING_GCAL_ID), 'Copy Editing') }}
+                        {% call nav_dropdown('Quick Links') %}
+                            {% for quick_link in quick_links %}
+                                {% set groups = [quick_link['group'], 'student-managers', 'lead-dev'] if quick_link['group'] else None %}
+                                {{ nav_dropdown_item(quick_link['name'], quick_link['url'], '_blank', groups) }}
+                            {% endfor %}
 
-                        <li class="nav-item px-1 dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                WPGU
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                {{ nav_dropdown_item(get_gcal_url(constants.WPGU_ON_AIR_GCAL_ID), 'WPGU On-Air Calendar', '_blank') }}
-                                {{ nav_dropdown_item(url_for('retool_routes.wpgu_website'), 'WPGU Website Settings') }}
-                            </ul>
-                        </li>
+                            {{ nav_dropdown_item('Edit quick links', url_for('quick_links_routes.dashboard'), groups=['student-managers', 'editors', 'imc-staff-webdev']) }}
 
-                        <li class="nav-item px-1 dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                Developer Tools
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                {{ nav_dropdown_item(url_for('api_query'), 'API Query') }}
-                                {{ nav_dropdown_item(url_for('constant_contact_routes.cc_login'), 'Authorize Constant Contact') }}
-                            </ul>
-                        </li>
+                            {% if not current_user.is_authenticated %}
+                                {{ nav_dropdown_item('Log in', url_for('login')) }}
+                            {% endif %}
+                        {% endcall %}
+
+                        {% call nav_dropdown('Daily Illini') %}
+                            {{ nav_dropdown_item('Socials', url_for('socials_routes.dashboard')) }}
+                            {{ nav_dropdown_item('ILLordle', url_for('illordle_routes.dashboard')) }}
+                            {{ nav_dropdown_item('Copy editing schedule', get_gcal_url(constants.COPY_EDITING_GCAL_ID), '_blank') }}
+                        {% endcall %}
+
+                        {% call nav_dropdown('WPGU') %}
+                            {{ nav_dropdown_item('On-air calendar', get_gcal_url(constants.WPGU_ON_AIR_GCAL_ID), '_blank') }}
+                            {{ nav_dropdown_item('Website settings', url_for('retool_routes.wpgu_website')) }}
+                        {% endcall %}
+
+                        {% call nav_dropdown('Developer Tools') %}
+                            {{ nav_dropdown_item('API query', url_for('api_query')) }}
+                            {{ nav_dropdown_item('Authorize Constant Contact', url_for('constant_contact_routes.cc_login')) }}
+                        {% endcall %}
                     </ul>
 
                     <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
