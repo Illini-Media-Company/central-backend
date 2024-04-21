@@ -1,6 +1,7 @@
 from zoneinfo import ZoneInfo
 from datetime import datetime, timedelta
 from gcsa.google_calendar import GoogleCalendar
+from gcsa.attendee import Attendee
 
 from constants import COPY_EDITING_GCAL_ID, SLACK_BOT_TOKEN
 from db.kv_store import kv_store_get, kv_store_set
@@ -97,3 +98,117 @@ def notify_copy_editor(story_url, is_breaking, copy_chief_email=None):
             + story_url,
         )
     print(f"Slack message sent to {email}.")
+
+
+def add_copy_editor(editor_email, day_of_week, shift_num):
+    creds = get_creds(SCOPES)
+    gc = GoogleCalendar(COPY_EDITING_GCAL_ID, credentials=creds)
+
+    # Define shift start times
+    shift_starts = ["10:00", "12:00", "14:00", "16:00", "18:00"]
+
+    try:
+        # Convert inputs to integers
+        shift_num = int(shift_num)
+        day_of_week = int(day_of_week)
+    except ValueError:
+        # Handle invalid inputs
+        print("Error: shift_num and/or day_of_week is not a valid integer.")
+        return
+
+    # Check if shift_num is within range
+    if not 0 <= shift_num < len(shift_starts):
+        print("Error: shift_num is out of range.")
+        return
+
+    # Calculate the next occurrence of the specified day of the week
+    today = datetime.now().date()
+    days_ahead = (day_of_week - today.weekday()) % 7
+    next_day_of_week = today + timedelta(days=days_ahead)
+    print("Next day of week: ", next_day_of_week)
+
+    # Retrieve events from the Google Calendar API
+    event = gc.get_events(
+        time_min=datetime.now().date(),
+        single_events=True,
+        timezone="America/Chicago",
+        order_by="startTime",
+    )
+
+    # Iterate over events to find the relevant one for the specified shift
+    for e in list(event):
+        if (e.start.strftime("%H:%M") == shift_starts[shift_num]) and (
+            (e.start.date() - next_day_of_week).days % 7 == 0
+        ):
+            sample_event = e
+            print(e.attendees)
+            break
+
+    # Retrieve instances of the recurring event
+    recurr = gc.get_instances(sample_event.recurring_event_id)
+
+    # Iterate over instances to check and add the editor email if not already present
+    for e in list(recurr):
+        if editor_email in e.attendees:
+            continue
+        e.add_attendee(editor_email)
+        # gc.update_event(e)
+        print(e.start, "  |  ", e.attendees)
+
+
+def remove_copy_editor(editor_email, day_of_week, shift_num):
+    creds = get_creds(SCOPES)
+    gc = GoogleCalendar(COPY_EDITING_GCAL_ID, credentials=creds)
+
+    # Define shift start times
+    shift_starts = ["10:00", "12:00", "14:00", "16:00", "18:00"]
+
+    try:
+        # Convert inputs to integers
+        shift_num = int(shift_num)
+        day_of_week = int(day_of_week)
+    except ValueError:
+        # Handle invalid inputs
+        print("Error: shift_num and/or day_of_week is not a valid integer.")
+        return
+    # Check if shift_num is within range
+    if not 0 <= shift_num < len(shift_starts):
+        print("Error: shift_num is out of range.")
+        return
+
+    # Calculate the next occurrence of the specified day of the week
+    today = datetime.now().date()
+    days_ahead = (day_of_week - today.weekday()) % 7
+    next_day_of_week = today + timedelta(days=days_ahead)
+    print("Next day of week: ", next_day_of_week)
+
+    event = gc.get_events(
+        time_min=datetime.now().date(),
+        single_events=True,
+        timezone="America/Chicago",
+        order_by="startTime",
+    )
+
+    # Iterate over events to find the relevant one for the specified shift
+    for e in list(event):
+        if (e.start.strftime("%H:%M") == shift_starts[shift_num]) and (
+            (e.start.date() - next_day_of_week).days % 7 == 0
+        ):
+            r_id = e.recurring_event_id
+            print(e.attendees)
+            break
+
+    # Retrieve instances of the recurring event
+    recurr = gc.get_instances(r_id)
+
+    # Iterate over instances to remove the editor email if present
+    for e in list(recurr):
+        l = e.attendees
+        try:
+            l.remove(editor_email)
+            e.attendees = l
+            # gc.update_event(e)
+        except ValueError:
+            # Handle the case where editor_email is not in the attendee's list
+            return "Not yet in attendee's list.", 401
+        print(e.start, "  |  ", e.attendees)
