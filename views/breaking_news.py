@@ -1,5 +1,4 @@
-import re
-from flask import Blueprint, render_template, request, redirect, url_for
+from flask import Blueprint, render_template, request
 from flask_login import current_user, login_required
 from util.security import restrict_to
 import requests
@@ -24,7 +23,7 @@ COPYING_MESSAGE = [
         "type":"header",
         "text": {
             "type": "plain_text",
-            "text": ":rotating_light:*BREAKING NEWS HAS BEEN POSTED*:rotating_light:",
+            "text": ":rotating_light:*BREAKING NEWS IS READY FOR EDITING*:rotating_light:",
             "emoji": True,
         },
     },
@@ -58,7 +57,7 @@ POSTED_SUCCESFULLY = [
         "type":"header",
         "text": {
             "type": "plain_text",
-            "text": ":rotating_light:*BREAKING NEWS HAS BEEN POSTED*:rotating_light:",
+            "text": ":white_check_mark:*BREAKING NEWS HAS BEEN PUBLISHED*:white_check_mark:",
             "emoji": True,
         },
     },
@@ -77,7 +76,7 @@ NOT_POSTED = [
         "type":"header",
         "text": {
             "type": "plain_text",
-            "text": ":rotating_light:*BREAKING NEWS HAS BEEN POSTED*:rotating_light:",
+            "text": ":rotating_light:*BREAKING NEWS IS READY FOR EDITING*:rotating_light:",
             "emoji": True,
         },
     },
@@ -125,27 +124,29 @@ def submit_story():
 
     post_to_reddit = request.form.get('post_to_reddit') == '1'
     post_to_twitter = request.form.get('post_to_twitter') == '1'
-    slack_message_id = ' '
     created_by = current_user.name
+    slack_message_id = ''
 
     response = requests.get(url)
     if response.status_code != 200:
         return "Failed to fetch webpage"
     
-    result = app.client.chat_postMessage(
-        token=SLACK_BOT_TOKEN,
-        username="IMC Breaking News Bot",
-        channel=DI_COPYING_ID,
-        blocks=COPYING_MESSAGE,
-        text="BREAKING NEWS ALERT"
-    )
+    if not post_to_twitter and not post_to_reddit:
+        result = app.client.chat_postMessage(
+            token=SLACK_BOT_TOKEN,
+            username="IMC Breaking News Bot",
+            channel=DI_COPYING_ID,
+            blocks=COPYING_MESSAGE,
+            text="BREAKING NEWS ALERT"
+        )
+        slack_message_id = result["ts"]
     
     new_story = add_story(
         title=title,
         url=url,
         post_to_reddit=post_to_reddit,
         post_to_twitter=post_to_twitter,
-        slack_message_id=result["ts"],
+        slack_message_id=slack_message_id,
         created_by=created_by
     )
     return "success", 200
@@ -212,10 +213,7 @@ def breaking_button(ack, logger, body):
     ack()
     logger.info(body)
     ts = body["message"]["ts"]
-    post_message(ts)
-
-def post_message(ts, url):
-    url = story_url_from_ts(5, ts)
+    url = story_url_from_ts(10, ts)
     if (url == None):
         print("story is no longer recent")
     elif (get_published_url(url) == None):
