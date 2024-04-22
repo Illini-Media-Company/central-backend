@@ -53,7 +53,7 @@ def create_push_notification():
 
 @socials_routes.route("/reddit", methods=["POST"])
 @login_required
-@restrict_to(["editors", "di-staff-social"])
+@restrict_to(["editors", "di-staff-social", "webdev"])
 def create_reddit_post():
     url = request.form["url"].partition("?")[0]
     title, err = validate_story(url)
@@ -62,6 +62,7 @@ def create_reddit_post():
 
     url, err = post_to_reddit(title, url)
     if err:
+        print(err)
         return err
     else:
         return "Posted to Reddit.", 200
