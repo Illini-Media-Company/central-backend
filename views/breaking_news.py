@@ -1,6 +1,7 @@
 import re
 from flask import Blueprint, render_template, request, redirect, url_for
 from flask_login import current_user, login_required
+from util.security import restrict_to
 import requests
 
 from db.story import Story, add_story, get_recent_stories
@@ -9,6 +10,8 @@ from util.stories import get_title_from_url
 
 from flask_login import login_required
 from db.story import add_story, get_recent_stories
+from db.social_post import SocialPlatform
+from util.social_posts import post_to_reddit, post_to_twitter
 from util.stories import get_published_url, get_title_from_url
 from util.slackbot import app
 from constants import SLACK_BOT_TOKEN
@@ -114,10 +117,12 @@ def dashboard():
 
     return render_template('breaking.html', stories=stories)
 
+
 @breaking_routes.route('/submit', methods=['POST'])
 def submit_story():
-    url = request.form['url']
+    url = get_published_url(request.form["url"].partition("?")[0])
     title = get_title_from_url(url)
+
     post_to_reddit = request.form.get('post_to_reddit') == '1'
     post_to_twitter = request.form.get('post_to_twitter') == '1'
     slack_message_id = ' '
@@ -144,6 +149,62 @@ def submit_story():
         created_by=created_by
     )
     return "success", 200
+
+#Publish to social media
+''' def is_valid_url(url):
+    url_pattern = re.compile(r"^(https?|ftp):\/\/[^\s/$.?#].[^\s]*$", re.IGNORECASE)
+    return bool(re.match(url_pattern, url))
+
+def validate_story(url):
+    if len(url) < 1:
+        return None, ("ERROR: Empty URL.", 400)
+    if not is_valid_url(url):
+        return None, ("ERROR: Invalid URL.", 400)
+    title = get_title_from_url(url)
+    if title is None:
+        return None, ("ERROR: Story cannot be found.", 400)
+    return title, None
+
+print('start')
+print(validate_story('https://dailyillini.com/wp-admin/post.php?post=338488&action=edit'))
+print(validate_story('https://dailyillini.com/life_and_culture-stories/2024/04/22/marching-illini-sousaphones-take-on-illinois-5k/'))
+print('end')
+
+'''
+
+
+'''@breaking_routes.route('/publish_reddit', methods= ['POST'])
+@login_required
+def create_reddit_post():
+    url = get_published_url(request.form["url"].partition("?")[0])
+    title = get_title_from_url(url)
+    url, err = post_to_reddit(title, url)
+    if err:
+        return err
+    else:
+         return jsonify({"title": title, "message": "Published to Reddit."}), 200
+    
+
+print('start')
+print(get_title_from_url(get_published_url('https://dailyillini.com/wp-admin/post.php?post=338488&action=edit')))
+print('end')
+@breaking_routes.route("/publish_twitter", methods=["POST"])
+@login_required
+
+def create_tweet():
+    url = get_published_url(request.form["url"].partition("?")[0])
+    title = get_title_from_url(url)
+    url, err = post_to_twitter(title, url)
+    if err:
+        return err
+    else:
+         return jsonify({"title": title, "message": "Published to Twitter."}), 200
+    
+'''
+
+
+
+    
 
 # Start of the Slack Button Code
 @app.action("breaking_button")

@@ -16,7 +16,7 @@ Breaking
 </style>
 
 <div class="container">
-    <form action="/breaking/submit" method="post" enctype="application/x-www-form-urlencoded">
+    <form id="storyForm" enctype="application/x-www-form-urlencoded">
         <div class="row my-4">
             <label for="url" class="col-sm-1 col-form-label">Story URL</label>
             <div class="col-sm-11">
@@ -42,21 +42,11 @@ Breaking
             </div>
             
             <div class="col-sm-2">
-                <button type="submit" class="btn btn-primary" onclick="submitForm(this)">Submit</button>
-            </div>
-        </div>
-
-        <!-- Publish Date Input Field -->
-        <div class="row my-4" id="publishDateRow" style="display: none;">
-            <label for="publishDate" class="col-sm-1 col-form-label">Publish Date</label>
-            <div class="col-sm-11">
-                <input type="text" id="publishDate" class="form-control" name="publish_date">
+                <button type="button" class="btn btn-primary" onclick="submitForm()">Submit</button>
             </div>
         </div>
     </form>
 </div>
-
-
 
 <div class="container d-flex justify-content-between align-items-center">
     <h3>Recent Stories</h3>
@@ -65,18 +55,18 @@ Breaking
 <div class="container">
     <table class="table table-bordered">
         <tr>
-            <th>Title</th>
+            <th>URL</th>
             <th>Date Submitted</th>
             <th>Date Published</th>
             <th>Social Media Platforms</th>
         </tr>
         {% for story in stories %}
         <tr>
-            <td>{{ story.title }}</td>
+            <td><a href="{{ story.url }}">{{ story.url }}</a></td>
             <td>{{ story.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
             <td>
                 {% if story.published_at %}
-                {{ story.published_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                {{ story.published_at }}
                 {% else %}
                 Not published
                 {% endif %}
@@ -96,41 +86,115 @@ Breaking
 
 
 <script>
-    const endpoint = "/breaking/submit";
 
-    async function submitForm(button) {
-        button.disabled = true;
-        button.innerHTML = 'Submitting...';
-
+    async function submitForm() {
         const url = document.getElementById('url').value;
-        const post_to_reddit = document.getElementById('redditCheckbox').checked ? '1' : '0';
-        const post_to_twitter = document.getElementById('twitterCheckbox').checked ? '1' : '0';
+        const post_to_reddit = document.getElementById('redditCheckbox').checked;
+        const post_to_twitter = document.getElementById('twitterCheckbox').checked;
 
-        const formData = new URLSearchParams();
-        formData.append('url', url);
-        formData.append('post_to_reddit', post_to_reddit);
-        formData.append('post_to_twitter', post_to_twitter);
-        formData.append('_csrf_token', '{{ csrf_token() }}');
+        let publishedAt = '';
+        let platforms = '';
+       
 
-        const response = await fetch(endpoint, {
+        if (post_to_reddit) {
+            platforms += 'Reddit ';
+            publishedAt = new Date().toLocaleString();
+            
+        }
+        if (post_to_twitter) {
+            platforms += 'Twitter';
+            publishedAt = new Date().toLocaleString();
+            
+        }
+
+        addToDataTable(url, publishedAt, platforms);
+    }
+
+    
+
+    function addToDataTable(url, publishedAt, platforms) {
+        const table = document.querySelector('.table');
+        const newRow = table.insertRow();
+        newRow.innerHTML = `
+            <td><a href="${url}">${url}</a></td>
+            <td>${new Date().toLocaleString()}</td>
+            <td>${publishedAt}</td>
+            <td>${platforms}</td>
+        `;
+    }
+
+</script>
+{% endblock %}
+
+<!-- <script>
+    const endpoint = "/breaking/submit";
+    const endpointReddit = "/breaking/publish_reddit";
+    const endpointTwitter = "/breaking/publish_twitter";
+
+    async function submitForm() {
+        const url = document.getElementById('url').value;
+        const post_to_reddit = document.getElementById('redditCheckbox').checked;
+        const post_to_twitter = document.getElementById('twitterCheckbox').checked;
+
+        let publishedAt = '';
+        let platforms = '';
+
+        
+        const title = await fetchStoryTitle(url);
+
+        if (post_to_reddit) {
+            await publishToReddit(title, url);
+            platforms += 'Reddit ';
+            publishedAt = new Date().toLocaleString();
+        }
+        if (post_to_twitter) {
+            await publishToTwitter(title, url);
+            platforms += 'Twitter';
+            publishedAt = new Date().toLocaleString();
+        }
+
+        addToDataTable(title, publishedAt, platforms);
+    }
+
+
+    async function publishToReddit(title, url) {
+        const response = await fetch(endpointReddit, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: formData.toString(),
+            body: `title=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}&_csrf_token={{ csrf_token() }}`
         });
 
-        if (response.status === 200) {
-            window.location.reload();
-        } else {
-            const message = await response.text();
-            console.error(message);
-            alert(message);
-
-            button.disabled = false;
-            button.innerHTML = 'Submit';
+        if (!response.ok) {
+            const errorMessage = await response.text();
+            console.error('Failed to publish to Reddit:', errorMessage);
         }
     }
-</script>
-{% endblock %}
 
+    async function publishToTwitter(title, url) {
+        const response = await fetch(endpointTwitter, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `title=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}&_csrf_token={{ csrf_token() }}`
+        });
+
+        if (!response.ok) {
+            const errorMessage = await response.text();
+            console.error('Failed to publish to Twitter:', errorMessage);
+        }
+    }
+
+    function addToDataTable(title, publishedAt, platforms) {
+        const table = document.querySelector('.table');
+        const newRow = table.insertRow();
+        newRow.innerHTML = `
+            <td>${title}</td>
+            <td>${new Date().toLocaleString()}</td>
+            <td>${publishedAt}</td>
+            <td>${platforms}</td>
+        `;
+    }
+</script> -->
