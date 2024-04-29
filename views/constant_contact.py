@@ -94,6 +94,9 @@ def cc_create_contact():
         print(f"reCAPTCHA score: {recaptcha_score}")
         return "Contact created successfully!", 200
     else:
+        print(f"failed to create contact for {email}:")
+        print(response)
+        return "Failed to create contact.", 500
         print(f"failed to create contact for {email}")
         print(response.text)
         print(f"reCAPTCHA score: {recaptcha_score}")
