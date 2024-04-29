@@ -14,6 +14,8 @@ from util.social_posts import post_to_reddit, post_to_twitter
 from util.stories import get_published_url, get_title_from_url
 from util.slackbot import app
 from constants import SLACK_BOT_TOKEN
+from util.security import csrf
+from flask_cors import cross_origin
 
 DI_COPYING_ID = "C06LYTJ5N6S"
 
@@ -31,7 +33,7 @@ COPYING_MESSAGE = [
         "type": "section",
         "text": {
             "type": "mrkdwn",
-            "text": "Check if the story is published",
+            "text": "<!channel> Check if the story is published",
         }
     },
     {
@@ -94,7 +96,7 @@ NOT_POSTED = [
                 "type": "button",
                 "text": {
                     "type": "plain_text",
-                    "text": ":x: Story has not been published :x:",
+                    "text": ":x: Not Published :x:",
                     "emoji": True,
                 },
                 "value": "click_me_123",
@@ -118,28 +120,56 @@ def dashboard():
 
 
 @breaking_routes.route('/submit', methods=['POST'])
+@csrf.exempt
 def submit_story():
-    url = get_published_url(request.form["url"].partition("?")[0])
-    title = get_title_from_url(url)
+    url = request.form["url"] + "&action=edit"
+    title = url
 
-    post_to_reddit = request.form.get('post_to_reddit') == '1'
-    post_to_twitter = request.form.get('post_to_twitter') == '1'
+    post_to_reddit = True if request.form["post_to_reddit"] == 'true' else False
+    post_to_twitter = True if request.form["post_to_twitter"] == 'true' else False
     created_by = current_user.name
     slack_message_id = ''
-
-    response = requests.get(url)
-    if response.status_code != 200:
-        return "Failed to fetch webpage"
-    
-    if not post_to_twitter and not post_to_reddit:
-        result = app.client.chat_postMessage(
-            token=SLACK_BOT_TOKEN,
-            username="IMC Breaking News Bot",
-            channel=DI_COPYING_ID,
-            blocks=COPYING_MESSAGE,
-            text="BREAKING NEWS ALERT"
-        )
-        slack_message_id = result["ts"]
+    result = app.client.chat_postMessage(
+        token=SLACK_BOT_TOKEN,
+        username="IMC Breaking News Bot",
+        channel=DI_COPYING_ID,
+        blocks=[
+            {"type": "divider"},
+            {
+                "type":"header",
+                "text": {
+                    "type": "plain_text",
+                    "text": ":rotating_light:*BREAKING NEWS IS READY FOR EDITING*:rotating_light:",
+                    "emoji": True,
+                },
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "<!channel> Check if the story is published: \n" + url,
+                }
+            },
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Check if Published",
+                            "emoji": True,
+                        },
+                        "value": "click_me_123",
+                        "action_id": "breaking_button",
+                    },
+                ],
+            },
+            {"type": "divider"},
+        ],
+        text="BREAKING NEWS ALERT"
+    )
+    slack_message_id = result["ts"]
     
     new_story = add_story(
         title=title,
@@ -221,7 +251,40 @@ def breaking_button(ack, logger, body):
             token=SLACK_BOT_TOKEN, 
             channel=DI_COPYING_ID,
             ts=ts,
-            blocks=NOT_POSTED,
+            blocks=[
+                {"type": "divider"},
+                {
+                    "type":"header",
+                    "text": {
+                        "type": "plain_text",
+                        "text": ":rotating_light:*BREAKING NEWS IS READY FOR EDITING*:rotating_light:",
+                        "emoji": True,
+                    },
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "<!channel> Check if the story is published: \n" + url,
+                    }
+                },
+                {
+                    "type": "actions",
+                    "elements": [
+                        {
+                            "type": "button",
+                            "text": {
+                                "type": "plain_text",
+                                "text": ":x: Not Published :x:",
+                                "emoji": True,
+                            },
+                            "value": "click_me_123",
+                            "action_id": "breaking_button",
+                        },
+                    ],
+                },
+                {"type": "divider"},
+            ],
             text="STORY HAS NOT BEEN POSTED",
         )
     elif (get_published_url(url) != None):
