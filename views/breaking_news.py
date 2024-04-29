@@ -17,7 +17,7 @@ from constants import SLACK_BOT_TOKEN
 from util.security import csrf
 from flask_cors import cross_origin
 
-DI_COPYING_ID = "C038T930WAV"
+DI_COPYING_ID = "C50E93LJG"
 POSTED_SUCCESFULLY = [
     {"type": "divider"},
     {
