@@ -42,10 +42,6 @@
                 <a class="navbar-brand" href="/">Illini Media Company</a>
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                        {{ nav_item(url_for('socials_routes.dashboard'), 'Socials') }}
-                        {{ nav_item(url_for('illordle_routes.dashboard'), 'Illordle') }}
-                        {{ nav_item(url_for('breaking_routes.dashboard'), 'Breaking News') }}
-                        {{ nav_item(get_gcal_url(constants.COPY_EDITING_GCAL_ID), 'Copy Editing') }}
                         {% call nav_dropdown('Quick Links') %}
                             {% for quick_link in quick_links %}
                                 {% set groups = [quick_link['group'], 'student-managers', 'lead-dev'] if quick_link['group'] else None %}
@@ -60,6 +56,7 @@
                         {% endcall %}
 
                         {% call nav_dropdown('Daily Illini') %}
+                            {{ nav_dropdown_item('Breaking News', url_for('breaking_routes.dashboard')) }}
                             {{ nav_dropdown_item('Socials', url_for('socials_routes.dashboard')) }}
                             {{ nav_dropdown_item('ILLordle', url_for('illordle_routes.dashboard')) }}
                             {{ nav_dropdown_item('Copy editing schedule', get_gcal_url(constants.COPY_EDITING_GCAL_ID), '_blank') }}

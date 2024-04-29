@@ -17,42 +17,7 @@ from constants import SLACK_BOT_TOKEN
 from util.security import csrf
 from flask_cors import cross_origin
 
-DI_COPYING_ID = "C06LYTJ5N6S"
-
-COPYING_MESSAGE = [
-    {"type": "divider"},
-    {
-        "type":"header",
-        "text": {
-            "type": "plain_text",
-            "text": ":rotating_light:*BREAKING NEWS IS READY FOR EDITING*:rotating_light:",
-            "emoji": True,
-        },
-    },
-    {
-        "type": "section",
-        "text": {
-            "type": "mrkdwn",
-            "text": "<!channel> Check if the story is published",
-        }
-    },
-    {
-        "type": "actions",
-        "elements": [
-            {
-                "type": "button",
-                "text": {
-                    "type": "plain_text",
-                    "text": "Check if Published",
-                    "emoji": True,
-                },
-                "value": "click_me_123",
-                "action_id": "breaking_button",
-            },
-        ],
-    },
-    {"type": "divider"},
-]
+DI_COPYING_ID = "C038T930WAV"
 POSTED_SUCCESFULLY = [
     {"type": "divider"},
     {
@@ -72,42 +37,6 @@ POSTED_SUCCESFULLY = [
     },
     {"type": "divider"},
 ]
-NOT_POSTED = [
-    {"type": "divider"},
-    {
-        "type":"header",
-        "text": {
-            "type": "plain_text",
-            "text": ":rotating_light:*BREAKING NEWS IS READY FOR EDITING*:rotating_light:",
-            "emoji": True,
-        },
-    },
-    {
-        "type": "section",
-        "text": {
-            "type": "mrkdwn",
-            "text": "Check if the story is published",
-        }
-    },
-    {
-        "type": "actions",
-        "elements": [
-            {
-                "type": "button",
-                "text": {
-                    "type": "plain_text",
-                    "text": ":x: Not Published :x:",
-                    "emoji": True,
-                },
-                "value": "click_me_123",
-                "action_id": "breaking_button",
-            },
-        ],
-    },
-    {"type": "divider"},
-]
-
-
 
 breaking_routes = Blueprint("breaking_routes", __name__, url_prefix="/breaking")
 
@@ -180,61 +109,6 @@ def submit_story():
         created_by=created_by
     )
     return "success", 200
-
-#Publish to social media
-''' def is_valid_url(url):
-    url_pattern = re.compile(r"^(https?|ftp):\/\/[^\s/$.?#].[^\s]*$", re.IGNORECASE)
-    return bool(re.match(url_pattern, url))
-
-def validate_story(url):
-    if len(url) < 1:
-        return None, ("ERROR: Empty URL.", 400)
-    if not is_valid_url(url):
-        return None, ("ERROR: Invalid URL.", 400)
-    title = get_title_from_url(url)
-    if title is None:
-        return None, ("ERROR: Story cannot be found.", 400)
-    return title, None
-
-print('start')
-print(validate_story('https://dailyillini.com/wp-admin/post.php?post=338488&action=edit'))
-print(validate_story('https://dailyillini.com/life_and_culture-stories/2024/04/22/marching-illini-sousaphones-take-on-illinois-5k/'))
-print('end')
-
-'''
-
-
-'''@breaking_routes.route('/publish_reddit', methods= ['POST'])
-@login_required
-def create_reddit_post():
-    url = get_published_url(request.form["url"].partition("?")[0])
-    title = get_title_from_url(url)
-    url, err = post_to_reddit(title, url)
-    if err:
-        return err
-    else:
-         return jsonify({"title": title, "message": "Published to Reddit."}), 200
-    
-
-print('start')
-print(get_title_from_url(get_published_url('https://dailyillini.com/wp-admin/post.php?post=338488&action=edit')))
-print('end')
-@breaking_routes.route("/publish_twitter", methods=["POST"])
-@login_required
-
-def create_tweet():
-    url = get_published_url(request.form["url"].partition("?")[0])
-    title = get_title_from_url(url)
-    url, err = post_to_twitter(title, url)
-    if err:
-        return err
-    else:
-         return jsonify({"title": title, "message": "Published to Twitter."}), 200
-    
-'''
-
-
-
     
 
 # Start of the Slack Button Code
