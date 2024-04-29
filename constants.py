@@ -29,12 +29,16 @@ SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", None)
 SLACK_APP_TOKEN = os.environ.get("SLACK_APP_TOKEN", None)
 SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET", None)
 
+RECAPTCHA_SECRET_KEY = os.environ.get("RECAPTCHA_SECRET_KEY", None)
+
 CC_CLIENT_ID = os.environ.get("CC_CLIENT_ID", None)
 CC_CLIENT_SECRET = os.environ.get("CC_CLIENT_SECRET", None)
 CC_LIST_MAPPING = {
     "headline_news": "01d15d60-4c11-11e3-826c-d4ae52725666",
     "sports": "0fa0f9d0-f33e-11e8-bed9-d4ae52733d3a",
     "wpgu": "01ff9950-4c11-11e3-826c-d4ae52725666",
+    "daily-urbana": "8f76cac0-dfdf-11ee-9c51-fa163e5bc304",
+    "daily-champaign": "4ab95568-f215-11ee-9e0c-fa163e7b09ec"
 }
 
 RETOOL_API_KEY = os.environ.get("RETOOL_API_KEY", None)

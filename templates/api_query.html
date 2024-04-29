@@ -25,7 +25,7 @@ async function sendRequest(form, event) {
         },
         body: method === "POST" ? requestBody : null,
     });
-    document.getElementById('response').innerHTML = await response.text();
+    document.getElementById('response').value = await response.text();
 }
 </script>
 

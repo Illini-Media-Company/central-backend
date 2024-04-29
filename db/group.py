@@ -12,7 +12,6 @@ def add_group(name, ancestors):
     with client.context():
         group = Group.query().filter(Group.name == name).get()
         if group is not None:
-            group.name = name
             group.ancestors = ancestors
         else:
             group = Group(name=name, ancestors=ancestors)

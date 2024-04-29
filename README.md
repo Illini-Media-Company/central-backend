@@ -17,7 +17,7 @@ Make sure you have all of the following installed on your computer:
 
 1. Clone this repo on your computer using either GitHub Desktop or the `git` CLI tool.
 
-2. Get the `.env` file from the Managing Editor for Online and place it in `central-backend`.
+2. Get the `.env` file from the Lead Developer and place it in the `central-backend` folder you just cloned.
 
 3. In a terminal window, run `gcloud auth login` to open a login page on your browser. Log in to your **@illinimedia.com** account, then return to the terminal. Following the prompt, set the current project to `central-backend-399421`.
 

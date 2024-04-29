@@ -16,7 +16,7 @@ def list_users():
 
 @users_routes.route("", methods=["POST"])
 @login_required
-@restrict_to(["editors", "webdev", "di-staff-webdev"])
+@restrict_to(["editors", "webdev", "imc-staff-webdev"])
 def create_user():
     name = request.form["name"]
     email = request.form["email"]

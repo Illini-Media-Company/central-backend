@@ -28,6 +28,7 @@ from constants import (
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
 )
+from db.quick_link import get_all_quick_links
 from db.user import (
     add_user,
     get_user,
@@ -35,9 +36,11 @@ from db.user import (
 from util.security import (
     csrf,
     get_google_provider_cfg,
+    is_user_in_group,
     update_groups,
 )
 from util.slackbot import start_slack
+from views.quick_links import quick_links_routes
 from views.content_doc import content_doc_routes
 from views.constant_contact import constant_contact_routes
 from views.illordle import illordle_routes
@@ -46,6 +49,7 @@ from views.retool_apps import retool_routes
 from views.users import users_routes
 from views.groups import groups_routes
 from views.breaking_news import breaking_routes
+from views.copy_schedule import copy_schedule_routes
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
@@ -55,6 +59,8 @@ app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 # }
 Talisman(app, content_security_policy=[])
 csrf.init_app(app)
+
+app.register_blueprint(quick_links_routes)
 app.register_blueprint(content_doc_routes)
 app.register_blueprint(constant_contact_routes)
 app.register_blueprint(illordle_routes)
@@ -63,6 +69,7 @@ app.register_blueprint(retool_routes)
 app.register_blueprint(users_routes)
 app.register_blueprint(groups_routes)
 app.register_blueprint(breaking_routes)
+app.register_blueprint(copy_schedule_routes)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -84,10 +91,20 @@ def unauthorized_callback():
 
 @app.context_processor
 def add_template_context():
+    def is_current_user_in_group(groups):
+        if isinstance(groups, str):
+            groups = [groups]
+        return current_user.is_authenticated and is_user_in_group(current_user, groups)
+
     def get_gcal_url(gcal_id):
         return f"https://calendar.google.com/calendar?cid={gcal_id}"
 
-    return dict(get_gcal_url=get_gcal_url, constants=constants)
+    return dict(
+        constants=constants,
+        quick_links=get_all_quick_links(),
+        is_current_user_in_group=is_current_user_in_group,
+        get_gcal_url=get_gcal_url,
+    )
 
 
 @app.route("/")

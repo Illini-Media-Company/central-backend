@@ -14,7 +14,7 @@ from googleapiclient.discovery import build
 import networkx as nx
 import requests
 
-from constants import ENV, ADMIN_EMAIL, GOOGLE_POJECT_ID
+from constants import ENV, ADMIN_EMAIL, GOOGLE_POJECT_ID, RECAPTCHA_SECRET_KEY
 from db.group import add_group
 from db.user import update_user_groups
 
@@ -22,6 +22,8 @@ from db.user import update_user_groups
 GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
 TOKEN_URL = "https://accounts.google.com/o/oauth2/token"
 SCOPES = ["https://www.googleapis.com/auth/admin.directory.group.readonly"]
+
+RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify"
 
 
 csrf = SeaSurf()
@@ -144,3 +146,16 @@ def restrict_to(users_or_groups, google_id_token_aud=None):
         return wrapper
 
     return decorator
+
+
+def verify_recaptcha(token):
+    data = {
+        "secret": RECAPTCHA_SECRET_KEY,
+        "response": token,
+    }
+
+    response = requests.post(RECAPTCHA_VERIFY_URL, data=data).json()
+    if response["success"]:
+        return response["score"]
+    else:
+        return -1
