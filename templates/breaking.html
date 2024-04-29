@@ -88,6 +88,9 @@ Breaking
 <script>
 
     async function submitForm() {
+        // button.disabled = true;
+        // button.innerHTML = 'Submitting...';
+        let endpoint = '/breaking/submit';
         const url = document.getElementById('url').value;
         const post_to_reddit = document.getElementById('redditCheckbox').checked;
         const post_to_twitter = document.getElementById('twitterCheckbox').checked;
@@ -98,13 +101,27 @@ Breaking
 
         if (post_to_reddit) {
             platforms += 'Reddit ';
-            publishedAt = new Date().toLocaleString();
-            
         }
         if (post_to_twitter) {
             platforms += 'Twitter';
-            publishedAt = new Date().toLocaleString();
-            
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `_csrf_token={{ csrf_token() }}&url=${url}&post_to_twitter=${post_to_twitter}&post_to_reddit=${post_to_reddit}`,
+        });
+        
+        if (response.status === 200) {
+            window.location.reload();
+        } else {
+            const message = await response.text();
+            console.error(message);
+            alert(message);
+            button.disabled = false;
+            button.innerHTML = 'Submit';
         }
 
         addToDataTable(url, publishedAt, platforms);
@@ -114,7 +131,7 @@ Breaking
 
     function addToDataTable(url, publishedAt, platforms) {
         const table = document.querySelector('.table');
-        const newRow = table.insertRow();
+        const newRow = table.insertRow(1);
         newRow.innerHTML = `
             <td><a href="${url}">${url}</a></td>
             <td>${new Date().toLocaleString()}</td>
@@ -122,7 +139,6 @@ Breaking
             <td>${platforms}</td>
         `;
     }
-
 </script>
 {% endblock %}
 
