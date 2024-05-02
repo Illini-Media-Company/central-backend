@@ -1,21 +1,17 @@
 from flask import Blueprint, render_template, request
 from flask_login import current_user, login_required
 from util.security import restrict_to
-import requests
+from util.copy_editing import notify_copy_editor
 
 from db.story import Story, add_story, get_recent_stories
-
-from util.stories import get_title_from_url
 
 from flask_login import login_required
 from db.story import add_story, get_recent_stories
 from db.social_post import SocialPlatform
-from util.social_posts import post_to_reddit, post_to_twitter
-from util.stories import get_published_url, get_title_from_url
+from util.stories import get_published_url
 from util.slackbot import app
 from constants import SLACK_BOT_TOKEN
 from util.security import csrf
-from flask_cors import cross_origin
 
 DI_COPYING_ID = "C50E93LJG"
 POSTED_SUCCESFULLY = [
@@ -99,6 +95,8 @@ def submit_story():
         text="BREAKING NEWS ALERT"
     )
     slack_message_id = result["ts"]
+
+    notify_copy_editor(url, True)
     
     new_story = add_story(
         title=title,
@@ -108,6 +106,7 @@ def submit_story():
         slack_message_id=slack_message_id,
         created_by=created_by
     )
+    
     return "success", 200
     
 
