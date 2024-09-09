@@ -15,7 +15,8 @@ quick_links_routes = Blueprint(
 @restrict_to(["student-managers", "editors", "imc-staff-webdev"])
 def dashboard():
     # TODO: Create dashboard for editing quick links
-    return "This page is currently under construction. Please check back soon!", 200
+    links = get_all_quick_links()
+    return render_template("quicklink.html", links=links)
 
 
 @quick_links_routes.route("", methods=["GET"])
@@ -25,7 +26,7 @@ def list_quick_links():
     return get_all_quick_links()
 
 
-@quick_links_routes.route("", methods=["POST"])
+@quick_links_routes.route("/submit", methods=["POST"])
 @login_required
 @restrict_to(["student-managers", "editors", "imc-staff-webdev"])
 def create_quick_link():
