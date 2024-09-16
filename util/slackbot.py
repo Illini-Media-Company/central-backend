@@ -297,7 +297,7 @@ IMC_WELCOME_MESSAGE = [
                 "type": "button",
                 "text": {
                     "type": "plain_text",
-                    "text": ":cwa: Creative Works Agency :cwa:",
+                    "text": ":ics: Illini Content Studio :ics:",
                     "emoji": True,
                 },
                 "value": "click_me_123",
