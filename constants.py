@@ -38,8 +38,7 @@ CC_LIST_MAPPING = {
     "sports": "0fa0f9d0-f33e-11e8-bed9-d4ae52733d3a",
     "wpgu": "01ff9950-4c11-11e3-826c-d4ae52725666",
     "daily-urbana": "8f76cac0-dfdf-11ee-9c51-fa163e5bc304",
-    "daily-champaign": "4ab95568-f215-11ee-9e0c-fa163e7b09ec",
-    "chambana-eats": "85312ef2-2292-11ef-8298-fa163edfff7e"
+    "daily-champaign": "4ab95568-f215-11ee-9e0c-fa163e7b09ec"
 }
 
 RETOOL_API_KEY = os.environ.get("RETOOL_API_KEY", None)
