@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Copy Editing Calendar
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-9">
+            <!-- Calendar Display -->
+            <iframe id="calendarFrame" src="https://calendar.google.com/calendar/embed?src=c_ce11637c04b9e766b04cf09ca41c971bd6b567648308d2ee53823cea6672ae4a%40group.calendar.google.com&ctz=America%2FChicago&bgcolor=%23ffffff&showPrint=0&mode=WEEK&color=%23A79B8E" style="border:solid 0px" width="100%" height="600" frameborder="0" scrolling="no"></iframe>
+        </div>
+        <div class="col-md-3">
+            <h5>Day of the Week:</h5>
+            <form id="dayOfTheWeek">
+                <div class="mb-3">
+                    <select class="form-select" id="dayOfWeekSelect">
+                        <option value="" selected disabled>Choose a value</option>
+                        <option value="0">Monday</option>
+                        <option value="1">Tuesday</option>
+                        <option value="2">Wednesday</option>
+                        <option value="3">Thursday</option>
+                        <option value="4">Friday</option>
+                        <option value="5">Saturday</option>
+                        <option value="6">Sunday</option>
+                    </select>
+                </div>
+            </form>
+            <h5>Shift Number:</h5>
+            <form id="shiftNumber">
+                <div class="mb-3">
+                    <select class="form-select" id="shiftNumberSelect">
+                        <option value="" selected disabled>Choose a value</option>
+                        <option value="0">10 AM - 12 PM</option>
+                        <option value="1">12 PM - 2 PM</option>
+                        <option value="2">2 PM - 4 PM</option>
+                        <option value="3">4 PM - 6 PM</option>
+                        <option value="4">6 PM - 10 PM</option>
+                    </select>
+                </div>
+            </form>
+            <h5>Select Action:</h5>
+            <form id="action">
+                <div class="mb-3">
+                    <select class="form-select" id="actionSelect">
+                        <option value="" selected disabled>Choose a value</option>
+                        <option value="register">Add Attendee</option>
+                        <option value="unregister">Remove Attendee</option>
+                    </select>
+                </div>
+            </form>
+            <button type="submit" class="btn btn-primary" id="submitButton" disabled>Submit</button>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+    // Enable submit button only if all dropdowns have valid selections
+    document.getElementById('dayOfWeekSelect').addEventListener('change', validateForm);
+    document.getElementById('shiftNumberSelect').addEventListener('change', validateForm);
+    document.getElementById('actionSelect').addEventListener('change', validateForm);
+
+    function validateForm() {
+        var dayOfWeek = document.getElementById('dayOfWeekSelect').value;
+        var shiftNumber = document.getElementById('shiftNumberSelect').value;
+        var action = document.getElementById('actionSelect').value;
+
+        var submitButton = document.getElementById('submitButton');
+        submitButton.disabled = (dayOfWeek === '' || shiftNumber === '' || action === '');
+    }
+
+    // Add event listener for submit button
+    document.getElementById('submitButton').addEventListener('click', function() {
+        var dayOfWeek = document.getElementById('dayOfWeekSelect').value;
+        var shiftNumber = document.getElementById('shiftNumberSelect').value;
+        var action = document.getElementById('actionSelect').value;
+
+        if (dayOfWeek !== '' && shiftNumber !== '' && action !== '') {
+            var confirmationMessage = `Do you want to ${action === 'register' ? 'add' : 'remove'} yourself ${action === 'register' ? 'to' : 'from'} shift ${document.getElementById('shiftNumberSelect').options[parseInt(shiftNumber) + 1].text} weekly on ${document.getElementById('dayOfWeekSelect').options[parseInt(dayOfWeek) + 1].text}?`;
+
+            if (window.confirm(confirmationMessage)) {
+                submitButton.innerHTML = 'Processing...';
+
+                fetch(`/copy_schedule/${action}`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `_csrf_token={{ csrf_token() }}&day_of_week=${dayOfWeek}&shift_num=${shiftNumber}`,
+                })
+                .then(response => response.text())
+                .then(data => {
+                    console.log(data);
+                    alert(data);
+                    window.location.reload();
+                })
+                .catch(error => {
+                    console.error('ERROR:', error);
+                    alert(error);
+                });
+            }
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %}

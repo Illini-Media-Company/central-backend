@@ -215,6 +215,12 @@ def api_query():
     return render_template("api_query.html")
 
 
+@app.route("/copy_calendar")
+@login_required
+def copy_calendar():
+    return render_template("copy_editing.html")
+
+
 @app.route("/logout")
 @login_required
 def logout():

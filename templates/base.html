@@ -59,6 +59,7 @@
                             {{ nav_dropdown_item('Socials', url_for('socials_routes.dashboard')) }}
                             {{ nav_dropdown_item('ILLordle', url_for('illordle_routes.dashboard')) }}
                             {{ nav_dropdown_item('Copy editing schedule', get_gcal_url(constants.COPY_EDITING_GCAL_ID), '_blank') }}
+                            {{ nav_dropdown_item('Calendar', url_for('copy_schedule_routes.dashboard')) }}
                         {% endcall %}
 
                         {% call nav_dropdown('WPGU') %}
