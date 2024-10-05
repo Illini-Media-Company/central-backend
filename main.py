@@ -50,7 +50,7 @@ from views.users import users_routes
 from views.groups import groups_routes
 from views.breaking_news import breaking_routes
 from views.copy_schedule import copy_schedule_routes
-from views.mashead_bot import mashead_routes
+from views.masthead_bot import masthead_routes
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
@@ -71,7 +71,7 @@ app.register_blueprint(users_routes)
 app.register_blueprint(groups_routes)
 app.register_blueprint(breaking_routes)
 app.register_blueprint(copy_schedule_routes)
-app.register_blueprint(mashead_routes)
+app.register_blueprint(masthead_routes)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
