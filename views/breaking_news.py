@@ -13,15 +13,16 @@ from db.social_post import SocialPlatform
 from util.social_posts import post_to_reddit, post_to_twitter
 from util.stories import get_published_url, get_title_from_url
 from util.slackbot import app
-from constants import SLACK_BOT_TOKEN
+from constants import SLACK_BOT_TOKEN, ENV
 from util.security import csrf
 from flask_cors import cross_origin
 
-DI_COPYING_ID = "C038T930WAV"
+DI_COPYING_ID = "C50E93LJG" if ENV == "prod" else "C06LYTJ5N6S"
+
 POSTED_SUCCESFULLY = [
     {"type": "divider"},
     {
-        "type":"header",
+        "type": "header",
         "text": {
             "type": "plain_text",
             "text": ":white_check_mark:*BREAKING NEWS HAS BEEN PUBLISHED*:white_check_mark:",
@@ -33,31 +34,35 @@ POSTED_SUCCESFULLY = [
         "text": {
             "type": "mrkdwn",
             "text": ":white_check_mark: Story has been published :white_check_mark:",
-        }
+        },
     },
     {"type": "divider"},
 ]
 
 breaking_routes = Blueprint("breaking_routes", __name__, url_prefix="/breaking")
 
+
 @breaking_routes.route("/dashboard")
 @login_required
 def dashboard():
     stories = get_recent_stories(10)
 
-    return render_template('breaking.html', stories=stories)
+    return render_template("breaking.html", stories=stories)
 
 
-@breaking_routes.route('/submit', methods=['POST'])
+@breaking_routes.route("/submit", methods=["POST"])
 @csrf.exempt
 def submit_story():
     url = request.form["url"] + "&action=edit"
     title = url
 
-    post_to_reddit = True if request.form["post_to_reddit"] == 'true' else False
-    post_to_twitter = True if request.form["post_to_twitter"] == 'true' else False
+    check = ":white_check_mark:"
+    X = ":x:"
+
+    post_to_reddit = True if request.form["post_to_reddit"] == "true" else False
+    post_to_twitter = True if request.form["post_to_twitter"] == "true" else False
     created_by = current_user.name
-    slack_message_id = ''
+    slack_message_id = ""
     result = app.client.chat_postMessage(
         token=SLACK_BOT_TOKEN,
         username="IMC Breaking News Bot",
@@ -65,7 +70,7 @@ def submit_story():
         blocks=[
             {"type": "divider"},
             {
-                "type":"header",
+                "type": "header",
                 "text": {
                     "type": "plain_text",
                     "text": ":rotating_light:*BREAKING NEWS IS READY FOR EDITING*:rotating_light:",
@@ -76,8 +81,8 @@ def submit_story():
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": "<!channel> Check if the story is published: \n" + url,
-                }
+                    "text": f"<!channel> Check if the story is published: \n {url} \n Twitter: {check if post_to_twitter else X} Reddit: {check if post_to_reddit else X}",
+                },
             },
             {
                 "type": "actions",
@@ -96,20 +101,20 @@ def submit_story():
             },
             {"type": "divider"},
         ],
-        text="BREAKING NEWS ALERT"
+        text="BREAKING NEWS ALERT",
     )
     slack_message_id = result["ts"]
-    
+
     new_story = add_story(
         title=title,
         url=url,
         post_to_reddit=post_to_reddit,
         post_to_twitter=post_to_twitter,
         slack_message_id=slack_message_id,
-        created_by=created_by
+        created_by=created_by,
     )
     return "success", 200
-    
+
 
 # Start of the Slack Button Code
 @app.action("breaking_button")
@@ -118,17 +123,17 @@ def breaking_button(ack, logger, body):
     logger.info(body)
     ts = body["message"]["ts"]
     url = story_url_from_ts(10, ts)
-    if (url == None):
+    if url == None:
         print("story is no longer recent")
-    elif (get_published_url(url) == None):
+    elif get_published_url(url) == None:
         app.client.chat_update(
-            token=SLACK_BOT_TOKEN, 
+            token=SLACK_BOT_TOKEN,
             channel=DI_COPYING_ID,
             ts=ts,
             blocks=[
                 {"type": "divider"},
                 {
-                    "type":"header",
+                    "type": "header",
                     "text": {
                         "type": "plain_text",
                         "text": ":rotating_light:*BREAKING NEWS IS READY FOR EDITING*:rotating_light:",
@@ -140,7 +145,7 @@ def breaking_button(ack, logger, body):
                     "text": {
                         "type": "mrkdwn",
                         "text": "<!channel> Check if the story is published: \n" + url,
-                    }
+                    },
                 },
                 {
                     "type": "actions",
@@ -161,18 +166,19 @@ def breaking_button(ack, logger, body):
             ],
             text="STORY HAS NOT BEEN POSTED",
         )
-    elif (get_published_url(url) != None):
+    elif get_published_url(url) != None:
         app.client.chat_update(
-            token=SLACK_BOT_TOKEN, 
+            token=SLACK_BOT_TOKEN,
             channel=DI_COPYING_ID,
             ts=ts,
             blocks=POSTED_SUCCESFULLY,
             text="STORY HAS BEEN POSTED",
         )
 
+
 def story_url_from_ts(count, ts):
     stories = get_recent_stories(count)
     for i in stories:
-        if (i["slack_message_id"] == ts):
+        if i["slack_message_id"] == ts:
             return i["url"]
     return None
