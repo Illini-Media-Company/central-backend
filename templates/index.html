@@ -5,4 +5,22 @@ Index
 {% endblock %}
 
 {% block content %}
+<h3>Session URL History</h3>
+        <table border="1">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>URL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for url in url_history %}
+                    <tr>
+                        <td>{{ loop.index }}</td> 
+                        <td>{{ url }}</td>
+                    </tr>
+                    {% endfor %}
+            
+                </tbody>
+            </table>
 {% endblock %}

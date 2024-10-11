@@ -10,6 +10,7 @@ from flask import (
     render_template,
     request,
     url_for,
+    session,
 )
 from flask_login import (
     LoginManager,
@@ -78,6 +79,23 @@ client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
 start_slack(app)
 
+@app.before_request
+def track_url():
+    if 'url_history' not in session:
+        session['url_history'] = []    
+    current_url = request.url
+    print(f"Tracking URL: {current_url}")  # For debugging
+
+    if request.path.startswith('/static'):
+        return
+
+    if not current_url.startswith("https://127.0.0.1:5001/login"):
+        print(f"Session History: {session['url_history']}")
+        session['url_history'].append(current_url)
+        print(f"Session History: {session['url_history']}")
+        session.modified = True  
+    # return r
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -109,8 +127,8 @@ def add_template_context():
 
 @app.route("/")
 def index():
-    return render_template("index.html")
-
+    url_history = session.get('url_history', [])
+    return render_template('index.html', url_history = url_history)
 
 @app.route("/login")
 def login():
