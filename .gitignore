@@ -166,3 +166,4 @@ cython_debug/
 
 # MacOS
 .DS_Store
+python3.exe
