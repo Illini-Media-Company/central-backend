@@ -84,17 +84,20 @@ def track_url():
     if 'url_history' not in session:
         session['url_history'] = []    
     current_url = request.url
-    print(f"Tracking URL: {current_url}")  # For debugging
 
-    if request.path.startswith('/static'):
+    current_url = current_url.removeprefix("https://app.dailyillini.com")
+
+    url_prefix_ignore = ['/static', '/login', 'favicon.ico']
+
+    for url in url_prefix_ignore:
+        if current_url.startswith(url):
+            return
+
+    if current_url == "/":
         return
 
-    if not current_url.startswith("https://127.0.0.1:5001/login"):
-        print(f"Session History: {session['url_history']}")
-        session['url_history'].append(current_url)
-        print(f"Session History: {session['url_history']}")
-        session.modified = True  
-    # return r
+    session['url_history'].append(current_url)
+    session.modified = True  
 
 
 @login_manager.user_loader
