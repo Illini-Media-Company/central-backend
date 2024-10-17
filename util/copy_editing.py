@@ -15,7 +15,7 @@ SHIFT_OFFSET = timedelta(
     minutes=15
 )  # Threshold to skip shift if there are SHIFT_OFFSET minutes or less remaining in shift
 BREAKING_SHIFTS = [0, 1, 2, 3]
-CONTENT_DOC_SHIFTS = [3, 4]
+CONTENT_DOC_SHIFTS = [3, 4, 5, 6]
 
 
 # Returns the email address of the copy editor on shift who has edited a story least recently, or None if there's no copy editor on shift.
@@ -30,15 +30,20 @@ def get_copy_editor(is_breaking):
     today = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
     tomorrow = today + timedelta(days=1)
     shifts = gc.get_events(today, tomorrow, single_events=True, order_by="startTime")
+    print(shifts)
 
     current_shift = None
     for i, shift in enumerate(shifts):
-        if is_breaking and i in BREAKING_SHIFTS:
+        # if is_breaking and i in BREAKING_SHIFTS:
+        #     if shift.start <= current_time_offset <= shift.end:
+        #         current_shift = shift
+        #         break
+        # elif not is_breaking and i in CONTENT_DOC_SHIFTS:
+        #     if current_time_offset <= shift.end:
+        #         current_shift = shift
+        #         break
+        if i in BREAKING_SHIFTS or i in CONTENT_DOC_SHIFTS:
             if shift.start <= current_time_offset <= shift.end:
-                current_shift = shift
-                break
-        elif not is_breaking and i in CONTENT_DOC_SHIFTS:
-            if current_time_offset <= shift.end:
                 current_shift = shift
                 break
 
@@ -105,7 +110,7 @@ def add_copy_editor(editor_email, day_of_week, shift_num):
     gc = GoogleCalendar(COPY_EDITING_GCAL_ID, credentials=creds)
 
     # Define shift start times
-    shift_starts = ["10:00", "12:00", "14:00", "16:00", "18:00"]
+    shift_starts = ["8:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00"]
 
     try:
         # Convert inputs to integers
@@ -161,7 +166,7 @@ def remove_copy_editor(editor_email, day_of_week, shift_num):
     gc = GoogleCalendar(COPY_EDITING_GCAL_ID, credentials=creds)
 
     # Define shift start times
-    shift_starts = ["10:00", "12:00", "14:00", "16:00", "18:00"]
+    shift_starts = ["8:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00"]
 
     try:
         # Convert inputs to integers
