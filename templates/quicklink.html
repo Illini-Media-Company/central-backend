@@ -21,14 +21,26 @@ Quicklinks Admin
         <div class="row my-4">
             <label for="url" class="col-sm-1 col-form-label">Story URL</label>
             <div class="col-sm-11">
-                <input type="text" id="url" class="form-control" name="url">
+                <input type="text" id="url" class="form-control" name="url" required>
             </div>
         </div>
 
         <div class="row my-4">
             <label for="name" class="col-sm-1 col-form-label">Name</label>
             <div class="col-sm-11">
-                <input type="text" id="name" class="form-control" name="name">
+                <input type="text" id="name" class="form-control" name="name" required>
+            </div>
+        </div>
+
+        <div class="row my-4">
+            <label for="group" class="col-sm-1 col-form-label">Group</label>
+            <div class="col-sm-11">
+                <select id="group" class="form-select" name="group">
+                    <option value="">None</option>
+                    {% for group in groups %}
+                    <option value="{{ group.name }}">{{ group.name }}</option>
+                    {% endfor %}
+                </select>
             </div>
         </div>
     
@@ -43,9 +55,25 @@ Quicklinks Admin
 <div class="container d-flex justify-content-between align-items-center">
     <h3>Recent Stories</h3>
 </div>
+<div>
+    <tr>
+        <th>
+            Group Name
+        </th>
+    </tr>
+    <tbody>
+        {% for group in groups %}
+        <tbody>
+            <tr>
+                <td>{{ group.name }}</td>
+            </tr>
+        </tbody>
+        {% endfor %}
+    </tbody>
+</div>
 
 <div class="container">
-    <table class="table table-bordered">
+    <table class="table table-bordered" form id = "table">
         <tr>
             <th>Title</th>
             <th>URL</th>
@@ -59,7 +87,7 @@ Quicklinks Admin
                 <td><a href="{{ link.url }}">{{ link.url }}</a></td>
                 <td>{{ link.group }}</td>
                 <td>
-                    <button class="btn btn-primary modify-button" onclick="deleteLink(link.uid)">Delete</button>
+                    <button class="btn btn-primary modify-button" onclick="deleteLink({{ link.uid }} )">Delete</button>
                 </td>
             </tr>
             {% endfor %}
@@ -70,11 +98,18 @@ Quicklinks Admin
 <script>
     async function submitForm() {
         let endpoint = '/quick-links/submit';
-        const url = document.getElementById('url').value;
-        const name = document.getElementById('name').value;
-
-        if (!url) {
-            window.location.reload();
+        const urlinput = document.getElementById('url');
+        const url = urlinput.value.trim();
+        const name = document.getElementById('name').value.trim();
+        const group = document.getElementById('group');
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            urlinput.value = 'https://' + url; 
+        }
+        if( url == null && url.value === "" && url.value === "https://" && name == null && name.value === "") {
+            return console.log(error);
+        }
+        if (!url || !name || url == "https://") {
+            return;
         }
 
         const response = await fetch(endpoint, {
@@ -82,7 +117,7 @@ Quicklinks Admin
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: `_csrf_token={{ csrf_token() }}&url=${url}&name=${name}`
+            body: `_csrf_token={{ csrf_token() }}&url=${urlinput.value}&name=${name}&group=${group}`
         });
 
         if (response.status === 200) {
@@ -96,26 +131,23 @@ Quicklinks Admin
         }
     }
 
-    async function deleteLink(uid) {
-        let endpoint = '/<' + uid + '>/delete';
-        console.log('endpoint', endpoint);
-        
+    async function deleteLink(uid){
+        let endpoint = `/quick-links/` + uid + `/delete`; 
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded'
             },
             body: `_csrf_token={{ csrf_token() }}`
-        })
+        });
+        console.log(uid)
 
-        if (response.status === 200) {
+        if (response.ok) {
             window.location.reload();
         } else {
             const message = await response.text();
             console.error(message);
-            alert(message);
-            button.disabled = false;
-            button.innerHTML = 'Submit';
+            alert('Error deleting the link: ' + message);
         }
     }
 </script>
