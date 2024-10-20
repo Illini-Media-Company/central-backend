@@ -26,7 +26,91 @@ async function sendRequest(form, event) {
         body: method === "POST" ? requestBody : null,
     });
     document.getElementById('response').value = await response.text();
+
+    // Save history
+    saveRequestPathHistory(requestPath);
+    saveRequestBodyHistory(fields.get('requestBody'));
 }
+
+// Manage request path and request body history using localStorage
+const pathHistoryKey = 'requestPathHistory';
+const bodyHistoryKey = 'requestBodyHistory';
+
+function loadHistory(key) {
+    return JSON.parse(localStorage.getItem(key)) || [];
+}
+
+function saveHistory(key, value) {
+    const history = loadHistory(key);
+    if (!history.includes(value) && value.trim() !== "") {
+        history.push(value);
+        localStorage.setItem(key, JSON.stringify(history));
+    }
+}
+
+function saveRequestPathHistory(path) {
+    saveHistory(pathHistoryKey, path);
+}
+
+function saveRequestBodyHistory(body) {
+    saveHistory(bodyHistoryKey, body);
+}
+
+function showHistoryDropdown(inputElement, historyList, history) {
+    historyList.innerHTML = ''; // Clear current dropdown
+
+    history.forEach(function (item) {
+        const listItem = document.createElement('li');
+        listItem.textContent = item;
+        listItem.classList.add('dropdown-item');
+        listItem.addEventListener('click', function () {
+            inputElement.value = item;  // Set input value to selected history item
+            historyList.style.display = 'none';
+        });
+        historyList.appendChild(listItem);
+    });
+
+    if (history.length > 0) {
+        historyList.style.display = 'block';
+    } else {
+        historyList.style.display = 'none';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const requestPathInput = document.getElementById('requestPath');
+    const requestBodyInput = document.getElementById('requestBody');
+
+    const requestPathHistoryList = document.createElement('ul');
+    requestPathHistoryList.classList.add('dropdown-menu');
+    requestPathInput.parentNode.appendChild(requestPathHistoryList);
+
+    const requestBodyHistoryList = document.createElement('ul');
+    requestBodyHistoryList.classList.add('dropdown-menu');
+    requestBodyInput.parentNode.appendChild(requestBodyHistoryList);
+
+    // Show request path history on input focus
+    requestPathInput.addEventListener('focus', function () {
+        const history = loadHistory(pathHistoryKey);
+        showHistoryDropdown(requestPathInput, requestPathHistoryList, history);
+    });
+
+    // Show request body history on input focus
+    requestBodyInput.addEventListener('focus', function () {
+        const history = loadHistory(bodyHistoryKey);
+        showHistoryDropdown(requestBodyInput, requestBodyHistoryList, history);
+    });
+
+    // Hide history dropdowns on clicking outside
+    document.addEventListener('click', function (e) {
+        if (!requestPathHistoryList.contains(e.target) && e.target !== requestPathInput) {
+            requestPathHistoryList.style.display = 'none';
+        }
+        if (!requestBodyHistoryList.contains(e.target) && e.target !== requestBodyInput) {
+            requestBodyHistoryList.style.display = 'none';
+        }
+    });
+});
 </script>
 
 <div class="d-flex justify-content-center">
@@ -36,6 +120,7 @@ async function sendRequest(form, event) {
             <label for="requestPath" class="form-label">Request Path</label>
             <div class="d-flex">
                 <input name="requestPath" type="text" class="form-control" id="requestPath">
+                <ul id="request-path-history" class="dropdown-menu"></ul>
                 <div class="btn-group ms-3">
                     <button type="submit" class="btn btn-primary" id="submitRequest">GET</button>
                     <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
@@ -51,6 +136,7 @@ async function sendRequest(form, event) {
         <div class="mb-3">
             <label for="requestBody" class="form-label">Request Body</label>
             <textarea name="requestBody" class="form-control font-monospace" id="requestBody" rows="4" placeholder="key1=value1&key2=value2"></textarea>
+            <ul id="request-body-history" class="dropdown-menu"></ul>
         </div>
         <div class="mb-3">
             <label for="response" class="form-label">Response</label>
