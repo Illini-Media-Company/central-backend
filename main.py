@@ -79,15 +79,16 @@ client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
 start_slack(app)
 
+
 @app.before_request
 def track_url():
-    if 'url_history' not in session:
-        session['url_history'] = []    
+    if "url_history" not in session:
+        session["url_history"] = []
     current_url = request.url
 
     current_url = current_url.removeprefix("https://app.dailyillini.com")
 
-    url_prefix_ignore = ['/static', '/login', 'favicon.ico']
+    url_prefix_ignore = ["/static", "/login", "/favicon.ico"]
 
     for url in url_prefix_ignore:
         if current_url.startswith(url):
@@ -96,8 +97,8 @@ def track_url():
     if current_url == "/":
         return
 
-    session['url_history'].append(current_url)
-    session.modified = True  
+    session["url_history"].insert(0, current_url)
+    session.modified = True
 
 
 @login_manager.user_loader
@@ -130,8 +131,9 @@ def add_template_context():
 
 @app.route("/")
 def index():
-    url_history = session.get('url_history', [])
-    return render_template('index.html', url_history = url_history)
+    url_history = session.get("url_history", [])
+    return render_template("index.html", url_history=url_history)
+
 
 @app.route("/login")
 def login():

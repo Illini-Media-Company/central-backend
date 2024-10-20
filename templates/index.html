@@ -5,22 +5,35 @@ Index
 {% endblock %}
 
 {% block content %}
-<h3>Session URL History</h3>
-        <table border="1">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>URL</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for url in url_history %}
-                    <tr>
-                        <td>{{ loop.index }}</td> 
-                        <td>{{ url }}</td>
-                    </tr>
-                    {% endfor %}
-            
-                </tbody>
-            </table>
+<style>
+    .container {
+        width: 80%;
+        margin-bottom: 10px;
+        margin-top: 1em;
+    }
+    .form-control, .form-select {
+        border-color: #a8a8a8;
+    }
+</style>
+<div class="container">
+    <h3>Session URL History</h3>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>URL</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for url in url_history %}
+            <tr>
+                <td>{{ loop.index }}</td> 
+                <td><a href="{{ url }}">{{ url }}</a></td>
+            </tr>
+            {% endfor %}
+
+        </tbody>
+    </table>
+</div>
+
 {% endblock %}
