@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from gcsa.google_calendar import GoogleCalendar
 from gcsa.attendee import Attendee
 
-from constants import COPY_EDITING_GCAL_ID, SLACK_BOT_TOKEN
+from constants import COPY_EDITING_GCAL_ID, SLACK_BOT_TOKEN, ENV
 from db.kv_store import kv_store_get, kv_store_set
 from db.user import add_user, get_user, update_user_last_edited
 from util.security import get_creds
@@ -15,7 +15,8 @@ SHIFT_OFFSET = timedelta(
     minutes=15
 )  # Threshold to skip shift if there are SHIFT_OFFSET minutes or less remaining in shift
 BREAKING_SHIFTS = [0, 1, 2, 3]
-CONTENT_DOC_SHIFTS = [3, 4, 5, 6]
+CONTENT_DOC_SHIFTS = [3, 4, 5, 6, 7]
+DI_COPY_TAG_CHANNEL_ID = "C02EZ0QE9CM" if ENV == "prod" else "C07T8TAATDF"
 
 
 # Returns the email address of the copy editor on shift who has edited a story least recently, or None if there's no copy editor on shift.
@@ -86,22 +87,9 @@ def notify_copy_editor(story_url, is_breaking, copy_chief_email=None):
     app.client.chat_postMessage(
         token=SLACK_BOT_TOKEN,
         username="IMC Notification Bot",
-        channel=slack_id,
-        text="A new story is ready to be copy edited.\n" + story_url,
+        channel=DI_COPY_TAG_CHANNEL_ID,
+        text=f"<@{slack_id}> A new story is ready to be copy edited.\n {story_url}",
     )
-    if email != copy_chief_email:
-        app.client.chat_postMessage(
-            token=SLACK_BOT_TOKEN,
-            username="IMC Notification Bot",
-            channel=app.client.users_lookupByEmail(email=copy_chief_email)["user"][
-                "id"
-            ],
-            text=(
-                "A new story is ready to be copy edited. "
-                f"<@{slack_id}> has also been notified.\n"
-            )
-            + story_url,
-        )
     print(f"Slack message sent to {email}.")
 
 
@@ -110,7 +98,16 @@ def add_copy_editor(editor_email, day_of_week, shift_num):
     gc = GoogleCalendar(COPY_EDITING_GCAL_ID, credentials=creds)
 
     # Define shift start times
-    shift_starts = ["8:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00"]
+    shift_starts = [
+        "8:00",
+        "10:00",
+        "12:00",
+        "14:00",
+        "16:00",
+        "18:00",
+        "20:00",
+        "22:00",
+    ]
 
     try:
         # Convert inputs to integers
