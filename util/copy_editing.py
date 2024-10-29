@@ -8,13 +8,13 @@ from db.kv_store import kv_store_get, kv_store_set
 from db.user import add_user, get_user, update_user_last_edited
 from util.security import get_creds
 from util.slackbot import app
-from apscheduler.triggers.date import DateTrigger
-from apscheduler.schedulers.background import BackgroundScheduler
+# from apscheduler.triggers.date import DateTrigger
+# from apscheduler.schedulers.background import BackgroundScheduler
 import random
 
 
-scheduler = BackgroundScheduler()
-scheduler.start()
+# scheduler = BackgroundScheduler()
+# scheduler.start()
 SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
 SHIFT_OFFSET = timedelta(
     minutes=15
@@ -33,16 +33,16 @@ def get_copy_editor(story_url, is_breaking):
     # Get today's shifts
     current_time = datetime.now(tz=ZoneInfo("America/Chicago"))
 
-    if current_time.hour < 8 and current_time.hour > 0:
-        trigger = DateTrigger(
-            current_time.replace(
-                hour=8, minute=0, second=0 + random.randint(0, 5), microsecond=0
-            )
-        )
-        scheduler.add_job(
-            lambda: notify_copy_editor(story_url, is_breaking), trigger=trigger
-        )
-        return None, False
+    # if current_time.hour < 8 and current_time.hour > 0:
+    #     trigger = DateTrigger(
+    #         current_time.replace(
+    #             hour=8, minute=0, second=0 + random.randint(0, 5), microsecond=0
+    #         )
+    #     )
+    #     scheduler.add_job(
+    #         lambda: notify_copy_editor(story_url, is_breaking), trigger=trigger
+    #     )
+    #     return None, False
 
     current_time_offset = current_time + SHIFT_OFFSET
     today = current_time.replace(hour=0, minute=0, second=0, microsecond=0)

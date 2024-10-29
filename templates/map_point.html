@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Map Points
+{% endblock %}
+
+{% block content %}
+<style>
+    .container {
+        width: 80%;
+        margin-bottom: 10px;
+    }
+    .form-control, .form-select {
+        border-color: #a8a8a8;
+    }
+</style>
+
+<div class="container">
+    <form id="pointForm" enctype="application/x-www-form-urlencoded">
+        <div class="row my-4">
+            <label for="url" class="col-sm-1 col-form-label">Story URL</label>
+            <div class="col-sm-11">
+                <input type="text" id="url" class="form-control" name="url">
+            </div>
+
+            <label for="x" class="col-sm-1 col-form-label">Latitude</label>
+            <div class="col-sm-11">
+                <input type="number" id="lat" class="form-control" name="lat">
+            </div>
+
+            <label for="y" class="col-sm-1 col-form-label">Longitude</label>
+            <div class="col-sm-11">
+                <input type="number" id="long" class="form-control" name="long">
+            </div>
+        </div>
+            
+        <div class="col-sm-2">
+            <button type="button" class="btn btn-primary" onclick="submitForm()">Submit</button>
+        </div>
+
+        </div>
+    </form>
+</div>
+
+<div class="container d-flex justify-content-between align-items-center">
+    <h3>Recent Points Added</h3>
+</div>
+
+<div class="container">
+    <table class="table table-bordered">
+        <tr>
+            <th>URL</th>
+            <th>Latitude</th>
+            <th>Longitude</th>
+            <th>Action</th>
+        </tr>
+        {% for point in recent_points %}
+        <tr>
+            <td><a href="{{ point.url }}">{{ point.url }}</a></td>
+            <td>{{ point.lat }}</td>
+            <td>{{ point.long }}</td>
+            <td>
+                <button class="btn btn-primary modify-button" onclick="deletePoint({{point.uid}})">Delete</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<script>
+    async function submitForm() {
+        let endpoint = '/map-points/';
+        const url = document.getElementById('url').value;
+        const lat = document.getElementById('lat').value;
+        const long = document.getElementById('long').value;
+
+        console.log("Submitting form");
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `_csrf_token={{ csrf_token() }}&url=${url}&lat=${lat}&long=${long}`,
+        });
+        
+        if (response.status === 200) {
+            window.location.reload();
+        } else {
+            console.log("Adding map point to db failed!");
+            const message = await response.text();
+            console.error(message);
+            alert(message);
+            button.disabled = false;
+            button.innerHTML = 'Submit';
+        }
+
+        addToDataTable(url, lat, long);
+    }
+
+    
+
+    function addToDataTable(url, lat, long) {
+        const table = document.querySelector('.table');
+        const newRow = table.insertRow(1);
+        newRow.innerHTML = `
+            <td><a href="${url}">${url}</a></td>
+            <td>${lat}</td>
+            <td>${long}</td>
+        `;
+    }
+
+    async function deletePoint(uid){
+        console.log("deleting point!");
+        let endpoint = `/map-points/` + uid + `/delete`; 
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `_csrf_token={{ csrf_token() }}`
+        });
+        console.log(uid)
+
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            const message = await response.text();
+            console.error(message);
+            alert('Error deleting the link: ' + message);
+        }
+    }
+
+</script>
+
+{% endblock %}
