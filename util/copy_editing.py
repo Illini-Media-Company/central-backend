@@ -3,42 +3,65 @@ from datetime import datetime, timedelta
 from gcsa.google_calendar import GoogleCalendar
 from gcsa.attendee import Attendee
 
-from constants import COPY_EDITING_GCAL_ID, SLACK_BOT_TOKEN
+from constants import COPY_EDITING_GCAL_ID, SLACK_BOT_TOKEN, ENV
 from db.kv_store import kv_store_get, kv_store_set
 from db.user import add_user, get_user, update_user_last_edited
 from util.security import get_creds
 from util.slackbot import app
+from apscheduler.triggers.date import DateTrigger
+from apscheduler.schedulers.background import BackgroundScheduler
+import random
 
 
-SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+scheduler = BackgroundScheduler()
+scheduler.start()
+SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
 SHIFT_OFFSET = timedelta(
     minutes=15
 )  # Threshold to skip shift if there are SHIFT_OFFSET minutes or less remaining in shift
 BREAKING_SHIFTS = [0, 1, 2, 3]
-CONTENT_DOC_SHIFTS = [3, 4]
+CONTENT_DOC_SHIFTS = [3, 4, 5, 6, 7]
+DI_COPY_TAG_CHANNEL_ID = "C02EZ0QE9CM" if ENV == "prod" else "C07T8TAATDF"
 
 
 # Returns the email address of the copy editor on shift who has edited a story least recently, or None if there's no copy editor on shift.
-def get_copy_editor(is_breaking):
+def get_copy_editor(story_url, is_breaking):
     # Generate credentials for service account
     creds = get_creds(SCOPES)
     gc = GoogleCalendar(COPY_EDITING_GCAL_ID, credentials=creds)
 
     # Get today's shifts
     current_time = datetime.now(tz=ZoneInfo("America/Chicago"))
+
+    if current_time.hour < 8 and current_time.hour > 0:
+        trigger = DateTrigger(
+            current_time.replace(
+                hour=8, minute=0, second=0 + random.randint(0, 5), microsecond=0
+            )
+        )
+        scheduler.add_job(
+            lambda: notify_copy_editor(story_url, is_breaking), trigger=trigger
+        )
+        return None, False
+
     current_time_offset = current_time + SHIFT_OFFSET
     today = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
     tomorrow = today + timedelta(days=1)
     shifts = gc.get_events(today, tomorrow, single_events=True, order_by="startTime")
+    print(shifts)
 
     current_shift = None
     for i, shift in enumerate(shifts):
-        if is_breaking and i in BREAKING_SHIFTS:
+        # if is_breaking and i in BREAKING_SHIFTS:
+        #     if shift.start <= current_time_offset <= shift.end:
+        #         current_shift = shift
+        #         break
+        # elif not is_breaking and i in CONTENT_DOC_SHIFTS:
+        #     if current_time_offset <= shift.end:
+        #         current_shift = shift
+        #         break
+        if i in BREAKING_SHIFTS or i in CONTENT_DOC_SHIFTS:
             if shift.start <= current_time_offset <= shift.end:
-                current_shift = shift
-                break
-        elif not is_breaking and i in CONTENT_DOC_SHIFTS:
-            if current_time_offset <= shift.end:
                 current_shift = shift
                 break
 
@@ -60,12 +83,12 @@ def get_copy_editor(is_breaking):
 
     if editor:
         update_user_last_edited(editor.email, current_time)
-        return editor
+        return editor, True
     else:
-        return None
+        return None, True
 
 
-def notify_copy_editor(story_url, is_breaking, copy_chief_email=None):
+def notify_copy_editor(story_url, is_breaking, copy_chief_email=None, call=False):
     if app is None:
         raise ValueError("Slack app cannot be None!")
 
@@ -75,28 +98,18 @@ def notify_copy_editor(story_url, is_breaking, copy_chief_email=None):
     else:
         kv_store_set("COPY_CHIEF_EMAIL", copy_chief_email)
 
-    editor = get_copy_editor(is_breaking)
+    editor, onShift = get_copy_editor(story_url, is_breaking)
+    if not onShift:
+        print("waiting")
+        return "wating"
     email = editor.email if editor else copy_chief_email
     slack_id = app.client.users_lookupByEmail(email=email)["user"]["id"]
     app.client.chat_postMessage(
         token=SLACK_BOT_TOKEN,
         username="IMC Notification Bot",
-        channel=slack_id,
-        text="A new story is ready to be copy edited.\n" + story_url,
+        channel=DI_COPY_TAG_CHANNEL_ID,
+        text=f"<@{slack_id}> A new story is ready to be copy edited.\n {story_url}",
     )
-    if email != copy_chief_email:
-        app.client.chat_postMessage(
-            token=SLACK_BOT_TOKEN,
-            username="IMC Notification Bot",
-            channel=app.client.users_lookupByEmail(email=copy_chief_email)["user"][
-                "id"
-            ],
-            text=(
-                "A new story is ready to be copy edited. "
-                f"<@{slack_id}> has also been notified.\n"
-            )
-            + story_url,
-        )
     print(f"Slack message sent to {email}.")
 
 
@@ -105,7 +118,16 @@ def add_copy_editor(editor_email, day_of_week, shift_num):
     gc = GoogleCalendar(COPY_EDITING_GCAL_ID, credentials=creds)
 
     # Define shift start times
-    shift_starts = ["10:00", "12:00", "14:00", "16:00", "18:00"]
+    shift_starts = [
+        "8:00",
+        "10:00",
+        "12:00",
+        "14:00",
+        "16:00",
+        "18:00",
+        "20:00",
+        "22:00",
+    ]
 
     try:
         # Convert inputs to integers
@@ -152,7 +174,7 @@ def add_copy_editor(editor_email, day_of_week, shift_num):
         if editor_email in e.attendees:
             continue
         e.add_attendee(editor_email)
-        # gc.update_event(e)
+        gc.update_event(e)
         print(e.start, "  |  ", e.attendees)
 
 
@@ -161,7 +183,7 @@ def remove_copy_editor(editor_email, day_of_week, shift_num):
     gc = GoogleCalendar(COPY_EDITING_GCAL_ID, credentials=creds)
 
     # Define shift start times
-    shift_starts = ["10:00", "12:00", "14:00", "16:00", "18:00"]
+    shift_starts = ["8:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00"]
 
     try:
         # Convert inputs to integers

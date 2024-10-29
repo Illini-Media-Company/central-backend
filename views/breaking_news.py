@@ -40,7 +40,6 @@ breaking_routes = Blueprint("breaking_routes", __name__, url_prefix="/breaking")
 @login_required
 def dashboard():
     stories = get_recent_stories(10)
-
     return render_template('breaking.html', stories=stories)
 
 
