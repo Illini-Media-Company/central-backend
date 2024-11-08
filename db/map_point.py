@@ -1,8 +1,12 @@
 from google.cloud import ndb
 from datetime import datetime, timedelta
+from apscheduler.triggers.date import DateTrigger
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from . import client
 
+scheduler = BackgroundScheduler()
+scheduler.start()
 
 class MapPoint(ndb.Model):
     uid = ndb.ComputedProperty(
@@ -12,18 +16,23 @@ class MapPoint(ndb.Model):
     long = ndb.FloatProperty()
     url = ndb.StringProperty()
     created_at = ndb.DateTimeProperty()
+    start_date = ndb.DateTimeProperty()
+    end_date = ndb.DateTimeProperty()
 
-
-def add_point(lat, long, url):
+def add_point(lat, long, url, start_date, end_date):
     with client.context():
-        point = MapPoint(lat=lat, long=long, url=url, created_at=datetime.now())
+        point = MapPoint(lat=lat, long=long, url=url, created_at=datetime.now(), start_date=start_date, end_date=end_date)
         point.put()
+
+    scheduler.add_job(remove_point, DateTrigger(run_date=end_date), args=[point.uid])
     return point.to_dict()
 
 
 def remove_point(uid):
     with client.context():
         point = MapPoint.get_by_id(uid)
+        print("Removing point on date", point.url)
+
         if point is not None:
             point.key.delete()
             return True

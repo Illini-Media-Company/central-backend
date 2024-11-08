@@ -16,6 +16,8 @@ Map Points
 </style>
 
 <div class="container">
+    <h2 class="my-4">Submit Map Point</h2>
+
     <form id="pointForm" enctype="application/x-www-form-urlencoded">
         <div class="row my-4">
             <label for="url" class="col-sm-1 col-form-label">Story URL</label>
@@ -32,6 +34,16 @@ Map Points
             <div class="col-sm-11">
                 <input type="number" id="long" class="form-control" name="long">
             </div>
+
+            <label for="start_date" class="col-sm-1 col-form-label">Start Date</label>
+            <div class="col-sm-11">
+                <input type="datetime-local" id="start_date" class="form-control" name="start_date">
+            </div>
+
+            <label for="end_date" class="col-sm-1 col-form-label">End Date</label>
+            <div class="col-sm-11">
+                <input type="datetime-local" id="end_date" class="form-control" name="end_date">
+            </div>
         </div>
             
         <div class="col-sm-2">
@@ -47,11 +59,13 @@ Map Points
 </div>
 
 <div class="container">
-    <table class="table table-bordered">
+    <table class="table table-bordered" id="pointTable">
         <tr>
             <th>URL</th>
             <th>Latitude</th>
             <th>Longitude</th>
+            <th>Start Date</th>
+            <th>End Date</th>
             <th>Action</th>
         </tr>
         {% for point in recent_points %}
@@ -59,6 +73,8 @@ Map Points
             <td><a href="{{ point.url }}">{{ point.url }}</a></td>
             <td>{{ point.lat }}</td>
             <td>{{ point.long }}</td>
+            <td>{{ point.start_date }}</td>
+            <td>{{ point.end_date }}</td>
             <td>
                 <button class="btn btn-primary modify-button" onclick="deletePoint({{point.uid}})">Delete</button>
             </td>
@@ -68,20 +84,49 @@ Map Points
 </div>
 
 <script>
+
+    window.addEventListener("load", function() {
+        var now = new Date();
+        var offset = now.getTimezoneOffset() * 60000;
+        var adjustedDate = new Date(now.getTime() - offset);
+        var adjustedDatePlusHour = new Date(now.getTime() - offset + 3600000);
+        var formattedDate = adjustedDate.toISOString().substring(0,16);
+        var formattedDatePlusHour = adjustedDatePlusHour.toISOString().substring(0,16);
+
+        var startDateField = document.getElementById("start_date");
+        startDateField.value = formattedDate;
+        var endDateField = document.getElementById("end_date");
+        endDateField.value = formattedDatePlusHour;
+    });
+
     async function submitForm() {
         let endpoint = '/map-points/';
         const url = document.getElementById('url').value;
         const lat = document.getElementById('lat').value;
         const long = document.getElementById('long').value;
+        const start_date = document.getElementById('start_date').value;
+        const end_date = document.getElementById('end_date').value;
 
-        console.log("Submitting form");
+        if (!url || !lat || !long || !start_date || !end_date) {
+            alert("Please fill out all fields before submitting.");
+            return;
+        }
+        
+        const startDateTime = new Date(start_date);
+        const endDateTime = new Date(end_date);
+
+        if (startDateTime >= endDateTime) {
+            alert("End date must be after the start date.");
+            return;
+        }
+
 
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: `_csrf_token={{ csrf_token() }}&url=${url}&lat=${lat}&long=${long}`,
+            body: `_csrf_token={{ csrf_token() }}&url=${url}&lat=${lat}&long=${long}&start-date=${start_date}&end-date=${end_date}`,
         });
         
         if (response.status === 200) {
@@ -95,19 +140,21 @@ Map Points
             button.innerHTML = 'Submit';
         }
 
-        addToDataTable(url, lat, long);
+        addToDataTable(url, lat, long, start_date, end_date);
     }
 
-    
-
-    function addToDataTable(url, lat, long) {
+    function addToDataTable(url, lat, long, start_date, end_date) {
         const table = document.querySelector('.table');
         const newRow = table.insertRow(1);
         newRow.innerHTML = `
             <td><a href="${url}">${url}</a></td>
             <td>${lat}</td>
             <td>${long}</td>
+            <td>${start_date}</td>
+            <td>${end_date}</td>
         `;
+
+        sortTable();
     }
 
     async function deletePoint(uid){
@@ -130,7 +177,6 @@ Map Points
             alert('Error deleting the link: ' + message);
         }
     }
-
 </script>
 
 {% endblock %}
