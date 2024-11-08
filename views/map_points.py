@@ -4,6 +4,7 @@ from flask_login import login_required
 from db.map_point import get_all_points, add_point, remove_point, get_recent_points
 from util.security import restrict_to
 
+from datetime import datetime
 
 map_points_routes = Blueprint(
     "map_points_routes", __name__, url_prefix="/map-points"
@@ -32,8 +33,10 @@ def create_map_point():
     latitude = float(request.form["lat"])
     longitude = float(request.form["long"])
     url = request.form["url"]
+    start_date = datetime.strptime(request.form["start-date"], '%Y-%m-%dT%H:%M')
+    end_date = datetime.strptime(request.form["end-date"], '%Y-%m-%dT%H:%M')
 
-    return add_point(latitude, longitude, url)
+    return add_point(latitude, longitude, url, start_date, end_date)
 
 
 @map_points_routes.route("/<uid>/delete", methods=["POST"])
