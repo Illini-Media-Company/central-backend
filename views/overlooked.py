@@ -16,8 +16,8 @@ overlooked_routes = Blueprint("overlooked_routes", __name__, url_prefix="/overlo
 def sub():
     email = request.form["email"]
     # newsletter = request.form["newsletter"]
-    recaptcha_token = request.form["grecaptcha_token"]
-    recaptcha_score = verify_recaptcha(recaptcha_token)
+    # recaptcha_token = request.form["grecaptcha_token"]
+    # recaptcha_score = verify_recaptcha(recaptcha_token)
 
     headers = {
         "Content-Type": "application/json",
@@ -27,7 +27,7 @@ def sub():
     response = requests.post(OV_ENDPOINT, headers=headers, json=data)
     if response.status_code == 201 or response.status_code == 200:
         print(f"Contact created successfully for {email}")
-        print(f"reCAPTCHA score: {recaptcha_score}")
+        # print(f"reCAPTCHA score: {recaptcha_score}")
         return "Contact created successfully!", 200
     else:
         print(f"failed to create contact for {email}:")
