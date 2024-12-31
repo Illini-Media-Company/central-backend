@@ -39,7 +39,6 @@ def remove_point(uid):
         else:
             return False
 
-
 def get_all_points():
     with client.context():
         points = [point.to_dict() for point in MapPoint.query().fetch()]
@@ -52,3 +51,29 @@ def get_recent_points(count):
             for point in MapPoint.query().order(-MapPoint.created_at).fetch(limit=count)
         ]
     return points
+
+#Sorted by Start Date
+def get_next_points(count):
+    with client.context():
+        points = [
+            point.to_dict()
+            for point in MapPoint.query().order(MapPoint.start_date).fetch(limit=count)
+        ]
+    return points
+
+def center_val():
+    with client.context():
+        points = [point.to_dict() for point in MapPoint.query().fetch()]
+
+    lat_center = 0
+    long_center = 0
+    count = len(points)
+
+    for point in points:
+        lat_center += point["lat"]
+        long_center += point["long"]
+
+    lat_center = lat_center / count
+    long_center = long_center / count
+
+    return [lat_center, long_center]
