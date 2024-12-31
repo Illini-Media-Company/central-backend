@@ -19,6 +19,11 @@ Map Points
     <h2 class="my-4">Submit Map Point</h2>
     <form id="pointForm" enctype="application/x-www-form-urlencoded">
         <div class="row my-4">
+            <label for="title" class="col-sm-1 col-form-label">Story Title</label>
+            <div class="col-sm-11">
+                <input type="text" id="title" class="form-control" name="title">
+            </div>
+
             <label for="url" class="col-sm-1 col-form-label">Story URL</label>
             <div class="col-sm-11">
                 <input type="text" id="url" class="form-control" name="url">
@@ -61,6 +66,7 @@ Map Points
     <table class="table table-bordered" id="pointTable">
         <tr>
             <th>URL</th>
+            <th>Title</th>
             <th>Latitude</th>
             <th>Longitude</th>
             <th>Start Date</th>
@@ -70,6 +76,7 @@ Map Points
         {% for point in recent_points %}
         <tr>
             <td><a href="{{ point.url }}">{{ point.url }}</a></td>
+            <td>{{ point.title }}</td>
             <td>{{ point.lat }}</td>
             <td>{{ point.long }}</td>
             <td>{{ point.start_date }}</td>
@@ -100,6 +107,7 @@ Map Points
 
     async function submitForm() {
         let endpoint = '/map-points/';
+        const title = document.getElementById('title').value
         const url = document.getElementById('url').value;
         const lat = document.getElementById('lat').value;
         const long = document.getElementById('long').value;
@@ -125,7 +133,7 @@ Map Points
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: `_csrf_token={{ csrf_token() }}&url=${url}&lat=${lat}&long=${long}&start-date=${start_date}&end-date=${end_date}`,
+            body: `_csrf_token={{ csrf_token() }}&url=${url}&title=${title}&lat=${lat}&long=${long}&start-date=${start_date}&end-date=${end_date}`,
         });
         
         if (response.status === 200) {
