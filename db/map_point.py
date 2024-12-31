@@ -8,20 +8,31 @@ from . import client
 scheduler = BackgroundScheduler()
 scheduler.start()
 
+
 class MapPoint(ndb.Model):
     uid = ndb.ComputedProperty(
         lambda self: self.key.id() if self.key else None, indexed=False
     )
     lat = ndb.FloatProperty()
     long = ndb.FloatProperty()
+    title = ndb.StringProperty()
     url = ndb.StringProperty()
     created_at = ndb.DateTimeProperty()
     start_date = ndb.DateTimeProperty()
     end_date = ndb.DateTimeProperty()
 
-def add_point(lat, long, url, start_date, end_date):
+
+def add_point(title, lat, long, url, start_date, end_date):
     with client.context():
-        point = MapPoint(lat=lat, long=long, url=url, created_at=datetime.now(), start_date=start_date, end_date=end_date)
+        point = MapPoint(
+            title=title,
+            lat=lat,
+            long=long,
+            url=url,
+            created_at=datetime.now(),
+            start_date=start_date,
+            end_date=end_date,
+        )
         point.put()
 
     scheduler.add_job(remove_point, DateTrigger(run_date=end_date), args=[point.uid])
@@ -39,10 +50,12 @@ def remove_point(uid):
         else:
             return False
 
+
 def get_all_points():
     with client.context():
         points = [point.to_dict() for point in MapPoint.query().fetch()]
     return points
+
 
 def get_recent_points(count):
     with client.context():
@@ -52,7 +65,8 @@ def get_recent_points(count):
         ]
     return points
 
-#Sorted by Start Date
+
+# Sorted by Start Date
 def get_next_points(count):
     with client.context():
         points = [
@@ -61,9 +75,13 @@ def get_next_points(count):
         ]
     return points
 
+
 def center_val():
     with client.context():
         points = [point.to_dict() for point in MapPoint.query().fetch()]
+
+    if len(points) == 0:
+        return [40.109337703305975, -88.22721514717438]
 
     lat_center = 0
     long_center = 0
