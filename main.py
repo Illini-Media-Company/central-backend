@@ -51,6 +51,7 @@ from views.users import users_routes
 from views.groups import groups_routes
 from views.breaking_news import breaking_routes
 from views.copy_schedule import copy_schedule_routes
+from views.map_points import map_points_routes
 from views.overlooked import overlooked_routes
 
 app = Flask(__name__)
@@ -72,6 +73,7 @@ app.register_blueprint(users_routes)
 app.register_blueprint(groups_routes)
 app.register_blueprint(breaking_routes)
 app.register_blueprint(copy_schedule_routes)
+app.register_blueprint(map_points_routes)
 app.register_blueprint(overlooked_routes)
 
 login_manager = LoginManager()
