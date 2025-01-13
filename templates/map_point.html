@@ -13,6 +13,10 @@ Map Points
     .form-control, .form-select {
         border-color: #a8a8a8;
     }
+    .image {
+        max-width: 350px;
+        overflow: hidden;
+    }
 </style>
 
 <div class="container">
@@ -21,22 +25,32 @@ Map Points
         <div class="row my-4">
             <label for="title" class="col-sm-1 col-form-label">Story Title</label>
             <div class="col-sm-11">
-                <input type="text" id="title" class="form-control" name="title">
+                <input type="text" id="title" class="form-control" name="title" required>
             </div>
 
             <label for="url" class="col-sm-1 col-form-label">Story URL</label>
             <div class="col-sm-11">
-                <input type="text" id="url" class="form-control" name="url">
+                <input type="text" id="url" class="form-control" name="url" required>
+            </div>
+
+            <label for="image" class="col-sm-1 col-form-label">Image</label>
+            <div class="col-sm-11">
+                <input type="text" id="image" class="form-control" name="image">
+            </div>
+
+            <label for="address" class="col-sm-1 col-form-label">Address</label>
+            <div class="col-sm-11">
+                <input type="text" id="address" class="form-control" name="address" required>
             </div>
 
             <label for="x" class="col-sm-1 col-form-label">Latitude</label>
             <div class="col-sm-11">
-                <input type="number" id="lat" class="form-control" name="lat">
+                <input type="number" id="lat" class="form-control" name="lat" required>
             </div>
 
             <label for="y" class="col-sm-1 col-form-label">Longitude</label>
             <div class="col-sm-11">
-                <input type="number" id="long" class="form-control" name="long">
+                <input type="number" id="long" class="form-control" name="long" required>
             </div>
 
             <label for="start_date" class="col-sm-1 col-form-label">Start Date</label>
@@ -67,6 +81,8 @@ Map Points
         <tr>
             <th>URL</th>
             <th>Title</th>
+            <th>Image</th>
+            <th>Address</th>
             <th>Latitude</th>
             <th>Longitude</th>
             <th>Start Date</th>
@@ -77,6 +93,8 @@ Map Points
         <tr>
             <td><a href="{{ point.url }}">{{ point.url }}</a></td>
             <td>{{ point.title }}</td>
+            <td class="image">{{ point.image }}</td>
+            <td><a href="{{ point.address }}" target="_blank">{{ point.address }}</a></td>
             <td>{{ point.lat }}</td>
             <td>{{ point.long }}</td>
             <td>{{ point.start_date }}</td>
@@ -107,8 +125,10 @@ Map Points
 
     async function submitForm() {
         let endpoint = '/map-points/';
-        const title = document.getElementById('title').value
+        const title = document.getElementById('title').value;
         const url = document.getElementById('url').value;
+        const image = document.getElementById('image').value;
+        const address = document.getElementById('address').value;
         const lat = document.getElementById('lat').value;
         const long = document.getElementById('long').value;
         const start_date = document.getElementById('start_date').value;
@@ -133,7 +153,7 @@ Map Points
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: `_csrf_token={{ csrf_token() }}&url=${url}&title=${title}&lat=${lat}&long=${long}&start-date=${start_date}&end-date=${end_date}`,
+            body: `_csrf_token={{ csrf_token() }}&url=${url}&title=${title}&image=${image}&address=${address}&lat=${lat}&long=${long}&start-date=${start_date}&end-date=${end_date}`,
         });
         
         if (response.status === 200) {

@@ -46,6 +46,8 @@ def create_map_point():
     longitude = float(request.form["long"])
     url = request.form["url"]
     title = request.form["title"]
+    image = request.form["image"]
+    address = request.form["address"]
     start_date = datetime.strptime(request.form["start-date"], "%Y-%m-%dT%H:%M")
     end_date = datetime.strptime(request.form["end-date"], "%Y-%m-%dT%H:%M")
 
@@ -56,6 +58,8 @@ def create_map_point():
         url=url,
         start_date=start_date,
         end_date=end_date,
+        image=image,
+        address=address,
     )
 
 
