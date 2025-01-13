@@ -38,8 +38,10 @@ def add_point(title, lat, long, url, start_date, end_date, image, address):
             address=address,
         )
         point.put()
+        scheduler.add_job(
+            lambda: remove_point(point.uid), DateTrigger(run_date=end_date)
+        )
 
-    scheduler.add_job(remove_point, DateTrigger(run_date=end_date), args=[point.uid])
     return point.to_dict()
 
 
