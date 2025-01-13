@@ -1,6 +1,11 @@
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required
 from flask_cors import cross_origin
+from apscheduler.triggers.date import DateTrigger
+from apscheduler.schedulers.background import BackgroundScheduler
+
+scheduler = BackgroundScheduler()
+scheduler.start()
 
 from db.map_point import (
     get_all_points,
@@ -51,7 +56,7 @@ def create_map_point():
     start_date = datetime.strptime(request.form["start-date"], "%Y-%m-%dT%H:%M")
     end_date = datetime.strptime(request.form["end-date"], "%Y-%m-%dT%H:%M")
 
-    return add_point(
+    point = add_point(
         title=title,
         lat=latitude,
         long=longitude,
@@ -61,6 +66,13 @@ def create_map_point():
         image=image,
         address=address,
     )
+
+    trigger = DateTrigger(end_date)
+
+    scheduler.add_job(lambda: remove_point(int(point["uid"])), trigger=trigger)
+    print(point)
+
+    return point
 
 
 @map_points_routes.route("/<uid>/delete", methods=["POST"])

@@ -1,12 +1,7 @@
 from google.cloud import ndb
 from datetime import datetime, timedelta
-from apscheduler.triggers.date import DateTrigger
-from apscheduler.schedulers.background import BackgroundScheduler
 
 from . import client
-
-scheduler = BackgroundScheduler()
-scheduler.start()
 
 
 class MapPoint(ndb.Model):
@@ -38,9 +33,6 @@ def add_point(title, lat, long, url, start_date, end_date, image, address):
             address=address,
         )
         point.put()
-        scheduler.add_job(
-            lambda: remove_point(point.uid), DateTrigger(run_date=end_date)
-        )
 
     return point.to_dict()
 
