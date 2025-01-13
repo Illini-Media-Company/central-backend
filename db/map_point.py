@@ -20,9 +20,11 @@ class MapPoint(ndb.Model):
     created_at = ndb.DateTimeProperty()
     start_date = ndb.DateTimeProperty()
     end_date = ndb.DateTimeProperty()
+    image = ndb.StringProperty()
+    address = ndb.StringProperty()
 
 
-def add_point(title, lat, long, url, start_date, end_date):
+def add_point(title, lat, long, url, start_date, end_date, image, address):
     with client.context():
         point = MapPoint(
             title=title,
@@ -32,6 +34,8 @@ def add_point(title, lat, long, url, start_date, end_date):
             created_at=datetime.now(),
             start_date=start_date,
             end_date=end_date,
+            image=image,
+            address=address,
         )
         point.put()
 
