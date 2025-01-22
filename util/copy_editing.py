@@ -22,6 +22,7 @@ SHIFT_OFFSET = timedelta(
 BREAKING_SHIFTS = [0, 1, 2, 3]
 CONTENT_DOC_SHIFTS = [3, 4, 5, 6, 7]
 DI_COPY_TAG_CHANNEL_ID = "C02EZ0QE9CM" if ENV == "prod" else "C07T8TAATDF"
+DI_SCHED_CHANNEL_ID = "C089U20NDGB"
 
 
 # Returns the email address of the copy editor on shift who has edited a story least recently, or None if there's no copy editor on shift.
@@ -234,3 +235,21 @@ def remove_copy_editor(editor_email, day_of_week, shift_num):
             # Handle the case where editor_email is not in the attendee's list
             return "Not yet in attendee's list.", 401
         print(e.start, "  |  ", e.attendees)
+
+
+def test():
+    present = datetime.now(tz=ZoneInfo("America/Chicago"))
+    post_time = present + timedelta(minutes=2)
+
+    trigger = DateTrigger(post_time)
+    scheduler.add_job(trigger=trigger, func=post_test_message)
+    print(f"This process was accessed at {present} and will execute {post_time}")
+
+
+def post_test_message():
+    app.client.chat_postMessage(
+        token=SLACK_BOT_TOKEN,
+        username="IMC Notification Bot",
+        channel=DI_SCHED_CHANNEL_ID,
+        text="Scheduling test testing",
+    )
