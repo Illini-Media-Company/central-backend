@@ -2,8 +2,10 @@ from flask import Blueprint, request
 from flask_cors import cross_origin
 
 from constants import APPS_SCRIPT_RUNNER_EMAIL, CONTEND_DOC_AUD
-from util.copy_editing import notify_copy_editor, get_copy_editor
+from util.copy_editing import notify_copy_editor, get_copy_editor, test
 from util.security import csrf, restrict_to
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 
 content_doc_routes = Blueprint(
@@ -23,3 +25,13 @@ def send_story_to_copy():
 
     notify_copy_editor(story_url, False, copy_chief_email)
     return "slack message sent", 200
+
+
+@content_doc_routes.route("/test", methods=["POST"])
+@csrf.exempt
+@cross_origin()
+def test_message():
+    test()
+    present = datetime.now(tz=ZoneInfo("America/Chicago"))
+    post_time = present + timedelta(minutes=2)
+    return f"This process was accessed {present} and will execute {post_time}"

@@ -1,16 +1,14 @@
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required
 from flask_cors import cross_origin
-
 from db.map_point import (
     get_all_points,
-    add_point,
     remove_point,
     get_next_points,
     center_val,
 )
 from util.security import restrict_to, csrf
-
+from util.map_point import add
 from datetime import datetime
 
 map_points_routes = Blueprint("map_points_routes", __name__, url_prefix="/map-points")
@@ -46,17 +44,23 @@ def create_map_point():
     longitude = float(request.form["long"])
     url = request.form["url"]
     title = request.form["title"]
+    image = request.form["image"]
+    address = request.form["address"]
     start_date = datetime.strptime(request.form["start-date"], "%Y-%m-%dT%H:%M")
     end_date = datetime.strptime(request.form["end-date"], "%Y-%m-%dT%H:%M")
 
-    return add_point(
+    add(
         title=title,
         lat=latitude,
         long=longitude,
         url=url,
         start_date=start_date,
         end_date=end_date,
+        image=image,
+        address=address,
     )
+
+    return "Map point created", 200
 
 
 @map_points_routes.route("/<uid>/delete", methods=["POST"])
