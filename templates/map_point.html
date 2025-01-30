@@ -87,6 +87,7 @@ Map Points
             <th>Longitude</th>
             <th>Start Date</th>
             <th>End Date</th>
+            <th>UID</th>
             <th>Action</th>
         </tr>
         {% for point in recent_points %}
@@ -99,6 +100,7 @@ Map Points
             <td>{{ point.long }}</td>
             <td>{{ point.start_date }}</td>
             <td>{{ point.end_date }}</td>
+            <td>{{ point.uid }}</td>
             <td>
                 <button class="btn btn-primary modify-button" onclick="deletePoint({{point.uid}})">Delete</button>
             </td>
