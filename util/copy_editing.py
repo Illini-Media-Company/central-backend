@@ -92,6 +92,8 @@ def get_copy_editor(story_url, is_breaking):
 def notify_copy_editor(story_url, is_breaking, copy_chief_email=None, call=False):
     if app is None:
         raise ValueError("Slack app cannot be None!")
+
+    # This is temporary and needs to be removed at a later date
     secondary_copy_chief_email = "icunn2@illinimedia.com"
     if copy_chief_email is None:
         # Get cached copy chief email
