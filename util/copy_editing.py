@@ -93,8 +93,6 @@ def notify_copy_editor(story_url, is_breaking, copy_chief_email=None, call=False
     if app is None:
         raise ValueError("Slack app cannot be None!")
 
-    # This is temporary and needs to be removed at a later date
-    secondary_copy_chief_email = "icunn2@illinimedia.com"
     if copy_chief_email is None:
         # Get cached copy chief email
         copy_chief_email = kv_store_get("COPY_CHIEF_EMAIL")
@@ -107,16 +105,11 @@ def notify_copy_editor(story_url, is_breaking, copy_chief_email=None, call=False
         return "wating"
     email = editor.email if editor else copy_chief_email
     slack_id = app.client.users_lookupByEmail(email=email)["user"]["id"]
-    secondary_slack_id = app.client.users_lookupByEmail(
-        email=secondary_copy_chief_email
-    )["user"]["id"]
     app.client.chat_postMessage(
         token=SLACK_BOT_TOKEN,
         username="IMC Notification Bot",
         channel=DI_COPY_TAG_CHANNEL_ID,
-        text=f"<@{slack_id}> A new story is ready to be copy edited.\n {story_url}"
-        if email != copy_chief_email
-        else f"<@{slack_id}> <@{secondary_slack_id}>A new story is ready to be copy edited.\n {story_url}",
+        text=f"<@{slack_id}> A new story is ready to be copy edited.\n {story_url}",
     )
     print(f"Slack message sent to {email}.")
 
