@@ -12,6 +12,7 @@ ADMIN_EMAIL = "di_admin@illinimedia.com"
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", None)
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", None)
 GOOGLE_POJECT_ID = os.environ.get("DATASTORE_PROJECT_ID", None)
+GOOGLE_MAP_API = os.environ.get("GOOGLE_MAP_API", None)
 
 REDDIT_USERNAME = "TheDailyIllini"
 REDDIT_PASSWORD = os.environ.get("REDDIT_PASSWORD", None)
