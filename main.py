@@ -68,6 +68,7 @@ app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 # csp = {
 #     'default-src': '*'
 # }
+#
 Talisman(app, content_security_policy=[])
 csrf.init_app(app)
 
