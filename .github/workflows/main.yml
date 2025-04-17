@@ -27,6 +27,7 @@ jobs:
             SECRET_KEY=${{ secrets.SECRET_KEY }}
             GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            GOOGLE_MAP_API=${{ secrets.GOOGLE_MAP_API }}
             REDDIT_PASSWORD=${{ secrets.REDDIT_PASSWORD }}
             REDDIT_CLIENT_ID=${{ secrets.REDDIT_CLIENT_ID }}
             REDDIT_CLIENT_SECRET=${{ secrets.REDDIT_CLIENT_SECRET }}
