@@ -19,7 +19,7 @@ def add(title, lat, long, url, start_date, end_date, image, address):
         address=address,
     )
     trigger = DateTrigger(end_date, timezone="America/Chicago")
-    scheduler.add_job(trigger=trigger, func=lambda: remove(int(point["uid"])))
+    scheduler.add_job(trigger=trigger, func=remove, args=[int(point["uid"])])
 
     print(f"Point will be deleted {end_date}")
 

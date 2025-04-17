@@ -37,7 +37,7 @@ def list_posts():
 
 @socials_routes.route("/illinois-app", methods=["POST"])
 @login_required
-@restrict_to(["editors"])
+@restrict_to(["editors", "di-section-editors"])
 def create_push_notification():
     url = request.form["url"].partition("?")[0]
     title, err = validate_story(url)
@@ -53,7 +53,7 @@ def create_push_notification():
 
 @socials_routes.route("/reddit", methods=["POST"])
 @login_required
-@restrict_to(["editors", "di-staff-social", "webdev"])
+@restrict_to(["editors", "di-staff-social", "webdev", "di-section-editors"])
 def create_reddit_post():
     url = request.form["url"].partition("?")[0]
     title, err = validate_story(url)
@@ -70,7 +70,7 @@ def create_reddit_post():
 
 @socials_routes.route("/twitter", methods=["POST"])
 @login_required
-@restrict_to(["editors", "di-staff-social"])
+@restrict_to(["editors", "di-staff-social", "di-section-editors"])
 def create_tweet():
     url = request.form["url"].partition("?")[0]
     title, err = validate_story(url)

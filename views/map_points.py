@@ -10,6 +10,8 @@ from db.map_point import (
 from util.security import restrict_to, csrf
 from util.map_point import add
 from datetime import datetime
+from util.map_point import scheduler
+from db.json_store import json_store_get
 from constants import GOOGLE_MAP_API
 
 
@@ -84,3 +86,31 @@ def delete_map_point(uid):
 def get_center():
     center = center_val()
     return jsonify({"lat_center": center[0], "long_center": center[1]})
+
+
+@map_points_routes.route("/scheduler", methods=["GET"])
+@login_required
+@restrict_to(["imc-staff-webdev"])
+def print_jobs():
+    print(type(json_store_get("MAP_JOBS")))
+    return json_store_get("MAP_JOBS") if json_store_get("MAP_JOBS") else "None", 200
+
+
+@map_points_routes.route("/check-jobs", methods=["GET"])
+@login_required
+@restrict_to(["imc-staff-webdev"])
+def jobs():
+    scheduler.print_jobs()
+    json = []
+    job_list = scheduler.get_jobs()
+    for job in job_list:
+        json.append({"id": job.id, "runtime": job.next_run_time})
+    return jsonify(json), 200
+
+
+@map_points_routes.route("/clear-scheduler", methods=["GET"])
+@login_required
+@restrict_to(["imc-staff-webdev"])
+def clear():
+    scheduler.remove_all_jobs()
+    return "cleared MAP_POINTS scheduler", 200
