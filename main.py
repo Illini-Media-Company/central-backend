@@ -3,6 +3,7 @@ import logging
 import os
 from threading import Thread
 import urllib
+import atexit
 
 from flask import (
     Flask,
@@ -40,6 +41,13 @@ from util.security import (
     is_user_in_group,
     update_groups,
 )
+
+from db.json_store import json_store_set
+
+from util.copy_editing import scheduler as copy_scheduler
+from util.map_point import scheduler as map_scheduler
+from util.scheduler import scheduler_to_json, db_to_scheduler
+
 from util.slackbot import start_slack
 from views.quick_links import quick_links_routes
 from views.content_doc import content_doc_routes
@@ -82,6 +90,14 @@ login_manager.init_app(app)
 client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
 start_slack(app)
+
+
+@atexit.register
+def log_scheduler():
+    maps = scheduler_to_json(map_scheduler)
+    copy = scheduler_to_json(copy_scheduler)
+    json_store_set("MAP_JOBS", maps)
+    json_store_set("COPY_JOBS", copy)
 
 
 @app.before_request
@@ -265,4 +281,9 @@ if __name__ == "__main__":
         exit(1)
     app.jinja_env.auto_reload = True
     app.config["TEMPLATES_AUTO_RELOAD"] = True
+    try:
+        db_to_scheduler(map_scheduler, "MAP_JOBS")
+        db_to_scheduler(copy_scheduler, "COPY_JOBS")
+    except Exception as e:
+        print(f"{e} no jobs to import")
     app.run(port=5001, ssl_context="adhoc")

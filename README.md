@@ -8,7 +8,7 @@
 
 Make sure you have all of the following installed on your computer:
 
-- Python 3.9 or higher
+- Python 3.11
 - [Google Cloud CLI](https://cloud.google.com/sdk/docs/install)
 - Git
 - [Java 11+](https://www.oracle.com/java/technologies/downloads/#java17) (check if you have it already by running `java --version` in a terminal)
