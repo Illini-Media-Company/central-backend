@@ -19,8 +19,8 @@ SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
 SHIFT_OFFSET = timedelta(
     minutes=15
 )  # Threshold to skip shift if there are SHIFT_OFFSET minutes or less remaining in shift
-BREAKING_SHIFTS = [0, 1, 2, 3]
-CONTENT_DOC_SHIFTS = [3, 4, 5, 6, 7]
+BREAKING_SHIFTS = [1, 2, 3, 4, 5, 6, 7]
+CONTENT_DOC_SHIFTS = [1, 2, 3, 4, 5, 6, 7]
 DI_COPY_TAG_CHANNEL_ID = "C02EZ0QE9CM" if ENV == "prod" else "C07T8TAATDF"
 DI_SCHED_CHANNEL_ID = "C089U20NDGB"
 
@@ -49,18 +49,9 @@ def get_copy_editor(story_url, is_breaking):
     today = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
     tomorrow = today + timedelta(days=1)
     shifts = gc.get_events(today, tomorrow, single_events=True, order_by="startTime")
-    print(shifts)
 
     current_shift = None
     for i, shift in enumerate(shifts):
-        # if is_breaking and i in BREAKING_SHIFTS:
-        #     if shift.start <= current_time_offset <= shift.end:
-        #         current_shift = shift
-        #         break
-        # elif not is_breaking and i in CONTENT_DOC_SHIFTS:
-        #     if current_time_offset <= shift.end:
-        #         current_shift = shift
-        #         break
         if i in BREAKING_SHIFTS or i in CONTENT_DOC_SHIFTS:
             if shift.start <= current_time_offset <= shift.end:
                 current_shift = shift
@@ -127,7 +118,6 @@ def add_copy_editor(editor_email, day_of_week, shift_num):
         "16:00",
         "18:00",
         "20:00",
-        "22:00",
     ]
 
     try:
