@@ -21,7 +21,9 @@ SHIFT_OFFSET = timedelta(
 )  # Threshold to skip shift if there are SHIFT_OFFSET minutes or less remaining in shift
 BREAKING_SHIFTS = [0, 1, 2, 3]
 CONTENT_DOC_SHIFTS = [3, 4, 5, 6, 7]
-DI_COPY_TAG_CHANNEL_ID = "C02EZ0QE9CM" if ENV == "prod" else "C07T8TAATDF"
+DI_COPY_TAG_CHANNEL_ID = (
+    "C07T8TAATDF"  # "C02EZ0QE9CM" if ENV == "prod" else "C07T8TAATDF"
+)
 DI_SCHED_CHANNEL_ID = "C089U20NDGB"
 
 
@@ -49,24 +51,15 @@ def get_copy_editor(story_url, is_breaking):
     today = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
     tomorrow = today + timedelta(days=1)
     shifts = gc.get_events(today, tomorrow, single_events=True, order_by="startTime")
-    print(shifts)
 
     current_shift = None
     for i, shift in enumerate(shifts):
-        # if is_breaking and i in BREAKING_SHIFTS:
-        #     if shift.start <= current_time_offset <= shift.end:
-        #         current_shift = shift
-        #         break
-        # elif not is_breaking and i in CONTENT_DOC_SHIFTS:
-        #     if current_time_offset <= shift.end:
-        #         current_shift = shift
-        #         break
         if i in BREAKING_SHIFTS or i in CONTENT_DOC_SHIFTS:
             if shift.start <= current_time_offset <= shift.end:
                 current_shift = shift
                 break
 
-    editor = None
+    editor = None  # Add my email for testing
     if current_shift:
         for attendee in current_shift.attendees:
             user = get_user(attendee.email)
@@ -75,14 +68,22 @@ def get_copy_editor(story_url, is_breaking):
                     sub=None, name=attendee.display_name, email=attendee.email
                 )
 
+            # Check if the editor has already been assigned 3 jobs in this shift
+            job_count = get_job_count(user.email, current_shift.start)
+            if job_count >= 3:
+                continue  # Skip this editor, they've reached their limit
+
             # Select user who edited another story least recently, or first user who has not edited a story yet
-            if user.last_edited is None:
-                editor = user
-                break
-            elif editor is None or user.last_edited < editor.last_edited:
-                editor = user
+            # if user.last_edited is None:
+            #     editor = user
+            #     break
+            # elif editor is None or user.last_edited < editor.last_edited:
+            #     editor = user
 
     if editor:
+        # Increment the job count for the editor
+        increment_job_count(editor.email, current_shift.start)
+        schedule_job_count_reset(editor.email, current_shift.end)
         update_user_last_edited(editor.email, current_time)
         return editor, True
     else:
@@ -252,4 +253,31 @@ def post_test_message():
         username="IMC Notification Bot",
         channel=DI_SCHED_CHANNEL_ID,
         text="Scheduling test testing",
+    )
+
+
+def get_job_count(editor_email, shift_start_time):
+    """Get the number of jobs assigned to an editor during their shift."""
+    key = f"{editor_email}_{shift_start_time.isoformat()}"
+    return kv_store_get(key, default=0)
+
+
+def increment_job_count(editor_email, shift_start_time):
+    """Increment the job count for an editor during their shift."""
+    key = f"{editor_email}_{shift_start_time.isoformat()}"
+    current_count = get_job_count(editor_email, shift_start_time)
+    kv_store_set(key, current_count + 1)
+
+
+def reset_job_count(editor_email, shift_start_time):
+    """Reset the job count for an editor at the end of their shift."""
+    key = f"{editor_email}_{shift_start_time.isoformat()}"
+    kv_store_set(key, 0)
+
+
+def schedule_job_count_reset(editor_email, shift_end_time):
+    """Schedule a task to reset the job count for an editor at the end of their shift."""
+    trigger = DateTrigger(shift_end_time)
+    scheduler.add_job(
+        lambda: reset_job_count(editor_email, shift_end_time), trigger=trigger
     )
