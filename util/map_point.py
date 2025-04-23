@@ -3,8 +3,8 @@ from apscheduler.triggers.date import DateTrigger
 from db.map_point import add_point, remove_point
 
 from datetime import datetime
-from db.json_store import json_store_set, json_store_get, JSONStore
-from util.scheduler import scheduler_to_json, db_to_scheduler
+from db.json_store import json_store_set
+from util.scheduler import scheduler_to_json
 
 scheduler = BackgroundScheduler()
 scheduler.start()
@@ -34,6 +34,3 @@ def remove(uid):
     remove_point(uid)
     map_json = scheduler_to_json(scheduler)
     json_store_set("MAP_JOBS", map_json, replace=True)
-
-
-# pusing to main
