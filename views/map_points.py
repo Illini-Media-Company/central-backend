@@ -11,8 +11,9 @@ from util.security import restrict_to, csrf
 from util.map_point import add
 from datetime import datetime
 from util.map_point import scheduler
-from db.json_store import json_store_get
+from db.json_store import json_store_get, json_store_set
 from constants import GOOGLE_MAP_API
+from util.scheduler import scheduler_to_json, import_from_db
 
 
 map_points_routes = Blueprint("map_points_routes", __name__, url_prefix="/map-points")
@@ -113,4 +114,6 @@ def jobs():
 @restrict_to(["imc-staff-webdev"])
 def clear():
     scheduler.remove_all_jobs()
+    map_json = scheduler_to_json(scheduler)
+    json_store_set("MAP_JOBS", map_json)
     return "cleared MAP_POINTS scheduler", 200
