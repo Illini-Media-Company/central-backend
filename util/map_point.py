@@ -34,3 +34,6 @@ def remove(uid):
     remove_point(uid)
     map_json = scheduler_to_json(scheduler)
     json_store_set("MAP_JOBS", map_json, replace=True)
+
+
+# pusing to main
