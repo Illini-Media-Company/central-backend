@@ -90,6 +90,12 @@ def print_jobs():
     print(type(json_store_get("MAP_JOBS")))
     return json_store_get("MAP_JOBS") if json_store_get("MAP_JOBS") else "None", 200
 
+@map_points_routes.route("/copy-edit-scheduler", methods=["GET"])
+@login_required
+@restrict_to(["imc-staff-webdev"])
+def print_jobs():
+    print(type(json_store_get("COPY_EDITING_JOBS")))
+    return json_store_get("COPY_EDITING_JOBS") if json_store_get("COPY_EDITING_JOBS") else "None", 200
 
 @map_points_routes.route("/check-jobs", methods=["GET"])
 @login_required
@@ -101,6 +107,8 @@ def jobs():
     for job in job_list:
         json.append({"id": job.id, "runtime": job.next_run_time})
     return jsonify(json), 200
+
+
 
 
 @map_points_routes.route("/clear-scheduler", methods=["GET"])
