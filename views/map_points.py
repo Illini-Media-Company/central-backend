@@ -103,8 +103,6 @@ def jobs():
     return jsonify(json), 200
 
 
-
-
 @map_points_routes.route("/clear-scheduler", methods=["GET"])
 @login_required
 @restrict_to(["imc-staff-webdev"])
