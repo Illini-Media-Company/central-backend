@@ -59,6 +59,7 @@ from views.users import users_routes
 from views.groups import groups_routes
 from views.breaking_news import breaking_routes
 from views.copy_schedule import copy_schedule_routes
+
 from views.map_points import map_points_routes
 from views.overlooked import overlooked_routes
 
