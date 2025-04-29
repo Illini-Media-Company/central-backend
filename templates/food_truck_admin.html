@@ -1,0 +1,311 @@
+{% extends 'base.html' %}
+
+{% block favicon %}
+    <link rel="icon" href="/static/ChambanaEats_Favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="/static/foodtruck_style.css">
+    <link rel="stylesheet" href="https://use.typekit.net/xxb2osb.css">
+{% endblock %}
+
+{% block title %}
+Food Truck Tracker (Admin)
+{% endblock %}
+
+{% block content %}
+<style>
+    .container {
+        width: 80%;
+        margin-bottom: 10px;
+    }
+    .form-control, .form-select {
+        border-color: #a8a8a8;
+    }
+    .image {
+        max-width: 350px;
+        overflow: hidden;
+    }
+</style>
+
+<div class="container" >
+    <dashboard-h2 class="my-4" >
+        <img class="logo" src="{{ url_for('static', filename='ChambanaEats_Brandmark_w-Text.svg') }}" alt="Chambana Eats Logo">
+        Food Truck Tracker Admin
+    </dashboard-h2>
+
+    <form id="truckForm" enctype="application/x-www-form-urlencoded" >
+        <div class="row my-4" >
+            <label for="name" class="col-sm-1 col-form-label" >
+                Truck Name
+            </label>
+            <div class="col-sm-11" >
+                <input 
+                    type    = "text" 
+                    id      = "name" 
+                    class   = "form-control" 
+                    name    = "name" 
+                    required
+                >
+            </div>
+
+            <label for="email" class="col-sm-1 col-form-label" >
+                Login email
+            </label>
+            <div class="col-sm-11" >
+                <input 
+                    type    = "text" 
+                    id      = "email" 
+                    class   = "form-control" 
+                    name    = "email"
+                    required
+                >
+            </div>
+
+            <label for="url" class="col-sm-1 col-form-label" >
+                Menu/Socials URL
+            </label>
+            <div class="col-sm-11" >
+                <input 
+                    type    = "url" 
+                    id      = "url" 
+                    class   = "form-control" 
+                    name    = "url" 
+                    required
+                >
+            </div>
+
+            <label for="cuisine" class="col-sm-1 col-form-label" >
+                Cuisine
+            </label>
+            <div class="col-sm-11" >
+                <input 
+                    type    = "text" 
+                    id      = "cuisine" 
+                    class   = "form-control" 
+                    name    = "cuisine"
+                    required
+                >
+            </div>
+
+            <label for="emoji" class="col-sm-1 col-form-label" >
+                Emoji
+            </label>
+            <div class="col-sm-11" >
+                <input 
+                    type    = "text" 
+                    id      = "emoji" 
+                    class   = "form-control" 
+                    name    = "emoji"
+                    required
+                >
+            </div>
+        </div>
+            
+        <div class="col-sm-2">
+            <button type="button" class="btn btn-primary" onclick="submitTruck()">Submit</button>
+        </div>
+
+    </form>
+
+    <h3 class="container" style="margin-top: 2em;">Registered Food Trucks</h3>
+
+<!-- <div class="container"> -->
+    <table class="container table table-bordered" id="pointTable">
+        <tr>
+            <th>Unique ID</th>
+            <th>Name</th>
+            <th>Cuisine</th>
+            <th>Emoji</th>
+            <th>URL</th>
+            <th>Email</th>
+            <th>Action</th>
+        </tr>
+        {% for truck in registered %}
+        <tr>
+            <td>{{ truck.uid }}</td>
+            <td>{{ truck.name }}</td>
+            <td>{{ truck.cuisine }}</td>
+            <td>{{ truck.emoji }}</td>
+            <td><a href="{{ truck.url }}">{{ truck.url }}</a></td>
+            <td>{{ truck.email }}</td>
+            <td>
+                <button class="btn btn-danger" onclick="deleteTruck('{{truck.uid}}')">Delete</button>
+                <button class="btn btn-warning" onclick="modifyTruck('{{truck.uid}}')">Modify</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<script>
+
+    // Function executed when a user clicks the submit button
+    async function submitTruck() {
+
+        // Disable the button and display loading text
+        const button = document.querySelector('button[onclick="submitTruck()"]');
+        button.disabled = true;
+        button.innerText = 'Submitting...';
+
+        let endpoint = '/food-truck/register';
+
+        const name      = document.getElementById('name').value;
+        const cuisine   = document.getElementById('cuisine').value;
+        const emoji     = document.getElementById('emoji').value;
+        const url       = document.getElementById('url').value;
+        const email     = document.getElementById('email').value;
+
+        if (!name || !cuisine || !emoji || !url || !email) {
+            alert("Please fill out all fields before submitting.");
+
+            // Restore the button after displaying the error
+            button.disabled = false;
+            button.innerText = 'Submit';
+
+            return;
+        }
+
+        if (emoji.length > 2) {
+            alert("Please input only one emoji.");
+
+            // Restore the button after displaying the error
+            button.disabled = false;
+            button.innerText = 'Submit';
+
+            return;
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `_csrf_token={{ csrf_token() }}&name=${name}&cuisine=${cuisine}&emoji=${emoji}&url=${url}&email=${email}`,
+        });
+        
+        if (response.status === 200) {
+            button.disabled = true;
+            button.innerText = 'Submitted!';
+
+            window.location.reload();
+        } else {
+            console.log("Adding food truck to db failed!");
+            const message = await response.text();
+            console.error(message);
+            alert(message);
+            button.disabled = false;
+            button.innerHTML = 'Submit';
+        }
+    }
+
+    // Function executed when a user clicks the delete button
+    async function deleteTruck(uid){
+        console.log("Deregistering truck!");
+        let endpoint = '/food-truck/deregister/' + uid; 
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: '_csrf_token={{ csrf_token() }}'
+        });
+        console.log(uid)
+
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            const message = await response.text();
+            console.error(message);
+            alert('Error deleting the truck: ' + message);
+        }
+    }
+
+    // Function executed when a use clicks the modify button
+    async function modifyTruck(uid) {
+        // Disable the button and display loading text
+        const button = document.querySelector(`button[onclick="modifyTruck('${uid}')"]`);
+        button.disabled = true;
+        button.innerText = 'Modifying...';
+
+        // Pull the trucks existing data
+        let endpoint = '/food-truck/' + uid; 
+        const response = await fetch(endpoint);
+        if (response.ok) {
+            const truck = await response.json();
+
+            // Set the values in the submit form to the existing ones
+            document.getElementById('name').value    = truck.name;
+            document.getElementById('cuisine').value = truck.cuisine;
+            document.getElementById('emoji').value   = truck.emoji;
+            document.getElementById('url').value     = truck.url;
+            document.getElementById('email').value   = truck.email;
+
+            const submitButton = document.querySelector('button[onclick="submitTruck()"]');
+            submitButton.innerText = 'Save';
+            submitButton.setAttribute('onclick', `submitModified(${uid})`);
+        } else {
+            const message = await response.text();
+            console.error(message);
+            alert('Error getting truck data: ' + message);
+        }
+    }
+
+    // Function executed when user clicks the save button after clicking modify
+    async function submitModified(uid) {
+        // Disable the button and display loading text
+        const button = document.querySelector(`button[onclick="submitModified(${uid})"]`);
+        button.disabled = true;
+        button.innerText = 'Saving...';
+
+        let endpoint = '/food-truck/' + uid + '/modify';
+
+        const name      = document.getElementById('name').value;
+        const cuisine   = document.getElementById('cuisine').value;
+        const emoji     = document.getElementById('emoji').value;
+        const url       = document.getElementById('url').value;
+        const email     = document.getElementById('email').value;
+
+        if (!name || !cuisine || !emoji || !url || !email) {
+            alert("Please fill out all fields before saving.");
+
+            // Restore the button after displaying the error
+            button.disabled = false;
+            button.innerText = 'Save';
+
+            return;
+        }
+
+        if (emoji.length > 2) {
+            alert("Please input only one emoji.");
+
+            // Restore the button after displaying the error
+            button.disabled = false;
+            button.innerText = 'Save';
+
+            return;
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `_csrf_token={{ csrf_token() }}&uid=${uid}&name=${name}&cuisine=${cuisine}&emoji=${emoji}&url=${url}&email=${email}`,
+        });
+        
+        if (response.status === 200) {
+            button.disabled = true;
+            button.innerText = 'Saved!';
+
+            window.location.reload();
+        } else {
+            console.log("Adding food truck to db failed!");
+            const message = await response.text();
+            console.error(message);
+            alert(message);
+            button.disabled = false;
+            button.innerHTML = 'Save';
+        }
+    }
+
+</script>
+
+{% endblock %}
