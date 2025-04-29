@@ -260,38 +260,38 @@ def list_food_trucks_json():
 ################################################################
 
 
-# Print all jobs
-@food_truck_routes.route("/scheduler", methods=["GET"])
-@login_required
-@restrict_to(["imc-staff-webdev"])
-def print_jobs():
-    print(type(json_store_get("TRUCKS_JOBS")))
-    return (
-        json_store_get("TRUCKS_JOBS") if json_store_get("TRUCKS_JOBS") else "None",
-        200,
-    )
+# # Print all jobs
+# @food_truck_routes.route("/scheduler", methods=["GET"])
+# @login_required
+# @restrict_to(["imc-staff-webdev"])
+# def print_jobs():
+#     print(type(json_store_get("TRUCKS_JOBS")))
+#     return (
+#         json_store_get("TRUCKS_JOBS") if json_store_get("TRUCKS_JOBS") else "None",
+#         200,
+#     )
 
 
-#
-@food_truck_routes.route("/check-jobs", methods=["GET"])
-@login_required
-@restrict_to(["imc-staff-webdev"])
-def jobs():
-    scheduler.print_jobs()
-    json = []
-    job_list = scheduler.get_jobs()
-    print(job_list)  ###################################################################
-    for job in job_list:
-        json.append({"id": job.id, "runtime": job.next_run_time})
-    return jsonify(json), 200
+# #
+# @food_truck_routes.route("/check-jobs", methods=["GET"])
+# @login_required
+# @restrict_to(["imc-staff-webdev"])
+# def jobs():
+#     scheduler.print_jobs()
+#     json = []
+#     job_list = scheduler.get_jobs()
+#     print(job_list)  ###################################################################
+#     for job in job_list:
+#         json.append({"id": job.id, "runtime": job.next_run_time})
+#     return jsonify(json), 200
 
 
-# Remove all trucks from the scheduler that are set to be removed
-@food_truck_routes.route("/clear-scheduler", methods=["GET"])
-@login_required
-@restrict_to(["imc-staff-webdev"])
-def clear():
-    scheduler.remove_all_jobs()
-    map_json = scheduler_to_json(scheduler)
-    json_store_set("TRUCKS_JOBS", map_json)
-    return "cleared TRUCKS_JOBS scheduler", 200
+# # Remove all trucks from the scheduler that are set to be removed
+# @food_truck_routes.route("/clear-scheduler", methods=["GET"])
+# @login_required
+# @restrict_to(["imc-staff-webdev"])
+# def clear():
+#     scheduler.remove_all_jobs()
+#     map_json = scheduler_to_json(scheduler)
+#     json_store_set("TRUCKS_JOBS", map_json)
+#     return "cleared TRUCKS_JOBS scheduler", 200
