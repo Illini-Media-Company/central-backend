@@ -16,7 +16,6 @@ from db.food_truck import (
 )
 from util.security import restrict_to, csrf
 from datetime import datetime
-from util.food_truck import scheduler
 from db.json_store import json_store_get, json_store_set
 from util.scheduler import scheduler_to_json
 from db import client
