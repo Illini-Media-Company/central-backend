@@ -1,5 +1,9 @@
 {% extends 'base.html' %}
 
+{% block extra_head %}
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&v=3.exp&sensor=false&libraries=places&callback=initAutocomplete"></script>
+{% endblock %}
+
 {% block title %}
 Map Points
 {% endblock %}
@@ -43,15 +47,11 @@ Map Points
                 <input type="text" id="address" class="form-control" name="address" required>
             </div>
 
-            <label for="x" class="col-sm-1 col-form-label">Latitude</label>
-            <div class="col-sm-11">
-                <input type="number" id="lat" class="form-control" name="lat" required>
-            </div>
+            <!-- <label for="x" class="col-sm-1 col-form-label">Latitude</label> -->
+            <input type="hidden" id="lat" name="lat">
 
-            <label for="y" class="col-sm-1 col-form-label">Longitude</label>
-            <div class="col-sm-11">
-                <input type="number" id="long" class="form-control" name="long" required>
-            </div>
+            <!-- <label for="y" class="col-sm-1 col-form-label">Longitude</label> -->
+            <input type="hidden" id="long" name="long">
 
             <label for="start_date" class="col-sm-1 col-form-label">Start Date</label>
             <div class="col-sm-11">
@@ -63,7 +63,7 @@ Map Points
                 <input type="datetime-local" id="end_date" class="form-control" name="end_date">
             </div>
         </div>
-            
+
         <div class="col-sm-2">
             <button type="button" class="btn btn-primary" onclick="submitForm()">Submit</button>
         </div>
@@ -95,7 +95,7 @@ Map Points
             <td><a href="{{ point.url }}">{{ point.url }}</a></td>
             <td>{{ point.title }}</td>
             <td class="image">{{ point.image }}</td>
-            <td><a href="{{ point.address }}" target="_blank">{{ point.address }}</a></td>
+            <td><a href= "https://www.google.com/maps/search/{{point.address}}" target="_blank">{{ point.address }}</a></td>
             <td>{{ point.lat }}</td>
             <td>{{ point.long }}</td>
             <td>{{ point.start_date }}</td>
@@ -110,6 +110,20 @@ Map Points
 </div>
 
 <script>
+
+    function initialize() {
+        var input = document.getElementById('address');
+        var autocomplete = new google.maps.places.Autocomplete(input);
+            google.maps.event.addListener(autocomplete, 'place_changed', function () {
+                var place = autocomplete.getPlace();
+                // document.getElementById('city').value = place.name;
+                document.getElementById('lat').value = place.geometry.location.lat();
+                document.getElementById('long').value = place.geometry.location.lng();
+            });
+    }
+
+    google.maps.event.addDomListener(window, 'load', initialize);
+
 
     window.addEventListener("load", function() {
         var now = new Date();
@@ -136,7 +150,10 @@ Map Points
         const start_date = document.getElementById('start_date').value;
         const end_date = document.getElementById('end_date').value;
 
-        if (!url || !lat || !long || !start_date || !end_date) {
+        if (!lat || !long) {
+            alert("Please enter a valid address.");
+            return;
+        } else if (!url || !start_date || !end_date) {
             alert("Please fill out all fields before submitting.");
             return;
         }
