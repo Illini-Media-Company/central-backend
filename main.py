@@ -61,6 +61,7 @@ from views.breaking_news import breaking_routes
 from views.copy_schedule import copy_schedule_routes
 from views.map_points import map_points_routes
 from views.overlooked import overlooked_routes
+from views.food_truck import food_truck_routes
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
@@ -84,6 +85,7 @@ app.register_blueprint(breaking_routes)
 app.register_blueprint(copy_schedule_routes)
 app.register_blueprint(map_points_routes)
 app.register_blueprint(overlooked_routes)
+app.register_blueprint(food_truck_routes)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
