@@ -13,13 +13,15 @@ from db.food_truck import (
     get_all_loctimes_for_truck,
     get_loctime_by_id,
     get_all_trucks_with_loctimes,
+    check_existing_loctime,
+    check_existing_loctime_notruck,
 )
 from util.security import restrict_to, csrf
 from datetime import datetime
 from db.json_store import json_store_get, json_store_set
 from util.scheduler import scheduler_to_json
 from db import client
-from constants import GOOGLE_MAP_API
+from constants import GOOGLE_MAP_API, FOOD_TRUCK_MAPS_ID
 
 food_truck_routes = Blueprint("food_truck_routes", __name__, url_prefix="/food-truck")
 
@@ -28,7 +30,7 @@ food_truck_routes = Blueprint("food_truck_routes", __name__, url_prefix="/food-t
 # Gets all registered food trucks
 @food_truck_routes.route("/admin", methods=["GET"])
 @login_required
-@restrict_to(["student-managers", "editors", "imc-staff-webdev"])
+@restrict_to(["food-truck-admin", "imc-staff-webdev"])
 def admin():
     with client.context():
         trucks = get_all_registered_trucks()
@@ -45,6 +47,7 @@ def dashboard():
         uid = request.args.get("login_uid")
         source = request.args.get("login_source")
         google_maps_api_key = GOOGLE_MAP_API
+        food_truck_map_id = FOOD_TRUCK_MAPS_ID
 
         # This does not execute on the first load (since email and uid are undefined)
         # When the page reloads when the user clicks the "Find" button, this executes
@@ -76,6 +79,7 @@ def dashboard():
         login_source=source_str,
         login_uid=uid,
         google_maps_api_key=google_maps_api_key,
+        food_truck_map_id=food_truck_map_id,
     )
 
 
@@ -85,7 +89,7 @@ def dashboard():
 # Register a new food truck
 @food_truck_routes.route("/register", methods=["POST"])
 @login_required
-@restrict_to(["student-managers", "editors", "imc-staff-webdev"])
+@restrict_to(["food-truck-admin", "imc-staff-webdev"])
 def register_truck():
     with client.context():
         name = request.form["name"]
@@ -104,7 +108,7 @@ def register_truck():
 # Deregister a food truck (Given the truck's UID)
 @food_truck_routes.route("/deregister/<uid>", methods=["POST"])
 @login_required
-@restrict_to(["student-managers", "editors", "imc-staff-webdev"])
+@restrict_to(["food-truck-admin", "imc-staff-webdev"])
 def deregister_truck(uid):
     with client.context():
         if uid.isdigit() and deregister_food_truck(int(uid)):
@@ -116,7 +120,7 @@ def deregister_truck(uid):
 # Modify a food truck's registration (Given the truck's UID)
 @food_truck_routes.route("/register/<uid>", methods=["POST"])
 @login_required
-@restrict_to(["student-managers", "editors", "imc-staff-webdev"])
+@restrict_to(["food-truck-admin", "imc-staff-webdev"])
 def modify_truck(uid):
     with client.context():
         name = request.form["name"]
@@ -135,7 +139,7 @@ def modify_truck(uid):
 # Get a food truck's registration (Given the truck's UID)
 @food_truck_routes.route("/registration/<uid>", methods=["GET"])
 @login_required
-@restrict_to(["student-managers", "editors", "imc-staff-webdev"])
+@restrict_to(["food-truck-admin", "imc-staff-webdev"])
 def get_registration(uid):
     with client.context():
         if uid.isdigit():
@@ -158,9 +162,12 @@ def add_loctime():
         longitude = float(request.form["lon"])
         nearest_address = request.form["nearest_address"]
         location_desc = request.form["location_desc"]
-        start_time = request.form["start_time"]
-        end_time = request.form["end_time"]
+        start_time = datetime.strptime(request.form["start_time"], "%Y-%m-%dT%H:%M")
+        end_time = datetime.strptime(request.form["end_time"], "%Y-%m-%dT%H:%M")
         reported_by = request.form["reported_by"]
+
+        if check_existing_loctime(truck_uid, start_time, end_time):
+            return "Invalid: An existing time overlaps with the requested time.", 422
 
         add_truck_loctime(
             truck_uid=truck_uid,
@@ -168,8 +175,8 @@ def add_loctime():
             lon=longitude,
             nearest_address=nearest_address,
             location_desc=location_desc,
-            start_time=datetime.strptime(start_time, "%Y-%m-%dT%H:%M"),
-            end_time=datetime.strptime(end_time, "%Y-%m-%dT%H:%M"),
+            start_time=start_time,
+            end_time=end_time,
             reported_by=reported_by,
         )
 
@@ -198,9 +205,12 @@ def modify_loctime(uid):
         lon = float(request.form["lon"])
         nearest_address = request.form["nearest_address"]
         location_desc = request.form["location_desc"]
-        start_time = request.form["start_time"]
-        end_time = request.form["end_time"]
+        start_time = datetime.strptime(request.form["start_time"], "%Y-%m-%dT%H:%M")
+        end_time = datetime.strptime(request.form["end_time"], "%Y-%m-%dT%H:%M")
         reported_by = request.form["reported_by"]
+
+        if check_existing_loctime_notruck(uid, start_time, end_time):
+            return "Invalid: An existing time overlaps with the requested time.", 422
 
         modify_truck_loctime(
             uid=uid,
@@ -208,8 +218,8 @@ def modify_loctime(uid):
             lon=lon,
             nearest_address=nearest_address,
             location_desc=location_desc,
-            start_time=datetime.strptime(start_time, "%Y-%m-%dT%H:%M"),
-            end_time=datetime.strptime(end_time, "%Y-%m-%dT%H:%M"),
+            start_time=start_time,
+            end_time=end_time,
             reported_by=reported_by,
         )
 
@@ -258,40 +268,3 @@ def list_food_trucks_json():
 
 
 ################################################################
-
-
-# # Print all jobs
-# @food_truck_routes.route("/scheduler", methods=["GET"])
-# @login_required
-# @restrict_to(["imc-staff-webdev"])
-# def print_jobs():
-#     print(type(json_store_get("TRUCKS_JOBS")))
-#     return (
-#         json_store_get("TRUCKS_JOBS") if json_store_get("TRUCKS_JOBS") else "None",
-#         200,
-#     )
-
-
-# #
-# @food_truck_routes.route("/check-jobs", methods=["GET"])
-# @login_required
-# @restrict_to(["imc-staff-webdev"])
-# def jobs():
-#     scheduler.print_jobs()
-#     json = []
-#     job_list = scheduler.get_jobs()
-#     print(job_list)  ###################################################################
-#     for job in job_list:
-#         json.append({"id": job.id, "runtime": job.next_run_time})
-#     return jsonify(json), 200
-
-
-# # Remove all trucks from the scheduler that are set to be removed
-# @food_truck_routes.route("/clear-scheduler", methods=["GET"])
-# @login_required
-# @restrict_to(["imc-staff-webdev"])
-# def clear():
-#     scheduler.remove_all_jobs()
-#     map_json = scheduler_to_json(scheduler)
-#     json_store_set("TRUCKS_JOBS", map_json)
-#     return "cleared TRUCKS_JOBS scheduler", 200

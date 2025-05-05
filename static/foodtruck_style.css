@@ -44,6 +44,10 @@ a {
     color: #F99F20;
 }
 
+.hidden {
+    display: none;
+}
+
 .logo {
     width: auto;
     height: 1.75em;
@@ -156,6 +160,55 @@ a {
     align-items:        center;
     gap:                1em;
 }
+
+
+/* ——————— STYLING FOR ACCORDIAN INFOBOX ——————— */
+.accordion-conatiner {
+    border-radius: 10px;
+}
+
+.accordion-item {
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.accordion-item:first-of-type {
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+.accordion-item:last-of-type {
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.accordion-header {
+    width: 100%;
+    padding: 12px;
+    text-align: left;
+    font-family: "futura-pt-bold", sans-serif;
+    font-weight: 500;
+    font-style: normal;
+    font-size: 1em;
+    background-color: #f2f2f2;
+    border: none;
+    cursor: pointer;
+    position: relative;
+}
+
+.accordion-icon {
+    float: right;
+    font-weight: bold;
+}
+
+.accordion-content {
+    display: none;
+    padding: 12px;
+    background-color: #fff;
+}
+
 
 
 /* ——————— STYLING "LIVE" INDICATOR ——————— */

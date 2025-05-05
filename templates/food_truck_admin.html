@@ -26,113 +26,134 @@ Food Truck Tracker (Admin)
 </style>
 
 <div class="container" >
-    <dashboard-h2 class="my-4" >
+    <h2 style="margin-bottom: 0.25em; margin-top: 0.25em;">
         <img class="logo" src="{{ url_for('static', filename='ChambanaEats_Brandmark_w-Text.svg') }}" alt="Chambana Eats Logo">
         Food Truck Tracker Admin
-    </dashboard-h2>
+        <hr>
+    </h2>
 
-    <form id="truckForm" enctype="application/x-www-form-urlencoded" >
-        <div class="row my-4" >
-            <label for="name" class="col-sm-1 col-form-label" >
-                Truck Name
-            </label>
-            <div class="col-sm-11" >
-                <input 
-                    type    = "text" 
-                    id      = "name" 
-                    class   = "form-control" 
-                    name    = "name" 
-                    required
-                >
-            </div>
+    <div class="dashboard-main-container">
+        <!-- Form to register/modify a truck -->
+        <div class="dashboard-truck-list">
+            <h3 style="margin-top: 0; margin-bottom: 0;">
+                Register New Truck:
+            </h3>
+            <form id="truckForm" enctype="application/x-www-form-urlencoded" >
+                <div class="form">
+                    <label for="name">
+                        Truck Name:
+                    </label>
+                    <input 
+                        type    = "text" 
+                        id      = "name" 
+                        class   = "form-control" 
+                        name    = "name" 
+                        required
+                    >
 
-            <label for="email" class="col-sm-1 col-form-label" >
-                Login email
-            </label>
-            <div class="col-sm-11" >
-                <input 
-                    type    = "text" 
-                    id      = "email" 
-                    class   = "form-control" 
-                    name    = "email"
-                    required
-                >
-            </div>
+                    <label for="email">
+                        Login Email:
+                    </label>
+                    <input 
+                        type    = "text" 
+                        id      = "email" 
+                        class   = "form-control" 
+                        name    = "email" 
+                        required
+                    >
 
-            <label for="url" class="col-sm-1 col-form-label" >
-                Menu/Socials URL
-            </label>
-            <div class="col-sm-11" >
-                <input 
-                    type    = "url" 
-                    id      = "url" 
-                    class   = "form-control" 
-                    name    = "url" 
-                    required
-                >
-            </div>
+                    <label for="url">
+                        Menu/Socials URL:
+                    </label>
+                    <input 
+                        type    = "text" 
+                        id      = "url" 
+                        class   = "form-control" 
+                        name    = "url" 
+                        required
+                    >
 
-            <label for="cuisine" class="col-sm-1 col-form-label" >
-                Cuisine
-            </label>
-            <div class="col-sm-11" >
-                <input 
-                    type    = "text" 
-                    id      = "cuisine" 
-                    class   = "form-control" 
-                    name    = "cuisine"
-                    required
-                >
-            </div>
+                    <label for="cuisine">
+                        Cuisine:
+                    </label>
+                    <input 
+                        type    = "text" 
+                        id      = "cuisine" 
+                        class   = "form-control" 
+                        name    = "cuisine" 
+                        required
+                    >
 
-            <label for="emoji" class="col-sm-1 col-form-label" >
-                Emoji
-            </label>
-            <div class="col-sm-11" >
-                <input 
-                    type    = "text" 
-                    id      = "emoji" 
-                    class   = "form-control" 
-                    name    = "emoji"
-                    required
-                >
+                    <label for="emoji">
+                        Emoji:
+                    </label>
+                    <input 
+                        type    = "text" 
+                        id      = "emoji" 
+                        class   = "form-control" 
+                        name    = "emoji" 
+                        required
+                    >
+                </div>
+            </form>
+            <div>
+                <button type="button" class="truck-button-invert" onclick="submitTruck()">
+                    Submit
+                </button>
             </div>
         </div>
-            
-        <div class="col-sm-2">
-            <button type="button" class="btn btn-primary" onclick="submitTruck()">Submit</button>
+        
+        <!-- List of all registered trucks -->
+        <div class="dashboard-truck-list">
+            <h3 style="margin-top: 0; margin-bottom: 0.5em;">
+                All Registered Trucks:
+            </h3>
+            {% for truck in registered %}
+                <div class="accordion-item">
+                    <button class="accordion-header" onclick="toggleAccordion(this)">
+                        {{ truck.emoji }} &nbsp; {{ truck.name }} <span class="accordion-icon">+</span>
+                    </button>
+                    <div class="accordion-content">
+                        <p>
+                            <span class="truck-label">Unique ID:</span> 
+                            <span class="truck-value">{{ truck.uid }}</span>
+                        </p>
+                        <p>
+                            <span class="truck-label">Email:</span> 
+                            <span class="truck-value">{{ truck.email }}</span>
+                        </p>
+                        <p>
+                            <span class="truck-label">Cuisine:</span> 
+                            <span class="truck-value">{{ truck.cuisine }}</span>
+                        </p>
+                        <p>
+                            <span class="truck-label">Menu/Socials URL:</span> 
+                            <span class="truck-value"><a href="{{ truck.url }}">{{ truck.url }}</a></span>
+                        </p>
+                        <p>
+                            <span class="truck-label">Registered on:</span> 
+                            <span class="truck-value">{{ truck.registered_at.strftime('%b. %d, %Y at %I:%M %p') }}</span>
+                        </p>
+        
+                        <div class="button-group">
+                            <button class="truck-button" onclick="window.location.href=`/food-truck/dashboard?login_email={{truck.email}}&login_uid={{truck.uid}}&login_source=admin`">
+                                View/Modify Locations & Times
+                            </button>
+                            <button class="truck-button" onclick="modifyTruck('{{ truck.uid }}')">
+                                Modify
+                            </button>
+                            <button class="truck-button" style="display: none;" onclick="cancelModify('{{ truck.uid }}')">
+                                Cancel
+                            </button>
+                            <button class="truck-button-invert" onclick="deleteTruck('{{ truck.uid }}')">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
         </div>
-
-    </form>
-
-    <h3 class="container" style="margin-top: 2em;">Registered Food Trucks</h3>
-
-<!-- <div class="container"> -->
-    <table class="container table table-bordered" id="pointTable">
-        <tr>
-            <th>Unique ID</th>
-            <th>Name</th>
-            <th>Cuisine</th>
-            <th>Emoji</th>
-            <th>URL</th>
-            <th>Email</th>
-            <th>Action</th>
-        </tr>
-        {% for truck in registered %}
-        <tr>
-            <td>{{ truck.uid }}</td>
-            <td>{{ truck.name }}</td>
-            <td>{{ truck.cuisine }}</td>
-            <td>{{ truck.emoji }}</td>
-            <td><a href="{{ truck.url }}">{{ truck.url }}</a></td>
-            <td>{{ truck.email }}</td>
-            <td>
-                <button class="btn btn-danger" onclick="deleteTruck('{{truck.uid}}')">Delete</button>
-                <button class="btn btn-warning" onclick="modifyTruck('{{truck.uid}}')">Modify</button>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
+    </div>
 </div>
 
 <script>
@@ -218,15 +239,18 @@ Food Truck Tracker (Admin)
         }
     }
 
-    // Function executed when a use clicks the modify button
+    // Function executed when a user clicks the modify button
     async function modifyTruck(uid) {
         // Disable the button and display loading text
         const button = document.querySelector(`button[onclick="modifyTruck('${uid}')"]`);
-        button.disabled = true;
-        button.innerText = 'Modifying...';
+        button.style.display = "none";
+
+        // Show the cancel button
+        const cancelButton = document.querySelector(`button[onclick="cancelModify('${uid}')"]`);
+        cancelButton.style.display = "block";
 
         // Pull the trucks existing data
-        let endpoint = '/food-truck/' + uid; 
+        let endpoint = '/food-truck/registration/' + uid; 
         const response = await fetch(endpoint);
         if (response.ok) {
             const truck = await response.json();
@@ -245,7 +269,28 @@ Food Truck Tracker (Admin)
             const message = await response.text();
             console.error(message);
             alert('Error getting truck data: ' + message);
+            cancelButton.style.display = "none";
+            button.style.display = "block";
         }
+    }
+
+    // Function executed when a user clicks the cancel button while modifying
+    async function cancelModify(uid) {
+        // Set the values in the submit form to blank
+        document.getElementById('name').value    = "";
+        document.getElementById('cuisine').value = "";
+        document.getElementById('emoji').value   = "";
+        document.getElementById('url').value     = "";
+        document.getElementById('email').value   = "";
+
+        const modButton = document.querySelector(`button[onclick="modifyTruck('${uid}')"]`);
+        const cancelButton = document.querySelector(`button[onclick="cancelModify('${uid}')"]`);
+        const saveButton = document.querySelector(`button[onclick="submitModified(${uid})"]`);
+
+        modButton.style.display = "block";
+        cancelButton.style.display = "none";
+        saveButton.innerText = 'Submit';
+        saveButton.setAttribute('onclick', "submitTruck()");
     }
 
     // Function executed when user clicks the save button after clicking modify
@@ -255,7 +300,7 @@ Food Truck Tracker (Admin)
         button.disabled = true;
         button.innerText = 'Saving...';
 
-        let endpoint = '/food-truck/' + uid + '/modify';
+        let endpoint = '/food-truck/register/' + uid;
 
         const name      = document.getElementById('name').value;
         const cuisine   = document.getElementById('cuisine').value;
@@ -304,6 +349,14 @@ Food Truck Tracker (Admin)
             button.disabled = false;
             button.innerHTML = 'Save';
         }
+    }
+
+    // Function to make the accordian infobox work
+    function toggleAccordion(button) {
+        const content = button.nextElementSibling;
+        const icon = button.querySelector('.accordion-icon');
+        content.style.display = content.style.display === 'block' ? 'none' : 'block';
+        icon.textContent = content.style.display === 'block' ? '–' : '+';
     }
 
 </script>

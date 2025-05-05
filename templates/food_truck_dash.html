@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block extra_head %}
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&v=3.exp&sensor=false&libraries=places&callback=initAutocomplete"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&v=beta&libraries=places,marker"></script>
 {% endblock %}
 
 {% block favicon %}
@@ -31,11 +31,12 @@ Food Truck Tracker (Dashboard)
 
 <script>
     const loginSource = "{{ login_source }}";
+    const food_truck_map_id = "{{ food_truck_map_id }}";
 </script>
 
 <div class="container" >
     
-    <h2 style="margin-bottom: 0.25em;">
+    <h2 style="margin-bottom: 0.25em; margin-top: 0.25em;">
         <img class="logo" src="{{ url_for('static', filename='ChambanaEats_Brandmark_w-Text.svg') }}" alt="Chambana Eats Logo">
         Food Truck Tracker Dashboard
         <hr>
@@ -140,7 +141,7 @@ Food Truck Tracker (Dashboard)
                 <!-- Form to add locTimes -->
                 <form id="add-loctime-form" enctype="application/x-www-form-urlencoded" style="display: none;">
                     <hr>
-                    <div class="form" >
+                    <div class="form">
                         <label for="start_time">
                             Arrival time
                         </label>
@@ -184,23 +185,25 @@ Food Truck Tracker (Dashboard)
                             name    = "location_desc"
                             required
                         >
+
+                        <div id="map" style="height: 400px; width: 100%; margin-top: 0.75em"></div>
             
-                        <label for="lat">
+                        <label for="lat" class="{% if not login_source == 'admin' %}hidden{% endif %}">
                             Latitude
                         </label>
                         <input 
-                            type    = "number" 
+                            type    = "{% if not login_source == 'admin' %}hidden{% else %}number{% endif %}" 
                             id      = "lat" 
                             class   = "form-control" 
                             name    = "lat"
                             required
                         >
             
-                        <label for="lon">
+                        <label for="lon" class="{% if not login_source == 'admin' %}hidden{% endif %}">
                             Longitude
                         </label>
                         <input 
-                            type    = "number" 
+                            type    = "{% if not login_source == 'admin' %}hidden{% else %}number{% endif %}" 
                             id      = "lon" 
                             class   = "form-control" 
                             name    = "lon"
@@ -245,11 +248,11 @@ Food Truck Tracker (Dashboard)
                             <span class="truck-label">Location Description:</span> 
                             <span class="truck-value">{{ loctime.location_desc }}</span>
                         </p>
-                        <p>
+                        <p class="{% if not login_source == 'admin' %}hidden{% endif %}">
                             <span class="truck-label">Latitude:</span> 
                             <span class="truck-value">{{ loctime.lat }}</span>
                         </p>
-                        <p>
+                        <p class="{% if not login_source == 'admin' %}hidden{% endif %}">
                             <span class="truck-label">Longitude:</span> 
                             <span class="truck-value">{{ loctime.lon }}</span>
                         </p>
@@ -317,8 +320,10 @@ Food Truck Tracker (Dashboard)
                                     required
                                 >
                             </div>
+
+                            <div id="map-{{ loctime.uid }}" style="height: 400px; width: 100%; margin-top: 0.25em; margin-bottom: 0.75em;"></div>
                 
-                            <div class="form-row">
+                            <div class="{% if not login_source == 'admin' %}hidden{% else %}form-row{% endif %}">
                                 <label for="lat">
                                     Latitude
                                 </label>
@@ -331,7 +336,7 @@ Food Truck Tracker (Dashboard)
                                 >
                             </div>
                 
-                            <div class="form-row">
+                            <div class="{% if not login_source == 'admin' %}hidden{% else %}form-row{% endif %}">
                                 <label for="lon">
                                     Longitude
                                 </label>
@@ -388,6 +393,9 @@ Food Truck Tracker (Dashboard)
         const submitButton = document.querySelector(`button[onclick="submitLoctime('${truck_uid}')"]`);
         submitButton.style.display = "block";
         submitButton.disabled = false;
+
+        // Init Google Maps API
+        initAutocompleteMain();
     }
 
     // Function executed when a user clicks the "Cancel" button while adding a new loctime
@@ -482,9 +490,6 @@ Food Truck Tracker (Dashboard)
         if (response.ok) {
             const loctime = await response.json();
 
-            console.log(loctime.start_time);
-            console.log(formatDateForInput(loctime.start_time));
-
             // Set the values in the submit form to the existing ones
             document.getElementById(`nearest_address-${uid}`).value    = loctime.nearest_address;
             document.getElementById(`location_desc-${uid}`).value      = loctime.location_desc;
@@ -492,6 +497,9 @@ Food Truck Tracker (Dashboard)
             document.getElementById(`lon-${uid}`).value                = loctime.lon;
             document.getElementById(`start_time-${uid}`).value         = formatDateForInput(loctime.start_time);
             document.getElementById(`end_time-${uid}`).value           = formatDateForInput(loctime.end_time);
+
+            // Initialize all of the Google Maps API features
+            initAutocomplete(uid);
 
         } else {
             const message = await response.text();
@@ -642,7 +650,6 @@ Food Truck Tracker (Dashboard)
             const raw = span.dataset.reportedBy;
             span.textContent = dataProvidedByString(raw);
         });
-        initAutocomplete();
     });
 
     // Makes the "LIVE" indicator appear above the current locTime
@@ -675,17 +682,183 @@ Food Truck Tracker (Dashboard)
     updateLiveIndicators();
     setInterval(updateLiveIndicators, 60000);
 
-    // Function to autocomplete the address and extract the lat and lon from it
-    function initAutocomplete() {
-        console.log("Initializing Google Maps autocomplete...");
+    // Handles all Google Maps API for main form
+    function initAutocompleteMain() {
+        console.log("Initializing Google Maps...");
+
         var input = document.getElementById('nearest_address');
         var autocomplete = new google.maps.places.Autocomplete(input);
+
+        // Initialize the geocoder
+        console.log("\tInitializing geocoder...");
+        geocoder = new google.maps.Geocoder();
+        console.log("\t\tDone.");
+
+        // Initialize the map
+        console.log("\tInitializing map...");
+        map = new google.maps.Map(document.getElementById('map'), {
+            center: { lat: 40.111426, lng: -88.235969 }, // Campus approximately
+            zoom:   14,
+            mapId:  food_truck_map_id
+        });
+        document.getElementById('map').style.display = 'none';  // Hide the map initially
+        console.log("\t\tDone.");
+
+        // Initialize the marker
+        console.log("\tInitializing marker...");
+        marker = new google.maps.marker.AdvancedMarkerElement({
+            map:        map,
+            position:   { lat: 40.111426, lng: -88.235969 }, // Campus approximately
+            gmpDraggable: true
+        });
+        console.log("\t\tDone.");
+
+        // Initialize autocomplete
+        console.log("\tInitializing autocomplete listener...");
         google.maps.event.addListener(autocomplete, 'place_changed', function () {
+            console.log("User typed...");
             var place = autocomplete.getPlace();
+
+            // Show the map when the user selects a place
+            document.getElementById('map').style.display = "block";
+
+            // Center the map on the location & move the marker
+            map.setCenter(place.geometry.location);
+            map.setZoom(18);
+            marker.position = place.geometry.location;
+
+            // Update lat and lon fields
             document.getElementById('lat').value = place.geometry.location.lat();
             document.getElementById('lon').value = place.geometry.location.lng();
+            console.log("\tUpdated.");
         });
-        console.log("\tInitialized.");
+        console.log("\t\tDone.");
+
+        // Update the lat and lon when the marker is dragged
+        console.log("\tInitializing marker drag listener...");
+        marker.addListener('dragend', function (event) {
+            console.log("Marker was dragged...");
+            marker.position = event.latLng;
+            document.getElementById('lat').value = event.latLng.lat();
+            document.getElementById('lon').value = event.latLng.lng();
+
+            // Update the address to be closest to the point
+            geocoder.geocode({ location: event.latLng }, (results, status) => {
+                console.log(status);
+                if (status === 'OK' && results[0]) {
+                    document.getElementById('nearest_address').value = results[0].formatted_address;
+                }
+            });
+            console.log("\tUpdated.");
+        });
+        console.log("\t\tDone.");
+
+        // Update the marker and position when the map is clicked
+        console.log("\tInitializing map click listener...");
+        map.addListener('click', function (event) {
+            console.log("Location was clicked...");
+            marker.position = event.latLng;
+            document.getElementById('lat').value = event.latLng.lat();
+            document.getElementById('lon').value = event.latLng.lng();
+
+            // Update the address to be closest to the point
+            geocoder.geocode({ location: event.latLng }, (results, status) => {
+                if (status === 'OK' && results[0]) {
+                    document.getElementById('nearest_address').value = results[0].formatted_address;
+                }
+            });
+            console.log("\tUpdated.");
+        });
+        console.log("\t\tDone.");
+    }
+
+    // Handles all Google Maps API for modification forms
+    function initAutocomplete(uid) {
+        console.log("Initializing Google Maps...");
+
+        var input = document.getElementById(`nearest_address-${uid}`);
+        var autocomplete = new google.maps.places.Autocomplete(input);
+
+        // Initialize the geocoder
+        console.log("\tInitializing geocoder...");
+        geocoder = new google.maps.Geocoder();
+        console.log("\t\tDone.");
+
+        var curLat = parseFloat(document.getElementById(`lat-${uid}`).value);
+        var curLon = parseFloat(document.getElementById(`lon-${uid}`).value);
+
+        // Initialize the map
+        console.log("\tInitializing map...");
+        map = new google.maps.Map(document.getElementById(`map-${uid}`), {
+            
+            center: { lat: curLat, lng: curLon },
+            zoom:   18,
+            mapId:  food_truck_map_id
+        });
+        console.log("\t\tDone.");
+
+        // Initialize the marker
+        console.log("\tInitializing marker...");
+        marker = new google.maps.marker.AdvancedMarkerElement({
+            map:        map,
+            position:   { lat: curLat, lng: curLon },
+            gmpDraggable: true
+        });
+        console.log("\t\tDone.");
+
+        // Initialize autocomplete
+        console.log("\tInitializing autocomplete listener...");
+        google.maps.event.addListener(autocomplete, 'place_changed', function () {
+            console.log("User typed...");
+            var place = autocomplete.getPlace();
+
+            // Center the map on the location & move the marker
+            map.setCenter(place.geometry.location);
+            map.setZoom(18);
+            marker.position = place.geometry.location;
+
+            // Update lat and lon fields
+            document.getElementById(`lat-${uid}`).value = place.geometry.location.lat();
+            document.getElementById(`lon-${uid}`).value = place.geometry.location.lng();
+            console.log("\tUpdated.");
+        });
+        console.log("\t\tDone.");
+
+        // Update the lat and lon when the marker is dragged
+        console.log("\tInitializing marker drag listener...");
+        marker.addListener('dragend', function (event) {
+            console.log("Marker was dragged...");
+            marker.position = event.latLng;
+            document.getElementById(`lat-${uid}`).value = event.latLng.lat();
+            document.getElementById(`lon-${uid}`).value = event.latLng.lng();
+
+            // Update the address to be closest to the point
+            geocoder.geocode({ location: event.latLng }, (results, status) => {
+                if (status === 'Ok' && results[0]) {
+                    document.getElementById(`nearest_address-${uid}`).value = results[0].formatted_address;
+                }
+            });
+            console.log("\tUpdated.");
+        });
+        console.log("\t\tDone.");
+
+        // Update the marker and position when the map is clicked
+        console.log("\tInitializing map click listener...");
+        map.addListener('click', function (event) {
+            console.log("Location was clicked...");
+            marker.position = event.latLng;
+            document.getElementById(`lat-${uid}`).value = event.latLng.lat();
+            document.getElementById(`lon-${uid}`).value = event.latLng.lng();
+
+            // Update the address to be closest to the point
+            geocoder.geocode({ location: event.latLng }, (results, status) => {
+                if (status === 'Ok' && results[0]) {
+                    document.getElementById(`nearest_address-${uid}`).value = results[0].formatted_address;
+                }
+            });
+            console.log("\tUpdated.");
+        });
+        console.log("\t\tDone.");
     }
 
 </script>

@@ -1,5 +1,5 @@
 from google.cloud import ndb
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from . import client
 
@@ -127,7 +127,7 @@ def modify_truck_loctime(
     locTime = foodTruckLocTime.get_by_id(int(uid))
 
     if locTime:
-        locTime.updated_at = (datetime.now(),)
+        locTime.updated_at = datetime.now()
         locTime.lat = lat
         locTime.lon = lon
         locTime.nearest_address = nearest_address
@@ -153,6 +153,36 @@ def remove_old_loc_times():
     ndb.delete_multi([locTime.key for locTime in expired_loc_times])
 
     return len(expired_loc_times)
+
+
+# Returns true if there is a loctime that overlaps with start_time or end_time
+def check_existing_loctime(truck_uid, start_time, end_time):
+    loctimes = get_all_loctimes_for_truck(int(truck_uid))
+
+    for loctime in loctimes:
+        exst_start = loctime["start_time"]
+        exst_end = loctime["end_time"]
+
+        if exst_start < start_time < exst_end or exst_start < end_time < exst_end:
+            return True
+
+    return False
+
+
+# Returns true if there is a loctime that overlaps with start_time or end_time (Based on locTime's UID)
+def check_existing_loctime_notruck(uid, start_time, end_time):
+    loctimes = get_all_loctimes_for_truck(
+        foodTruckLocTime.get_by_id(int(uid)).truck_uid
+    )
+
+    for loctime in loctimes:
+        exst_start = loctime["start_time"]
+        exst_end = loctime["end_time"]
+
+        if exst_start < start_time < exst_end or exst_start < end_time < exst_end:
+            return True
+
+    return False
 
 
 # Get the registration information for all trucks
@@ -208,11 +238,36 @@ def get_all_trucks_with_loctimes():
     for truck in all_trucks:
         truck_uid = truck.get("uid")
 
-        # Get every locTime for the truck
-        loc_times = get_all_loctimes_for_truck(truck_uid)
+        truck["cur_loctime"] = {}
+        truck["nxt_loctime"] = {}
 
-        # Add the locTimes to the truck
-        truck["loc_times"] = loc_times
+        # Get every locTime for the truck
+        loctimes = get_all_loctimes_for_truck(truck_uid)
+
+        if len(loctimes) >= 2:
+            # Since these are sorted alphabetically, we can just get the first two
+            loctime1 = loctimes[0]
+            loctime2 = loctimes[1]
+
+            exst_start = loctime1["start_time"]
+            exst_end = loctime1["end_time"]
+
+            # Check if this is the current loctime
+            if exst_start < datetime.now() < exst_end:
+                truck["cur_loctime"] = loctime1
+                truck["nxt_loctime"] = loctime2
+            else:
+                truck["nxt_loctime"] = loctime1
+
+        elif len(loctimes) == 1:
+            loctime1 = loctimes[0]
+            exst_start = loctime1["start_time"]
+            exst_end = loctime1["end_time"]
+
+            if exst_start < datetime.now() < exst_end:
+                truck["cur_loctime"] = loctime1
+            else:
+                truck["nxt_loctime"] = loctime1
 
         result.append(truck)
 
