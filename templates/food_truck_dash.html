@@ -1,0 +1,866 @@
+{% extends 'base.html' %}
+
+{% block extra_head %}
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&v=beta&libraries=places,marker"></script>
+{% endblock %}
+
+{% block favicon %}
+    <link rel="icon" href="/static/ChambanaEats_Favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="/static/foodtruck_style.css">
+    <link rel="stylesheet" href="https://use.typekit.net/xxb2osb.css">
+{% endblock %}
+
+{% block title %}
+Food Truck Tracker (Dashboard)
+{% endblock %}
+
+{% block content %}
+<style>
+    .container {
+        width: 80%;
+        margin-bottom: 10px;
+    }
+    .form-control, .form-select {
+        border-color: #a8a8a8;
+    }
+    .image {
+        max-width: 350px;
+        overflow: hidden;
+    }
+</style>
+
+<script>
+    const loginSource = "{{ login_source }}";
+    const food_truck_map_id = "{{ food_truck_map_id }}";
+</script>
+
+<div class="container" >
+    
+    <h2 style="margin-bottom: 0.25em; margin-top: 0.25em;">
+        <img class="logo" src="{{ url_for('static', filename='ChambanaEats_Brandmark_w-Text.svg') }}" alt="Chambana Eats Logo">
+        Food Truck Tracker Dashboard
+        <hr>
+    </h2>
+
+    <div class="dashboard-main-container {% if not truck %}center-form{% endif %}">
+        <!-- Login form -->
+        {% if not login_email %}
+            <form id="login-form" method="GET" action="{{ url_for('food_truck_routes.dashboard') }}" enctype="application/x-www-form-urlencoded">
+                <h3>
+                    Find your truck
+                </h3>
+
+                <div class="form">
+                    <label for="login_email">
+                        Login email:
+                    </label>
+                    <input 
+                        type    = "text" 
+                        id      = "login_email" 
+                        class   = "form-control" 
+                        name    = "login_email"
+                        value   = "{{ request.args.get('login_email', '') }}"
+                        required
+                    >
+                    <label for="login_uid">
+                        Truck's Unique ID:
+                    </label>
+                    <input 
+                        type    = "text" 
+                        id      = "login_uid" 
+                        class   = "form-control" 
+                        name    = "login_uid"
+                        value   = "{{ request.args.get('login_uid', '') }}"
+                        required
+                    >
+                </div>
+            
+                <button type="submit" class="truck-button-invert">
+                    Find my truck
+                </button>
+            </form>
+        {% endif %}
+
+        <!-- Truck's registration information -->
+        {% if truck %}
+            <div class="dashboard-truck-list" >
+                <h3 style="margin-top: 0;">
+                    Registration Information:
+                </h3>
+                <p style="font-size: 0.75em; text-align: center;">
+                    To update your registration, please contact Chambana Eats.
+                </p>
+                <p>
+                    <span class="truck-label">Truck name:</span> 
+                    <span class="truck-value">{{ truck.name }}</span>
+                </p>
+                <p>
+                    <span class="truck-label">Unique ID:</span> 
+                    <span class="truck-value">{{ truck.uid }}</span>
+                </p>
+                <p>
+                    <span class="truck-label">Email:</span> 
+                    <span class="truck-value">{{ truck.email }}</span>
+                </p>
+                <p>
+                    <span class="truck-label">Cuisine:</span> 
+                    <span class="truck-value">{{ truck.cuisine }}</span>
+                </p>
+                <p>
+                    <span class="truck-label">Menu/Socials URL:</span> 
+                    <span class="truck-value"><a href="{{ truck.url }}">{{ truck.url }}</a></span>
+                </p>
+                <p>
+                    <span class="truck-label">Emoji:</span> 
+                    <span class="truck-value">{{ truck.emoji }}</span>
+                </p>
+                <p>
+                    <span class="truck-label">Registered on:</span> 
+                    <span class="truck-value">{{ truck.registered_at.strftime('%b. %d, %Y at %I:%M %p') }}</span>
+                </p>
+                <hr>
+                <div class="button-group">
+                    {% if login_source == "admin" %}
+                        <button class="truck-button-invert" onclick="window.location.href='/food-truck/admin'">
+                            Return to Admin
+                        </button>
+                    {% endif %}
+                    {% if not login_source %}
+                        <button class="truck-button-invert" onclick="window.location.href='/food-truck/dashboard'">
+                            Log Out
+                        </button>
+                    {% endif %}
+                    <button class="truck-button" onclick="addLoctime('{{truck.uid}}')">
+                        Add New Location & Time
+                    </button>
+                    <button class="truck-button" disabled="true" style="display: none;" onclick="cancelLoctime('{{truck.uid}}')">
+                        Cancel
+                    </button>
+                </div>
+
+                <!-- Form to add locTimes -->
+                <form id="add-loctime-form" enctype="application/x-www-form-urlencoded" style="display: none;">
+                    <hr>
+                    <div class="form">
+                        <label for="start_time">
+                            Arrival time
+                        </label>
+                        <input 
+                            type    = "datetime-local" 
+                            id      = "start_time" 
+                            class   = "form-control" 
+                            name    = "start_time"
+                            required
+                        >
+            
+                        <label for="end_time">
+                            Departure time
+                        </label>
+                        <input 
+                            type    = "datetime-local" 
+                            id      = "end_time" 
+                            class   = "form-control" 
+                            name    = "end_time"
+                            required
+                        >
+                        
+                        <label for="nearest_address">
+                            Nearest Address
+                        </label>
+                        <input 
+                            type    = "text" 
+                            id      = "nearest_address" 
+                            class   = "form-control" 
+                            name    = "nearest_address"
+                            required
+                        >
+            
+                        <label for="location_desc">
+                            Location description
+                        </label>
+                        <input 
+                            type    = "text" 
+                            id      = "location_desc" 
+                            class   = "form-control" 
+                            name    = "location_desc"
+                            required
+                        >
+
+                        <div id="map" style="height: 400px; width: 100%; margin-top: 0.75em"></div>
+            
+                        <label for="lat" class="{% if not login_source == 'admin' %}hidden{% endif %}">
+                            Latitude
+                        </label>
+                        <input 
+                            type    = "{% if not login_source == 'admin' %}hidden{% else %}number{% endif %}" 
+                            id      = "lat" 
+                            class   = "form-control" 
+                            name    = "lat"
+                            required
+                        >
+            
+                        <label for="lon" class="{% if not login_source == 'admin' %}hidden{% endif %}">
+                            Longitude
+                        </label>
+                        <input 
+                            type    = "{% if not login_source == 'admin' %}hidden{% else %}number{% endif %}" 
+                            id      = "lon" 
+                            class   = "form-control" 
+                            name    = "lon"
+                            required
+                        >
+                    </div>
+                        
+                    <div>
+                        <button type="button" disabled="true" style="display: none;" class="truck-button-invert" onclick="submitLoctime('{{truck.uid}}')">Submit</button>
+                    </div>
+                </form>
+            </div>
+        {% endif %}
+
+        <!-- Upcoming locTimes for the truck -->
+        {% if truck %}
+            <div class="dashboard-truck-list">
+                <h3 style="margin-top: 0; margin-bottom: 0.5em;">
+                    Upcoming Times & Locations:
+                </h3>
+                {% for loctime in loc_times %}
+                    <div id="loctime-info-{{ loctime.uid }}" data-start-time="{{ loctime.start_time.isoformat() }}" data-end-time="{{ loctime.end_time.isoformat() }}">
+
+                        <div class="live-container"></div>
+                        <p>
+                            <span class="truck-label">Arrival Time:</span> 
+                            {% if loctime.start_time %}
+                            <span class="truck-value">{{ loctime.start_time.strftime('%A, %b. %d at %I:%M %p') }}</span>
+                            {% endif %}
+                        </p>
+                        <p>
+                            <span class="truck-label">Departure Time:</span> 
+                            {% if loctime.end_time %}
+                            <span class="truck-value">{{ loctime.end_time.strftime('%A, %b. %d at %I:%M %p') }}</span>
+                            {% endif %}
+                        </p>
+                        <p>
+                            <span class="truck-label">Nearest Address:</span> 
+                            <span class="truck-value"><a href="https://www.google.com/maps/search/{{ loctime.nearest_address }}">{{ loctime.nearest_address }}</a></span>
+                        </p>
+                        <p>
+                            <span class="truck-label">Location Description:</span> 
+                            <span class="truck-value">{{ loctime.location_desc }}</span>
+                        </p>
+                        <p class="{% if not login_source == 'admin' %}hidden{% endif %}">
+                            <span class="truck-label">Latitude:</span> 
+                            <span class="truck-value">{{ loctime.lat }}</span>
+                        </p>
+                        <p class="{% if not login_source == 'admin' %}hidden{% endif %}">
+                            <span class="truck-label">Longitude:</span> 
+                            <span class="truck-value">{{ loctime.lon }}</span>
+                        </p>
+                        <p>
+                            <span class="truck-label">Last Updated:</span> 
+                            <span class="truck-value">{{ loctime.updated_at.strftime('%A, %b. %d at %I:%M %p') }}</span>
+                        </p>
+                        <p>
+                            <span class="truck-label">Updated By:</span> 
+                            <span class="truck-value" data-reported-by="{{ loctime.reported_by }}"></span>
+                        </p>
+                    </div>
+
+                    <!-- Form to modify locTimes -->
+                    <form id="modify-loctime-form-{{ loctime.uid }}" enctype="application/x-www-form-urlencoded" style="display: none;">
+                        <div class="form">
+                            <div class="form-row">
+                                <label for="start_time">
+                                    Arrival time
+                                </label>
+                                <input 
+                                    type    = "datetime-local" 
+                                    id      = "start_time-{{ loctime.uid }}" 
+                                    class   = "form-control" 
+                                    name    = "start_time"
+                                    required
+                                >
+                            </div>
+                
+                            <div class="form-row">
+                                <label for="end_time">
+                                    Departure time
+                                </label>
+                                <input 
+                                    type    = "datetime-local" 
+                                    id      = "end_time-{{ loctime.uid }}" 
+                                    class   = "form-control" 
+                                    name    = "end_time"
+                                    required
+                                >
+                            </div>
+
+                            <div class="form-row">
+                                <label for="nearest_address">
+                                    Nearest Address
+                                </label>
+                                <input 
+                                    type    = "text" 
+                                    id      = "nearest_address-{{ loctime.uid }}" 
+                                    class   = "form-control" 
+                                    name    = "nearest_address"
+                                    required
+                                >
+                            </div>
+                
+                            <div class="form-row">
+                                <label for="location_desc">
+                                    Location description
+                                </label>
+                                <input 
+                                    type    = "text" 
+                                    id      = "location_desc-{{ loctime.uid }}" 
+                                    class   = "form-control" 
+                                    name    = "location_desc"
+                                    required
+                                >
+                            </div>
+
+                            <div id="map-{{ loctime.uid }}" style="height: 400px; width: 100%; margin-top: 0.25em; margin-bottom: 0.75em;"></div>
+                
+                            <div class="{% if not login_source == 'admin' %}hidden{% else %}form-row{% endif %}">
+                                <label for="lat">
+                                    Latitude
+                                </label>
+                                <input 
+                                    type    = "number" 
+                                    id      = "lat-{{ loctime.uid }}" 
+                                    class   = "form-control" 
+                                    name    = "lat"
+                                    required
+                                >
+                            </div>
+                
+                            <div class="{% if not login_source == 'admin' %}hidden{% else %}form-row{% endif %}">
+                                <label for="lon">
+                                    Longitude
+                                </label>
+                                <input 
+                                    type    = "number" 
+                                    id      = "lon-{{ loctime.uid }}" 
+                                    class   = "form-control" 
+                                    name    = "lon"
+                                    required
+                                >
+                            </div>
+                        </div>
+                    </form>
+
+                    <div class="button-group">
+                        <button class="truck-button-invert" style="display: none;" onclick="submitModifiedLoctime('{{loctime.uid}}')">
+                            Save
+                        </button>
+                        <button class="truck-button" style="display: block;" onclick="modifyLoctime('{{loctime.uid}}')">
+                            Modify
+                        </button>
+                        <button class="truck-button" style="display: none;"  onclick="cancelModifyLoctime('{{loctime.uid}}')">
+                            Cancel
+                        </button>
+                        <button class="truck-button-invert" style="display: block;" onclick="deleteLoctime('{{loctime.uid}}')">
+                            Delete
+                        </button>
+                    </div>
+                    <hr>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+
+    // Function executed when a user clicks the "Add New Location & Time" button
+    async function addLoctime(truck_uid) {
+        // Disable the "Add" button and change its inner text
+        const addButton = document.querySelector(`button[onclick="addLoctime('${truck_uid}')"]`);
+        addButton.disabled = true;
+        addButton.innerText = 'Adding...';
+
+        // Enable the "Cancel button"
+        const cancelButton = document.querySelector(`button[onclick="cancelLoctime('${truck_uid}')"]`);
+        cancelButton.style.display = "block";
+        cancelButton.disabled = false;
+
+        // Show the form at the bottom of the screen
+        document.getElementById("add-loctime-form").style.display = "block";
+
+        // Show the submit button below the form and enable it
+        const submitButton = document.querySelector(`button[onclick="submitLoctime('${truck_uid}')"]`);
+        submitButton.style.display = "block";
+        submitButton.disabled = false;
+
+        // Init Google Maps API
+        initAutocompleteMain();
+    }
+
+    // Function executed when a user clicks the "Cancel" button while adding a new loctime
+    async function cancelLoctime(truck_uid) {
+        // Clear all the forms of the field
+        document.getElementById('nearest_address').value    = "";
+        document.getElementById('location_desc').value      = "";
+        document.getElementById('lat').value                = "";
+        document.getElementById('lon').value                = "";
+        document.getElementById('start_time').value         = "";
+        document.getElementById('end_time').value           = "";
+
+        // Hide the form, hide the cancel button
+        document.getElementById("add-loctime-form").style.display = "none";
+        document.querySelector(`button[onclick="cancelLoctime('${truck_uid}')"]`).style.display = "none";
+
+        // Re-enable the modify button
+        const addButton = document.querySelector(`button[onclick="addLoctime('${truck_uid}')"]`);
+        addButton.style.display = "block";
+        addButton.disabled = false;
+        addButton.innerText = 'Add New Location & Time';
+    }
+
+    // Function executed when a user clicks the "Submit" button when adding a locTime
+    async function submitLoctime(truck_uid) {
+        let endpoint = '/food-truck/loctime';
+
+        const nearest_address   = document.getElementById('nearest_address').value;
+        const location_desc     = document.getElementById('location_desc').value;
+        const lat               = document.getElementById('lat').value;
+        const lon               = document.getElementById('lon').value;
+        const start_time        = document.getElementById('start_time').value;
+        const end_time          = document.getElementById('end_time').value;
+        
+        if (loginSource == "admin") {
+            reported_by = "admin";
+        } else {
+            reported_by = "owner";
+        }
+
+        console.log("We got here");
+
+        if (!nearest_address || !lat || !lon || !start_time || !end_time) {
+            alert("Please fill out all fields before submitting.");
+            return;
+        }
+
+        if (end_time < start_time){
+            alert("Departure time must be after arrival time.");
+            return;
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `_csrf_token={{ csrf_token() }}&uid=${truck_uid}&nearest_address=${nearest_address}&location_desc=${location_desc}&lat=${lat}&lon=${lon}&start_time=${start_time}&end_time=${end_time}&reported_by=${reported_by}`,
+        });
+
+        // Disable the submit button and change the text
+        const submitButton = document.querySelector(`button[onclick="submitLoctime('${truck_uid}')"]`);
+        submitButton.disabled = true;
+        submitButton.innerHTML = 'Submitting...';
+        
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            window.location.reload();
+        } else {
+            // Alert of the error and re-enable the submit button
+            console.log("Adding locTime to database failed!");
+            const message = await response.text();
+            console.error(message);
+            alert(message);
+            submitButton.disabled = false;
+            submitButton.innerHTML = 'Submit';
+        }
+    }
+
+    // Function executed when a user clicks the modify button
+    async function modifyLoctime(uid) {
+        // Disable the modify button, show the form to modify the loctime, show the save button, show the cancel button, hide the static info
+        document.getElementById(`modify-loctime-form-${uid}`).style.display = "block";
+        document.getElementById(`loctime-info-${uid}`).style.display = "none";
+        document.querySelector(`button[onclick="modifyLoctime('${uid}')"]`).style.display = "none";
+        document.querySelector(`button[onclick="cancelModifyLoctime('${uid}')"]`).style.display = "block";
+        document.querySelector(`button[onclick="submitModifiedLoctime('${uid}')"]`).style.display = "block";
+
+        // Pull the trucks existing data
+        let endpoint = '/food-truck/loctime/' + uid; 
+        const response = await fetch(endpoint);
+        if (response.ok) {
+            const loctime = await response.json();
+
+            // Set the values in the submit form to the existing ones
+            document.getElementById(`nearest_address-${uid}`).value    = loctime.nearest_address;
+            document.getElementById(`location_desc-${uid}`).value      = loctime.location_desc;
+            document.getElementById(`lat-${uid}`).value                = loctime.lat;
+            document.getElementById(`lon-${uid}`).value                = loctime.lon;
+            document.getElementById(`start_time-${uid}`).value         = formatDateForInput(loctime.start_time);
+            document.getElementById(`end_time-${uid}`).value           = formatDateForInput(loctime.end_time);
+
+            // Initialize all of the Google Maps API features
+            initAutocomplete(uid);
+
+        } else {
+            const message = await response.text();
+            console.error(message);
+            alert('Error getting loctime data: ' + message);
+        }
+    }
+
+    // Function executed when user clicks the "Delete" button for a locTime
+    async function deleteLoctime(uid) {
+        console.log("Removing locTime " + uid + "...");
+
+        const button = document.querySelector(`button[onclick="deleteLoctime('${uid}')"]`);
+        button.disabled = true;
+        button.innerText = 'Deleting...';
+
+        let endpoint = '/food-truck/loctime-remove/' + uid; 
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: '_csrf_token={{ csrf_token() }}'
+        });
+
+        if (response.ok) {
+            button.innerText = 'Deleted!';
+
+            console.log("\tRemoved.");
+            window.location.reload();
+        } else {
+            button.disabled = false;
+            button.innerHTML = 'Delete';
+
+            const message = await response.text();
+            console.error(message);
+            alert("\tError removing locTime: " + message);
+        }
+    }
+
+    // Function executed when user clicks the cancel button while modifying the truck
+    async function cancelModifyLoctime(uid) {
+
+        // Hide the form, hide the cancel button, hide the submit button, show the modify button
+        document.getElementById(`modify-loctime-form-${uid}`).style.display = "none";
+        document.getElementById(`loctime-info-${uid}`).style.display = "block";
+        document.querySelector(`button[onclick="submitModifiedLoctime('${uid}')"]`).style.display = "none";
+        document.querySelector(`button[onclick="cancelModifyLoctime('${uid}')"]`).style.display = "none";
+        document.querySelector(`button[onclick="modifyLoctime('${uid}')"]`).style.display = "block";
+
+    }
+
+    // Function executed when user clicks the save button after clicking modify
+    async function submitModifiedLoctime(uid) {
+        // Disable the button and display loading text
+        const button = document.querySelector(`button[onclick="submitModifiedLoctime('${uid}')"]`);
+        button.disabled = true;
+        button.innerText = 'Saving...';
+
+        let endpoint = '/food-truck/loctime/' + uid;
+
+        const nearest_address   = document.getElementById(`nearest_address-${uid}`).value;
+        const location_desc     = document.getElementById(`location_desc-${uid}`).value;
+        const lat               = document.getElementById(`lat-${uid}`).value;
+        const lon               = document.getElementById(`lon-${uid}`).value;
+        const start_time        = document.getElementById(`start_time-${uid}`).value;
+        const end_time          = document.getElementById(`end_time-${uid}`).value;
+
+        if (loginSource == "admin") {
+            reported_by = "admin";
+        } else {
+            reported_by = "owner";
+        }
+
+        if (!nearest_address || !location_desc || !lat || !lon || !start_time || !end_time) {
+            alert("Please fill out all fields before saving.");
+
+            // Restore the button after displaying the error
+            button.disabled = false;
+            button.innerText = 'Save';
+
+            return;
+        }
+
+        if (start_time >= end_time) {
+            alert("Departure time must be after the arrival time.");
+
+            // Restore the button after displaying the error
+            button.disabled = false;
+            button.innerText = 'Save';
+
+            return;
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `_csrf_token={{ csrf_token() }}&uid=${uid}&lat=${lat}&lon=${lon}&nearest_address=${nearest_address}&location_desc=${location_desc}&start_time=${start_time}&end_time=${end_time}&reported_by=${reported_by}`,
+        });
+        
+        if (response.status === 200) {
+            button.innerText = 'Saved!';
+
+            window.location.reload();
+        } else {
+            console.log("Failed to modify locTime.");
+            const message = await response.text();
+            console.error(message);
+            alert(message);
+            button.disabled = false;
+            button.innerHTML = 'Save';
+        }
+    }
+
+    // Used to convert date formats for filling the input boxes
+    function formatDateForInput(date) {
+        if (!date) 
+            return "";
+        const d = new Date(date);
+        const year = d.getUTCFullYear();
+        const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(d.getUTCDate()).padStart(2, '0');
+        const hours = String(d.getUTCHours()).padStart(2, '0');
+        const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+    // Turn the raw data of where the report came from into a readable string
+    function dataProvidedByString(rawString) {
+        switch (rawString) {
+            case "user":
+                return "A local user"
+            case "admin":
+                return "Chambana Eats"
+            case "owner":
+                return "An owner of the truck"
+            default:
+                return "An unspecified source"
+            }
+    }
+
+    // Executes after page loads, applies the proper string for the data source AND initializes address autocomplete
+    window.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.truck-value[data-reported-by]').forEach(span => {
+            const raw = span.dataset.reportedBy;
+            span.textContent = dataProvidedByString(raw);
+        });
+    });
+
+    // Makes the "LIVE" indicator appear above the current locTime
+    function updateLiveIndicators() {
+        const now = new Date();
+
+        document.querySelectorAll('[id^="loctime-info-"]').forEach(div => {
+            const startTime = new Date(div.dataset.startTime);
+            const endTime = new Date(div.dataset.endTime);
+            const liveContainer = div.querySelector('.live-container');
+
+            if (startTime <= now && now <= endTime) {
+                if (!liveContainer.querySelector('.live-indicator')) {
+                    const liveBadge = document.createElement('div');
+                    liveBadge.className = 'live-indicator';
+                    liveBadge.innerHTML = '🔴 LIVE';
+                    liveContainer.appendChild(liveBadge);
+                }
+            } else {
+                // If it's no longer live, remove the badge
+                const existingBadge = liveContainer.querySelector('.live-indicator');
+                if (existingBadge) {
+                    existingBadge.remove();
+                }
+            }
+        });
+    }
+
+    // Update the live indicators once a minute
+    updateLiveIndicators();
+    setInterval(updateLiveIndicators, 60000);
+
+    // Handles all Google Maps API for main form
+    function initAutocompleteMain() {
+        console.log("Initializing Google Maps...");
+
+        var input = document.getElementById('nearest_address');
+        var autocomplete = new google.maps.places.Autocomplete(input);
+
+        // Initialize the geocoder
+        console.log("\tInitializing geocoder...");
+        geocoder = new google.maps.Geocoder();
+        console.log("\t\tDone.");
+
+        // Initialize the map
+        console.log("\tInitializing map...");
+        map = new google.maps.Map(document.getElementById('map'), {
+            center: { lat: 40.111426, lng: -88.235969 }, // Campus approximately
+            zoom:   14,
+            mapId:  food_truck_map_id
+        });
+        document.getElementById('map').style.display = 'none';  // Hide the map initially
+        console.log("\t\tDone.");
+
+        // Initialize the marker
+        console.log("\tInitializing marker...");
+        marker = new google.maps.marker.AdvancedMarkerElement({
+            map:        map,
+            position:   { lat: 40.111426, lng: -88.235969 }, // Campus approximately
+            gmpDraggable: true
+        });
+        console.log("\t\tDone.");
+
+        // Initialize autocomplete
+        console.log("\tInitializing autocomplete listener...");
+        google.maps.event.addListener(autocomplete, 'place_changed', function () {
+            console.log("User typed...");
+            var place = autocomplete.getPlace();
+
+            // Show the map when the user selects a place
+            document.getElementById('map').style.display = "block";
+
+            // Center the map on the location & move the marker
+            map.setCenter(place.geometry.location);
+            map.setZoom(18);
+            marker.position = place.geometry.location;
+
+            // Update lat and lon fields
+            document.getElementById('lat').value = place.geometry.location.lat();
+            document.getElementById('lon').value = place.geometry.location.lng();
+            console.log("\tUpdated.");
+        });
+        console.log("\t\tDone.");
+
+        // Update the lat and lon when the marker is dragged
+        console.log("\tInitializing marker drag listener...");
+        marker.addListener('dragend', function (event) {
+            console.log("Marker was dragged...");
+            marker.position = event.latLng;
+            document.getElementById('lat').value = event.latLng.lat();
+            document.getElementById('lon').value = event.latLng.lng();
+
+            // Update the address to be closest to the point
+            geocoder.geocode({ location: event.latLng }, (results, status) => {
+                console.log(status);
+                if (status === 'OK' && results[0]) {
+                    document.getElementById('nearest_address').value = results[0].formatted_address;
+                }
+            });
+            console.log("\tUpdated.");
+        });
+        console.log("\t\tDone.");
+
+        // Update the marker and position when the map is clicked
+        console.log("\tInitializing map click listener...");
+        map.addListener('click', function (event) {
+            console.log("Location was clicked...");
+            marker.position = event.latLng;
+            document.getElementById('lat').value = event.latLng.lat();
+            document.getElementById('lon').value = event.latLng.lng();
+
+            // Update the address to be closest to the point
+            geocoder.geocode({ location: event.latLng }, (results, status) => {
+                if (status === 'OK' && results[0]) {
+                    document.getElementById('nearest_address').value = results[0].formatted_address;
+                }
+            });
+            console.log("\tUpdated.");
+        });
+        console.log("\t\tDone.");
+    }
+
+    // Handles all Google Maps API for modification forms
+    function initAutocomplete(uid) {
+        console.log("Initializing Google Maps...");
+
+        var input = document.getElementById(`nearest_address-${uid}`);
+        var autocomplete = new google.maps.places.Autocomplete(input);
+
+        // Initialize the geocoder
+        console.log("\tInitializing geocoder...");
+        geocoder = new google.maps.Geocoder();
+        console.log("\t\tDone.");
+
+        var curLat = parseFloat(document.getElementById(`lat-${uid}`).value);
+        var curLon = parseFloat(document.getElementById(`lon-${uid}`).value);
+
+        // Initialize the map
+        console.log("\tInitializing map...");
+        map = new google.maps.Map(document.getElementById(`map-${uid}`), {
+            
+            center: { lat: curLat, lng: curLon },
+            zoom:   18,
+            mapId:  food_truck_map_id
+        });
+        console.log("\t\tDone.");
+
+        // Initialize the marker
+        console.log("\tInitializing marker...");
+        marker = new google.maps.marker.AdvancedMarkerElement({
+            map:        map,
+            position:   { lat: curLat, lng: curLon },
+            gmpDraggable: true
+        });
+        console.log("\t\tDone.");
+
+        // Initialize autocomplete
+        console.log("\tInitializing autocomplete listener...");
+        google.maps.event.addListener(autocomplete, 'place_changed', function () {
+            console.log("User typed...");
+            var place = autocomplete.getPlace();
+
+            // Center the map on the location & move the marker
+            map.setCenter(place.geometry.location);
+            map.setZoom(18);
+            marker.position = place.geometry.location;
+
+            // Update lat and lon fields
+            document.getElementById(`lat-${uid}`).value = place.geometry.location.lat();
+            document.getElementById(`lon-${uid}`).value = place.geometry.location.lng();
+            console.log("\tUpdated.");
+        });
+        console.log("\t\tDone.");
+
+        // Update the lat and lon when the marker is dragged
+        console.log("\tInitializing marker drag listener...");
+        marker.addListener('dragend', function (event) {
+            console.log("Marker was dragged...");
+            marker.position = event.latLng;
+            document.getElementById(`lat-${uid}`).value = event.latLng.lat();
+            document.getElementById(`lon-${uid}`).value = event.latLng.lng();
+
+            // Update the address to be closest to the point
+            geocoder.geocode({ location: event.latLng }, (results, status) => {
+                if (status === 'Ok' && results[0]) {
+                    document.getElementById(`nearest_address-${uid}`).value = results[0].formatted_address;
+                }
+            });
+            console.log("\tUpdated.");
+        });
+        console.log("\t\tDone.");
+
+        // Update the marker and position when the map is clicked
+        console.log("\tInitializing map click listener...");
+        map.addListener('click', function (event) {
+            console.log("Location was clicked...");
+            marker.position = event.latLng;
+            document.getElementById(`lat-${uid}`).value = event.latLng.lat();
+            document.getElementById(`lon-${uid}`).value = event.latLng.lng();
+
+            // Update the address to be closest to the point
+            geocoder.geocode({ location: event.latLng }, (results, status) => {
+                if (status === 'Ok' && results[0]) {
+                    document.getElementById(`nearest_address-${uid}`).value = results[0].formatted_address;
+                }
+            });
+            console.log("\tUpdated.");
+        });
+        console.log("\t\tDone.");
+    }
+
+</script>
+
+{% endblock %}
