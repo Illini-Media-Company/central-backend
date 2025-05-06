@@ -41,3 +41,4 @@ jobs:
             CC_CLIENT_ID=${{ secrets.CC_CLIENT_ID }}
             CC_CLIENT_SECRET=${{ secrets.CC_CLIENT_SECRET }}
             RETOOL_API_KEY=${{ secrets.RETOOL_API_KEY }}
+            FOOD_TRUCK_MAPS_ID=${{ secrets.FOOD_TRUCK_MAPS_ID }}
