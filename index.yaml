@@ -1,0 +1,5 @@
+indexes:
+  - kind: foodTruckLocTime
+    properties:
+      - name: truck_uid
+      - name: start_time
