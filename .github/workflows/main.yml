@@ -42,3 +42,11 @@ jobs:
             CC_CLIENT_SECRET=${{ secrets.CC_CLIENT_SECRET }}
             RETOOL_API_KEY=${{ secrets.RETOOL_API_KEY }}
             FOOD_TRUCK_MAPS_ID=${{ secrets.FOOD_TRUCK_MAPS_ID }}
+
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start Schedulers
+        run: |
+          curl -X GET "central-backend-399421.uc.r.appspot.com/schedulers"
