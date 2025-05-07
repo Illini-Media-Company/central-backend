@@ -4,7 +4,7 @@ import os
 from threading import Thread
 import urllib
 import atexit
-import datetime
+from datetime import datetime
 
 from flask import (
     Flask,
