@@ -45,7 +45,7 @@ jobs:
   
   test: 
     needs: deploy
-    name: Run tests
+    runs-on: ubuntu-latest
     steps:
       run: |
         curl -X GET "https://central-backend-399421.uc.r.appspot.com/schedulers"
