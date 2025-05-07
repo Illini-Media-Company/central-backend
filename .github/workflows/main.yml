@@ -42,3 +42,7 @@ jobs:
             CC_CLIENT_SECRET=${{ secrets.CC_CLIENT_SECRET }}
             RETOOL_API_KEY=${{ secrets.RETOOL_API_KEY }}
             FOOD_TRUCK_MAPS_ID=${{ secrets.FOOD_TRUCK_MAPS_ID }}
+
+      - name: Call Scheduler Endpoint
+        run: |
+          curl -X GET "https://app.dailyillini.com/scheduler"
