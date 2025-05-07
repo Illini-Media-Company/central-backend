@@ -44,7 +44,7 @@ jobs:
             FOOD_TRUCK_MAPS_ID=${{ secrets.FOOD_TRUCK_MAPS_ID }}
 
   build:
-    name: Build Docker Image
+    name: Start Schedulers
     runs-on: ubuntu-latest
     needs: deploy
     steps:
