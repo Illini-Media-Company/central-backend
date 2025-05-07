@@ -4,6 +4,7 @@ import os
 from threading import Thread
 import urllib
 import atexit
+import datetime
 
 from flask import (
     Flask,
@@ -47,6 +48,9 @@ from db.json_store import json_store_set
 from util.copy_editing import scheduler as copy_scheduler
 from util.map_point import scheduler as map_scheduler
 from util.scheduler import scheduler_to_json, db_to_scheduler
+from util.map_point import remove_point
+from db.map_point import get_all_points
+from apscheduler.triggers.date import DateTrigger
 
 from util.slackbot import start_slack
 from views.quick_links import quick_links_routes
@@ -158,8 +162,15 @@ def schedulers():
     # token = request.args.get("token")
     # if token != os.environ.get("SCHEDULER_TOKEN"):
     #     return "Invalid token", 403
-    db_to_scheduler(map_scheduler, "MAP_JOBS")
-    db_to_scheduler(copy_scheduler, "COPY_JOBS")
+    # db_to_scheduler(map_scheduler, "MAP_JOBS")
+    # db_to_scheduler(copy_scheduler, "COPY_JOBS")
+    map_points = get_all_points()
+    for point in map_points:
+        if point["end_date"] < datetime.now():
+            trigger = DateTrigger(point["end_date"], timezone="America/Chicago")
+            map_scheduler.add_job(
+                func=remove_point, args=[int(point["uid"])], trigger=trigger
+            )
     return "Schedulers updated", 200
 
 
