@@ -152,6 +152,12 @@ def add_template_context():
     )
 
 
+@app.route("/schedulers")
+def schedulers():
+    db_to_scheduler(map_scheduler, "MAP_JOBS")
+    db_to_scheduler(copy_scheduler, "COPY_JOBS")
+
+
 @app.route("/")
 def index():
     url_history = session.get("url_history", [])
