@@ -28,7 +28,6 @@ def add(title, lat, long, url, start_date, end_date, image, address):
     json_store_set("MAP_JOBS", map_json, replace=True)
 
     print(f"Point will be deleted {end_date}")
-    # lol
 
 
 def remove(uid):
