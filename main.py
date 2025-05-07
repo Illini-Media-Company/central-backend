@@ -97,6 +97,8 @@ start_slack(app)
 
 @atexit.register
 def log_scheduler():
+    map_scheduler.start()
+    copy_scheduler.start()
     maps = scheduler_to_json(map_scheduler)
     copy = scheduler_to_json(copy_scheduler)
     json_store_set("MAP_JOBS", maps)
