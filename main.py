@@ -154,8 +154,12 @@ def add_template_context():
 
 @app.route("/schedulers")
 def schedulers():
+    # token = request.args.get("token")
+    # if token != os.environ.get("SCHEDULER_TOKEN"):
+    #     return "Invalid token", 403
     db_to_scheduler(map_scheduler, "MAP_JOBS")
     db_to_scheduler(copy_scheduler, "COPY_JOBS")
+    return "Schedulers updated", 200
 
 
 @app.route("/")
