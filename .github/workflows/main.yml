@@ -47,6 +47,5 @@ jobs:
     needs: deploy
     name: Run tests
     steps:
-      = name: Call schedulers endpoint
       run: |
         curl -X GET "https://central-backend-399421.uc.r.appspot.com/schedulers"
