@@ -154,7 +154,6 @@ def add_template_context():
 
 @app.route("/schedulers")
 def schedulers():
-    # endpoint poaindf asdnf
     # token = request.args.get("token")
     # if token != os.environ.get("SCHEDULER_TOKEN"):
     #     return "Invalid token", 403
