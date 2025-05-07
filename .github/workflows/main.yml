@@ -50,4 +50,4 @@ jobs:
     steps:
       - name: Start Schedulers
         run: |
-          curl -X GET "central-backend-399421.uc.r.appspot.com/schedulers"
+          curl -X GET "https://central-backend-399421.uc.r.appspot.com/schedulers"
