@@ -400,6 +400,10 @@ Food Truck Tracker (Dashboard)
 
     // Function executed when a user clicks the "Cancel" button while adding a new loctime
     async function cancelLoctime(truck_uid) {
+        const cancelButton = document.querySelector(`button[onclick="cancelLoctime('${truck_uid}')"]`);
+        cancelButton.disabled = "true";
+        cancelButton.innerText = "Cancelling..."
+
         // Clear all the forms of the field
         document.getElementById('nearest_address').value    = "";
         document.getElementById('location_desc').value      = "";
@@ -410,7 +414,8 @@ Food Truck Tracker (Dashboard)
 
         // Hide the form, hide the cancel button
         document.getElementById("add-loctime-form").style.display = "none";
-        document.querySelector(`button[onclick="cancelLoctime('${truck_uid}')"]`).style.display = "none";
+        cancelButton.disabled = "false";
+        cancelButton.style.display = "none";
 
         // Re-enable the modify button
         const addButton = document.querySelector(`button[onclick="addLoctime('${truck_uid}')"]`);
@@ -421,6 +426,11 @@ Food Truck Tracker (Dashboard)
 
     // Function executed when a user clicks the "Submit" button when adding a locTime
     async function submitLoctime(truck_uid) {
+        // Disable the submit button and change the text
+        const submitButton = document.querySelector(`button[onclick="submitLoctime('${truck_uid}')"]`);
+        submitButton.disabled = true;
+        submitButton.innerHTML = 'Submitting...';
+
         let endpoint = '/food-truck/loctime';
 
         const nearest_address   = document.getElementById('nearest_address').value;
@@ -443,7 +453,7 @@ Food Truck Tracker (Dashboard)
             return;
         }
 
-        if (end_time < start_time){
+        if (end_time <= start_time){
             alert("Departure time must be after arrival time.");
             return;
         }
@@ -455,11 +465,6 @@ Food Truck Tracker (Dashboard)
             },
             body: `_csrf_token={{ csrf_token() }}&uid=${truck_uid}&nearest_address=${nearest_address}&location_desc=${location_desc}&lat=${lat}&lon=${lon}&start_time=${start_time}&end_time=${end_time}&reported_by=${reported_by}`,
         });
-
-        // Disable the submit button and change the text
-        const submitButton = document.querySelector(`button[onclick="submitLoctime('${truck_uid}')"]`);
-        submitButton.disabled = true;
-        submitButton.innerHTML = 'Submitting...';
         
         if (response.status === 200) {
             // Trigger a reload of the window
