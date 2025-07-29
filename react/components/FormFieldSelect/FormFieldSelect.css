@@ -1,0 +1,23 @@
+.form-field-select {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.form-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75em;
+    gap: 1em;
+}
+
+.form-field-select label {
+    text-align:     left;
+    margin-bottom:  0.25em;
+    font-weight:    bold;
+    font-family:    "futura-pt-bold", sans-serif;
+    font-weight:    700;
+    font-style:     normal;
+    font-size:      1em;
+    white-space:    nowrap;
+}

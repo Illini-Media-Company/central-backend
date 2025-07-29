@@ -1,0 +1,28 @@
+.dropdown-content {
+  z-index:            1000;
+  position:           absolute;
+  width:              100%;
+  display:            flex;
+  flex-direction:     column;
+  align-items:        center;
+  padding:            1rem, 0, 0, 1rem;
+  margin-top:         0.5rem;
+  background-color:   #FFFFFF;
+  color:              #000000;
+  border-radius:      0.5rem;
+  box-shadow:         0 0.25rem 0.5rem rgba(0,0,0,0.2);
+  max-height:         40vh;
+  overflow-y:         scroll;
+  scrollbar-width:    none;
+  -ms-overflow-style: none;
+  opacity:            0;
+  transform:          translateY(-5%);
+  transition:         transform 150ms ease-in-out, opacity 100ms ease-in-out;
+  pointer-events:     none;
+}
+
+.dropdown-content-open {
+  opacity:            1;
+  transform:          translateY(0);
+  pointer-events:     all;
+}

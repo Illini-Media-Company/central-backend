@@ -1,0 +1,37 @@
+.dropdown-button {
+  display:            flex;
+  align-items:        center;
+  justify-content:    space-between;
+  padding:            0.25rem 0.5rem;
+  margin-bottom:      0.5rem;
+  background-color:   #FFFFFF;
+  border-radius:      0.5rem;
+  border:             1px solid #ccc;
+  color:              #000000;
+  font-family:        "futura-pt", sans-serif;
+  font-weight:        300;
+  font-style:         normal;
+  font-size:          1em;
+  cursor:             pointer;
+}
+
+.dropdown-button-open {
+  border:             #424242 1px solid;
+}
+
+.dropdown-button:hover {
+  background-color:   #F7F7F7;
+  border-color:       #424242;
+}
+
+.dropdown-button-open:hover {
+  background-color:   #F7F7F7;
+  border-color:       #424242;
+}
+
+.dropdown-icon {
+  display:            flex;
+  align-items:        right;
+  justify-content:    right;
+  margin-left:        1rem;
+}

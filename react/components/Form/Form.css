@@ -1,0 +1,67 @@
+.form-container {
+    flex: 2;
+    max-width: none;
+    padding: 1em;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.form-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75em;
+    gap: 1em;
+}
+
+.form label {
+    margin-bottom:  0.25em;
+    font-weight:    bold;
+    font-family:    "futura-pt-bold", sans-serif;
+    font-weight:    700;
+    font-style:     normal;
+    font-size:      1em;
+    white-space:    nowrap;
+}
+
+.form input {
+    padding:        0.25em;
+    border:         1px solid #ccc;
+    border-radius:  6px;
+    font-family:    "futura-pt", sans-serif;
+    font-weight:    300;
+    font-style:     normal;
+    font-size:      1em;
+}
+
+.submit-button {
+    margin-top:         0.5em;
+    padding:            0.5em 1em;
+    width:              fit-content;
+
+    background-color:   #F99F20;
+    color:              #FFFFFF;
+    border:             3px solid;
+    border-color:       #F99F20;
+    border-radius:      2rem;
+
+    font-weight:        bold;
+    font-family:        "futura-pt-bold", sans-serif;
+    font-weight:        700;
+    font-style:         normal;
+    font-size:          1em;
+
+    appearance:         none;
+    cursor:             pointer;
+    box-shadow:         none;
+    outline:            none;
+
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.submit-button:hover {
+    background-color:  #BA6E03;
+}
