@@ -8,11 +8,11 @@
 import { useState } from 'react'
 import './App.css'
 
-import Form from "../../../components/Form/Form";
-import FormField from "../../../components/FormField/FormField";
-import FormFieldSelect from "../../../components/FormFieldSelect/FormFieldSelect";
-import FormFieldPhone from "../../../components/FormField/FormFieldPhone";
-import FormFieldDate from "../../../components/FormField/FormFieldDate";
+import Form from "public-components/Form/Form";
+import FormField from "public-components/FormField/FormField";
+import FormFieldSelect from "public-components/FormFieldSelect/FormFieldSelect";
+import FormFieldPhone from "public-components/FormField/FormFieldPhone";
+import FormFieldDate from "public-components/FormField/FormFieldDate";
 
 function App() {
   const displayData = (data) => {
