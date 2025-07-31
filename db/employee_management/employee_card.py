@@ -77,3 +77,16 @@ def create_employee(
     )
     employee.put()
     return employee
+
+
+####################################################################################################################################
+
+
+# List all employees
+def get_all_employees():
+    employees = sorted(
+        [employee.to_dict() for employee in EmployeeCard.query().fetch()],
+        key=lambda x: x.get("last_name", "").lower(),
+    )
+
+    return employees
