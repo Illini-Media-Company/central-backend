@@ -19,7 +19,7 @@ export default function FormFieldSelect({ name, label, options = [] }) {
             <Dropdown
                 buttonText={selected || `Select...`}
                 content={
-                <div>
+                <>
                     {options.map((opt) => (
                     <DropdownItem
                         key={opt}
@@ -28,7 +28,7 @@ export default function FormFieldSelect({ name, label, options = [] }) {
                         {opt}
                     </DropdownItem>
                     ))}
-                </div>
+                </>
                 }
             />
         </div>
