@@ -382,3 +382,15 @@ def get_all_trucks_with_loctimes():
 
     print("Done.")
     return result
+
+
+# Get all cuisine types from registered trucks
+def get_all_cuisines():
+    cuisines = set()
+    trucks = foodTruck.query().fetch()
+
+    for truck in trucks:
+        if truck.cuisine:
+            cuisines.add(truck.cuisine)
+
+    return sorted(list(cuisines))

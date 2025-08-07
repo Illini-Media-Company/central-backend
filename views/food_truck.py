@@ -15,6 +15,7 @@ from db.food_truck import (
     get_all_trucks_with_loctimes,
     check_existing_loctime,
     check_existing_loctime_notruck,
+    get_all_cuisines,
 )
 from util.security import restrict_to, csrf
 from datetime import datetime
@@ -272,6 +273,16 @@ def list_food_trucks_json():
                 loc.pop("uid", None)
 
     return jsonify(trucks_with_loctimes)
+
+
+# Get all of the registered cuisines as a JSON
+@food_truck_routes.route("/cuisines", methods=["GET"])
+@cross_origin()
+@csrf.exempt
+def list_cuisines_json():
+    with client.context():
+        cuisines = get_all_cuisines()
+    return jsonify(cuisines)
 
 
 # # List all of the food trucks
