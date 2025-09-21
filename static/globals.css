@@ -1,0 +1,21 @@
+:root {
+    /* Override Bootstrap's default settings */
+    --bs-font-sans-serif: futura-pt, system-ui, sans-serif;
+    --bs-body-font-weight: 300;
+    --bs-body-color: #212121;
+
+    /* Define global fonts */
+    font-family: futura-pt, system-ui, sans-serif;
+    font-weight: 300;
+    font-style: normal;
+
+    /* Define global colors as variables */
+    --main-bg-color: #FFFFFF;
+    --main-text-color: #212121;
+    --main-lt-gray-color: #EEEEEE;
+    --main-accent-color: #F99F20;
+}
+
+
+
+
