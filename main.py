@@ -176,8 +176,7 @@ def schedulers():
 
 @app.route("/")
 def index():
-    url_history = session.get("url_history", [])
-    return render_template("index.html", url_history=url_history)
+    return render_template("index.html")
 
 
 @app.route("/login")
@@ -276,6 +275,13 @@ def callback():
         return redirect(url_for("index"))
     else:
         return "User email not available or not verified by Google.", 400
+
+
+@app.route("/url-history")
+@login_required
+def url_history():
+    url_history = session.get("url_history", [])
+    return render_template("url_history.html", url_history=url_history)
 
 
 @app.route("/api-query")

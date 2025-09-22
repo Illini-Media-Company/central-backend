@@ -1,0 +1,19 @@
+.index-hero {
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.index-hero-logo {
+    width: 40%;
+    height: auto;
+}
+
+.index-hero-text {
+    margin-top: 0.5rem;
+}
+
+.form-control, .form-select {
+    border-color: #a8a8a8;
+}
