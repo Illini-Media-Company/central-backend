@@ -1,3 +1,14 @@
+.navbar {
+    background-color: transparent !important;
+    width: 100%;
+    position: fixed;
+    top: 0;
+}
+
+.page-content {
+    margin-top: 65px; /* Leave room for the sticky header on each page */
+}
+
 .navbar-container {
     display: flex;
     flex-wrap: inherit;
@@ -40,4 +51,13 @@
     border: 0;
     transition: color .15s ease-in-out;
     align-items: center;
+}
+
+/* Override some information from Bootstrap for the dropdowns */
+.dropdown-menu {
+    border-radius: 50px;
+}
+
+.dropdown-item {
+    border-radius: 50px;
 }

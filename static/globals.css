@@ -16,6 +16,9 @@
     --main-accent-color: #F99F20;
 }
 
-
+a {
+    color: var(--main-accent-color);
+    overflow-wrap: anywhere; /* Makes really long URLs wrap to the next line */
+}
 
 
