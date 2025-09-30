@@ -34,6 +34,7 @@ from constants import (
 from db.quick_link import get_all_quick_links
 from db.user import (
     add_user,
+    update_user,
     get_user,
 )
 from util.security import (
@@ -138,16 +139,20 @@ def unauthorized_callback():
     return redirect("/login?state=" + urllib.parse.quote(request.path))
 
 
+# Everythhing in this function will be available in all templates
 @app.context_processor
 def add_template_context():
+    # Checks if the current user is in any of the groups passed in, calls a function from util/security.py
     def is_current_user_in_group(groups):
         if isinstance(groups, str):
             groups = [groups]
         return current_user.is_authenticated and is_user_in_group(current_user, groups)
 
+    # Turns a Google Calendar ID into a URL
     def get_gcal_url(gcal_id):
         return f"https://calendar.google.com/calendar?cid={gcal_id}"
 
+    # Things in this dict can be used/called from all templates, like the get_gcal_url function
     return dict(
         constants=constants,
         quick_links=get_all_quick_links(),
@@ -240,22 +245,42 @@ def callback():
         unique_id = userinfo_response["sub"]
         user_email = userinfo_response["email"]
         user_name = userinfo_response["name"]
+        user_picture = userinfo_response["picture"]
         user_domain = userinfo_response.get("hd", "")
 
         # Create or update user in db
         user = get_user(user_email)
+        # If the user does not already exist
         if user is None:
             if user_domain == "illinimedia.com":
                 user = add_user(
-                    sub=unique_id, name=user_name, email=user_email, groups=[]
+                    sub=unique_id,
+                    name=user_name,
+                    email=user_email,
+                    picture=user_picture,
+                    groups=[],
                 )
             else:
                 return (
                     "User must be a member of Illini Media for automatic registration.",
                     403,
                 )
+        # If we don't already store sub (a unique identifier for the user)
         elif user.sub is None:
-            user = add_user(sub=unique_id, name=user_name, email=user_email, groups=[])
+            user = add_user(
+                sub=unique_id,
+                name=user_name,
+                email=user_email,
+                picture=user_picture,
+                groups=[],
+            )
+        # Otherwise, make sure we have the most recent name and email
+        else:
+            user = update_user(
+                name=user_name,
+                email=user_email,
+                picture=user_picture,
+            )
 
         # Create new thread to sync user's group memberships
         thread = Thread(target=update_groups, args=[user_email])
