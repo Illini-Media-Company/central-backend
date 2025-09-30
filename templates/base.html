@@ -1,3 +1,5 @@
+<!-- This file defines the base HTML structure used by all pages, including the navigation bar at the top. -->
+
 <!-- Macro to make an item in the navigation bar (Jinja) -->
 {% macro nav_item(text, url) %}
 <li class="nav-item px-1">
@@ -13,7 +15,7 @@
 {% macro nav_dropdown(text) %}
 <li class="navbar-item dropdown">
     <a class="navbar-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-        <i class="bi bi-caret-down-fill me-1 dropdown-caret"></i> {{ text }}
+        <i class="bi bi-caret-down-fill dropdown-caret"></i> {{ text }}
     </a>
     <ul class="dropdown-menu dropdown-menu-end">
         {{ caller() }}
@@ -73,8 +75,14 @@
                 <a href="/">
                     <img class="navbar-image" src="/static/logo_IMC.svg" alt="Illini Media Company Logo">
                 </a>
-                <div class="collapse navbar-collapse" id="navbarSupportedContent">
 
+                <!-- Menu toggle button that only appears on small screens -->
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <i class="bi bi-list"></i>
+                </button>
+
+                <!-- This is where the actual menu begins and it will be collapsed by default on smaller screens -->
+                <div class="collapse navbar-collapse" id="navbarSupportedContent">
                     <!-- Adds all of the dropdowns for items in the navigation bar -->
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                         {% call nav_dropdown('Quick Links') %}

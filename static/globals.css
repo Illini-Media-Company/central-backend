@@ -46,3 +46,10 @@ h3 {
     margin-bottom: 1rem;
     margin-top: 1em;
 }
+
+/* Specific styling for mobile (Note that the Central Backend is intentionally optimized for desktop and laptop displays) */
+@media (max-width: 480px) {
+    .container {
+        width: 98%;
+    }
+}
