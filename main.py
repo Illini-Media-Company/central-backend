@@ -44,13 +44,15 @@ from util.security import (
     update_groups,
 )
 
+from util.map_point import remove_point
+from db.map_point import get_all_points
+from util.gcal import get_allstaff_events
+
 from db.json_store import json_store_set
 
 from util.copy_editing import scheduler as copy_scheduler
 from util.map_point import scheduler as map_scheduler
 from util.scheduler import scheduler_to_json, db_to_scheduler
-from util.map_point import remove_point
-from db.map_point import get_all_points
 from apscheduler.triggers.date import DateTrigger
 
 from util.slackbot import start_slack
@@ -67,6 +69,12 @@ from views.copy_schedule import copy_schedule_routes
 from views.map_points import map_points_routes
 from views.overlooked import overlooked_routes
 from views.food_truck import food_truck_routes
+
+from util.helpers.ap_datetime import (
+    ap_datetime,
+    ap_date,
+    ap_time,
+)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
@@ -98,6 +106,11 @@ login_manager.init_app(app)
 client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
 start_slack(app)
+
+# Regiser filters with Jinja
+app.jinja_env.filters["ap_datetime"] = ap_datetime
+app.jinja_env.filters["ap_date"] = ap_date
+app.jinja_env.filters["ap_time"] = ap_time
 
 
 @atexit.register
@@ -181,7 +194,11 @@ def schedulers():
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    if current_user.is_authenticated:
+        upcoming_events = get_allstaff_events()
+    else:
+        upcoming_events = []
+    return render_template("index.html", upcoming_events=upcoming_events)
 
 
 @app.route("/login")

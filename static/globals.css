@@ -15,6 +15,9 @@
     --main-lt-gray-color: #EEEEEE;
     --main-dk-gray-color: #212121;
     --main-accent-color: #F99F20;
+
+    /* Define global corner radius */
+    --main-border-radius: 1rem;
 }
 
 a {
@@ -23,28 +26,38 @@ a {
 }
 
 p {
+    font-family: "futura-pt", sans-serif;
+    font-weight: 300;
+    font-style: normal;
+    font-size: 1rem;
 }
 
 h1 {
     font-family: "futura-pt", sans-serif;
     font-weight: 500;
     font-style: normal;
-    font-size: 3em;
+    font-size: 3rem;
 }
 
 h2 {
+    font-family: "futura-pt", sans-serif;
+    font-weight: 500;
+    font-style: normal;
+    font-size: 2rem;
 }
 
 h3 {
     font-family: "futura-pt", sans-serif;
     font-weight: 500;
     font-style: normal;
+    font-size: 1.5rem;
 }
 
-.container {
-    width: 80%;
-    margin-bottom: 1rem;
-    margin-top: 1em;
+h4 {
+    font-family: "futura-pt", sans-serif;
+    font-weight: 500;
+    font-style: normal;
+    font-size: 1rem;
 }
 
 /* Specific styling for mobile (Note that the Central Backend is intentionally optimized for desktop and laptop displays) */

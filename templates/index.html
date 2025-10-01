@@ -15,29 +15,47 @@
 
 <!-- Content specific to this page -->
 {% block content %}
-<div class="container">
-    <div class="index-hero">
-        <img src="{{ url_for('static', filename='logo_IMC.svg') }}" alt="IMC Logo" class="index-hero-logo">
-        <h1 class="index-hero-text">Console</h1>
-    </div>
-    <h3>Session URL History</h3>
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>URL</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for url in url_history %}
-            <tr>
-                <td>{{ loop.index }}</td> 
-                <td><a href="{{ url }}">{{ url }}</a></td>
-            </tr>
-            {% endfor %}
-
-        </tbody>
-    </table>
+<div class="index-container">
+    <!-- If the user is not logged in, show a login link. If they are logged in, show a welcome message. -->
+    {% if not current_user.is_authenticated %}
+        <style>
+            .index-container {
+                display: flex;
+                align-items: center;
+            }
+        </style>
+        <div class="index-hero">
+            <img src="{{ url_for('static', filename='logo_IMC.svg') }}" alt="IMC Logo" class="index-hero-logo">
+            <h1 class="index-hero-text">Console</h1>
+            <br>
+            <h3>Please <span><a href="/login">login</a></span> to access the console.</h3>
+        </div>
+    {% else %}
+        <h3>Welcome, {{ current_user.name }}</h3>
+        <h4>to the IMC Console</h4>
+        <div class="upcoming-events-container">
+            <!-- If there are no upcoming events, display a message -->
+            {% if not upcoming_events %}
+                <div class="upcoming-event" style="align-items: center; text-align: center;">
+                    <h3>There are no all-staff events within the next 14 days</h3>
+                </div>
+            
+            <!-- Otherwise, show all of the events in the next 14 days -->
+            {% else %}
+                <div class="upcoming-events-header">
+                    <h3 style="margin-bottom: 0">Upcoming All-Staff Events</h3>
+                    <a href="{{ get_gcal_url(constants.MAIN_IMC_GCAL_ID) }}">View the full calendar</a>
+                </div>
+                {% for event in upcoming_events %}
+                    <div class="upcoming-event">
+                        <h4>{{ event.title }}</h4>
+                        <p class="upcoming-event-text"><span>{{ event.start }}{% if event.location %} at {{ event.location }}{% endif%}</span></p>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+    {% endif %}
+    
 </div>
 
 {% endblock %}

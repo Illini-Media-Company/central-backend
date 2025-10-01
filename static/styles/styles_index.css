@@ -1,8 +1,13 @@
+.index-container {
+    height: 100%;
+}
+
 .index-hero {
-    width: 100%;
     justify-content: center;
     align-items: center;
     text-align: center;
+    width: 100%;
+    margin: auto;
 }
 
 .index-hero-logo {
@@ -14,6 +19,46 @@
     margin-top: 0.5rem;
 }
 
-.form-control, .form-select {
-    border-color: #a8a8a8;
+.upcoming-events-container {
+    display: flex;
+    gap: 0.5rem;
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    background-color: var(--main-lt-gray-color);
+    border-radius: calc(var(--main-border-radius) + 0.5rem);
+    padding: 0.5rem;
+
+    box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,0.2);
+}
+
+.upcoming-event {
+    border-radius: var(--main-border-radius);
+    background-color: var(--main-bg-color);
+    padding: 0.5rem;
+    width: 100%
+}
+
+.upcoming-event-text {
+    margin: 0;
+}
+
+.upcoming-events-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: baseline;
+
+    width: 100%;
+    padding: 0 0.5rem;
+}
+
+/* Specific styling for mobile (Note that the Central Backend is intentionally optimized for desktop and laptop displays) */
+@media (max-width: 480px) {
+    .index-hero-logo {
+        width: 80%;
+        height: auto;
+    }
 }

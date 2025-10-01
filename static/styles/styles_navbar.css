@@ -6,7 +6,11 @@
 }
 
 .page-content {
-    margin-top: 3.8rem; /* Leave room for the sticky header on each page */
+    margin-top: 5rem; /* Leave room for the sticky header on each page + a margin */
+    margin-bottom: 1rem;
+    width: 80%;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .navbar-container {
