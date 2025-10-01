@@ -1,7 +1,12 @@
+hr {
+    margin-top: 1.5rem;
+}
+
 .index-container {
     height: 100%;
 }
 
+/* USED FOR HERO WHEN NO USER IS LOGGED IN */
 .index-hero {
     justify-content: center;
     align-items: center;
@@ -19,6 +24,11 @@
     margin-top: 0.5rem;
 }
 
+.index-header {
+    padding: 0 0.5rem;
+}
+
+/* USED FOR UPCOMING GCAL EVENTS */
 .upcoming-events-container {
     display: flex;
     gap: 0.5rem;
@@ -53,6 +63,63 @@
 
     width: 100%;
     padding: 0 0.5rem;
+}
+
+/* USED FOR THE TOOLS DASHBOARD */
+.tools-container {
+    display: flex;
+    gap: 0.5rem;
+    flex-direction: column;
+
+    background-color: var(--main-lt-gray-color);
+    border-radius: calc(var(--main-border-radius) + 0.5rem);
+    padding: 0.5rem;
+
+    box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,0.2);
+}
+
+.tools-header {
+    width: 100%;
+    padding: 0 0.5rem;
+}
+
+.tool-category-divider {
+    margin-top: 1rem;
+}
+
+.tool-category {
+    display: grid;
+    gap: 0.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    justify-content: start;
+    grid-auto-rows: 1fr;
+}
+
+/* The container for an individual tool */
+/* We're using this for an <a> tag so we make some changes inside here */
+.tool-item-container {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+
+    background-color: var(--main-bg-color);
+    border-radius: var(--main-border-radius);
+    padding: 0.75rem;
+}
+
+/* Holds the icon and the name of the tool */
+.tool-item-header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: start;
+    margin-bottom: 0.5rem;
+}
+
+.tool-item-icon {
+    color: var(--main-accent-color);
+    font-size: 1rem;
+    margin-right: 1rem;
 }
 
 /* Specific styling for mobile (Note that the Central Backend is intentionally optimized for desktop and laptop displays) */

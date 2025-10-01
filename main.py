@@ -113,6 +113,71 @@ app.jinja_env.filters["ap_date"] = ap_date
 app.jinja_env.filters["ap_time"] = ap_time
 
 
+# Define all tools that will be added to the homepage. Each tool must have an icon, which must be chosen
+# from Boostrap Icons (https://icons.getbootstrap.com/) and must include the "bi bi-" prefix. Choose an
+# icon, then click on it. On the right hand side, you will see a section labeled "Icon font". Copy the
+# full text inside of the quotes afteer "class=" and paste it into the "icon" field below.
+#
+# If the tool is not apart of the Central Backend, paste the full URL into the "url" field. If it is
+# apart of the Central Backend, use url_for("function_name") to generate the URL. Usually, you will have
+# to format this from the route. For example, the dashboard page for the Chambana Eats Food Truck
+# Tracker would be accessed with url_for("food_truck_tracker.dashboard").
+#
+# The "new_tab" field is a boolean (True/False) that determines whether the link opens in a new tab or
+# the current tab. If the tool is not apart of the Central Backend, this should usually be True.
+#
+# The "description" field is a short description of the tool that will be shown on the homepage. Keep it
+# to one sentence if possible.
+def get_all_tools():
+    tools = {
+        "Software/Development": [
+            {
+                "name": "API Query Tool",
+                "url": url_for("api_query"),
+                "new_tab": False,
+                "icon": "bi bi-database-fill-gear",
+                "description": "Tool used for querying our Datastore database via API calls.",
+            },
+            {
+                "name": "Authorize Constant Contact",
+                "url": url_for("constant_contact_routes.cc_login"),
+                "new_tab": True,
+                "icon": "bi bi-send",
+                "description": "Used to authorize Constant Contact.",
+            },
+            {
+                "name": "Test",
+                "url": url_for("constant_contact_routes.cc_login"),
+                "new_tab": True,
+                "icon": "bi bi-send",
+                "description": "Used to authorize Constant Contact.",
+            },
+            {
+                "name": "Test",
+                "url": url_for("constant_contact_routes.cc_login"),
+                "new_tab": True,
+                "icon": "bi bi-send",
+                "description": "Used to authorize Constant Contact.",
+            },
+            {
+                "name": "Test",
+                "url": url_for("constant_contact_routes.cc_login"),
+                "new_tab": True,
+                "icon": "bi bi-send",
+                "description": "Used to authorize Constant Contact.",
+            },
+            {
+                "name": "Test",
+                "url": url_for("constant_contact_routes.cc_login"),
+                "new_tab": True,
+                "icon": "bi bi-send",
+                "description": "Used to authorize Constant Contact.",
+            },
+        ],
+    }
+    return tools
+
+
 @atexit.register
 def log_scheduler():
     maps = scheduler_to_json(map_scheduler)
@@ -198,7 +263,9 @@ def index():
         upcoming_events = get_allstaff_events()
     else:
         upcoming_events = []
-    return render_template("index.html", upcoming_events=upcoming_events)
+    return render_template(
+        "index.html", upcoming_events=upcoming_events, tools=get_all_tools()
+    )
 
 
 @app.route("/login")

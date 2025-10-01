@@ -31,21 +31,27 @@
             <h3>Please <span><a href="/login">login</a></span> to access the console.</h3>
         </div>
     {% else %}
-        <h3>Welcome, {{ current_user.name }}</h3>
-        <h4>to the IMC Console</h4>
+        <div class="index-header">
+            <h2>Welcome, {{ current_user.name }}</h2>
+            <h4>to the IMC Console</h4>
+        </div>
+
+        <hr>
+
         <div class="upcoming-events-container">
+            <div class="upcoming-events-header">
+                <h3 style="margin-bottom: 0">Upcoming All-Staff Events</h3>
+                <a href="{{ get_gcal_url(constants.MAIN_IMC_GCAL_ID) }}">View the full calendar</a>
+            </div>
             <!-- If there are no upcoming events, display a message -->
             {% if not upcoming_events %}
                 <div class="upcoming-event" style="align-items: center; text-align: center;">
-                    <h3>There are no all-staff events within the next 14 days</h3>
+                    <p style="margin-bottom: 0;">There are no all-staff events within the next 14 days</p>
                 </div>
             
             <!-- Otherwise, show all of the events in the next 14 days -->
             {% else %}
-                <div class="upcoming-events-header">
-                    <h3 style="margin-bottom: 0">Upcoming All-Staff Events</h3>
-                    <a href="{{ get_gcal_url(constants.MAIN_IMC_GCAL_ID) }}">View the full calendar</a>
-                </div>
+                <!-- Loop through all of the upcoming events and display them -->
                 {% for event in upcoming_events %}
                     <div class="upcoming-event">
                         <h4>{{ event.title }}</h4>
@@ -54,6 +60,34 @@
                 {% endfor %}
             {% endif %}
         </div>
+
+        <hr>
+
+        <div class="tools-container">
+            <div class="tools-header">
+                <h3 style="margin-bottom: 0">Employee Tools</h3>
+            </div>
+            {% for category, tools_list in tools.items() %}
+                <hr class="tool-category-divider">
+                <h4>{{ category }}</h4>
+                <div class="tool-category">
+                    {% for tool in tools_list %}
+                        <a href="{{ tool.url }}"{% if tool.new_tab %}target="_blank"{% endif %} class="tool-item-container">
+                            <div class="tool-item-header">
+                                <i class="{{ tool.icon }} tool-item-icon"></i>
+                                <h4 style="margin-bottom: 0;">
+                                    {{ tool.name }}
+                                </h4>
+                            </div>
+                            <p style="margin-bottom: 0;">
+                                {{ tool.description }}
+                            </p>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+
     {% endif %}
     
 </div>
