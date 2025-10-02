@@ -1,5 +1,6 @@
 from google.cloud import ndb
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import random
 
 from . import client
 
@@ -17,9 +18,30 @@ class MapPoint(ndb.Model):
     end_date = ndb.DateTimeProperty()
     image = ndb.StringProperty()
     address = ndb.StringProperty()
+    point_type = ndb.StringProperty()
 
 
-def add_point(title, lat, long, url, start_date, end_date, image, address):
+def add_point(title, lat, long, url, start_date, end_date, image, address, point_type):
+    # check if this is a duplicate location
+    with client.context():
+        existing = MapPoint.query(MapPoint.lat == lat, MapPoint.long == long).get()
+
+    if existing:
+        # Apply small random offset until it's lat-long is unique
+        # This helps avoid overlapping points on the actual map display
+        while True:
+            lat_jitter = lat + random.uniform(-0.0001, 0.0001)
+            long_jitter = long + random.uniform(-0.0001, 0.0001)
+
+            with client.context():
+                duplicate = MapPoint.query(
+                    MapPoint.lat == lat_jitter, MapPoint.long == long_jitter
+                ).get()
+
+            if not duplicate:
+                lat, long = lat_jitter, long_jitter
+                break
+
     with client.context():
         point = MapPoint(
             title=title,
@@ -31,6 +53,7 @@ def add_point(title, lat, long, url, start_date, end_date, image, address):
             end_date=end_date,
             image=image,
             address=address,
+            point_type=point_type,
         )
         point.put()
 
@@ -74,9 +97,24 @@ def get_next_points(count):
     return points
 
 
-def center_val():
+def get_future_points():
+    now = datetime.now()
+
     with client.context():
-        points = [point.to_dict() for point in MapPoint.query().fetch()]
+        query = (
+            MapPoint.query()
+            .filter(MapPoint.end_date > now)  # inequality filter
+            .order(MapPoint.end_date)  # first order must match inequality
+            .order(MapPoint.start_date)  # now sort by start date
+        )
+
+        points = [point.to_dict() for point in query.fetch()]
+
+    return points
+
+
+def center_val():
+    points = get_future_points()
 
     if len(points) == 0:
         return [40.109337703305975, -88.22721514717438]

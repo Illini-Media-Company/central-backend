@@ -6,6 +6,7 @@ from db.map_point import (
     remove_point,
     get_next_points,
     center_val,
+    get_future_points,
 )
 from util.security import restrict_to, csrf
 from util.map_point import add
@@ -34,14 +35,15 @@ def dashboard():
 @login_required
 @restrict_to(["student-managers", "editors", "imc-staff-webdev"])
 def list_map_points():
-    return get_all_points()
+    # return get_all_points()
+    return get_future_points()
 
 
 @map_points_routes.route("/json", methods=["GET"])
 @cross_origin()
 @csrf.exempt
 def list_map_points_json():
-    return jsonify(get_all_points())
+    return jsonify(get_future_points())
 
 
 @map_points_routes.route("/", methods=["POST"])
@@ -56,6 +58,7 @@ def create_map_point():
     address = request.form["address"]
     start_date = datetime.strptime(request.form["start-date"], "%Y-%m-%dT%H:%M")
     end_date = datetime.strptime(request.form["end-date"], "%Y-%m-%dT%H:%M")
+    point_type = request.form["point_type"]
 
     add(
         title=title,
@@ -66,6 +69,7 @@ def create_map_point():
         end_date=end_date,
         image=image,
         address=address,
+        point_type=point_type,
     )
 
     return "Map point created", 200
