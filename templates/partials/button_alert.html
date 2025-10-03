@@ -20,7 +20,7 @@ Last modified Oct. 2, 2025
 -->
 
 <style>
-    #alert-screen {
+    #button-alert-screen {
         position: fixed;
         top: 0;
         left: 0;
@@ -35,10 +35,12 @@ Last modified Oct. 2, 2025
         z-index: 9998;
     }
 
-    .alert-container {
+    .button-alert-container {
         background-color: var(--main-bg-color);
         border-radius: var(--main-border-radius);
         box-shadow: var(--main-box-shadow);
+
+        text-align: center;
 
         display: flex;
         flex-direction: column;
@@ -49,7 +51,7 @@ Last modified Oct. 2, 2025
         max-width: 50%;
     }
 
-    .button-container {
+    .button-alert-button-container {
         display: flex;
         flex-direction: row;
         gap: 0.5rem;
@@ -57,17 +59,17 @@ Last modified Oct. 2, 2025
 
 </style>
 
-<div id="alert-screen">
-    <div class="alert-container">
-        <h3 style="margin-top: 1rem;" id="alert-header">Alert</h3>
-        <p id="alert-text">
+<div id="button-alert-screen">
+    <div class="button-alert-container">
+        <h3 style="margin-top: 1rem;" id="button-alert-header">Alert</h3>
+        <p id="button-alert-text">
             Message
         </p>
-        <div class="button-container">
-            <button id="cancel-button" class="button-secondary">
+        <div class="button-alert-button-container">
+            <button id="button-alert-cancel-button" class="button-secondary">
                 Text
             </button>
-            <button id="alert-button" class="button-primary">
+            <button id="button-alert-alert-button" class="button-primary">
                 Text
             </button>
         </div>
@@ -81,11 +83,11 @@ Last modified Oct. 2, 2025
     function showButtonAlert(header, body, alertButtonText, cancelButtonText) {
 
         return new Promise((resolve) => {
-            const alertScreen  = document.getElementById("alert-screen");
-            const cancelButton = document.getElementById("cancel-button");
-            const alertButton  = document.getElementById("alert-button");
-            const headerText   = document.getElementById("alert-header");
-            const bodyText     = document.getElementById("alert-text");
+            const alertScreen  = document.getElementById("button-alert-screen");
+            const cancelButton = document.getElementById("button-alert-cancel-button");
+            const alertButton  = document.getElementById("button-alert-alert-button");
+            const headerText   = document.getElementById("button-alert-header");
+            const bodyText     = document.getElementById("button-alert-text");
 
             // Show the alert, set the text for each element
             alertScreen.style.display = "flex";
@@ -107,6 +109,6 @@ Last modified Oct. 2, 2025
     }
 
     function hideButtonAlert() {
-        document.getElementById("alert-screen").style.display = "none";
+        document.getElementById("button-alert-screen").style.display = "none";
     }
 </script>
