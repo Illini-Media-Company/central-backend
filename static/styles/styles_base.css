@@ -3,7 +3,7 @@
     width: 100%;
     position: fixed;
     top: 0;
-    z-index: 1000; /* Ensure the navbar is on top of other content */
+    z-index: 9999; /* Ensure the navbar is on top of other content */
 }
 
 .page-content {
@@ -132,6 +132,10 @@
     border: none;
 }
 
+footer {
+    text-align: center;
+}
+
 /* Specific styling for mobile (Note that the Central Backend is intentionally optimized for desktop and laptop displays) */
 @media (max-width: 480px) {
     .navbar-item {
@@ -147,5 +151,9 @@
         padding: none;
         border: none;
         box-shadow: none;
+    }
+
+    .page-content {
+        width: 95%;
     }
 }

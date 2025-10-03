@@ -13,11 +13,16 @@
     --main-bg-color: #FFFFFF;
     --main-text-color: #212121;
     --main-lt-gray-color: #EEEEEE;
+    --main-md-gray-color: #DDDDDD;
     --main-dk-gray-color: #212121;
     --main-accent-color: #F99F20;
+    --main-accent-color-darkened: #E68805;
 
     /* Define global corner radius */
     --main-border-radius: 1rem;
+
+    /* Define global shadow */
+    --main-box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,0.2);
 }
 
 a {
@@ -60,9 +65,28 @@ h4 {
     font-size: 1rem;
 }
 
-/* Specific styling for mobile (Note that the Central Backend is intentionally optimized for desktop and laptop displays) */
-@media (max-width: 480px) {
-    .container {
-        width: 98%;
-    }
+.button-primary {
+    border: none;
+    border-radius: calc(var(--main-border-radius) + 0.25rem);
+    background-color: var(--main-accent-color);
+    color: var(--main-bg-color);
+    padding: 0.25rem 1rem;
+    transition: background-color .15s ease-in-out;
+}
+
+.button-primary:hover {
+    background-color: var(--main-accent-color-darkened);
+}
+
+.button-secondary {
+    border: none;
+    border-radius: calc(var(--main-border-radius) + 0.25rem);
+    background-color: var(--main-lt-gray-color);
+    color: var(--main-text-color);
+    padding: 0.25rem 1rem;
+    transition: background-color .15s ease-in-out;
+}
+
+.button-secondary:hover {
+    background-color: var(--main-md-gray-color);
 }
