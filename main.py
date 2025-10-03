@@ -6,6 +6,8 @@ import urllib
 import atexit
 from datetime import datetime
 
+from db import client as dbclient
+
 from flask import (
     Flask,
     redirect,
@@ -30,6 +32,7 @@ import constants
 from constants import (
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
+    TOOLS_ADMIN_ACCESS_GROUPS,
 )
 from db.quick_link import get_all_quick_links
 from db.user import (
@@ -44,6 +47,11 @@ from util.security import (
     update_groups,
 )
 
+from db.all_tools import (
+    get_all_tools,
+    get_all_tools_restricted,
+)
+
 from util.map_point import remove_point
 from db.map_point import get_all_points
 from util.gcal import get_allstaff_events
@@ -56,6 +64,7 @@ from util.scheduler import scheduler_to_json, db_to_scheduler
 from apscheduler.triggers.date import DateTrigger
 
 from util.slackbot import start_slack
+from views.all_tools import tools_routes
 from views.quick_links import quick_links_routes
 from views.content_doc import content_doc_routes
 from views.constant_contact import constant_contact_routes
@@ -76,6 +85,8 @@ from util.helpers.ap_datetime import (
     ap_time,
 )
 
+from util.all_tools import format_restricted_groups
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 
@@ -86,6 +97,7 @@ app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 Talisman(app, content_security_policy=[])
 csrf.init_app(app)
 
+app.register_blueprint(tools_routes)
 app.register_blueprint(quick_links_routes)
 app.register_blueprint(content_doc_routes)
 app.register_blueprint(constant_contact_routes)
@@ -111,71 +123,7 @@ start_slack(app)
 app.jinja_env.filters["ap_datetime"] = ap_datetime
 app.jinja_env.filters["ap_date"] = ap_date
 app.jinja_env.filters["ap_time"] = ap_time
-
-
-# Define all tools that will be added to the homepage. Each tool must have an icon, which must be chosen
-# from Boostrap Icons (https://icons.getbootstrap.com/) and must include the "bi bi-" prefix. Choose an
-# icon, then click on it. On the right hand side, you will see a section labeled "Icon font". Copy the
-# full text inside of the quotes afteer "class=" and paste it into the "icon" field below.
-#
-# If the tool is not apart of the Central Backend, paste the full URL into the "url" field. If it is
-# apart of the Central Backend, use url_for("function_name") to generate the URL. Usually, you will have
-# to format this from the route. For example, the dashboard page for the Chambana Eats Food Truck
-# Tracker would be accessed with url_for("food_truck_tracker.dashboard").
-#
-# The "new_tab" field is a boolean (True/False) that determines whether the link opens in a new tab or
-# the current tab. If the tool is not apart of the Central Backend, this should usually be True.
-#
-# The "description" field is a short description of the tool that will be shown on the homepage. Keep it
-# to one sentence if possible.
-def get_all_tools():
-    tools = {
-        "Software/Development": [
-            {
-                "name": "API Query Tool",
-                "url": url_for("api_query"),
-                "new_tab": False,
-                "icon": "bi bi-database-fill-gear",
-                "description": "Tool used for querying our Datastore database via API calls.",
-            },
-            {
-                "name": "Authorize Constant Contact",
-                "url": url_for("constant_contact_routes.cc_login"),
-                "new_tab": True,
-                "icon": "bi bi-send",
-                "description": "Used to authorize Constant Contact.",
-            },
-            {
-                "name": "Test",
-                "url": url_for("constant_contact_routes.cc_login"),
-                "new_tab": True,
-                "icon": "bi bi-send",
-                "description": "Used to authorize Constant Contact.",
-            },
-            {
-                "name": "Test",
-                "url": url_for("constant_contact_routes.cc_login"),
-                "new_tab": True,
-                "icon": "bi bi-send",
-                "description": "Used to authorize Constant Contact.",
-            },
-            {
-                "name": "Test",
-                "url": url_for("constant_contact_routes.cc_login"),
-                "new_tab": True,
-                "icon": "bi bi-send",
-                "description": "Used to authorize Constant Contact.",
-            },
-            {
-                "name": "Test",
-                "url": url_for("constant_contact_routes.cc_login"),
-                "new_tab": True,
-                "icon": "bi bi-send",
-                "description": "Used to authorize Constant Contact.",
-            },
-        ],
-    }
-    return tools
+app.jinja_env.filters["format_restricted_groups"] = format_restricted_groups
 
 
 @atexit.register
@@ -261,10 +209,26 @@ def schedulers():
 def index():
     if current_user.is_authenticated:
         upcoming_events = get_allstaff_events()
+        if is_user_in_group(
+            current_user, TOOLS_ADMIN_ACCESS_GROUPS
+        ):  # These are the groups that can view all tools
+            print("Passing all tools")
+            with dbclient.context():
+                tools = get_all_tools()
+                admin = True
+        else:
+            print("Passing filtered tools")
+            with dbclient.context():
+                tools = get_all_tools_restricted()
+                admin = False
     else:
+        print("Passing no tools")
         upcoming_events = []
+        tools = {}
+        admin = False
+    print("Tools: ", tools)
     return render_template(
-        "index.html", upcoming_events=upcoming_events, tools=get_all_tools()
+        "index.html", upcoming_events=upcoming_events, tools=tools, admin=admin
     )
 
 

@@ -3,7 +3,7 @@ hr {
 }
 
 .index-container {
-    height: 100%;
+    height: 100%
 }
 
 /* USED FOR HERO WHEN NO USER IS LOGGED IN */
@@ -55,14 +55,15 @@ hr {
     margin: 0;
 }
 
-.upcoming-events-header {
+.section-header {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
 
     width: 100%;
     padding: 0 0.5rem;
+    margin-top: 0.25rem;
 }
 
 /* USED FOR THE TOOLS DASHBOARD */
@@ -81,6 +82,7 @@ hr {
 .tools-header {
     width: 100%;
     padding: 0 0.5rem;
+    margin-top: 0.25rem;
 }
 
 .tool-category-divider {
@@ -90,7 +92,7 @@ hr {
 .tool-category {
     display: grid;
     gap: 0.5rem;
-    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
     justify-content: start;
     grid-auto-rows: 1fr;
 }
