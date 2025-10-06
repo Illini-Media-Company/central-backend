@@ -68,9 +68,13 @@ def get_news_gazette():
     return data
 
 
+def get_reddit():
+    pass
+
+
 def get_gemini_response(prompt: str) -> str:
     client = genai.Client()
-    tools = [get_news_gazette]
+    tools = [get_news_gazette]  # get_reddit
 
     response = client.models.generate_content(
         model="gemini-2.0-flash-001",
