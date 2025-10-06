@@ -119,11 +119,11 @@
                                     {{ tool.name }}
                                 </h4>
                                 <div class="tool-button-container">
-                                    <button class="tool-button-admin" onclick="modifyTool('{{ tool.uid }}')" id="modify-{{ tool.uid }}">
-                                        <i class="bi bi-pencil-square tool-item-icon-admin"></i>
+                                    <button class="tool-button" onclick="modifyTool('{{ tool.uid }}')" id="modify-{{ tool.uid }}">
+                                        <i class="bi bi-pencil-square tool-button-icon"></i>
                                     </button>
-                                    <button class="tool-button-admin" onclick="removeTool('{{ tool.uid }}')" id="remove-{{ tool.uid }}">
-                                        <i class="bi bi-trash-fill tool-item-icon-admin"></i>
+                                    <button class="tool-button" onclick="removeTool('{{ tool.uid }}')" id="remove-{{ tool.uid }}">
+                                        <i class="bi bi-trash-fill tool-button-icon"></i>
                                     </button>
                                 </div>
                             </div>
@@ -144,11 +144,11 @@
                                     Editing "{{ tool.name }}"...
                                 </h4>
                                 <div class="tool-button-container">
-                                    <button class="tool-button-admin" onclick="saveModifyTool('{{ tool.uid }}')" id="save-{{ tool.uid }}" disabled="true">
-                                        <i class="bi bi-floppy-fill tool-item-icon-admin"></i>
+                                    <button class="tool-button" onclick="saveModifyTool('{{ tool.uid }}')" id="save-{{ tool.uid }}" disabled="true">
+                                        <i class="bi bi-floppy-fill tool-button-icon"></i>
                                     </button>
-                                    <button class="tool-button-admin" onclick="cancelModifyTool('{{ tool.uid }}')" id="cancel-{{ tool.uid }}" disabled="true">
-                                        <i class="bi bi-x-circle-fill tool-item-icon-admin"></i>
+                                    <button class="tool-button" onclick="cancelModifyTool('{{ tool.uid }}')" id="cancel-{{ tool.uid }}" disabled="true">
+                                        <i class="bi bi-x-circle-fill tool-button-icon"></i>
                                     </button>
                                 </div>
                                 <form id="modify-form-{{ tool.uid }}" enctype="application/x-www-form-urlencoded" style="display: none;">

@@ -1,8 +1,9 @@
 # This file defines the API endpoints for adding, modifying and removing tools that
-# appear on the homepage of the Illini Media Console
+# appear on the homepage of the Illini Media Console. Also contains routes that add
+# and remove favorite tools for a user.
 #
 # Created by Jacob Slabosz on Oct. 1, 2025
-# Last modified Oct. 1, 2025
+# Last modified Oct. 5, 2025
 
 from flask import Blueprint, render_template, request
 from flask_login import login_required
@@ -14,6 +15,10 @@ from db.all_tools import (
     remove_category,
     get_categories,
     get_all_tools,
+)
+from db.user import (
+    add_user_favorite_tool,
+    remove_user_favorite_tool,
 )
 from util.security import restrict_to, csrf
 from constants import TOOLS_ADMIN_ACCESS_GROUPS
@@ -120,3 +125,27 @@ def delete_category():
             return "Category not empty.", 403
         else:
             return "Category not found.", 400
+
+
+@tools_routes.route("/favorites/add", methods=["POST"])
+@login_required
+def add_favorite():
+    email = request.form["email"]
+    tool_uid = request.form["tool_uid"]
+
+    if add_user_favorite_tool(email=email, tool_uid=tool_uid):
+        return "Favorite added.", 200
+    else:
+        return "Failed to add favorite.", 400
+
+
+@tools_routes.route("/favorites/remove", methods=["POST"])
+@login_required
+def remove_favorite():
+    email = request.form["email"]
+    tool_uid = request.form["tool_uid"]
+
+    if remove_user_favorite_tool(email=email, tool_uid=tool_uid):
+        return "Favorite removed.", 200
+    else:
+        return "Failed to remove favorite.", 400

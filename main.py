@@ -39,6 +39,7 @@ from db.user import (
     add_user,
     update_user,
     get_user,
+    get_user_favorite_tools,
 )
 from util.security import (
     csrf,
@@ -50,6 +51,7 @@ from util.security import (
 from db.all_tools import (
     get_all_tools,
     get_all_tools_restricted,
+    get_tool_by_uid,
 )
 
 from util.map_point import remove_point
@@ -205,10 +207,21 @@ def schedulers():
     return "Schedulers updated", 200
 
 
+# Consider this to client-side fetching so that the page loads faster.
+# i.e., render immediately, then have JavaScript call endpoints for those functions.
+# However, then we can't use Jinja because it won't be filled
 @app.route("/")
 def index():
     if current_user.is_authenticated:
         upcoming_events = get_allstaff_events()
+
+        # Get the user's favorite tools
+        favorites_uids = get_user_favorite_tools(current_user.email)
+        favorites = []
+        for uid in favorites_uids:
+            with dbclient.context():
+                favorites.append(get_tool_by_uid(uid))
+
         if is_user_in_group(
             current_user, TOOLS_ADMIN_ACCESS_GROUPS
         ):  # These are the groups that can view all tools
@@ -224,11 +237,15 @@ def index():
     else:
         print("Passing no tools")
         upcoming_events = []
+        favorites = []
         tools = {}
         admin = False
-    print("Tools: ", tools)
     return render_template(
-        "index.html", upcoming_events=upcoming_events, tools=tools, admin=admin
+        "index.html",
+        upcoming_events=upcoming_events,
+        tools=tools,
+        admin=admin,
+        favorites=favorites,
     )
 
 

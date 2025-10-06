@@ -28,31 +28,16 @@ hr {
     padding: 0 0.5rem;
 }
 
-/* USED FOR UPCOMING GCAL EVENTS */
-.upcoming-events-container {
+.section-container {
     display: flex;
     gap: 0.5rem;
     flex-direction: column;
-
-    align-items: center;
-    justify-content: center;
 
     background-color: var(--main-lt-gray-color);
     border-radius: calc(var(--main-border-radius) + 0.5rem);
     padding: 0.5rem;
 
-    box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,0.2);
-}
-
-.upcoming-event {
-    border-radius: var(--main-border-radius);
-    background-color: var(--main-bg-color);
-    padding: 0.5rem;
-    width: 100%
-}
-
-.upcoming-event-text {
-    margin: 0;
+    box-shadow: var(--main-box-shadow);
 }
 
 .section-header {
@@ -64,6 +49,18 @@ hr {
     width: 100%;
     padding: 0 0.5rem;
     margin-top: 0.25rem;
+}
+
+.inner-container {
+    border-radius: var(--main-border-radius);
+    background-color: var(--main-bg-color);
+    padding: 0.5rem;
+    width: 100%
+}
+
+/* USED FOR UPCOMING GCAL EVENTS */
+.upcoming-event-text {
+    margin: 0;
 }
 
 /* USED FOR THE TOOLS DASHBOARD */
@@ -122,6 +119,36 @@ hr {
     color: var(--main-accent-color);
     font-size: 1rem;
     margin-right: 1rem;
+}
+
+.tool-button-container {
+    display: flex;
+    flex-direction: row;
+    gap: 0.25rem;
+    margin-left: auto;
+}
+
+.tool-button {
+    display: flex;
+    border: none;
+    background-color: inherit;
+    align-content: center;
+    justify-content: center;
+    padding: 0.25rem;
+    height: 2rem;
+    width: 2rem;
+    border-radius: 1.5rem;
+
+    transition: background-color .15s ease-in-out;
+}
+
+.tool-button:hover {
+    background-color: var(--main-lt-gray-color);
+}
+
+.tool-button-icon {
+    color: var(--main-accent-color);
+    font-size: 1rem;
 }
 
 /* Specific styling for mobile (Note that the Central Backend is intentionally optimized for desktop and laptop displays) */

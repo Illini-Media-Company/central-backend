@@ -33,36 +33,6 @@
     padding: 0.75rem;
 }
 
-.tool-button-container {
-    display: flex;
-    flex-direction: row;
-    gap: 0.25rem;
-    margin-left: auto;
-}
-
-.tool-button-admin {
-    display: flex;
-    border: none;
-    background-color: inherit;
-    align-content: center;
-    justify-content: center;
-    padding: 0.25rem;
-    height: 2rem;
-    width: 2rem;
-    border-radius: 1.5rem;
-
-    transition: background-color .15s ease-in-out;
-}
-
-.tool-button-admin:hover {
-    background-color: var(--main-lt-gray-color);
-}
-
-.tool-item-icon-admin {
-    color: var(--main-accent-color);
-    font-size: 1rem;
-}
-
 .tool-item-info-header {
     display: inline-block;
     margin-right: 0.5rem;

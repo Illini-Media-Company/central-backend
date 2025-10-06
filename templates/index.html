@@ -11,6 +11,10 @@
 <!-- Add extra information to the head of the page -->
 {% block extra_head %}
     <link rel="stylesheet" href="/static/styles/styles_index.css">
+
+    <!-- Lets us use the loading screen on this page -->
+    {% include "partials/loading.html" %}
+    {% include "partials/info_bar.html" %}
 {% endblock %}
 
 <!-- Content specific to this page -->
@@ -38,14 +42,15 @@
 
         <hr>
 
-        <div class="upcoming-events-container">
+        <!-- Upcoming events section -->
+        <section class="section-container">
             <div class="section-header">
                 <h2 style="margin-bottom: 0">Upcoming All-Staff Events</h2>
                 <a href="{{ get_gcal_url(constants.MAIN_IMC_GCAL_ID) }}" target="_blank" style="text-align: right">View the full calendar</a>
             </div>
             <!-- If there are no upcoming events, display a message -->
             {% if not upcoming_events %}
-                <div class="upcoming-event" style="align-items: center; text-align: center;">
+                <div class="inner-container" style="align-items: center; text-align: center;">
                     <p style="margin-bottom: 0;">There are no all-staff events within the next 14 days</p>
                 </div>
             
@@ -53,17 +58,55 @@
             {% else %}
                 <!-- Loop through all of the upcoming events and display them -->
                 {% for event in upcoming_events %}
-                    <div class="upcoming-event">
+                    <div class="inner-container">
                         <h4>{{ event.title }}</h4>
                         <p class="upcoming-event-text"><span>{{ event.start }}{% if event.location %} at {{ event.location }}{% endif%}</span></p>
                     </div>
                 {% endfor %}
             {% endif %}
-        </div>
+        </section>
 
         <hr>
 
-        <div class="tools-container">
+        <!-- User's favorite tools section -->
+        <section class="section-container" id="favorites-container">
+            <div class="section-header">
+                <h2 style="margin-bottom: 0">Your Favorite Tools</h2>
+            </div>
+            {% if not favorites %}
+                <div class="inner-container" style="align-items: center; text-align: center;" id="no-favs-message">
+                    <p style="margin-bottom: 0;">You don't have any favorite tools. Try adding some!</p>
+                </div>
+            {% else %}
+                <div class="tool-category" id="favorites-section">
+                    {% for favorite in favorites %}
+                    <a href="{{ favorite.url }}" target="_blank" class="tool-item-container" id="fav-{{ favorite.uid }}">
+                        <div class="tool-item-header">
+                            <i class="{{ favorite.icon }} tool-item-icon"></i>
+                            <h4 style="margin-bottom: 0;">
+                                {{ favorite.name }}
+                            </h4>
+                            <div class="tool-button-container">
+                                <button class="tool-button" id="rem-fav-{{ favorite.uid }}"
+                                    onclick="event.stopPropagation(); event.preventDefault(); remFavorite('{{ favorite.uid }}', '{{ current_user.email }}')"
+                                >
+                                    <i class="bi bi-star-fill tool-button-icon"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <p style="margin-bottom: 0;">
+                            {{ favorite.description }}
+                        </p>
+                    </a>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </section>
+
+        <hr>
+
+        <!-- All tools section -->
+        <section class="section-container">
             <div class="section-header">
                 <h2 style="margin-bottom: 0">Employee Tools</h2>
                 {% if admin %}
@@ -72,17 +115,34 @@
                 </button>   
                 {% endif %}
             </div>
+            {% if not tools %}
+                <div class="inner-container" style="align-items: center; text-align: center;">
+                    <p style="margin-bottom: 0;">You don't have access to any tools.</p>
+                </div>
+            {% else %}
                 {% for category, tools_list in tools.items() %}
                     <hr class="tool-category-divider">
                     <h3>{{ category }}</h3>
                     <div class="tool-category">
                         {% for tool in tools_list %}
-                            <a href="{{ tool.url }}" target="_blank" class="tool-item-container">
+                            <a href="{{ tool.url }}" target="_blank" class="tool-item-container" id="tool-{{ tool.uid }}">
                                 <div class="tool-item-header">
                                     <i class="{{ tool.icon }} tool-item-icon"></i>
                                     <h4 style="margin-bottom: 0;">
                                         {{ tool.name }}
                                     </h4>
+                                    <div class="tool-button-container">
+                                        <button class="tool-button" id="add-fav-{{ tool.uid }}" {% if tool in favorites %} style="display: none;" {% endif %} 
+                                            onclick="event.stopPropagation(); event.preventDefault(); addFavorite('{{ tool.uid }}', '{{ current_user.email }}')"
+                                        >
+                                            <i class="bi bi-star tool-button-icon"></i>
+                                        </button>
+                                        <button class="tool-button" id="rem-fav-{{ tool.uid }}" {% if not tool in favorites %} style="display: none;" {% endif %}
+                                            onclick="event.stopPropagation(); event.preventDefault(); remFavorite('{{ tool.uid }}', '{{ current_user.email }}')"
+                                        >
+                                            <i class="bi bi-star-fill tool-button-icon"></i>
+                                        </button>
+                                    </div>
                                 </div>
                                 <p style="margin-bottom: 0;">
                                     {{ tool.description }}
@@ -91,8 +151,109 @@
                         {% endfor %}
                     </div>
                 {% endfor %}
-        </div>
+            {% endif %}
+        </section>
 
     {% endif %}
 </div>
+
+<script>
+    async function addFavorite(toolUID, userEmail) {
+
+        showLoading("Adding to favorites...");
+
+        addFavButton = document.getElementById(`add-fav-${toolUID}`);
+        remFavButton = document.getElementById(`rem-fav-${toolUID}`);
+        toolCard = document.getElementById(`tool-${toolUID}`);
+
+        // Switch which button displays
+        addFavButton.style.display = "none";
+        remFavButton.style.display = "flex";
+
+        // Check and reformat the favorites section
+        favoritesContainer = document.getElementById("favorites-container");
+        favoritesSection = document.getElementById("favorites-section");
+        favoritesMessage = document.getElementById("no-favs-message");
+
+        // If there aren't any favorites
+        if (!favoritesSection) {
+            // Remove the message
+            favoritesMessage.style.display = "none";
+
+            // Create and add the favorites section
+            favoritesSection = document.createElement("div");
+            favoritesSection.id = "favorites-section";
+            favoritesSection.className = "tool-category";
+            favoritesContainer.appendChild(favoritesSection);
+        }
+
+        // Call the API
+        let endpoint = "/tools/favorites/add"
+
+        showLoading("Saving to your profile...");
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `_csrf_token={{ csrf_token() }}&email=${userEmail}&tool_uid=${toolUID}`,
+        });
+
+        if (response.status === 200) {
+            // Duplicate the tool card
+            const dup = toolCard.cloneNode(true);
+            dup.id = `fav-${toolUID}`;
+            favoritesSection.appendChild(dup);
+
+            showInfoBar("Successfully added favorite!");
+        } else {
+            console.log("Adding favorite failed!");
+            const message = await response.text();
+            console.error(message);
+            alert(message);
+
+            addFavButton.style.display = "flex";
+            remFavButton.style.display = "none";
+        }
+
+        hideLoading();
+    }
+
+    async function remFavorite(toolUID, userEmail) {
+        showLoading("Removing favorite...");
+
+        // Call the API
+        let endpoint = "/tools/favorites/remove"
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `_csrf_token={{ csrf_token() }}&email=${userEmail}&tool_uid=${toolUID}`,
+        });
+
+        if (response.status === 200) {
+            // Fetch the card from the favorites section and remove it
+            toolCard = document.getElementById(`fav-${toolUID}`);
+            toolCard.remove();
+            
+            addFavButton = document.getElementById(`add-fav-${toolUID}`);
+            remFavButton = document.getElementById(`rem-fav-${toolUID}`);
+
+            // Switch which button displays
+            addFavButton.style.display = "flex";
+            remFavButton.style.display = "none";
+
+            showInfoBar("Successfully removed favorite!");
+        } else {
+            console.log("Removing favorite failed!");
+            const message = await response.text();
+            console.error(message);
+            alert(message);
+        }
+
+        hideLoading();
+    }
+</script>
 {% endblock %}

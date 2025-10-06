@@ -195,3 +195,14 @@ def get_all_tools_restricted():
             result[category] = tools
 
     return result
+
+
+def get_tool_by_uid(uid):
+    """Returns a dict of a tool specified by UID."""
+
+    tool = Tool.get_by_id(uid)
+
+    if tool is not None:
+        return tool.to_dict()
+    else:
+        return False
