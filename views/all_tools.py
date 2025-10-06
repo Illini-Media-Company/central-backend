@@ -15,6 +15,7 @@ from db.all_tools import (
     remove_category,
     get_categories,
     get_all_tools,
+    get_tool_by_uid,
 )
 from db.user import (
     add_user_favorite_tool,
@@ -81,7 +82,14 @@ def change_tool(uid):
         icon = request.form["icon"]
         url = request.form["url"]
         category = request.form["category"]
-        restricted_to = request.form["restricted_to"]
+        # This part properly formats the restricted_to groups for storage in the database
+        restricted_to_raw = request.form["restricted_to"].strip()
+        if restricted_to_raw:
+            restricted_to = [
+                item.strip() for item in restricted_to_raw.split(",") if item.strip()
+            ]
+        else:
+            restricted_to = []
 
         status = modify_tool(
             uid=uid,
@@ -108,6 +116,19 @@ def delete_tool(uid):
             return "Tool removed.", 200
         else:
             return "Tool not found.", 400
+
+
+@tools_routes.route("/<uid>/get", methods=["GET"])
+@login_required
+@restrict_to(TOOLS_ADMIN_ACCESS_GROUPS)
+def get_tool(uid):
+    with client.context():
+        if uid.isdigit():
+            result = get_tool_by_uid(int(uid))
+            if result is not False:
+                return result, 200
+
+        return "Invalid UID.", 400
 
 
 @tools_routes.route("/category/delete", methods=["POST"])

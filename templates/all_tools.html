@@ -100,7 +100,7 @@
         {% for category, tools_list in tools.items() %}
             <hr class="tool-category-divider">
             <div class="tool-category-header">
-                <button class="button-primary" id="category-{{ cat }}" onclick="removeCategory('{{ category }}')">
+                <button class="button-primary" id="category-{{ category }}" onclick="removeCategory('{{ category }}')">
                     Remove Category
                 </button>
                 <h3 style="margin-bottom: 0;">{{ category }}</h3>
@@ -151,10 +151,15 @@
                                         <i class="bi bi-x-circle-fill tool-button-icon"></i>
                                     </button>
                                 </div>
-                                <form id="modify-form-{{ tool.uid }}" enctype="application/x-www-form-urlencoded" style="display: none;">
-
-                                </form>
                             </div>
+                            {% call form.form(id="edit-form-" ~ tool.uid, enctype="application/x-www-form-urlencoded") %}
+                                {{ form.text_input(name="name", label="Name:", required=false) }}
+                                {{ form.text_input(name="description", label="Description:", required=false) }}
+                                {{ form.text_input(name="icon", label="Icon:", required=false) }}
+                                {{ form.text_input(name="url", label="URL:", required=false) }}
+                                {{ form.text_input(name="category", label="Category:", required=false) }}
+                                {{ form.text_input(name="restrict_to", label="Restricted to:", required=false) }}
+                            {% endcall %}
                         </div>
                     </div>
                 {% endfor %}
@@ -223,6 +228,7 @@
         cancelButton = document.getElementById(`cancel-${uid}`);
         infoPanel    = document.getElementById(`info-${uid}`);
         editPanel    = document.getElementById(`edit-${uid}`);
+        form         = document.getElementById(`edit-form-${uid}`);
 
         // Disable the buttons that are in the info panel
         modifyButton.disabled = true;
@@ -238,6 +244,24 @@
 
         // TODO: Pull data from endpooint, populate form
         showLoading("Pulling data...");
+ 
+        let endpoint = '/tools/' + uid + '/get'; 
+        const response = await fetch(endpoint);
+        if (response.ok) {
+            const tool = await response.json();
+
+            form.querySelector("#name").value = tool.name;
+            form.querySelector("#description").value = tool.description;
+            form.querySelector("#icon").value = tool.icon;
+            form.querySelector("#url").value = tool.url;
+            form.querySelector("#category").value = tool.category;
+            form.querySelector("#restrict_to").value = format(tool.restricted_to);
+
+        } else {
+            const message = await response.text();
+            console.error(message);
+            alert('Error getting tool data: ' + message);
+        }
 
         hideLoading();
     }
@@ -263,6 +287,47 @@
         // Enable the buttons that are in the info panel
         modifyButton.disabled = false;
         removeButton.disabled = false;
+
+        hideLoading();
+    }
+
+    async function saveModifyTool(uid) {
+        showLoading("Saving...");
+
+        const form = document.getElementById(`edit-form-${uid}`);
+
+        const nameInput = form.querySelector("#name").value.trim();
+        const descInput = form.querySelector("#description").value.trim();
+        const iconInput = form.querySelector("#icon").value.trim();
+        const urlInput = form.querySelector("#url").value.trim();
+        const catInput = form.querySelector("#category").value.trim();
+        const restrInput = form.querySelector("#restrict_to").value.trim();
+
+        // Make sure all the inputs are valid
+        valid = await validateForm(nameInput, descInput, iconInput, urlInput, catInput, restrInput);
+        if (!valid) {
+            hideLoading();
+            return;
+        }
+
+        let endpoint = '/tools/' + uid + '/modify';  
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `_csrf_token={{ csrf_token() }}&name=${nameInput}&description=${descInput}&icon=${iconInput}&url=${urlInput}&category=${catInput}&restricted_to=${restrInput}`,
+        });
+
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            window.location.reload();
+        } else {
+            console.log("Saving Tool to database failed!");
+            const message = await response.text();
+            console.error(message);
+            alert(message);
+        }
 
         hideLoading();
     }
@@ -459,5 +524,10 @@
         return true;
     }
 
+    function format(groups) {
+        console.log(groups);
+        if (!Array.isArray(groups)) return "";
+        return groups.join(", ");
+    }
 </script>
 {% endblock %}
