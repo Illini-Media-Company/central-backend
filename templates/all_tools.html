@@ -30,8 +30,8 @@
 
     <div class="upper-container">
         <!-- This is the box for adding new tools -->
-        <div class="tools-container mobile-stretch" style="flex: 2">
-            <div class="tools-header">
+        <div class="section-container mobile-stretch" style="flex: 2">
+            <div class="section-header">
                 <h2 style="margin-bottom: 0">Add New Tool</h2>
             </div>
             <hr class="tool-category-divider" style="margin-top: 0.5rem;">
@@ -48,8 +48,8 @@
         </div>
 
         <!-- This is the text box that explains the fields -->
-        <div class="tools-container" style="flex: 1">
-            <div class="tools-header">
+        <div class="section-container" style="flex: 1">
+            <div class="section-header">
                 <h2 style="margin-bottom: 0">Field Specifications</h2>
             </div>
             <hr class="tool-category-divider" style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
@@ -93,8 +93,8 @@
         </div>
     </div>
 
-    <div class="tools-container">
-        <div class="tools-header">
+    <div class="section-container">
+        <div class="section-header">
             <h2 style="margin-bottom: 0">All Tools</h2>
         </div>
         {% for category, tools_list in tools.items() %}
