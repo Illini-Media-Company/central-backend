@@ -1,0 +1,87 @@
+<!-- 
+This file defines HTML that can be imported into any template by adding:
+
+include "partials/info_bar.html" inside of curly braces with % on either
+side.
+
+Defines an info bar at the bottom of the screen with a message that will
+remain on the screen for 5 seconds. To call this in a script in another 
+file:
+
+showInfoBar(infoText)
+
+Input is a string. 
+
+Calling hideInfoBar() will remove the alert from the screen immediately.
+
+Created by Jacob Slabosz on Oct. 5, 2025
+Last modified Oct. 5, 2025 
+-->
+
+<style>
+    .info-bar-container {
+        display: flex;
+        pointer-events: none;
+        opacity: 0;
+        visibility: hidden;
+
+        position: fixed;
+        bottom: 0;
+        width: 100vw;
+        z-index: 9998;
+
+        align-items: center;
+        justify-content: center;
+
+        transition: opacity 0.25s ease-in-out, visibility 0.25s ease-in-out
+    }
+
+    .info-bar-container.show {
+        opacity: 1;
+        pointer-events: auto;
+        visibility: visible;
+    }
+
+    .info-bar-inner-container {
+        border-radius: var(--main-border-radius);
+        box-shadow: var(--main-box-shadow);
+        background-color: var(--main-lt-gray-color);
+
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 1rem;
+        padding: 1rem;
+        margin: 0.5rem;
+    }
+
+    .info-bar-icon {
+        font-size: 1rem;
+    }
+</style>
+
+<div class="info-bar-container" id="info-bar">
+    <div class="info-bar-inner-container">
+        <i class="bi bi-info-circle info-bar-icon"></i>
+        <p id="info-bar-text" style="margin-bottom: 0;">
+            Some text can go here to go across the screen
+        </p>
+    </div>
+</div>
+
+<script>
+    function showInfoBar(infoText) {
+        const infoBar  = document.getElementById("info-bar");
+        const text = document.getElementById("info-bar-text");
+
+        if (infoText) text.innerText = infoText;
+
+        infoBar.classList.add("show");
+
+        // Remove after 5 seconds
+        setTimeout(() => {
+            infoBar.classList.remove("show");
+        }, 5000);
+    }
+</script>
