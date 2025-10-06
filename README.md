@@ -6,12 +6,13 @@
 
 ### Prerequisites
 
-Make sure you have all of the following installed on your computer:
+Make sure you have all of the following:
 
-- Python 3.11 (Different may cause issues for Google Cloud)
+- Python 3.12 (Different may cause issues for Google Cloud)
 - [Google Cloud CLI](https://cloud.google.com/sdk/docs/install)
 - Git
 - [Java 11+](https://www.oracle.com/java/technologies/downloads/#java17) (check if you have it already by running `java --version` in a terminal)
+- You've been added to the "IMC Staff - Web Dev" Google Group
 
 ### Steps
 
