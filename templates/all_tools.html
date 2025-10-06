@@ -406,7 +406,7 @@
         }
 
         // If icon entered wrong
-        if (!icon.startsWith("bi bi-")) {
+        if (!icon.startsWith("bi bi-") && !icon.startsWith("imc ")) {
             await showTextAlert(
                 header = "Invalid input",
                 body = "Icon was not entered properly. Ensure the icon is from https://icons.getbootstrap.com. Click an icon, navigate to the section called 'Icon font' and copy only the text inside the quotes after 'class='",
@@ -447,7 +447,7 @@
 
         // If the group formatting is wrong
         const regex = /^[A-Za-z0-9_.-]+(?:, [A-Za-z0-9_.-]+)*$/;
-        if (!regex.test(restrict_to.trim())) {
+        if (!regex.test(restrict_to.trim()) && restrict_to.trim() != "") {
             await showTextAlert(
                 header = "Invalid input",
                 body = "'Resctricted to' needs a comma and a space between each group (with no comma at the end).",

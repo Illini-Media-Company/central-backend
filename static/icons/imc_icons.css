@@ -1,0 +1,43 @@
+.imc {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    vertical-align: middle;
+    background-color: currentColor;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+}
+
+.ce-mark {
+    -webkit-mask-image: url("/static/icons/ce-mark.svg");
+    mask-image: url("/static/icons/ce-mark.svg");
+}
+
+.di-mark {
+    -webkit-mask-image: url("/static/icons/di-mark.svg");
+    mask-image: url("/static/icons/di-mark.svg");
+}
+
+.ics-mark {
+    -webkit-mask-image: url("/static/icons/ics-mark.svg");
+    mask-image: url("/static/icons/ics-mark.svg");
+}
+
+.illio-mark {
+    -webkit-mask-image: url("/static/icons/illio-mark.svg");
+    mask-image: url("/static/icons/illio-mark.svg");
+}
+
+.imc-mark {
+    -webkit-mask-image: url("/static/icons/imc-mark.svg");
+    mask-image: url("/static/icons/imc-mark.svg");
+}
+
+.wpgu-mark {
+    -webkit-mask-image: url("/static/icons/wpgu-mark.svg");
+    mask-image: url("/static/icons/wpgu-mark.svg");
+}
