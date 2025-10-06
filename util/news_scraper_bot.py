@@ -17,7 +17,7 @@ import sys
 
 
 @app.command("/start_gemini_news_bot")
-def repeat_text(ack, say, command):
+def start_gemini_news_bot(ack, say, command):
     # Acknowledge command request
     ack()
     response = get_gemini_response(command["text"])
