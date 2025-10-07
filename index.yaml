@@ -3,3 +3,7 @@ indexes:
     properties:
       - name: truck_uid
       - name: start_time
+  - kind: Tool
+    properties:
+      - name: category
+      - name: name
