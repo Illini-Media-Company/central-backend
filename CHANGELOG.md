@@ -1,7 +1,10 @@
 # Changelog
 
-## 0.1.0 (2025-10-07)
+## 2.0.0 (2025-10-07)
 
+### ⚠️ BREAKING CHANGES
+
+* Redesigned UI/UX
 
 ### Features
 
