@@ -48,6 +48,9 @@ OV_ENDPOINT = os.environ.get("OV_ENDPOINT", None)
 
 RETOOL_API_KEY = os.environ.get("RETOOL_API_KEY", None)
 
+MAIN_IMC_GCAL_ID = (
+    "illinimedia.com_8cati95103kg5o3h8i11hmu0lo@group.calendar.google.com"
+)
 COPY_EDITING_GCAL_ID = "c_ce11637c04b9e766b04cf09ca41c971bd6b567648308d2ee53823cea6672ae4a@group.calendar.google.com"
 WPGU_ON_AIR_GCAL_ID = "c_b888554deb36a74a61aea32bac28ab500ade0003cd2ae61085354e07c2fa0fa0@group.calendar.google.com"
 
@@ -55,3 +58,5 @@ APPS_SCRIPT_RUNNER_EMAIL = "apps-script-runner@illinimedia.com"
 CONTEND_DOC_AUD = (
     "906651552672-3vsqi0s6ggr50gs1u7chgcn15hqlgg4e.apps.googleusercontent.com"
 )
+
+TOOLS_ADMIN_ACCESS_GROUPS = ["webdev", "imc-staff-webdev", "ceo"]

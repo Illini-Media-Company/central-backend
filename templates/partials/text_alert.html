@@ -1,0 +1,95 @@
+<!-- 
+This file defines HTML that can be imported into any template by adding:
+
+include "partials/text_alert.html" inside of curly braces with % on either
+side.
+
+Defines an alert screen with header, body text and dismiss button. To call this
+in a script in another file:
+
+result = await showTextAlert(header, body, buttonText)
+
+All inputs are strings. Function returns true once the user clicks the button.
+
+Calling hideTextAlert() will remove the alert from the screen regardless
+of whether the user has clicked the button.
+
+Created by Jacob Slabosz on Oct. 2, 2025
+Last modified Oct. 2, 2025 
+-->
+
+<style>
+    #text-alert-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+
+        background-color: rgba(255, 255, 255, 0.8);
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9998;
+    }
+
+    .text-alert-container {
+        background-color: var(--main-bg-color);
+        border-radius: var(--main-border-radius);
+        box-shadow: var(--main-box-shadow);
+
+        text-align: center;
+
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+
+        padding: 1rem;
+        max-width: 50%;
+    }
+
+</style>
+
+<div id="text-alert-screen">
+    <div class="text-alert-container">
+        <h3 style="margin-top: 1rem;" id="text-alert-header">Alert</h3>
+        <p id="text-alert-text">
+            Message
+        </p>
+        <button id="text-alert-cancel-button" class="button-secondary">
+            Text
+        </button>
+    </div>
+</div>
+
+<script>
+    // Displays a full-screen alert message with two buttons.
+    // Returns true when the user clicks the button
+    // Need to await the response of this function when calling it
+    function showTextAlert(header, body, buttonText) {
+
+        return new Promise((resolve) => {
+            const alertScreen  = document.getElementById("text-alert-screen");
+            const cancelButton = document.getElementById("text-alert-cancel-button");
+            const headerText   = document.getElementById("text-alert-header");
+            const bodyText     = document.getElementById("text-alert-text");
+
+            // Show the alert, set the text for each element
+            alertScreen.style.display = "flex";
+            if (header) headerText.innerText = header;
+            if (body) bodyText.innerText = body;
+            if (buttonText) cancelButton.innerText = buttonText;
+
+            cancelButton.onclick = () => {
+                alertScreen.style.display = "none";
+                resolve(true);
+            };
+        });
+    }
+
+    function hideTextAlert() {
+        document.getElementById("text-alert-screen").style.display = "none";
+    }
+</script>

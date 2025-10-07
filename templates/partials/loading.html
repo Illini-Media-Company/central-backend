@@ -1,0 +1,72 @@
+<!-- 
+This file defines HTML that can be imported into any template by adding:
+
+include "partials/loading.html" inside of curly braces with % on either
+side.
+
+Defines a loading screen with customizable text. To call this script in 
+another file:
+
+showLoading(text)
+
+Where text is a string. It should be only a few words. This function does 
+not return a value. This function can be called repeatedly with different
+text values to change the text on the existing loading screen.
+
+Calling hideLoading() will remove the loading screen.
+
+Created by Jacob Slabosz on Oct. 2, 2025
+Last modified Oct. 2, 2025 
+-->
+
+<style>
+    #loading-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+
+        background-color: rgba(255, 255, 255, 0.8);
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9998;
+    }
+
+    .loading-spinner {
+        border: 0.2rem solid #BDBDBD;
+        border-top: 0.2rem solid #F99F20;
+        border-radius: 50%;
+        width: 3rem;
+        height: 3rem;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+
+<div id="loading-screen">
+    <div class="loading-spinner"></div>
+    <h4 style="margin-top: 1rem;" id="loading-screen-text">Loading...</h4>
+    <p style="font-size: 0.75rem;">
+        Do not refresh or close this page
+    </p>
+</div>
+
+<script>
+    function showLoading(text) {
+        document.getElementById("loading-screen").style.display = "flex";
+        if (text) {
+            document.getElementById("loading-screen-text").innerText = text;
+        }
+    }
+
+    function hideLoading() {
+        document.getElementById("loading-screen").style.display = "none";
+    }
+</script>

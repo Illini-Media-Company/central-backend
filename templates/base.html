@@ -1,17 +1,21 @@
+<!-- This file defines the base HTML structure used by all pages, including the navigation bar at the top. -->
+
+<!-- Macro to make an item in the navigation bar (Jinja) -->
 {% macro nav_item(text, url) %}
 <li class="nav-item px-1">
     {% if request.path.startswith(url) %}
-        <a class="nav-link active" aria-current="page" href="{{ url }}">{{ text }}</a>
+        <a class="navbar-link active" aria-current="page" href="{{ url }}">{{ text }}</a>
     {% else %}
-        <a class="nav-link" href="{{ url }}">{{ text }}</a>
+        <a class="navbar-link" href="{{ url }}">{{ text }}</a>
     {% endif %}
 </li>
 {% endmacro %}
 
+<!-- Macro to make a dropdown in the navigation bar (Jinja) -->
 {% macro nav_dropdown(text) %}
-<li class="nav-item px-1 dropdown">
-    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-        {{ text }}
+<li class="navbar-item dropdown">
+    <a class="navbar-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="bi bi-caret-down-fill dropdown-caret"></i> {{ text }}
     </a>
     <ul class="dropdown-menu dropdown-menu-end">
         {{ caller() }}
@@ -19,6 +23,7 @@
 </li>
 {% endmacro %}
 
+<!-- Macro to make an item in a dropdown in the navigation bar (Jinja) -->
 {% macro nav_dropdown_item(text, url, target, groups) %}
 <li>
     {% set target = target|default('_self') %}
@@ -32,21 +37,56 @@
 <!doctype html>
 <html>
     <head>
+        <!-- Bootstrap styling -->
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
-        <link rel="stylesheet" href="/static/style.css">
-        {% block extra_head %}{% endblock %}
-        <title>{% block title %}{% endblock %} - Illini Media Company</title>
+        
+        <!-- Futura font from Adobe Fonts (adobe1@illinimedia.com) -->
+        <link rel="stylesheet" href="https://use.typekit.net/tid3tgd.css">
 
-        <!-- Favicon block -->
+        <!-- Custom CSS styling available on all pages -->
+        <link rel="stylesheet" href="/static/globals.css">
+
+        <!-- Custom CSS for navigation bar and other things on all pages -->
+        <link rel="stylesheet" href="/static/styles/styles_base.css">
+
+        <!-- This allows us to use Bootstrap Icons (https://icons.getbootstrap.com) -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+
+        <!-- Custom IMC icons -->
+         <link rel="stylesheet" href="/static/icons/imc_icons.css">
+
+        <!-- Allows extra stuff to be added to the head on other pages -->
+        {% block extra_head %}
+        {% endblock %}
+
+        <!-- Appends " - IMC Console" to the title of each page -->
+        <title>
+            {% block title %}{% endblock %} - IMC Console
+        </title>
+
+        <!-- Default favicon; can be overridden on other pages -->
         {% block favicon %}
-            <link rel="icon" href="/static/IMC_Favicon.ico" type="image/x-icon">
+            <link rel="icon" href="/static/favicon_IMC.ico" type="image/x-icon">
         {% endblock %}
     </head>
+
     <body class="d-flex flex-column vh-100">
+
+        <!-- Defines the navigation bar that appears at the top of all pages -->
         <nav class="navbar navbar-expand-lg bg-body-tertiary">
-            <div class="container-fluid">
-                <a class="navbar-brand" href="/">Illini Media Company</a>
+            <div class="navbar-container">
+                <a href="/">
+                    <img class="navbar-image" src="/static/logo_IMC.svg" alt="Illini Media Company Logo">
+                </a>
+
+                <!-- Menu toggle button that only appears on small screens -->
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <i class="bi bi-list"></i>
+                </button>
+
+                <!-- This is where the actual menu begins and it will be collapsed by default on smaller screens -->
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                    <!-- Adds all of the dropdowns for items in the navigation bar -->
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                         {% call nav_dropdown('Quick Links') %}
                             {% for quick_link in quick_links %}
@@ -54,7 +94,7 @@
                                 {{ nav_dropdown_item(quick_link['name'], quick_link['url'], '_blank', groups) }}
                             {% endfor %}
 
-                            {{ nav_dropdown_item('Edit quick links', url_for('quick_links_routes.dashboard'), groups=['student-managers', 'editors', 'imc-staff-webdev']) }}
+                            {{ nav_dropdown_item('Edit quick links', url_for('api_query'), groups=['student-managers', 'editors', 'imc-staff-webdev']) }}
 
                             {% if not current_user.is_authenticated %}
                                 {{ nav_dropdown_item('Log in', url_for('login')) }}
@@ -87,27 +127,41 @@
 
                     <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
                         {% if current_user.is_authenticated %}
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                {{ current_user.name }}
+                        <li class="navbar-item dropdown">
+                            <a class="navbar-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-caret-down-fill me-1 dropdown-caret"></i> {{ current_user.name }} <img src="{{ current_user.picture }}" alt="{{ current_user.name }}'s profile photo" class="navbar-profile-photo" />
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" href="{{ url_for('logout') }}">Log out</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('url_history') }}">URL History</a></li>
                             </ul>
                         </li>
                         {% else %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('login') }}">Log in</a>
+                        <li class="navbar-item">
+                            <a class="navbar-link" href="{{ url_for('login') }}">Log in</a>
                         </li>
                         {% endif %}
                     </ul>
                 </div>
             </div>
         </nav>
-        <div class="flex-grow-1">
-            {% block content %} {% endblock %}
+
+        <!-- By using the "content" block, other pages can insert content into the body of the page -->
+        <div class="page-content flex-grow-1">
+            {% block content %} 
+            {% endblock %}
         </div>
 
+        <footer>
+            <span>
+                Illini Media Console || © 2025&nbsp;
+				<a href="http://illinimedia.org/" target="_blank" rel="noopener noreferrer">
+					Illini Media Company
+				</a>
+            </span>
+        </footer>
+
+        <!-- Loads Bootstrap JS for functionality -->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
     </body>
 </html>

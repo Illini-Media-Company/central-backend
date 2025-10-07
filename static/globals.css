@@ -1,0 +1,92 @@
+:root {
+    /* Override Bootstrap's default settings */
+    --bs-font-sans-serif: futura-pt, system-ui, sans-serif;
+    --bs-body-font-weight: 300;
+    --bs-body-color: #212121;
+
+    /* Define global fonts */
+    font-family: futura-pt, system-ui, sans-serif;
+    font-weight: 300;
+    font-style: normal;
+
+    /* Define global colors as variables */
+    --main-bg-color: #FFFFFF;
+    --main-text-color: #212121;
+    --main-lt-gray-color: #EEEEEE;
+    --main-md-gray-color: #DDDDDD;
+    --main-dk-gray-color: #212121;
+    --main-accent-color: #F99F20;
+    --main-accent-color-darkened: #E68805;
+
+    /* Define global corner radius */
+    --main-border-radius: 1rem;
+
+    /* Define global shadow */
+    --main-box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,0.2);
+}
+
+a {
+    color: var(--main-accent-color);
+    overflow-wrap: anywhere; /* Makes really long URLs wrap to the next line */
+}
+
+p {
+    font-family: "futura-pt", sans-serif;
+    font-weight: 300;
+    font-style: normal;
+    font-size: 1rem;
+}
+
+h1 {
+    font-family: "futura-pt", sans-serif;
+    font-weight: 500;
+    font-style: normal;
+    font-size: 3rem;
+}
+
+h2 {
+    font-family: "futura-pt", sans-serif;
+    font-weight: 500;
+    font-style: normal;
+    font-size: 2rem;
+}
+
+h3 {
+    font-family: "futura-pt", sans-serif;
+    font-weight: 500;
+    font-style: normal;
+    font-size: 1.5rem;
+}
+
+h4 {
+    font-family: "futura-pt", sans-serif;
+    font-weight: 500;
+    font-style: normal;
+    font-size: 1rem;
+}
+
+.button-primary {
+    border: none;
+    border-radius: calc(var(--main-border-radius) + 0.25rem);
+    background-color: var(--main-accent-color);
+    color: var(--main-bg-color);
+    padding: 0.25rem 1rem;
+    transition: background-color .15s ease-in-out;
+}
+
+.button-primary:hover {
+    background-color: var(--main-accent-color-darkened);
+}
+
+.button-secondary {
+    border: none;
+    border-radius: calc(var(--main-border-radius) + 0.25rem);
+    background-color: var(--main-lt-gray-color);
+    color: var(--main-text-color);
+    padding: 0.25rem 1rem;
+    transition: background-color .15s ease-in-out;
+}
+
+.button-secondary:hover {
+    background-color: var(--main-md-gray-color);
+}

@@ -1,0 +1,37 @@
+<!-- Page that displays the URL history for a user -->
+
+<!-- Ensures that the navivaation bar and other things from base.html are included -->
+{% extends 'base.html' %}
+
+<!-- The title of the page (Home) -->
+{% block title %}
+    URL History
+{% endblock %}
+
+<!-- Add extra information to the head of the page -->
+{% block extra_head %}
+    <link rel="stylesheet" href="/static/styles/styles_index.css">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h3>Session URL History</h3>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>URL</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for url in url_history %}
+            <tr>
+                <td>{{ loop.index }}</td> 
+                <td><a href="{{ url }}">{{ url }}</a></td>
+            </tr>
+            {% endfor %}
+
+        </tbody>
+    </table>
+</div>
+{% endblock %}

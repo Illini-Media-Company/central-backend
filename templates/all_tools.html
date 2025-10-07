@@ -1,0 +1,533 @@
+<!-- Page to add and modify tools for all users on the home page -->
+
+<!-- Ensures that the navigation bar and other things from base.html are included -->
+ {% extends 'base.html' %}
+
+<!-- The title of the page -->
+{% block title %}
+    Tools Admin Panel
+{% endblock %}
+
+<!-- Add extra information to the head of the page -->
+{% block extra_head %}
+    <link rel="stylesheet" href="/static/styles/styles_alltools.css">
+    <link rel="stylesheet" href="/static/styles/styles_index.css">
+    <link rel="stylesheet" href="/static/macros/form.css">
+{% endblock %}
+
+<!-- Lets us use the loading and alert screens on this page -->
+{% include "partials/loading.html" %}
+{% include "partials/button_alert.html" %}
+{% include "partials/text_alert.html" %}
+
+<!-- Lets us use the form macros. We also import form.css in extra_head -->
+{% import "macros/form.html" as form %}
+
+<!-- Content specific to this page -->
+{% block content %}
+<div class="main-container">
+    <h1>Tools Admin Panel</h1>
+
+    <div class="upper-container">
+        <!-- This is the box for adding new tools -->
+        <div class="section-container mobile-stretch" style="flex: 2">
+            <div class="section-header">
+                <h2 style="margin-bottom: 0">Add New Tool</h2>
+            </div>
+            <hr class="tool-category-divider" style="margin-top: 0.5rem;">
+            <!-- Form to add a new tool -->
+            {% call form.form(id="toolForm", enctype="application/x-www-form-urlencoded", on_submit="return addTool(event)") %}
+                {{ form.text_input(name="name", label="Name:", required=false) }}
+                {{ form.text_input(name="description", label="Description:", required=false) }}
+                {{ form.text_input(name="icon", label="Icon:", required=false) }}
+                {{ form.text_input(name="url", label="URL:", required=false) }}
+                {{ form.text_input(name="category", label="Category:", required=false) }}
+                {{ form.text_input(name="restrict_to", label="Restricted to:", required=false) }}
+                {{ form.submit_button(text="Add", label="addButton") }}
+            {% endcall %}
+        </div>
+
+        <!-- This is the text box that explains the fields -->
+        <div class="section-container" style="flex: 1">
+            <div class="section-header">
+                <h2 style="margin-bottom: 0">Field Specifications</h2>
+            </div>
+            <hr class="tool-category-divider" style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+            <div style="padding-left: 0.25rem; padding-right: 0.25rem; padding-bottom: 0.25rem;">
+                <div>
+                    <h4 style="display: inline;">Name:</h4>
+                    <p style="display: inline">Name of the tool, restricted to 35 characters.</p>
+                </div>
+                <div>
+                    <h4 style="display: inline;">Description:</h4>
+                    <p style="display: inline">A short description, limited to 120 characters.</p>
+                </div>
+                <div>
+                    <h4 style="display: inline;">Icon:</h4>
+                    <p style="display: inline">The icon must come from 
+                    <span><a href="https://icons.getbootstrap.com/" target="_blank">Bootstrap</a></span>. 
+                    Click on an icon, then under "Icon font," copy the text inside the quotes
+                    after 'class='.</p>
+                </div>
+                <div>
+                    <h4 style="display: inline;">URL:</h4>
+                    <p style="display: inline">
+                        The URL for the tool. If it is an internal URL, it should only be the 
+                        path (i.e the part after app.dailyillini.com)
+                    </p>
+                </div>
+                <div>
+                    <h4 style="display: inline;">Category:</h4>
+                    <p style="display: inline">The name of the category the tool should be under.</p>
+                </div>
+                <div>
+                    <h4 style="display: inline;">Restricted to:</h4>
+                    <p style="display: inline">
+                        The Google Groups to restrict this tool do. Does not restrict acces, 
+                        only whose dashboard it will display on. Enter the part of the group's 
+                        email before the @. To add multiple groups, separate them with a comma 
+                        and a space.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-container">
+        <div class="section-header">
+            <h2 style="margin-bottom: 0">All Tools</h2>
+        </div>
+        {% for category, tools_list in tools.items() %}
+            <hr class="tool-category-divider">
+            <div class="tool-category-header">
+                <button class="button-primary" id="category-{{ category }}" onclick="removeCategory('{{ category }}')">
+                    Remove Category
+                </button>
+                <h3 style="margin-bottom: 0;">{{ category }}</h3>
+            </div>
+
+            <!-- Container that holds all tools in a cetegory -->
+            <div class="tool-category-admin">
+                {% for tool in tools_list %}
+                    <!-- Container for an individual tool -->
+                    <div class="tool-item-container-admin">
+                        <!-- This div holds the information display for a tool; displays by default and hidden in the "edit" view -->
+                        <div id="info-{{ tool.uid }}">
+                            <div class="tool-item-header">
+                                <i class="{{ tool.icon }} tool-item-icon"></i>
+                                <h4 style="margin-bottom: 0;">
+                                    {{ tool.name }}
+                                </h4>
+                                <div class="tool-button-container">
+                                    <button class="tool-button" onclick="modifyTool('{{ tool.uid }}')" id="modify-{{ tool.uid }}">
+                                        <i class="bi bi-pencil-square tool-button-icon"></i>
+                                    </button>
+                                    <button class="tool-button" onclick="removeTool('{{ tool.uid }}')" id="remove-{{ tool.uid }}">
+                                        <i class="bi bi-trash-fill tool-button-icon"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <p style="margin-bottom: 0.5rem;">
+                                {{ tool.description }}
+                            </p>
+                            <div>
+                                <h4 class="tool-item-info-header">URL/Path:</h4><a href="{{ tool.url }}" target="_blank">{{ tool.url }}</a>
+                            </div>
+                            <div>
+                                <h4 class="tool-item-info-header">Restricted to:</h4><p style="display: inline;">{{ tool.restricted_to|format_restricted_groups }}</p>
+                            </div>
+                        </div>
+                        <!-- This div holds the edit form for a tool; not displayed by default and only showed on "edit" view -->
+                        <div id="edit-{{ tool.uid }}" style="display: none;">
+                            <div class="tool-item-header">
+                                <h4 style="margin-bottom: 0; margin-left: 0.25rem">
+                                    Editing "{{ tool.name }}"...
+                                </h4>
+                                <div class="tool-button-container">
+                                    <button class="tool-button" onclick="saveModifyTool('{{ tool.uid }}')" id="save-{{ tool.uid }}" disabled="true">
+                                        <i class="bi bi-floppy-fill tool-button-icon"></i>
+                                    </button>
+                                    <button class="tool-button" onclick="cancelModifyTool('{{ tool.uid }}')" id="cancel-{{ tool.uid }}" disabled="true">
+                                        <i class="bi bi-x-circle-fill tool-button-icon"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            {% call form.form(id="edit-form-" ~ tool.uid, enctype="application/x-www-form-urlencoded") %}
+                                {{ form.text_input(name="name", label="Name:", required=false) }}
+                                {{ form.text_input(name="description", label="Description:", required=false) }}
+                                {{ form.text_input(name="icon", label="Icon:", required=false) }}
+                                {{ form.text_input(name="url", label="URL:", required=false) }}
+                                {{ form.text_input(name="category", label="Category:", required=false) }}
+                                {{ form.text_input(name="restrict_to", label="Restricted to:", required=false) }}
+                            {% endcall %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+    async function addTool(event) {
+        event.preventDefault();
+        console.log("Adding...");
+
+        showLoading("Verifying input...");
+
+        let endpoint = "/tools/add";
+        const addToolForm = document.getElementById("toolForm");
+
+        const nameInput  = addToolForm.querySelector("#name").value.trim();
+        const descInput  = addToolForm.querySelector("#description").value.trim();
+        const iconInput  = addToolForm.querySelector("#icon").value.trim();
+        const urlInput   = addToolForm.querySelector("#url").value.trim();
+        const catInput   = addToolForm.querySelector("#category").value.trim();
+        const restrInput = addToolForm.querySelector("#restrict_to").value.trim();
+
+        const addButton  = addToolForm.querySelector("#addButton");
+        addButton.disabled = true;
+
+        // Make sure all the inputs are valid
+        valid = await validateForm(nameInput, descInput, iconInput, urlInput, catInput, restrInput);
+        if (!valid) {
+            hideLoading();
+            addButton.disabled = false;
+            return;
+        }
+
+        showLoading("Adding...");
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `_csrf_token={{ csrf_token() }}&name=${nameInput}&description=${descInput}&icon=${iconInput}&url=${urlInput}&category=${catInput}&restricted_to=${restrInput}`,
+        });
+
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            window.location.reload();
+        } else {
+            // Alert of the error and re-enable the submit button
+            console.log("Adding Tool to database failed!");
+            const message = await response.text();
+            console.error(message);
+            alert(message);
+            addButton.disabled = false;
+        }
+    }
+
+    async function modifyTool(uid) {
+        showLoading("Changing view...");
+
+        modifyButton = document.getElementById(`modify-${uid}`);
+        removeButton = document.getElementById(`remove-${uid}`);
+        saveButton   = document.getElementById(`save-${uid}`);
+        cancelButton = document.getElementById(`cancel-${uid}`);
+        infoPanel    = document.getElementById(`info-${uid}`);
+        editPanel    = document.getElementById(`edit-${uid}`);
+        form         = document.getElementById(`edit-form-${uid}`);
+
+        // Disable the buttons that are in the info panel
+        modifyButton.disabled = true;
+        removeButton.disabled = true;
+
+        // Hide the info panel, show the edit panel
+        infoPanel.style.display = "none";
+        editPanel.style.display = "block";
+
+        // Enable the buttons that are in the edit panel
+        saveButton.disabled   = false;
+        cancelButton.disabled = false;
+
+        // TODO: Pull data from endpooint, populate form
+        showLoading("Pulling data...");
+ 
+        let endpoint = '/tools/' + uid + '/get'; 
+        const response = await fetch(endpoint);
+        if (response.ok) {
+            const tool = await response.json();
+
+            form.querySelector("#name").value = tool.name;
+            form.querySelector("#description").value = tool.description;
+            form.querySelector("#icon").value = tool.icon;
+            form.querySelector("#url").value = tool.url;
+            form.querySelector("#category").value = tool.category;
+            form.querySelector("#restrict_to").value = format(tool.restricted_to);
+
+        } else {
+            const message = await response.text();
+            console.error(message);
+            alert('Error getting tool data: ' + message);
+        }
+
+        hideLoading();
+    }
+
+    async function cancelModifyTool(uid) {
+        showLoading("Cancelling...");
+
+        modifyButton = document.getElementById(`modify-${uid}`);
+        removeButton = document.getElementById(`remove-${uid}`);
+        saveButton   = document.getElementById(`save-${uid}`);
+        cancelButton = document.getElementById(`cancel-${uid}`);
+        infoPanel    = document.getElementById(`info-${uid}`);
+        editPanel    = document.getElementById(`edit-${uid}`);
+
+        // Disable the buttons that are in the edit panel
+        saveButton.disabled   = true;
+        cancelButton.disabled = true;
+
+        // Hide the edit panel, show the info panel
+        editPanel.style.display = "none";
+        infoPanel.style.display = "block";
+
+        // Enable the buttons that are in the info panel
+        modifyButton.disabled = false;
+        removeButton.disabled = false;
+
+        hideLoading();
+    }
+
+    async function saveModifyTool(uid) {
+        showLoading("Saving...");
+
+        const form = document.getElementById(`edit-form-${uid}`);
+
+        const nameInput = form.querySelector("#name").value.trim();
+        const descInput = form.querySelector("#description").value.trim();
+        const iconInput = form.querySelector("#icon").value.trim();
+        const urlInput = form.querySelector("#url").value.trim();
+        const catInput = form.querySelector("#category").value.trim();
+        const restrInput = form.querySelector("#restrict_to").value.trim();
+
+        // Make sure all the inputs are valid
+        valid = await validateForm(nameInput, descInput, iconInput, urlInput, catInput, restrInput);
+        if (!valid) {
+            hideLoading();
+            return;
+        }
+
+        let endpoint = '/tools/' + uid + '/modify';  
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `_csrf_token={{ csrf_token() }}&name=${nameInput}&description=${descInput}&icon=${iconInput}&url=${urlInput}&category=${catInput}&restricted_to=${restrInput}`,
+        });
+
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            window.location.reload();
+        } else {
+            console.log("Saving Tool to database failed!");
+            const message = await response.text();
+            console.error(message);
+            alert(message);
+        }
+
+        hideLoading();
+    }
+
+    async function removeTool(uid) {
+        modifyButton = document.getElementById(`modify-${uid}`);
+        removeButton = document.getElementById(`remove-${uid}`);
+
+        let endpoint = `/tools/` + uid + `/delete`;
+
+        // Disable the buttons that are in the info panel
+        modifyButton.disabled = true;
+        removeButton.disabled = true;
+
+        // Show the alert window
+        result = await showButtonAlert(
+            header="Remove tool?",
+            body="Are you sure you want to remove this tool? This action cannot be undone",
+            alertButtonText="Yes, remove",
+            cancelButtonText="No, cancel"
+        );
+
+        if (result) {
+            showLoading("Removing...");
+            
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `_csrf_token={{ csrf_token() }}`
+            });
+            
+            if (response.status === 200) {
+                // Trigger a reload of the window
+                window.location.reload();
+            } else {
+                // Alert of the error and re-enable the buttons
+                console.log("Failed to remove Tool with ID = " + uid);
+                const message = await response.text();
+                console.error(message);
+                alert(message);
+                modifyButton.disabled = false;
+                removeButton.disabled = false;
+            }
+        } else {
+            // Re-enable the buttons that are in the info panel
+            modifyButton.disabled = false;
+            removeButton.disabled = false;
+        }
+    }
+
+    async function removeCategory(category) {
+        showLoading("Removing...");
+
+        let endpoint = "/tools/category/delete";
+
+        removeButton = document.getElementById(`category-${category}`);
+        removeButton.disabled = true;
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `_csrf_token={{ csrf_token() }}&category=${category}`,
+        });
+
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            window.location.reload();
+        } else if (response.status === 403) {
+            await showTextAlert(
+                header = "Category not empty",
+                body = "This category cannot be removed because there are tools in it. Please remove all tools from this category before attempting to delete.",
+                buttonText = "Dismiss"
+            );
+            removeButton.disabled = false;
+            hideLoading();
+        } else {
+            // Alert of the error and re-enable the submit button
+            console.log("Removing category failed!");
+            const message = await response.text();
+            console.error(message);
+            alert(message);
+            removeButton.disabled = false;
+            hideLoading();
+        }
+    }
+
+    async function validateForm(name, description, icon, url, category, restrict_to) {
+        
+        // If no name
+        if (!name) {
+            await showTextAlert(
+                header = "Invalid input",
+                body = "Name cannot be empty.",
+                buttonText = "Dismiss"
+            );
+            return false;
+        }
+
+        // If name too long
+        if (name.length > 35) {
+            await showTextAlert(
+                header = "Invalid input",
+                body = "Name cannot be more than 35 characters.",
+                buttonText = "Dismiss"
+            );
+            return false;
+        }
+
+        // If no description
+        if (!description) {
+            await showTextAlert(
+                header = "Invalid input",
+                body = "Description cannot be empty.",
+                buttonText = "Dismiss"
+            );
+            return false;
+        }
+
+        // If description too long
+        if (description.length > 120) {
+            await showTextAlert(
+                header = "Invalid input",
+                body = "Description cannot be more than 120 characters.",
+                buttonText = "Dismiss"
+            );
+            return false;
+        }
+
+        // If no icon
+        if (!icon) {
+            await showTextAlert(
+                header = "Invalid input",
+                body = "Icon cannot be empty.",
+                buttonText = "Dismiss"
+            );
+            return false;
+        }
+
+        // If icon entered wrong
+        if (!icon.startsWith("bi bi-") && !icon.startsWith("imc ")) {
+            await showTextAlert(
+                header = "Invalid input",
+                body = "Icon was not entered properly. Ensure the icon is from https://icons.getbootstrap.com. Click an icon, navigate to the section called 'Icon font' and copy only the text inside the quotes after 'class='",
+                buttonText = "Dismiss"
+            );
+            return false;
+        }
+
+        // If no URL
+        if (!url) {
+            await showTextAlert(
+                header = "Invalid input",
+                body = "URL cannot be empty.",
+                buttonText = "Dismiss"
+            );
+            return false;
+        }
+
+        // If improperly formatted path
+        if (url.includes("app.dailyillini.com")) {
+            await showTextAlert(
+                header = "Invalid input",
+                body = "This URL is internal. Please only enter the path (i.e., the part after app.dailyillini.com) including the leading '/'. A correctly formatted path would be: /url-history.",
+                buttonText = "Dismiss"
+            );
+            return false;
+        }
+
+        // Validate category
+        if (!category) {
+            await showTextAlert(
+                header = "Invalid input",
+                body = "Category cannot be empty.",
+                buttonText = "Dismiss"
+            );
+            return false;
+        }
+
+        // If the group formatting is wrong
+        const regex = /^[A-Za-z0-9_.-]+(?:, [A-Za-z0-9_.-]+)*$/;
+        if (!regex.test(restrict_to.trim()) && restrict_to.trim() != "") {
+            await showTextAlert(
+                header = "Invalid input",
+                body = "'Resctricted to' needs a comma and a space between each group (with no comma at the end).",
+                buttonText = "Dismiss"
+            );
+            return false;
+        }
+
+        return true;
+    }
+
+    function format(groups) {
+        console.log(groups);
+        if (!Array.isArray(groups)) return "";
+        return groups.join(", ");
+    }
+</script>
+{% endblock %}
