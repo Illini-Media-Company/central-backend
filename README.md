@@ -1,58 +1,135 @@
-# central-backend
+# Illini Media Console (Central Backend)
 
-[app.dailyillini.com](https://app.dailyillini.com)
+The Illini Media Console (or the Central Backend) is one localized app that runs all (or at least most) of IMC's tools and automation workflows. The console can be accessed by anyone with an active @illinimedia.com Google account by visiting [app.dailyillini.com](https://app.dailyillini.com). The frontend is used as a centralize console for all IMC employees to quickly access links, tools and other information.
 
-## Local Setup
+### Technical Overview
+
+The Central Backend is a [Flask](https://flask.palletsprojects.com/en/stable/) app (which is based on Python). Flask handles all APIs and routing. The frontend is in HTML with [Jinja](https://jinja.palletsprojects.com/en/stable/) as a templating engine. This allows pages (templates) to be rendered with information that comes directly from the backend's database or APIs. Jinja templates are rendered client-side.
+
+The app is deployed to [Google App Engine](https://cloud.google.com/appengine?hl=en) via the [Google Cloud Console](https://console.cloud.google.com). The database is through [Google Datastore](https://cloud.google.com/products/datastore?hl=en), a NoSQL database.
+
+
+## Getting Started
+
+### IDE (Integrated Development Environment)
+
+Illini Media Company recommends [Visual Studio Code](https://code.visualstudio.com/) — or VSCode — as your primary IDE. Most poeple are fimiliar with this as it is free, open-source and has many useful extensions.
+
+**Recommended Extensions**
+- [Black Formatter](https://marketplace.visualstudio.com/items?itemName=ms-python.black-formatter)
+    - The repository is already setup to lint Python code using Black to ensure proper formatting. This happens automatically on commits, but you can install this extension to automatically format on file saves.
+- [Jinja](https://marketplace.visualstudio.com/items?itemName=wholroyd.jinja)
+    - This colorizes Jinja template code which makes viewing easier.
+- [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
+    - For code formatting. "Enforces consistent style by parsing your code and re-printing it with its own rules that take the maximum line length into account, wrapping code when necessary."
+- [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python)
+- [Pylance](https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-pylance)
+- [Python Debugger](https://marketplace.visualstudio.com/items?itemName=ms-python.debugpy)
+- [Python Environments](https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-python-envs)
 
 ### Prerequisites
 
 Make sure you have all of the following:
 
-- Python 3.12 (Different may cause issues for Google Cloud)
+- Python 3.12 (Different versions may cause issues for Google Cloud)
+    - You can check which version you have by running `python --version` or `python3 --version` from a new terminal
 - [Google Cloud CLI](https://cloud.google.com/sdk/docs/install)
 - Git
-- [Java 11+](https://www.oracle.com/java/technologies/downloads/#java17) (check if you have it already by running `java --version` in a terminal)
-- You've been added to the "IMC Staff - Web Dev" Google Group
+- [Java 17+](https://www.oracle.com/java/technologies/downloads/#java17)
+    - You can check which version you have by running `java --version` from a new terminal
+- You've been added to the "IMC Staff - Web Dev" Google Group by your supervisor
 
 ### Steps
 
 1. Clone this repo on your computer using either GitHub Desktop or the `git` CLI tool.
+    - You can do this by either using the GitHub Desktop application, directly through VSCode, or running the following in a new termnal **inside of the folder/directory where you would like your local copy**:
+      ```
+      git clone https://github.com/Illini-Media-Company/central-backend
+      ```
 
-2. Get the `.env` file from the Lead Developer and place it in the `central-backend` folder you just cloned.
+2. Get the `.env` file from your supervisor and place it in the `central-backend` folder you just cloned.
+    - It is crucial that the file is located in the root directory and named `.env` exactly.
+    - Note that many of the secrets located in this file are specific to development. On deployement, different secrets may be used.
+    - Many API keys are restricted to specific URLs, meaning you will be unable to use them for other projects.
 
-3. In a terminal window, run `gcloud auth login` to open a login page on your browser. Log in to your **@illinimedia.com** account, then return to the terminal. Following the prompt, set the current project to `central-backend-399421`.
+3. Setup Google Cloud CLI
+    - In a terminal window, run:
+      ```
+      gcloud auth login
+      ```
+    - This will either automatically open a login page on a browser, or you will be given a link to do so.
+    - On the page that opens, log in to your **@illinimedia.com** account.
+    - Once you have logged in and you are presented with a success screen, close this page then return to the terminal.
+    - **Two things can happen from here**, depending on how you installed Google Cloud CLI
+        - You're given a message that says:
+            ```
+            You are now logged in as [{your @illinimedia.com email}].
+            Your current project is [central-backend-399421].
+            ```
+            - In this case, your setup was completed during the initial installation and you are done with this step. You may close this terminal
+        - You're met with prompts. Follow them as such:
+            - `To continue, you must log in. Would you like to log in (Y/n)?`: Type `Y` then proceed with logging in using your @illinimedia.com account.
+            - `Pick cloud project to use` followed by choices: Select the option for `central-backend-399421`.
+                - If you do not see this option, it likely means that your supervisor has not yet added you to the required Google Group.
+                - Have them do so, then run `gloud auth login` or `gcloud init` to start the process over.
+            - `Which compute zone would you like to use as a project default?`: This does not matter. Choose any option, or do not set a default zone.
+    - Once you have completed these steps, you may close this terminal.
 
-4. Run the provided script for your OS to set up your development environment.
+4. From a terminal inside of your `central-backend` directory (which is easiest to do by opening a new terminal in VSCode), run the **setup script** for your OS to set up your development environment and install dependencies:
 
-macOS or Linux:
-```
-./scripts/setup.sh
-```
+    macOS or Linux:
+    ```
+    ./scripts/setup.sh
+    ```
 
-Windows:
-```
-.\scripts\setup.bat
-```
+    Windows:
+    ```
+    .\scripts\setup.bat
+    ```
 
-5. Open a new terminal, and start the Google Cloud Datastore emulator.
+  > [!NOTE]
+  > This process may take a few minutes. Let it run until it is complete. If you are met with any errors (incorrect versions of Python, etc.), address them before you move on.
 
-```
-gcloud beta emulators datastore start
-```
+5. Open a **new** terminal and start the Google Cloud Datastore emulator. *Note that you must leave this terminal running at all times while you are working on the project.*
 
-6. In your original terminal, run the provided script to start `central-backend` on your computer.
+    ```
+    gcloud beta emulators datastore start
+    ```
+  
+  > [!NOTE]
+  > You must leave this terminal running at all times while you are working on the project. To ensure you don't accidentally close it, run this in a terminal *not* through VSCode and minimize it.
 
-macOS or Linux:
-```
-./scripts/run.sh
-```
+6. Ensure that your Datastore gave you the following message: `export DATASTORE_EMULATOR_HOST=localhost:8081`
+    - If the message does not print *exactly* as above and instead shows a different number, it means one of two things:
+        - You have another instance already running in an different terminal. If this is the case, close the one that is not running on `localhost:8081`
+        - Another process is running on `localhost:8081` on your computer. Kill/quit that process (Google how to do this if you are unsure). After, return to step 5.
+   
+7. In the terminal from **step 4**, run the **run script** for your OS to start your local version of `central-backend`:
 
-Windows:
-```
-.\scripts\run.bat
-```
+    macOS or Linux:
+    ```
+    ./scripts/run.sh
+    ```
+    
+    Windows:
+    ```
+    .\scripts\run.bat
+    ```
 
-7. Open your favorite browser and navigate to <https://localhost:5001>. Ignore the "your connection is not private" warning; that's not an issue because no data is sent over the internet (the server is running on your computer).
+8. Open your favorite browser and navigate to <https://127.0.0.1:5001> or whatever URL appears in your terminal underneath the red warning message. Ignore the "your connection is not private" warning; that's not an issue because no data is sent over the internet (the server is running on your computer).
+
+  > [!NOTE]
+  > You can ignore the message that will likely pop up saying "your connection is not private." This is not an issue because we're not sending data over the internet and the server is running completely on your computer. On Safari, click "Show Details" > "Visit this website" (in text at the bottom). In Chrome, click "Advanced" > "Proceed to 127.0.0.1 (unsafe)"
+
+### Running After Initial Setup
+
+Once you have completed the setup steps above for the first time, restarting the development server is much easier. **Simply follow steps 5-8**.
+
+### Closing the Server
+
+To stop running the local development server, simply:
+  - Terminate the termnal running the server by typing Ctrl + C, then close the window. Do this step first to prevent potential issues.
+  - Terminate the terminal running `gcloud` by typing Ctrl + C, then close the window. If you do not terminate first, sometimes it may continue to run in the background and cause future issues (though this is not always the case)
 
 ## Slack Apps
 
