@@ -10,7 +10,7 @@ scheduler = BackgroundScheduler()
 scheduler.start()
 
 
-def add(title, lat, long, url, start_date, end_date, image, address):
+def add(title, lat, long, url, start_date, end_date, image, address, point_type):
     point = add_point(
         title=title,
         lat=lat,
@@ -20,6 +20,7 @@ def add(title, lat, long, url, start_date, end_date, image, address):
         end_date=end_date,
         image=image,
         address=address,
+        point_type=point_type,
     )
     trigger = DateTrigger(end_date, timezone="America/Chicago")
     scheduler.add_job(trigger=trigger, func=remove, args=[int(point["uid"])])
