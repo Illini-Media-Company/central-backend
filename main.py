@@ -34,7 +34,6 @@ from constants import (
     GOOGLE_CLIENT_SECRET,
     TOOLS_ADMIN_ACCESS_GROUPS,
 )
-from db.quick_link import get_all_quick_links
 from db.user import (
     add_user,
     update_user,
@@ -67,7 +66,6 @@ from apscheduler.triggers.date import DateTrigger
 
 from util.slackbot import start_slack
 from views.all_tools import tools_routes
-from views.quick_links import quick_links_routes
 from views.content_doc import content_doc_routes
 from views.constant_contact import constant_contact_routes
 from views.illordle import illordle_routes
@@ -100,7 +98,6 @@ Talisman(app, content_security_policy=[])
 csrf.init_app(app)
 
 app.register_blueprint(tools_routes)
-app.register_blueprint(quick_links_routes)
 app.register_blueprint(content_doc_routes)
 app.register_blueprint(constant_contact_routes)
 app.register_blueprint(illordle_routes)
@@ -183,7 +180,6 @@ def add_template_context():
     # Things in this dict can be used/called from all templates, like the get_gcal_url function
     return dict(
         constants=constants,
-        quick_links=get_all_quick_links(),
         is_current_user_in_group=is_current_user_in_group,
         get_gcal_url=get_gcal_url,
     )

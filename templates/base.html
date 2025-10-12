@@ -88,18 +88,6 @@
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
                     <!-- Adds all of the dropdowns for items in the navigation bar -->
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                        {% call nav_dropdown('Quick Links') %}
-                            {% for quick_link in quick_links %}
-                                {% set groups = [quick_link['group'], 'student-managers', 'lead-dev'] if quick_link['group'] else None %}
-                                {{ nav_dropdown_item(quick_link['name'], quick_link['url'], '_blank', groups) }}
-                            {% endfor %}
-
-                            {{ nav_dropdown_item('Edit quick links', url_for('api_query'), groups=['student-managers', 'editors', 'imc-staff-webdev']) }}
-
-                            {% if not current_user.is_authenticated %}
-                                {{ nav_dropdown_item('Log in', url_for('login')) }}
-                            {% endif %}
-                        {% endcall %}
 
                         {% call nav_dropdown('Daily Illini') %}
                             {{ nav_dropdown_item('Breaking News', url_for('breaking_routes.dashboard')) }}
