@@ -59,4 +59,4 @@ CONTEND_DOC_AUD = (
     "906651552672-3vsqi0s6ggr50gs1u7chgcn15hqlgg4e.apps.googleusercontent.com"
 )
 
-TOOLS_ADMIN_ACCESS_GROUPS = ["webdev", "imc-staff-webdev", "ceo"]
+TOOLS_ADMIN_ACCESS_GROUPS = ["webdev", "imc-staff-webdev", "ceo", "student-managers"]

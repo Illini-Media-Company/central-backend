@@ -88,40 +88,18 @@
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
                     <!-- Adds all of the dropdowns for items in the navigation bar -->
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                        {% call nav_dropdown('Quick Links') %}
-                            {% for quick_link in quick_links %}
-                                {% set groups = [quick_link['group'], 'student-managers', 'lead-dev'] if quick_link['group'] else None %}
-                                {{ nav_dropdown_item(quick_link['name'], quick_link['url'], '_blank', groups) }}
-                            {% endfor %}
 
-                            {{ nav_dropdown_item('Edit quick links', url_for('api_query'), groups=['student-managers', 'editors', 'imc-staff-webdev']) }}
-
-                            {% if not current_user.is_authenticated %}
-                                {{ nav_dropdown_item('Log in', url_for('login')) }}
-                            {% endif %}
+                        {% call nav_dropdown('Website Links') %}
+                            {{ nav_dropdown_item('Illini Media Company', 'https://illinimedia.org', '_blank') }}
+                            {{ nav_dropdown_item('The Daily Illini', 'https://dailyillini.com', '_blank') }}
+                            {{ nav_dropdown_item('WPGU', 'https://wpgu.com', '_blank') }}
+                            {{ nav_dropdown_item('Illio Yearbook', 'https://illioyearbook.com', '_blank') }}
+                            {{ nav_dropdown_item('Chambana Eats', 'https://chambanaeats.com', '_blank') }}
                         {% endcall %}
 
-                        {% call nav_dropdown('Daily Illini') %}
-                            {{ nav_dropdown_item('Breaking News', url_for('breaking_routes.dashboard')) }}
-                            {{ nav_dropdown_item('Socials', url_for('socials_routes.dashboard')) }}
-                            {{ nav_dropdown_item('ILLordle', url_for('illordle_routes.dashboard')) }}
-                            {{ nav_dropdown_item('Copy editing schedule', get_gcal_url(constants.COPY_EDITING_GCAL_ID), '_blank') }}
-                            {{ nav_dropdown_item('Map Points', url_for('map_points_routes.dashboard')) }}
-                        {% endcall %}
-
-                        {% call nav_dropdown('WPGU') %}
-                            {{ nav_dropdown_item('On-air calendar', get_gcal_url(constants.WPGU_ON_AIR_GCAL_ID), '_blank') }}
-                            {{ nav_dropdown_item('Website settings', url_for('retool_routes.wpgu_website')) }}
-                        {% endcall %}
-
-                        {% call nav_dropdown('Chambana Eats') %}
-                            {{ nav_dropdown_item('Food Truck Tracker Admin', url_for('food_truck_routes.admin')) }}
-                            {{ nav_dropdown_item('Food Truck Tracker Dashboard', url_for('food_truck_routes.dashboard')) }}
-                        {% endcall %}
 
                         {% call nav_dropdown('Settings & Tools') %}
                             {{ nav_dropdown_item('API query', url_for('api_query')) }}
-                            {{ nav_dropdown_item('Authorize Constant Contact', url_for('constant_contact_routes.cc_login')) }}
                         {% endcall %}
                     </ul>
 
