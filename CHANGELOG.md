@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.1.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.0.0...v2.1.0) (2025-10-12)
+
+
+### Features
+
+* Update map points to support types, autocomplete ([#47](https://github.com/Illini-Media-Company/central-backend/issues/47)) ([b6a6a0c](https://github.com/Illini-Media-Company/central-backend/commit/b6a6a0cf706dbe87e35397de0e90fc0fef25e696))
+* Update navigation bar ([#48](https://github.com/Illini-Media-Company/central-backend/issues/48)) 
+
+
+### Bug Fixes
+
+* Give student managers access to edit tools ([5cf41de](https://github.com/Illini-Media-Company/central-backend/commit/5cf41ded77a07891be888cb812ad797fd3503c61))
+
+
+### Documentation
+
+* Update README.md to better explain local setup process ([c262afd](https://github.com/Illini-Media-Company/central-backend/commit/c262afd2edcc712dc04f58c18e5c6325980b774f))
+
 ## 2.0.0 (2025-10-07)
 
 ### ⚠️ BREAKING CHANGES
