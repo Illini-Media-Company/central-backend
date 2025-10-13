@@ -7,3 +7,7 @@ indexes:
     properties:
       - name: category
       - name: name
+  - kind: MapPoint
+    properties:
+      - name: end_date
+      - name: start_date
