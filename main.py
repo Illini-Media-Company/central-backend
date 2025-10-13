@@ -135,11 +135,7 @@ def log_scheduler():
 
 @app.before_request
 def track_url():
-    if "url_history" not in session:
-        session["url_history"] = []
-    current_url = request.url
-
-    current_url = current_url.removeprefix("https://app.dailyillini.com")
+    current_url = request.url.removeprefix("https://app.dailyillini.com")
 
     url_prefix_ignore = ["/static", "/login", "/favicon.ico"]
 
@@ -150,7 +146,9 @@ def track_url():
     if current_url == "/":
         return
 
-    session["url_history"].insert(0, current_url)
+    history = session.setdefault("url_history", [])
+    history.insert(0, current_url)
+    session["url_history"] = history[:10]
     session.modified = True
 
 
