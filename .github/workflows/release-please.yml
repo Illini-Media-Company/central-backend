@@ -18,3 +18,15 @@ jobs:
         with:
           release-type: python
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          include-commits: feat,fix,docs,style,refactor,chore
+          bump-minor-pre-major: true
+          breaking-change-pattern: "BREAKING CHANGE:"
+          changelog-sections: >
+            [
+              {"type": "feat", "section": "Features"},
+              {"type": "fix", "section": "Bug Fixes"},
+              {"type": "docs", "section": "Documentation"},
+              {"type": "style", "section": "Styles"},
+              {"type": "refactor", "section": "Code Refactoring"},
+              {"type": "chore", "section": "Misc. Chores"}
+            ]
