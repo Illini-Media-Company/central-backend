@@ -27,6 +27,7 @@ DI_SCHED_CHANNEL_ID = "C089U20NDGB"
 
 # Returns the email address of the copy editor on shift who has edited a story least recently, or None if there's no copy editor on shift.
 def get_copy_editor(story_url, is_breaking):
+    print(f"Getting copy editor; URL={story_url}, breaking={is_breaking}")
     # Generate credentials for service account
     creds = get_creds(SCOPES)
     gc = GoogleCalendar(COPY_EDITING_GCAL_ID, credentials=creds)
@@ -43,6 +44,7 @@ def get_copy_editor(story_url, is_breaking):
         scheduler.add_job(
             lambda: notify_copy_editor(story_url, is_breaking), trigger=trigger
         )
+        print("\tNo editor on shift. Notification delayed.")
         return None, False
 
     current_time_offset = current_time + SHIFT_OFFSET
@@ -60,14 +62,19 @@ def get_copy_editor(story_url, is_breaking):
     editor = None
     if current_shift:
         for attendee in current_shift.attendees:
+            print("\tChecking editor: ", attendee.email)
+
             user = get_user(attendee.email)
             if user is None:
+                print("\t\tUser not in system. Creating...")
                 user = add_user(
                     sub=None, name=attendee.display_name, email=attendee.email
                 )
+                print("\t\t\tCreated.")
 
             # Select user who edited another story least recently, or first user who has not edited a story yet
             if user.last_edited is None:
+                print(f"\t\t{user.email} assigned as editor (May change).")
                 editor = user
                 break
             elif editor is None or user.last_edited < editor.last_edited:
@@ -75,12 +82,17 @@ def get_copy_editor(story_url, is_breaking):
 
     if editor:
         update_user_last_edited(editor.email, current_time)
+        print(f"\tEditor finalized as {editor.email}.")
         return editor, True
     else:
+        print("\tNo editor available.")
         return None, True
 
 
 def notify_copy_editor(story_url, is_breaking, copy_chief_email=None, call=False):
+    print(
+        f"Notifying copy editor(s), url={story_url}, breaking={is_breaking}, copy_chief={copy_chief_email}"
+    )
     if app is None:
         raise ValueError("Slack app cannot be None!")
 
@@ -92,9 +104,16 @@ def notify_copy_editor(story_url, is_breaking, copy_chief_email=None, call=False
 
     editor, onShift = get_copy_editor(story_url, is_breaking)
     if not onShift:
-        print("waiting")
-        return "wating"
-    email = editor.email if editor else copy_chief_email
+        print("Waiting.")
+        return "waiting"
+
+    if editor:
+        print(f"\tEditor decided as {editor.email}.")
+        email = editor.email
+    else:
+        print(f"\tEditor decided Copy Chief ({copy_chief_email}).")
+        email = copy_chief_email
+
     slack_id = app.client.users_lookupByEmail(email=email)["user"]["id"]
     app.client.chat_postMessage(
         token=SLACK_BOT_TOKEN,

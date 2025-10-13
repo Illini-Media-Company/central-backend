@@ -32,7 +32,7 @@ class LoginUser(UserMixin):
         self.last_edited = db_user.last_edited
 
 
-def add_user(sub, name, email, picture, groups=[], last_edited=None):
+def add_user(sub, name, email, picture=None, groups=[], last_edited=None):
     with client.context():
         user = User.query().filter(User.email == email).get()
         if user is not None:
