@@ -18,3 +18,4 @@ slack-bolt ~= 1.0
 talisman
 requests_oauthlib
 apscheduler
+markdown
