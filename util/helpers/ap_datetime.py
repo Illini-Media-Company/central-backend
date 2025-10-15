@@ -31,7 +31,11 @@ def ap_date(value):
 
     # Return -1 if the input is incorrect
     if not isinstance(value, date):
-        return -1
+        if isinstance(value, str):
+            value = datetime.fromisoformat(value)
+            value = value.date()
+        else:
+            return -1
 
     # Abbreviate the months to be consistent with AP style
     ap_months = {
@@ -45,10 +49,13 @@ def ap_date(value):
     }
 
     month_str = ap_months.get(value.strftime("%B"), value.strftime("%B"))
-    return f"{month_str} {value.day}"
+    formatted = f"{month_str} {value.day}"
 
+    # Add the year if it's different than the current year
+    if value.year != date.today().year:
+        formatted += f", {value.year}"
 
-from datetime import datetime, time
+    return formatted
 
 
 def ap_time(value):
@@ -62,7 +69,11 @@ def ap_time(value):
 
     # Return -1 if the input is incorrect
     if not isinstance(value, time):
-        return -1
+        if isinstance(value, str):
+            value = datetime.fromisoformat(value)
+            value = value.time()
+        else:
+            return -1
 
     hour = value.strftime("%I").lstrip("0")  # 12-hour format without leading zero
     minute = value.minute
