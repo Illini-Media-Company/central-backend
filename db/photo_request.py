@@ -1,0 +1,179 @@
+from datetime import datetime
+from google.cloud import ndb
+
+from . import client
+
+
+class PhotoRequest(ndb.Model):
+    """Datastore model for one photo request.
+
+    Use the `uid` for all lookups, updates, and front-end calls.
+    """
+
+    # Unique identifier for this specific request
+    uid = ndb.ComputedProperty(
+        lambda self: self.key.id() if self.key else None, indexed=False
+    )
+
+    # Submitter information
+    submitterEmail = ndb.StringProperty()
+    submitterName = ndb.StringProperty()
+
+    # Target destination & DI department
+    destination = ndb.StringProperty()  # e.g., DI, Illio, WPGU, Other
+    department = ndb.StringProperty()  # if destination is DI, which desk?
+
+    # Request details
+    memo = ndb.StringProperty()  # short headline / blurb
+    specificDetails = ndb.StringProperty()
+    referenceURL = ndb.StringProperty()
+    dueDate = ndb.DateTimeProperty()
+
+    # Event information (if applicable)
+    specificEvent = ndb.BooleanProperty()
+    eventDateTime = ndb.DateTimeProperty()
+    eventLocation = ndb.StringProperty()
+    pressPass = ndb.BooleanProperty()
+    pressPassRequester = ndb.StringProperty()
+
+    # Assignment and completion
+    photogEmail = ndb.StringProperty()
+    photogName = ndb.StringProperty()
+    claimTimestamp = ndb.DateTimeProperty()
+    completedTimestamp = ndb.DateTimeProperty()
+    driveURL = ndb.StringProperty()
+
+    # Timestamps
+    submissionTimestamp = ndb.DateTimeProperty()
+
+
+def add_photo_request(
+    submitterEmail,
+    submitterName,
+    destination,
+    department,
+    memo,
+    specificDetails,
+    referenceURL,
+    dueDate,
+    specificEvent,
+    eventDateTime,
+    eventLocation,
+    pressPass,
+    pressPassRequester,
+):
+    """Create and store a new PhotoRequest.
+
+    Returns: dict representation including `uid` (unique request identifier).
+    """
+    with client.context():
+        entity = PhotoRequest(
+            submissionTimestamp=datetime.now(),
+            submitterEmail=submitterEmail,
+            submitterName=submitterName,
+            destination=destination,
+            department=department,
+            memo=memo,
+            specificDetails=specificDetails,
+            referenceURL=referenceURL,
+            dueDate=dueDate,
+            specificEvent=specificEvent,
+            eventDateTime=eventDateTime,
+            eventLocation=eventLocation,
+            pressPass=pressPass,
+            pressPassRequester=pressPassRequester,
+        )
+        entity.put()
+        return entity.to_dict()
+
+
+def get_all_photo_requests():
+    """Return all requests (unordered)."""
+    with client.context():
+        requests = [r.to_dict() for r in PhotoRequest.query().fetch()]
+    return requests
+
+
+def get_most_recent_photo_request():
+    """Return the single most recent request by submissionTimestamp (or None)."""
+    with client.context():
+        pr = PhotoRequest.query().order(-PhotoRequest.submissionTimestamp).get()
+        return pr.to_dict() if pr else None
+
+
+def get_photo_request_by_uid(uid):
+    """Lookup a PhotoRequest by its unique UID (entity id)."""
+    with client.context():
+        pr = PhotoRequest.get_by_id(uid)
+        return pr.to_dict() if pr else None
+
+
+def update_photo_request(uid, **fields):
+    """Update a PhotoRequest by its UID.
+
+    Only passed fields are changed. Unknown field names are ignored.
+    Returns updated dict or None if not found.
+    """
+    with client.context():
+        entity = PhotoRequest.get_by_id(uid)
+        if entity is None:
+            return None
+        for key, value in fields.items():
+            if hasattr(entity, key):
+                setattr(entity, key, value)
+        entity.put()
+        return entity.to_dict()
+
+
+def claim_photo_request(uid, photogName, photogEmail):
+    """Streamlined helper to claim a photo request.
+
+    Sets photogName, photogEmail, and claimTimestamp to now.
+    Returns updated dict, or None if uid not found.
+    """
+    with client.context():
+        entity = PhotoRequest.get_by_id(uid)
+        if entity is None:
+            return None
+        entity.photogName = photogName
+        entity.photogEmail = photogEmail
+        entity.claimTimestamp = datetime.now()
+        entity.put()
+        return entity.to_dict()
+
+
+def complete_photo_request(uid, driveURL):
+    """Streamlined helper to complete a request with a Drive URL.
+
+    Sets driveURL and completedTimestamp to now.
+    Returns updated dict, or None if uid not found.
+    """
+    with client.context():
+        entity = PhotoRequest.get_by_id(uid)
+        if entity is None:
+            return None
+        entity.driveURL = driveURL
+        entity.completedTimestamp = datetime.now()
+        entity.put()
+        return entity.to_dict()
+
+
+def delete_photo_request(uid):
+    """Delete a single PhotoRequest by UID.
+
+    Returns True if deleted, False if not found.
+    """
+    with client.context():
+        entity = PhotoRequest.get_by_id(uid)
+        if entity is None:
+            return False
+        entity.key.delete()
+        return True
+
+
+def delete_all_photo_requests():
+    """Deletes all PhotoRequest entities. Be careful."""
+    with client.context():
+        requests = PhotoRequest.query().fetch()
+        for r in requests:
+            r.key.delete()
