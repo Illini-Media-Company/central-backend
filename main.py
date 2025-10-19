@@ -78,6 +78,7 @@ from views.copy_schedule import copy_schedule_routes
 from views.map_points import map_points_routes
 from views.overlooked import overlooked_routes
 from views.food_truck import food_truck_routes
+from views.photo_request import photo_request_routes
 
 from util.helpers.ap_datetime import (
     ap_datetime,
@@ -110,6 +111,7 @@ app.register_blueprint(copy_schedule_routes)
 app.register_blueprint(map_points_routes)
 app.register_blueprint(overlooked_routes)
 app.register_blueprint(food_truck_routes)
+app.register_blueprint(photo_request_routes)
 
 login_manager = LoginManager()
 login_manager.init_app(app)

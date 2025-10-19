@@ -28,6 +28,10 @@ class PhotoRequest(ndb.Model):
     specificDetails = ndb.StringProperty()
     referenceURL = ndb.StringProperty()
     dueDate = ndb.DateTimeProperty()
+    moreInfo = ndb.StringProperty()
+
+    # Whether the photo is a courtesy
+    isCourtesy = ndb.BooleanProperty()
 
     # Event information (if applicable)
     specificEvent = ndb.BooleanProperty()
@@ -56,6 +60,8 @@ def add_photo_request(
     specificDetails,
     referenceURL,
     dueDate,
+    moreInfo,
+    isCourtesy,
     specificEvent,
     eventDateTime,
     eventLocation,
@@ -77,6 +83,8 @@ def add_photo_request(
             specificDetails=specificDetails,
             referenceURL=referenceURL,
             dueDate=dueDate,
+            moreInfo=moreInfo,
+            isCourtesy=isCourtesy,
             specificEvent=specificEvent,
             eventDateTime=eventDateTime,
             eventLocation=eventLocation,
@@ -88,10 +96,110 @@ def add_photo_request(
 
 
 def get_all_photo_requests():
-    """Return all requests (unordered)."""
+    """Return all requests (ordered by submission date)."""
     with client.context():
-        requests = [r.to_dict() for r in PhotoRequest.query().fetch()]
-    return requests
+        requests = (
+            PhotoRequest.query().fetch().order(PhotoRequest.submissionTimestamp).fetch()
+        )
+
+    return [request.to_dict() for request in requests]
+
+
+def get_unclaimed_photo_requests():
+    """Return all unclaimed requests (ordered by submission date)."""
+    with client.context():
+        requests = (
+            PhotoRequest.query(PhotoRequest.claimTimestamp == None)
+            .fetch()
+            .order(PhotoRequest.submissionTimestamp)
+            .fetch()
+        )
+
+    return [request.to_dict() for request in requests]
+
+
+def get_claimed_photo_requests():
+    """Return all claimed requests (ordered by submission date)."""
+    with client.context():
+        requests = (
+            PhotoRequest.query(PhotoRequest.claimTimestamp != None)
+            .fetch()
+            .order(PhotoRequest.submissionTimestamp)
+            .fetch()
+        )
+
+    return [request.to_dict() for request in requests]
+
+
+def get_completed_photo_requests():
+    """Return all completed requests (ordered by submission date)."""
+    with client.context():
+        requests = (
+            PhotoRequest.query(PhotoRequest.completedTimestamp != None)
+            .fetch()
+            .order(PhotoRequest.submissionTimestamp)
+            .fetch()
+        )
+
+    return [request.to_dict() for request in requests]
+
+
+def get_inprogress_photo_requests():
+    """Return all requests that are claimed but not complete (ordered by submission date)."""
+    with client.context():
+        requests = (
+            PhotoRequest.query(
+                PhotoRequest.claimTimestamp != None,
+                PhotoRequest.completedTimestamp == None,
+            )
+            .fetch()
+            .order(PhotoRequest.submissionTimestamp)
+            .fetch()
+        )
+
+    return [request.to_dict() for request in requests]
+
+
+def get_claimed_photo_requests_for_user(email):
+    """Return all requests that were claimed by a specified email (ordered by submission date)."""
+    with client.context():
+        requests = (
+            PhotoRequest.query(PhotoRequest.photogEmail == email)
+            .fetch()
+            .order(PhotoRequest.submissionTimestamp)
+            .fetch()
+        )
+
+    return [request.to_dict() for request in requests]
+
+
+def get_completed_photo_requests_for_user(email):
+    """Return all requests that were completed by a specified email (ordered by submission date)."""
+    with client.context():
+        requests = (
+            PhotoRequest.query(
+                PhotoRequest.photogEmail == email,
+                PhotoRequest.completedTimestamp != None,
+            )
+            .fetch()
+            .order(PhotoRequest.submissionTimestamp)
+            .fetch()
+        )
+
+    return [request.to_dict() for request in requests]
+
+
+def get_submitted_photo_requests_for_user(email):
+    """Return all requests that were submitted by a specified email (ordered by submission date)."""
+    with client.context():
+        requests = (
+            PhotoRequest.query(PhotoRequest.submitterEmail == email)
+            .fetch()
+            .order(PhotoRequest.submissionTimestamp)
+            .fetch()
+        )
+
+    return [request.to_dict() for request in requests]
 
 
 def get_most_recent_photo_request():
