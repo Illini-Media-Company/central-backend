@@ -41,26 +41,137 @@ Last modified Oct. 2, 2025
 
 <!-- Macro to create a text input inside of a form (Jinja) -->
 <!-- name and label are strings, required is boolean. -->
- <!--class is optional and is the name of a class. -->
- {% macro text_input(name, label, required, class) %}
-    <div class="form-row {{ class }}">
-        <label for="name" class="text-label">
-            {{ label }}
-        </label>
+<!-- class is optional and is the name of a class. -->
+<!-- Placeholder and subtext are optional. -->
+<!-- alt_type optionally lets you choose other HTML input 
+     types based on text (like 'url', 'date', 'datetime-local') -->
+{% macro text_input(name, label, required, class, placeholder, subtext, alt_type) %}
+    <div class="form-row {{ class }}" id="formfield-{{ name }}">
+        <div>
+            <label for="{{ name }}" class="field-label">
+                {{ label }}
+            </label>
+            {% if subtext %}
+                <p class="subtext">{{ subtext }}</p>
+            {% endif %}
+        </div>
         <input 
-            type    = "text" 
+            {% if alt_type %}
+                type    = "{{ alt_type }}"
+            {% else %}
+                type    = "text"
+            {% endif %}
             id      = "{{ name }}" 
             class   = "text-input" 
             name    = "{{ name }}"
+
+            {% if placeholder %}
+                placeholder = "{{ placeholder }}"
+            {% endif %}
+
             {% if required %}
                 required
             {% endif %}
         >
     </div>
- {% endmacro %}
+{% endmacro %}
+
+<!-- Macro to create a radio input inside of a form (Jinja) -->
+<!-- name and label are strings, required is boolean. -->
+<!-- class is optional and is the name of a class. -->
+<!-- Subtext is optional. -->
+<!-- options is a list of strings.  -->
+<!-- option_container is the name of a class to override
+     the styling of the options (like making them horizontal
+     instead of vertical.) -->
+{% macro radio_input(name, label, required, class, subtext, options, option_container) %}
+    <div class="form-row {{ class }}" id="formfield-{{ name }}">
+        <div>
+            <label for="{{ name }}" class="field-label">
+                {{ label }}
+            </label>
+            {% if subtext %}
+                <p class="subtext">{{ subtext }}</p>
+            {% endif %}
+        </div>
+        <div class="radio-input-container {{ option_container }}">
+            {% for option in options %}
+                <div>
+                    <input 
+                        type="radio" 
+                        id="{{ option }}" 
+                        name="{{ name }}-options" 
+                        value="{{ option }}" 
+                        class="radio-input"
+
+                        {% if required %}
+                            required
+                        {% endif %}
+                    >
+                    <label for="{{ option }}" class="radio-label">
+                        {{ option }}
+                    </label>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endmacro %}
+
+<!-- Macro to create a select input inside of a form (Jinja) -->
+<!-- name and label are strings, required is boolean. -->
+<!-- class is optional and is the name of a class. -->
+<!-- Subtext is optional. -->
+<!-- options is a list of strings.  -->
+{% macro select_input(name, label, required, class, subtext, options) %}
+    <div class="form-row {{ class }}" id="formfield-{{ name }}">
+        <div>
+            <label for="{{ name }}" class="field-label">
+                {{ label }}
+            </label>
+            {% if subtext %}
+                <p class="subtext">{{ subtext }}</p>
+            {% endif %}
+        </div>
+        <div class="select-input">
+            <select name="{{ name }}" id="{{ name }}">
+                <option value="" disabled selected>Select...</option>
+                {% for option in options %}
+                    <option value="{{ option }}">{{ option }}</option>
+                {% endfor %}
+            </select>
+            <i class="bi bi-caret-down-fill select-dropdown-icon"></i>
+        </div>
+    </div>
+{% endmacro %}
+
+{% macro textarea_input(name, label, required, class, placeholder, subtext) %}
+    <div class="form-row {{ class }}" id="formfield-{{ name }}">
+        <div>
+            <label for="{{ name }}" class="field-label">
+                {{ label }}
+            </label>
+            {% if subtext %}
+                <p class="subtext">{{ subtext }}</p>
+            {% endif %}
+        </div>
+        <textarea 
+            id      = "{{ name }}" 
+            class   = "textarea-input" 
+            name    = "{{ name }}"
+
+            {% if placeholder %}
+                placeholder = "{{ placeholder }}"
+            {% endif %}
+
+            {% if required %}
+                required
+            {% endif %}
+        ></textarea>
+    </div>
+{% endmacro %}
 
 <!-- Macro to create a submit button for a form (Jinja) -->
 <!-- text and label are strings, class is the name of a class -->
- {% macro submit_button(text, label, class) %}
+{% macro submit_button(text, label, class) %}
     <button class="button-primary submit-button {{ class }}" type="submit" id="{{ label }}">{{ text }}</button>
- {% endmacro %}
+{% endmacro %}

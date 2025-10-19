@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Photo Request Form
+{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="/static/macros/form.css">
+    <style>
+        .photo-req-form-row {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .photo-req-form {
+            gap: 1rem;
+        }
+    </style>
+{% endblock %}
+
+{% import "macros/form.html" as form %}
+
+{% block content %}
+<h1>Submit a Photo Request</h1>
+
+<hr style="margin-bottom: 2rem;">
+
+{% call form.form(id="photoRequestForm", class="photo-req-form", enctype="application/x-www-form-urlencoded", on_submit="return submitRequest(event)") %}
+    {{ form.text_input( 
+        name="email",
+        label="Submitter's email address (@illinimedia.com)",
+        required=true,
+        placeholder="NetID@illinimedia.com",
+        class="photo-req-form-row"
+    ) }}
+    {{ form.text_input( 
+        name="name",
+        label="Submitter's full name",
+        required=true,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.select_input( 
+        name="destination",
+        label="What is the photo for?",
+        options=["The Daily Illini", "Illio Yearbook", "WPGU", "Chambana Eats", "Marketing", "Other"],
+        required=true,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.select_input( 
+        name="department",
+        label="What section is this for?",
+        options=["Arts & Entertainment", "Opinions", "News", "Sports"],
+        required=true,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.textarea_input( 
+        name="memo",
+        label="Memo",
+        subtext="This should be a short (5-10 word) description of what the photo is. This could be the story's headline (if applicable) or something like \"Photo of the Main Quad.\"",
+        required=true,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.textarea_input( 
+        name="specificDetails",
+        label="Specific details or more information",
+        required=true,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.text_input( 
+        name="url",
+        label="Reference link",
+        subtext="Optionally include a link to a working draft of the story, an inspiration picture or a relevant document (like an event flyer). If this is a Google Drive link, please make sure di-staff-photo@illinimedia.com has access to view.",
+        alt_type="url",
+        required=false,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.text_input( 
+        name="dueDate",
+        label="When do you need this photo by?",
+        subtext="If this is a story for The Daily Illini, this should be the estimated publish date. In general, most photo requests should be submitted at least two full days before the due date.",
+        alt_type="datetime-local",
+        required=true,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.radio_input( 
+        name="isCourtesy",
+        label="Is this a courtesy photo?",
+        subtext="More specifically, do you need a photo of an album cover, movie poster, national event or something else that our photographers will be unable to photograph?",
+        options=["Yes", "No"],
+        required=true,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.radio_input( 
+        name="isEvent",
+        label="Is this a photo of a specific event?",
+        subtext="More specifically, will this be a photo of something that has a predetermined date/time like a protest, interview, show or game?",
+        options=["Yes", "No"],
+        required=false,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.text_input( 
+        name="eventDate",
+        label="What is the date and time of the event?",
+        alt_type="datetime-local",
+        required=false,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.text_input( 
+        name="eventLocation",
+        label="What is the location of the event?",
+        placeholder="Address and specific location (room number, etc.)",
+        required=false,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.radio_input( 
+        name="presspass",
+        label="Does thie event require press credentials?",
+        options=["Yes", "No"],
+        required=false,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.select_input( 
+        name="presspassRequestor",
+        label="Who will or who needs to request the credentials?",
+        options=["Me", "My editor", "The photographer"],
+        required=false,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.textarea_input( 
+        name="info",
+        label="Any other information?",
+        subtext="Is there any other information you need to share that has not bee covered yet? This field is optional.",
+        required=false,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.submit_button(text="Submit", label="submitButton") }}
+{% endcall %}
+
+{% endblock %}
