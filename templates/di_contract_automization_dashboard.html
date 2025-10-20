@@ -1,0 +1,109 @@
+{% extends 'base.html' %} {% block title %}Home{% endblock %} {% block
+extra_head %}
+<link rel="stylesheet" href="/static/styles/styles_index.css" />
+<link rel="stylesheet" href="/static/styles/styles_forms_dashboard.css" />
+<!-- Includes from your setup -->
+{% include "partials/loading.html" %} {% include "partials/info_bar.html" %} {%
+endblock %} {% block content %}
+<h2>Pending Documents</h2>
+
+<ul class="doc-list" id="docList"></ul>
+
+<div class="modal" id="modal">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h3 id="modalTitle"></h3>
+    <p id="modalText"></p>
+
+    <div id="signature" class="signature"></div>
+    <button id="signBtn" class="sign-btn">Sign</button>
+    <button id="sendBtn" class="send-btn" disabled>Send</button>
+  </div>
+</div>
+
+<script>
+  // Consistent requirements for the form will allow for scalability. Always require title and what will be in the form itself
+  const documents = [
+    {
+      title: "Copy Editing Employment Agreement",
+      content: "Welcome to the copy editing team",
+    },
+    {
+      title: "Writing Staff Employment Agreement",
+      content: "Welcome to the writing staff",
+    },
+  ];
+
+  const docList = document.getElementById("docList");
+
+  if (documents.length === 0) {
+    const nothingLeft = document.createElement("p");
+    nothingLeft.textContent = "Nothing left to do :D";
+    docList.appendChild(nothingLeft);
+
+    /*
+      If there is nothing in the documents to sign just let them now that
+    */
+  } else {
+    documents.forEach((doc) => {
+      const li = document.createElement("li");
+      li.classList.add("doc-item");
+      li.setAttribute("data-title", doc.title);
+      li.setAttribute("data-content", doc.content);
+      li.textContent = doc.title;
+
+      docList.appendChild(li);
+      /*
+        Create a standardized border for the documents required for them to sign in the 
+        list waiting for them to get signed
+      */
+    });
+  }
+
+  const modal = document.getElementById("modal");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalText = document.getElementById("modalText");
+  const signBtn = document.getElementById("signBtn");
+  const sendBtn = document.getElementById("sendBtn");
+  const signature = document.getElementById("signature");
+  const closeModal = document.querySelector(".close");
+
+  let currentDoc = null;
+
+  docList.addEventListener("click", (event) => {
+    const item = event.target.closest(".doc-item");
+    if (!item) return;
+    currentDoc = item;
+    modalTitle.textContent = item.dataset.title;
+    modalText.textContent = item.dataset.content;
+    signature.textContent = "";
+    signBtn.disabled = false;
+    sendBtn.disabled = true;
+    modal.style.display = "flex";
+  });
+
+  closeModal.addEventListener("click", () => (modal.style.display = "none"));
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) modal.style.display = "none";
+  });
+
+  //If signed button is clicked then set the sign button equal to true and wait till they click send
+  signBtn.addEventListener("click", () => {
+    signature.textContent = "Adithya Raman";
+    signBtn.disabled = true;
+    sendBtn.disabled = false;
+  });
+
+  sendBtn.addEventListener("click", () => {
+    if (currentDoc) currentDoc.remove();
+    modal.style.display = "none";
+
+    // Check if there are any docs left
+    if (docList.children.length === 0) {
+      const nothingLeft = document.createElement("p");
+      nothingLeft.textContent = "Nothing left to do :D";
+      docList.appendChild(nothingLeft);
+    }
+  });
+</script>
+{% endblock %}
