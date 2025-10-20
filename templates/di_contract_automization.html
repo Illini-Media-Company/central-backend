@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Employee Agreement Portal</title>
+
+  <!-- Link to CSS -->
+  <link rel="stylesheet" href="../static/DI_Contract_Automization.css">
+</head>
+<body>
+  <header>
+    <h1>Employee Agreement Portal</h1>
+    <p class="subtitle">Use this page to send and track employee agreements.</p>
+  </header>
+
+  <main>
+    <!-- LEFT SIDE: Send Form -->
+    <section class="left">
+      <h2>Send Agreement Form</h2>
+      <p class="note">Fill out the fields below to start the contract process.</p>
+
+      <div class="form-group">
+        <label for="employee-emails">New Employee Emails</label>
+        <textarea id="employee-emails" placeholder="Enter one email per line&#10;e.g. jdoe@illinimedia.com&#10;asmith@illinimedia.com"></textarea>
+        <p class="hint">Tip: Paste multiple emails — one per line.</p>
+      </div>
+
+      <div class="form-group">
+        <label for="manager-select">Select Manager</label>
+        <select id="manager-select">
+          <option value="">Select a manager</option>
+          <option>Greg Benke</option>
+          <option>Joe Shmoe</option>
+          <option>Jane Doe</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="chief-select">Select Chief</label>
+        <select id="chief-select">
+          <option value="">Select a chief</option>
+          <option>John Smith</option>
+          <option>Mary Johnson</option>
+        </select>
+      </div>
+
+      <button id="send-btn">Send Agreement</button>
+    </section>
+
+    <!-- RIGHT SIDE: Manager’s Pending Signatures -->
+    <section class="right">
+      <h2>Pending Signatures</h2>
+      <div class="doc-box">
+        <!-- Example active item -->
+        <div class="doc-item">
+          <h3>Agreement: Jane Doe</h3>
+          <p>Status: Awaiting Your Signature</p>
+          <button class="sign-btn">Review & Sign</button>
+        </div>
+
+        <!-- Example with no pending items -->
+        <!-- Comment out above doc-item and uncomment below for demo -->
+        <!-- <p class="no-docs">No pending signatures at this time.</p> -->
+      </div>
+    </section>
+  </main>
+</body>
+</html>
