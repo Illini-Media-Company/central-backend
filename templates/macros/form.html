@@ -45,7 +45,8 @@ Last modified Oct. 2, 2025
 <!-- Placeholder and subtext are optional. -->
 <!-- alt_type optionally lets you choose other HTML input 
      types based on text (like 'url', 'date', 'datetime-local') -->
-{% macro text_input(name, label, required, class, placeholder, subtext, alt_type) %}
+<!-- maxlength is the maximum length of the input in characters -->
+{% macro text_input(name, label, required, class, placeholder, subtext, alt_type, maxlength, pattern) %}
     <div class="form-row {{ class }}" id="formfield-{{ name }}">
         <div>
             <label for="{{ name }}" class="field-label">
@@ -64,6 +65,14 @@ Last modified Oct. 2, 2025
             id      = "{{ name }}" 
             class   = "text-input" 
             name    = "{{ name }}"
+
+            {% if maxlength %}
+                maxlength = "{{ maxlength }}"
+            {% endif %}
+
+            {% if pattern %}
+                pattern = "{{ pattern }}"
+            {% endif %}
 
             {% if placeholder %}
                 placeholder = "{{ placeholder }}"
@@ -99,7 +108,7 @@ Last modified Oct. 2, 2025
                 <div>
                     <input 
                         type="radio" 
-                        id="{{ option }}" 
+                        id="{{ name }}-{{ option }}" 
                         name="{{ name }}-options" 
                         value="{{ option }}" 
                         class="radio-input"
@@ -108,7 +117,7 @@ Last modified Oct. 2, 2025
                             required
                         {% endif %}
                     >
-                    <label for="{{ option }}" class="radio-label">
+                    <label for="{{ name }}-{{ option }}" class="radio-label">
                         {{ option }}
                     </label>
                 </div>
@@ -144,7 +153,7 @@ Last modified Oct. 2, 2025
     </div>
 {% endmacro %}
 
-{% macro textarea_input(name, label, required, class, placeholder, subtext) %}
+{% macro textarea_input(name, label, required, class, placeholder, subtext, maxlength) %}
     <div class="form-row {{ class }}" id="formfield-{{ name }}">
         <div>
             <label for="{{ name }}" class="field-label">
@@ -161,6 +170,10 @@ Last modified Oct. 2, 2025
 
             {% if placeholder %}
                 placeholder = "{{ placeholder }}"
+            {% endif %}
+
+            {% if maxlength %}
+                maxlength = "{{ maxlength }}"
             {% endif %}
 
             {% if required %}
