@@ -1,4 +1,5 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from google.cloud import ndb
 
 from . import client
@@ -27,7 +28,7 @@ class PhotoRequest(ndb.Model):
     memo = ndb.StringProperty()  # short headline / blurb
     specificDetails = ndb.StringProperty()
     referenceURL = ndb.StringProperty()
-    dueDate = ndb.DateTimeProperty()
+    dueDate = ndb.DateProperty(tzinfo=ZoneInfo("America/Chicago"))
     moreInfo = ndb.StringProperty()
 
     # Whether the photo is a courtesy
@@ -44,11 +45,11 @@ class PhotoRequest(ndb.Model):
     photogEmail = ndb.StringProperty()
     photogName = ndb.StringProperty()
     claimTimestamp = ndb.DateTimeProperty()
-    completedTimestamp = ndb.DateTimeProperty()
+    completedTimestamp = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
     driveURL = ndb.StringProperty()
 
     # Timestamps
-    submissionTimestamp = ndb.DateTimeProperty()
+    submissionTimestamp = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
 
 
 def add_photo_request(
@@ -74,7 +75,7 @@ def add_photo_request(
     """
     with client.context():
         entity = PhotoRequest(
-            submissionTimestamp=datetime.now(),
+            submissionTimestamp=datetime.now(ZoneInfo("America/Chicago")),
             submitterEmail=submitterEmail,
             submitterName=submitterName,
             destination=destination,
@@ -245,7 +246,7 @@ def claim_photo_request(uid, photogName, photogEmail):
             return None
         entity.photogName = photogName
         entity.photogEmail = photogEmail
-        entity.claimTimestamp = datetime.now()
+        entity.claimTimestamp = datetime.now(ZoneInfo("America/Chicago"))
         entity.put()
         return entity.to_dict()
 
@@ -261,7 +262,7 @@ def complete_photo_request(uid, driveURL):
         if entity is None:
             return None
         entity.driveURL = driveURL
-        entity.completedTimestamp = datetime.now()
+        entity.completedTimestamp = datetime.now(ZoneInfo("America/Chicago"))
         entity.put()
         return entity.to_dict()
 
