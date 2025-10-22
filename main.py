@@ -65,6 +65,8 @@ from util.scheduler import scheduler_to_json, db_to_scheduler
 from apscheduler.triggers.date import DateTrigger
 
 from util.slackbot import start_slack
+import util.employee_agreement_slackbot
+from views.employee_agreement import send_notification, send_follow_up
 from views.all_tools import tools_routes
 from views.content_doc import content_doc_routes
 from views.constant_contact import constant_contact_routes
@@ -78,6 +80,7 @@ from views.copy_schedule import copy_schedule_routes
 from views.map_points import map_points_routes
 from views.overlooked import overlooked_routes
 from views.food_truck import food_truck_routes
+from views.employee_agreement import employee_agreement_routes
 
 from util.helpers.ap_datetime import (
     ap_datetime,
@@ -110,6 +113,7 @@ app.register_blueprint(copy_schedule_routes)
 app.register_blueprint(map_points_routes)
 app.register_blueprint(overlooked_routes)
 app.register_blueprint(food_truck_routes)
+app.register_blueprint(employee_agreement_routes)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -383,6 +387,10 @@ def logout():
     else:
         logout_user()
         return redirect(url_for("index"))
+
+
+
+
 
 
 @app.route("/logout-success")

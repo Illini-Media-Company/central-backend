@@ -7,6 +7,10 @@ from constants import ENV, SLACK_BOT_TOKEN, SLACK_APP_TOKEN, SLACK_SIGNING_SECRE
 from util.security import csrf
 
 
+#the first one is the main channel
+#the second one is the channel id in the development environment
+
+
 IMC_GENERAL_ID = "C13TEC3QE" if ENV == "prod" else "C06GADGT60Z"
 IMC_GENERAL_TEST_ID = "C06LDL7RG3X" if ENV == "prod" else None
 DI_ANNOUNCEMENTS_ID = "C06BSL71W2Z" if ENV == "prod" else "C06G089F8S0"
@@ -326,6 +330,7 @@ app = App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
 @app.event("app_mention")
 def handle_mention(event, say):
     say("IMC Welcome Bot is up and running")
+
 
 
 @app.event("member_joined_channel")
