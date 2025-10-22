@@ -24,6 +24,15 @@ def send_hiring_manager_notification(manager_slack_id, user_name, agreement_url)
         text=f":information_source: {user_name} has signed the Employee Agreement. You can review it here: {agreement_url}",
     )
 
+def send_cheif_manager_notification(cheif_slack_id, user_name, manager_name, agreement_url):
+    app.client.chat_postMessage(
+        token=SLACK_BOT_TOKEN,
+        username="EA Bot",
+        icon_emoji=":robot_face:",
+        channel=cheif_slack_id,
+        text=f":information_source: {user_name} and  {manager_name} have signed the Employee Agreement. You can review it here: {agreement_url}",
+    )
+
 
 
 def follow_up_notification(user_slack_id):

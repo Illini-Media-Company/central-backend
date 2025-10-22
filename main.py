@@ -80,6 +80,7 @@ from views.copy_schedule import copy_schedule_routes
 from views.map_points import map_points_routes
 from views.overlooked import overlooked_routes
 from views.food_truck import food_truck_routes
+from views.contract_automization import onboarding_routes
 from views.employee_agreement import employee_agreement_routes
 
 from util.helpers.ap_datetime import (
@@ -113,7 +114,6 @@ app.register_blueprint(copy_schedule_routes)
 app.register_blueprint(map_points_routes)
 app.register_blueprint(overlooked_routes)
 app.register_blueprint(food_truck_routes)
-app.register_blueprint(employee_agreement_routes)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
