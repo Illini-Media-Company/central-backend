@@ -147,30 +147,40 @@
 {% endcall %}
 
 <script>
+    // Prefill the email and name fields with the current user's info
+    window.addEventListener("load", () => {
+        const submissionForm = document.getElementById("photoRequestForm");
+        const emailInput = submissionForm.querySelector("#email");
+        const nameInput = submissionForm.querySelector("#name");
+
+        emailInput.value = "{{ current_user.email }}";
+        nameInput.value = "{{ current_user.name }}";
+    });
+
+    // Submit the photo request
     async function submitRequest(event) {
         event.preventDefault();
         console.log("Submitting...");
 
         showLoading("Verifying input...");
 
+        // Get the response data from the form (all as strings)
         const formData = new FormData(submissionForm);
-        const valEmail = formData.get("email");
-        const valName = formData.get("name");
-        const valDest = formData.get("destination");
-        const valDept = formData.get("departent");
-        const valMemo = formData.get("memo");
-        const valDetails = formData.get("specificDetails");
-        const valUrl = formData.get("url");
+        const valEmail = formData.get("email");                 
+        const valName = formData.get("name");                   
+        const valDest = formData.get("destination");            
+        const valDept = formData.get("departent");              // Not always submitted
+        const valMemo = formData.get("memo");                   
+        const valDetails = formData.get("specificDetails");     
+        const valUrl = formData.get("url");                     // Not always submitted
         const valDue = formData.get("dueDate"); 
-        const valCourt = formData.get("isCourtesy-options");
-        const valEvent = formData.get("isEvent-options");
-        const valEvDate = formData.get("eventDate"); // This is naive with no TZ. Everything will be handled by the backend
-        const valEvLoc = formData.get("eventLocation");
-        const valPass = formData.get("presspass-options");
-        const valPpReq = formData.get("presspassRequestor");
-        const valInfo = formData.get("info");
-
-        console.log(valDue)
+        var valCourt = formData.get("isCourtesy-options");    
+        var valEvent = formData.get("isEvent-options");       // Not always submitted
+        const valEvDate = formData.get("eventDate");            // Not alwys submitted || This is naive with no TZ
+        const valEvLoc = formData.get("eventLocation");         // Not always submitted
+        var valPass = formData.get("presspass-options");      // Not always submitted
+        const valPpReq = formData.get("presspassRequestor");    // Not always submitted
+        const valInfo = formData.get("info");                   // Not always submitted
 
         // Turn the valCourt into boolean
         if (valCourt == "Yes") 
@@ -190,6 +200,7 @@
         else
             valPass = false;
 
+        // Validate the input, cancel the submission if not valid
         valid = await validateInput(valEmail, valName, valDest, valDept, valMemo,
                                     valDetails, valUrl, valDue, valCourt, valEvent,
                                     valEvDate, valEvLoc, valPass, valPpReq, valInfo);
@@ -197,11 +208,54 @@
             hideLoading();
             return;
         }
+
+        showLoading("Submitting...:");
         
-        let endpoint = "/api/submit";
+        // Send the data to the backend endpoint
+        let endpoint = "/photo-requests/api/submit";
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+            submitterEmail: valEmail,
+            submitterName: valName,
+            destination: valDest,
+            department: valDept,
+            memo: valMemo,
+            specificDetails: valDetails,
+            referenceURL: valUrl,
+            dueDate: valDue,
+            isCourtesy: valCourt,
+            specificEvent: valEvent,
+            eventDateTime: valEvDate,
+            eventLocation: valEvLoc,
+            pressPass: valPass,
+            pressPassRequester: valPpReq,
+            moreInfo: valInfo,
+        };
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        // Check if it was successful
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            window.location.reload();
+        } else {
+            // Alert of the error
+            console.log("Submitting Photo Request to database failed!");
+            const message = await response.text();
+            console.error(message);
+            await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            hideLoading();
+        }
 
     }
 
+    // Function to validate the input of the form
     async function validateInput(valEmail, valName, valDest, valDept, valMemo,
                                  valDetails, valUrl, valDue, valCourt, valEvent,
                                  valEvDate, valEvLoc, valPass, valPpReq, valInfo) {
@@ -262,8 +316,8 @@
         return true;
     }
 
+    // Get all the relevant form elements for dynamic showing/hiding
     const submissionForm = document.getElementById("photoRequestForm");
-
     const destInput = submissionForm.querySelector("#destination");
     const deptInput = submissionForm.querySelector("#department");
     const courtInput = submissionForm.querySelectorAll('input[name="isCourtesy-options"]');

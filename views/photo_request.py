@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required
 from util.security import restrict_to
+from zoneinfo import ZoneInfo
 from datetime import datetime
 
 from db.photo_request import (
@@ -25,13 +26,13 @@ photo_request_routes = Blueprint(
 )
 
 
-# /dashboard — render all requests
+# /dashboard — render all in-progress requests
 @photo_request_routes.route("/dashboard", methods=["GET"])
 @login_required
 @restrict_to(["student-managers", "editors", "imc-staff-webdev"])
 def dashboard():
-    requests = get_all_photo_requests()
-    return render_template("/photo-req/photo_req_dashboard.html", requests=requests)
+    requests = get_inprogress_photo_requests()
+    return render_template("/photo-req/photo_req_sheet.html", requests=requests)
 
 
 # /form — form to submit a request
@@ -59,24 +60,33 @@ def api_submit():
         if field not in data or data[field] == "" or data[field] is None:
             return jsonify({"error": "missing required fields"}), 400
 
-    try:
-        created = add_photo_request(
-            submitterEmail=data.get("submitterEmail"),
-            submitterName=data.get("submitterName"),
-            destination=data.get("destination"),
-            department=data.get("department"),
-            memo=data.get("memo"),
-            specificDetails=data.get("specificDetails"),
-            referenceURL=data.get("referenceURL"),
-            dueDate=datetime(data.get("dueDate")),
-            moreInfo=data.get("moreInfo"),
-            isCourtesy=True if data.get("isCourtesy") == "true" else False,
-            specificEvent=True if data.get("specificEvent") == "true" else False,
-            eventDateTime=datetime(data.get("eventDateTime")),
-            eventLocation=data.get("eventLocation"),
-            pressPass=True if data.get("pressPass") == "true" else False,
-            pressPassRequester=data.get("pressPassRequester"),
+    print("All required fields present, submitting photo request...")
+
+    kwargs = {
+        "submitterEmail": data.get("submitterEmail"),
+        "submitterName": data.get("submitterName"),
+        "destination": data.get("destination"),
+        "department": data.get("department"),
+        "memo": data.get("memo"),
+        "specificDetails": data.get("specificDetails"),
+        "referenceURL": data.get("referenceURL"),
+        "dueDate": datetime.strptime(data.get("dueDate"), "%Y-%m-%d").date(),
+        "moreInfo": data.get("moreInfo"),
+        "isCourtesy": data.get("isCourtesy"),
+        "specificEvent": data.get("specificEvent"),
+        "eventLocation": data.get("eventLocation"),
+        "pressPass": data.get("pressPass"),
+        "pressPassRequester": data.get("pressPassRequester"),
+    }
+
+    # Only want eventDateTime if it was actually set otherwise it will error
+    if data.get("eventDateTime"):
+        kwargs["eventDateTime"] = datetime.strptime(
+            data.get("eventDateTime"), "%Y-%m-%dT%H:%M"
         )
+
+    try:
+        created = add_photo_request(**kwargs)
         return jsonify({"message": "submitted", "request": created}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 400

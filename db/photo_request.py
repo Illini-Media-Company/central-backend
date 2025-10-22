@@ -17,29 +17,29 @@ class PhotoRequest(ndb.Model):
     )
 
     # Submitter information
-    submitterEmail = ndb.StringProperty()
-    submitterName = ndb.StringProperty()
+    submitterEmail = ndb.StringProperty(required=True)
+    submitterName = ndb.StringProperty(required=True)
 
     # Target destination & DI department
-    destination = ndb.StringProperty()  # e.g., DI, Illio, WPGU, Other
-    department = ndb.StringProperty()  # if destination is DI, which desk?
+    destination = ndb.StringProperty(required=True)  # e.g., DI, Illio, WPGU, Other
+    department = ndb.StringProperty(required=False)  # if destination is DI, which desk?
 
     # Request details
-    memo = ndb.StringProperty()  # short headline / blurb
-    specificDetails = ndb.StringProperty()
-    referenceURL = ndb.StringProperty()
-    dueDate = ndb.DateProperty(tzinfo=ZoneInfo("America/Chicago"))
-    moreInfo = ndb.StringProperty()
+    memo = ndb.StringProperty(required=True)  # short headline / blurb
+    specificDetails = ndb.StringProperty(required=True)
+    referenceURL = ndb.StringProperty(required=False)
+    dueDate = ndb.DateProperty(tzinfo=ZoneInfo("America/Chicago"), required=True)
+    moreInfo = ndb.StringProperty(required=False)
 
     # Whether the photo is a courtesy
-    isCourtesy = ndb.BooleanProperty()
+    isCourtesy = ndb.BooleanProperty(required=True)
 
     # Event information (if applicable)
-    specificEvent = ndb.BooleanProperty()
-    eventDateTime = ndb.DateTimeProperty()
-    eventLocation = ndb.StringProperty()
-    pressPass = ndb.BooleanProperty()
-    pressPassRequester = ndb.StringProperty()
+    specificEvent = ndb.BooleanProperty(required=False)
+    eventDateTime = ndb.DateTimeProperty(required=False)
+    eventLocation = ndb.StringProperty(required=False)
+    pressPass = ndb.BooleanProperty(required=False)
+    pressPassRequester = ndb.StringProperty(required=False)
 
     # Assignment and completion
     photogEmail = ndb.StringProperty()
@@ -64,15 +64,16 @@ def add_photo_request(
     moreInfo,
     isCourtesy,
     specificEvent,
-    eventDateTime,
     eventLocation,
     pressPass,
     pressPassRequester,
+    eventDateTime=None,
 ):
     """Create and store a new PhotoRequest.
 
     Returns: dict representation including `uid` (unique request identifier).
     """
+    print("Adding new photo request to db...")
     with client.context():
         entity = PhotoRequest(
             submissionTimestamp=datetime.now(ZoneInfo("America/Chicago")),
@@ -93,6 +94,7 @@ def add_photo_request(
             pressPassRequester=pressPassRequester,
         )
         entity.put()
+        print("Photo request added.")
         return entity.to_dict()
 
 
@@ -229,6 +231,10 @@ def update_photo_request(uid, **fields):
             return None
         for key, value in fields.items():
             if hasattr(entity, key):
+                if key == "eventDateTime":
+                    value = datetime.strptime(value, "%Y-%m-%dT%H:%M")
+                if key == "dueDate":
+                    value = datetime.strptime(value, "%Y-%m-%d")
                 setattr(entity, key, value)
         entity.put()
         return entity.to_dict()
