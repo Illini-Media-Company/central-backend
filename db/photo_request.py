@@ -101,9 +101,7 @@ def add_photo_request(
 def get_all_photo_requests():
     """Return all requests (ordered by submission date)."""
     with client.context():
-        requests = (
-            PhotoRequest.query().fetch().order(PhotoRequest.submissionTimestamp).fetch()
-        )
+        requests = PhotoRequest.query().order(PhotoRequest.submissionTimestamp).fetch()
 
     return [request.to_dict() for request in requests]
 
@@ -113,7 +111,6 @@ def get_unclaimed_photo_requests():
     with client.context():
         requests = (
             PhotoRequest.query(PhotoRequest.claimTimestamp == None)
-            .fetch()
             .order(PhotoRequest.submissionTimestamp)
             .fetch()
         )
@@ -126,7 +123,6 @@ def get_claimed_photo_requests():
     with client.context():
         requests = (
             PhotoRequest.query(PhotoRequest.claimTimestamp != None)
-            .fetch()
             .order(PhotoRequest.submissionTimestamp)
             .fetch()
         )
@@ -139,7 +135,6 @@ def get_completed_photo_requests():
     with client.context():
         requests = (
             PhotoRequest.query(PhotoRequest.completedTimestamp != None)
-            .fetch()
             .order(PhotoRequest.submissionTimestamp)
             .fetch()
         )
@@ -155,7 +150,6 @@ def get_inprogress_photo_requests():
                 PhotoRequest.claimTimestamp != None,
                 PhotoRequest.completedTimestamp == None,
             )
-            .fetch()
             .order(PhotoRequest.submissionTimestamp)
             .fetch()
         )
@@ -168,7 +162,6 @@ def get_claimed_photo_requests_for_user(email):
     with client.context():
         requests = (
             PhotoRequest.query(PhotoRequest.photogEmail == email)
-            .fetch()
             .order(PhotoRequest.submissionTimestamp)
             .fetch()
         )
@@ -184,7 +177,6 @@ def get_completed_photo_requests_for_user(email):
                 PhotoRequest.photogEmail == email,
                 PhotoRequest.completedTimestamp != None,
             )
-            .fetch()
             .order(PhotoRequest.submissionTimestamp)
             .fetch()
         )
@@ -197,7 +189,6 @@ def get_submitted_photo_requests_for_user(email):
     with client.context():
         requests = (
             PhotoRequest.query(PhotoRequest.submitterEmail == email)
-            .fetch()
             .order(PhotoRequest.submissionTimestamp)
             .fetch()
         )
