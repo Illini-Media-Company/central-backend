@@ -61,5 +61,60 @@ endblock %} {% block content %}
       <!-- <p class="no-docs">No pending signatures at this time.</p> -->
     </div>
   </section>
+  <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const sendBtn = document.getElementById("send-btn");
+  if (!sendBtn) {
+    console.error("Send button not found!");
+    return;
+  }
+
+  sendBtn.addEventListener("click", async () => {
+    const emailsText = document.getElementById("employee-emails")?.value || "";
+    const emails = emailsText
+      .split("\n")
+      .map(e => e.trim())
+      .filter(e => e);
+
+    const manager = document.getElementById("manager-select")?.value;
+    const chief = document.getElementById("chief-select")?.value;
+
+    if (emails.length === 0 || !manager || !chief) {
+      alert("Please fill in all required fields before sending.");
+      return;
+    }
+
+    const payload = { emails, manager, chief };
+
+    try {
+      const response = await fetch("/onboarding/send_agreement", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      // Try parsing the response
+      const result = await response.json().catch(() => null);
+
+      if (response.ok) {
+        alert("Agreements successfully sent!");
+        console.log("Server response:", result);
+
+        // Optionally clear form
+        document.getElementById("employee-emails").value = "";
+        document.getElementById("manager-select").value = "";
+        document.getElementById("chief-select").value = "";
+      } else {
+        alert("Error: " + (result?.message || response.statusText));
+      }
+    } catch (error) {
+      console.error("Error sending agreement:", error);
+      alert("Something went wrong. Please try again.");
+    }
+  });
+});
+</script>
+
+  
 </main>
 {% endblock %}
