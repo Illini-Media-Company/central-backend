@@ -146,15 +146,15 @@ def get_inprogress_photo_requests():
     """Return all requests that are claimed but not complete (ordered by submission date)."""
     with client.context():
         requests = (
-            PhotoRequest.query(
-                PhotoRequest.claimTimestamp != None,
-                PhotoRequest.completedTimestamp == None,
-            )
+            PhotoRequest.query()
+            .filter(PhotoRequest.completedTimestamp == None)
             .order(PhotoRequest.submissionTimestamp)
             .fetch()
         )
 
-    return [request.to_dict() for request in requests]
+    return [
+        request.to_dict() for request in requests if request.claimTimestamp is not None
+    ]
 
 
 def get_claimed_photo_requests_for_user(email):
@@ -173,15 +173,16 @@ def get_completed_photo_requests_for_user(email):
     """Return all requests that were completed by a specified email (ordered by submission date)."""
     with client.context():
         requests = (
-            PhotoRequest.query(
-                PhotoRequest.photogEmail == email,
-                PhotoRequest.completedTimestamp != None,
-            )
+            PhotoRequest.query(PhotoRequest.photogEmail == email)
             .order(PhotoRequest.submissionTimestamp)
             .fetch()
         )
 
-    return [request.to_dict() for request in requests]
+    return [
+        request.to_dict()
+        for request in requests
+        if request.completedTimestamp is not None
+    ]
 
 
 def get_submitted_photo_requests_for_user(email):
