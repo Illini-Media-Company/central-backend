@@ -64,7 +64,7 @@
     {{ form.textarea_input( 
         name="memo",
         label="Memo",
-        subtext="This should be a short (5-10 word) description of what the photo is. This could be the story's headline (if applicable) or something like \"Photo of the Main Quad.\"",
+        subtext="This could be the story's headline (if applicable) or something like \"Photo of the Main Quad.\" Otherwise, it should be a short (5-10 word) description of what the photo is.",
         required=true,
         maxlength=75,
         class="photo-req-form-row"
@@ -132,7 +132,7 @@
     {{ form.select_input( 
         name="presspassRequestor",
         label="Who will or who needs to request the credentials?",
-        options=["Me", "My editor", "The photographer"],
+        options=["Submitter", "Editor/Supervisor", "Photographer"],
         required=false,
         class="photo-req-form-row initial-no-show"
     ) }}
