@@ -169,7 +169,7 @@
         const valEmail = formData.get("email");                 
         const valName = formData.get("name");                   
         const valDest = formData.get("destination");            
-        const valDept = formData.get("departent");              // Not always submitted
+        const valDept = formData.get("department");              // Not always submitted
         const valMemo = formData.get("memo");                   
         const valDetails = formData.get("specificDetails");     
         const valUrl = formData.get("url");                     // Not always submitted
@@ -181,6 +181,15 @@
         var valPass = formData.get("presspass-options");      // Not always submitted
         const valPpReq = formData.get("presspassRequestor");    // Not always submitted
         const valInfo = formData.get("info");                   // Not always submitted
+
+        // Validate the input, cancel the submission if not valid
+        valid = await validateInput(valEmail, valName, valDest, valDept, valMemo,
+                                    valDetails, valUrl, valDue, valCourt, valEvent,
+                                    valEvDate, valEvLoc, valPass, valPpReq, valInfo);
+        if (!valid) {
+            hideLoading();
+            return;
+        }
 
         // Turn the valCourt into boolean
         if (valCourt == "Yes") 
@@ -199,15 +208,6 @@
             valPass = true;
         else
             valPass = false;
-
-        // Validate the input, cancel the submission if not valid
-        valid = await validateInput(valEmail, valName, valDest, valDept, valMemo,
-                                    valDetails, valUrl, valDue, valCourt, valEvent,
-                                    valEvDate, valEvLoc, valPass, valPpReq, valInfo);
-        if (!valid) {
-            hideLoading();
-            return;
-        }
 
         showLoading("Submitting...:");
         
