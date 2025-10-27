@@ -178,4 +178,48 @@ body {
       width: 100%;
     }
   }
+  /* Top header dashboard button */
+.dashboard-btn-container {
+  text-align: center;
+  margin-top: 1.5rem;
+}
+
+.dashboard-btn {
+  background-color: #f07d00;        /* IMC orange */
+  color: #fff;
+  font-weight: 600;
+  font-size: 1rem;
+  padding: 0.8rem 1.6rem;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-btn:hover {
+  background-color: #e16f00;
+  transform: translateY(-1px);
+}
+
+.dashboard-btn:active {
+  transform: translateY(0);
+}
+
+  
+  .dashboard-btn {
+    display: inline-block;
+    background-color: #f07d00;
+    color: white;
+    font-weight: 600;
+    padding: 0.7rem 1.4rem;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: background-color 0.2s ease;
+  }
+  
+  .dashboard-btn:hover {
+    background-color: #e16f00;
+  }
+  
   

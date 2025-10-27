@@ -33,3 +33,11 @@ def dashboard():
 @restrict_to(["imc-staff-webdev"])
 def admin_dashboard():
     return render_template("di_contract_automization_admin.html")
+
+
+@onboarding_routes.route("/send_agreement", methods=["POST"])
+@login_required
+def send_agreement():
+    data = request.get_json()
+    print("📨 Received:", data)
+    return {"status": "success"}, 200
