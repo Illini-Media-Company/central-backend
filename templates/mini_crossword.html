@@ -43,6 +43,12 @@ Mini Crossword Admin
 
     .crossword-input {
         padding-bottom: 2vh;
+        float: left;
+        width: 50%;
+    }
+    .clues-input {
+        float: left;
+        width: 50%;
     }
     .crossword-row {
         padding: 0;
@@ -65,7 +71,6 @@ Mini Crossword Admin
             <h2>Crossword Creation Instructions: </h2>
             <p>1. Double-click a square to black it out.</p>
             <p>2. Enter all letters before adding clues.</p>
-    
             <form onsubmit=onSubmit>
                 <div class="crossword-input">
                     {% for r in [0, 1, 2, 3, 4] %}
@@ -75,8 +80,12 @@ Mini Crossword Admin
                         {% endfor %}
                     </div>
                     {% endfor %}
-                </div>
+                
                 <input type="button" value="Add Clues" onclick=addClues()>
+                </div>
+                <div id="clues-input" class="clues-input">
+
+                </div>
                 <!-- <input type="submit" value="Add Clues"> -->
             </form>
         </div>
@@ -120,7 +129,7 @@ Mini Crossword Admin
             let word = "";
             for (let c = 0; c < 5; c++) {
                 if ((puzzle[r][c] == "-" || c == 4) && word != "") {
-                    if (c == 4) {
+                    if (puzzle[r][c] != "-") {
                         word += puzzle[r][c];
                     }
                     acrossClues.push(word);
@@ -128,7 +137,6 @@ Mini Crossword Admin
                 } else if (puzzle[r][c] != "-") {
                     word += puzzle[r][c]
                 }
-                console.log("cp4");
             }
         }
 
@@ -137,7 +145,7 @@ Mini Crossword Admin
             let word = "";
             for (let r = 0; r < 5; r++) {
                 if ((puzzle[r][c] == "-" || r == 4) && word != "") {
-                    if (r == 4) {
+                    if (puzzle[r][c] != "-") {
                         word += puzzle[r][c];
                     }
                     downClues.push(word);
@@ -151,55 +159,32 @@ Mini Crossword Admin
         console.log(acrossClues);
         console.log(downClues);
         
-        // Create a new form dynamically
-        const form = document.createElement("form");
-        form.id = "clue-form";
-        form.style.marginTop = "25px";
+        const clues = document.getElementById("clues-input")
 
-        const header = document.createElement("h3");
-        header.innerText = "Add Clues";
-        form.appendChild(header);
-
-        // Across clues
+        // across clues
         if (acrossClues.length > 0) {
-            const acrossHeader = document.createElement("h4");
-            acrossHeader.innerText = "Across";
-            form.appendChild(acrossHeader);
-
+            clues.innerHTML += "<h4>Across: </h4>"
             acrossClues.forEach((word, i) => {
-                const label = document.createElement("label");
-                label.innerText = `${i + 1}. ${word}: `;
-                const input = document.createElement("input");
-                input.type = "text";
-                input.name = `across-${word}`;
-                input.placeholder = `Clue for ${word}`;
-                input.style.marginBottom = "10px";
-                input.style.width = "60%";
-                form.appendChild(label);
-                form.appendChild(input);
-                form.appendChild(document.createElement("br"));
+                clues.innerHTML += String(i + 1) + ". " + word + ": <input type='text' id='" + word + "-clue'></br>";
             });
+            clues.innerHTML += "</br>";
         }
 
+        // down clues
         if (downClues.length > 0) {
-            const downHeader = document.createElement("h4");
-            downHeader.innerText = "Down";
-            form.appendChild(downHeader);
-
+            clues.innerHTML += "<h4>Down: </h4>"
             downClues.forEach((word, i) => {
-                const label = document.createElement("label");
-                label.innerText = `${i + 1}. ${word}: `;
-                const input = document.createElement("input");
-                input.type = "text";
-                input.name = `down-${word}`;
-                input.placeholder = `Clue for ${word}`;
-                input.style.marginBottom = "10px";
-                input.style.width = "60%";
-                form.appendChild(label);
-                form.appendChild(input);
-                form.appendChild(document.createElement("br"));
+                clues.innerHTML += String(i + 1) + ". " + word + ": <input type='text' id='" + word + "-clue'></br>";
             });
+            clues.innerHTML += "</br>";
         }
+
+        clues.innerHTML += "<input type='submit' onsubmit='onSubmit()'>"
+    }
+
+    function onSumbit(event) {
+        event.preventDefault();
+        console.log("crossword submitted!");
     }
     
 </script>
