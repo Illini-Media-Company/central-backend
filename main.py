@@ -69,6 +69,7 @@ from views.all_tools import tools_routes
 from views.content_doc import content_doc_routes
 from views.constant_contact import constant_contact_routes
 from views.illordle import illordle_routes
+from views.mini_crossword import mini_routes
 from views.socials import socials_routes
 from views.retool_apps import retool_routes
 from views.users import users_routes
@@ -101,6 +102,7 @@ app.register_blueprint(tools_routes)
 app.register_blueprint(content_doc_routes)
 app.register_blueprint(constant_contact_routes)
 app.register_blueprint(illordle_routes)
+app.register_blueprint(mini_routes)
 app.register_blueprint(socials_routes)
 app.register_blueprint(retool_routes)
 app.register_blueprint(users_routes)
