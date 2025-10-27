@@ -1,19 +1,29 @@
-{% extends 'base.html' %} {% block title %}Employee Agreement Portal{% endblock
-%} {% block extra_head %}
+{% extends 'base.html' %}
+{% block title %}Employee Agreement Portal{% endblock %}
+{% block extra_head %}
 <link rel="stylesheet" href="/static/styles/styles_index.css" />
 <link rel="stylesheet" href="/static/DI_Contract_Automization.css" />
-{% include "partials/loading.html" %} {% include "partials/info_bar.html" %} {%
-endblock %} {% block content %}
+{% include "partials/loading.html" %}
+{% include "partials/info_bar.html" %}
+{% endblock %}
+
+{% block content %}
 <header>
   <h1>Employee Agreement Portal</h1>
-  <p class="subtitle">Use this page to send and track employee agreements.</p>
+  <p class="subtitle">Send and track employee contracts in one place.</p>
+
+  <div class="dashboard-btn-container">
+    <button class="dashboard-btn" onclick="window.location.href='/onboarding/dashboard'">
+      Go to Dashboard
+    </button>    
+  </div>
 </header>
 
 <main class="di-contract-main">
-  <!-- LEFT SIDE: Send Form -->
+  <!-- LEFT SIDE: Send Agreement Form -->
   <section class="left">
     <h2>Send Agreement Form</h2>
-    <p class="note">Fill out the fields below to start the contract process.</p>
+    <p class="note">Enter employee and signer details to begin.</p>
 
     <div class="form-group">
       <label for="employee-emails">New Employee Emails</label>
@@ -25,96 +35,52 @@ endblock %} {% block content %}
     </div>
 
     <div class="form-group">
-      <label for="manager-select">Select Manager</label>
-      <select id="manager-select">
-        <option value="">Select a manager</option>
-        <option>Greg Benke</option>
-        <option>Joe Shmoe</option>
-        <option>Jane Doe</option>
-      </select>
+      <label for="editor-email">Editor Email</label>
+      <input
+        type="email"
+        id="editor-email"
+        placeholder="e.g. editor@illinimedia.com"
+      />
     </div>
 
     <div class="form-group">
-      <label for="chief-select">Select Chief</label>
-      <select id="chief-select">
-        <option value="">Select a chief</option>
-        <option>John Smith</option>
-        <option>Mary Johnson</option>
-      </select>
+      <label for="manager-email">Manager Email</label>
+      <input
+        type="email"
+        id="manager-email"
+        placeholder="e.g. manager@illinimedia.com"
+      />
     </div>
 
-    <button id="send-btn">Send Agreement</button>
+    <div class="form-group">
+      <label for="chief-email">Chief Email</label>
+      <input
+        type="email"
+        id="chief-email"
+        placeholder="e.g. chief@illinimedia.com"
+      />
+    </div>
+
+    <button id="send-btn">Send Agreements</button>
   </section>
 
-  <!-- RIGHT SIDE: Manager’s Pending Signatures -->
+  <!-- RIGHT SIDE: Pending Contracts Overview -->
   <section class="right">
-    <h2>Pending Signatures</h2>
+    <h2>Pending Contracts</h2>
     <div class="doc-box">
-      <!-- Example active item -->
       <div class="doc-item">
-        <h3>Agreement: Jane Doe</h3>
-        <p>Status: Awaiting Your Signature</p>
-        <button class="sign-btn">Review &amp; Sign</button>
+        <h3>Employee: Jane Doe</h3>
+        <p>Status: Awaiting Editor Signature</p>
       </div>
 
-      <!-- Example with no pending items -->
-      <!-- <p class="no-docs">No pending signatures at this time.</p> -->
+      <div class="doc-item">
+        <h3>Employee: John Smith</h3>
+        <p>Status: Awaiting Manager Signature</p>
+      </div>
+
+      <!-- <p class="no-docs">All contracts have been signed!</p> -->
     </div>
   </section>
-  <script>
-document.addEventListener("DOMContentLoaded", () => {
-  const sendBtn = document.getElementById("send-btn");
-  if (!sendBtn) {
-    console.error("Send button not found!");
-    return;
-  }
-
-  sendBtn.addEventListener("click", async () => {
-    const emailsText = document.getElementById("employee-emails")?.value || "";
-    const emails = emailsText
-      .split("\n")
-      .map(e => e.trim())
-      .filter(e => e);
-
-    const manager = document.getElementById("manager-select")?.value;
-    const chief = document.getElementById("chief-select")?.value;
-
-    if (emails.length === 0 || !manager || !chief) {
-      alert("Please fill in all required fields before sending.");
-      return;
-    }
-
-    const payload = { emails, manager, chief };
-
-    try {
-      const response = await fetch("/onboarding/send_agreement", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      // Try parsing the response
-      const result = await response.json().catch(() => null);
-
-      if (response.ok) {
-        alert("Agreements successfully sent!");
-        console.log("Server response:", result);
-
-        // Optionally clear form
-        document.getElementById("employee-emails").value = "";
-        document.getElementById("manager-select").value = "";
-        document.getElementById("chief-select").value = "";
-      } else {
-        alert("Error: " + (result?.message || response.statusText));
-      }
-    } catch (error) {
-      console.error("Error sending agreement:", error);
-      alert("Something went wrong. Please try again.");
-    }
-  });
-});
-</script>
-
-  
 </main>
+</script>
 {% endblock %}
