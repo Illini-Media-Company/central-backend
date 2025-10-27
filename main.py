@@ -374,6 +374,12 @@ def api_query():
     return render_template("api_query.html")
 
 
+@app.route("/tv-rotation")
+@login_required
+def tv_rotation():
+    return render_template("rotatingtv_screen.html")
+
+
 @app.route("/logout")
 @login_required
 def logout():

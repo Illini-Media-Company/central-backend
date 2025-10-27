@@ -1,101 +1,83 @@
-<!DOCTYPE html>
+<!-- Page to add and modify tools for all users on the home page -->
 
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard Feature Selection</title>
+{% extends 'base.html' %}
 
-<!-- Link to global stylesheet -->
+{% block title %}
+    Tools Admin Panel
+{% endblock %}
 
-<link rel="stylesheet" href="global.css">
+{% block extra_head %}
+    <link rel="stylesheet" href="/static/styles/styles_alltools.css">
+    <link rel="stylesheet" href="/static/styles/styles_index.css">
+    <link rel="stylesheet" href="/static/macros/form.css">
 
-<style>
-/* Page-specific layout styles */
-body {
-    margin: 2rem;
-    background-color: var(--main-bg-color);
-    color: var(--main-text-color);
-    font-family: var(--bs-font-sans-serif);
-}
+    <style>
+        /* Page-specific layout styles */
+        .container {
+            width: 80%;
+            margin: 2rem auto;
+            background-color: var(--main-lt-gray-color);
+            border-radius: var(--main-border-radius);
+            box-shadow: var(--main-box-shadow);
+            padding: 2rem;
+        }
 
-.container {
-    width: 80%;
-    margin: auto;
-    background-color: var(--main-lt-gray-color);
-    border-radius: var(--main-border-radius);
-    box-shadow: var(--main-box-shadow);
-    padding: 2rem;
-}
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
 
-.checkbox-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin-bottom: 1.5rem;
-}
+        label {
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
 
-label {
-    font-size: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
+        .result {
+            margin-top: 1.5rem;
+            background-color: var(--main-md-gray-color);
+            border-radius: var(--main-border-radius);
+            padding: 1rem;
+            display: none;
+        }
+    </style>
+{% endblock %}
+<!-- Can use these if needed -->
+{% include "partials/loading.html" %}
+{% include "partials/button_alert.html" %}
+{% include "partials/text_alert.html" %}
 
-.result {
-    margin-top: 1.5rem;
-    background-color: var(--main-md-gray-color);
-    border-radius: var(--main-border-radius);
-    padding: 1rem;
-}
-</style>
+{% import "macros/form.html" as form %}
 
-</head>
-
-<body>
+{% block content %}
 <div class="container">
     <h1>Select Dashboard Features</h1>
 
-```
-<div class="checkbox-group">
-    <label><input type="checkbox" id="stats"> Website / Social Media Statistics</label>
-    <label><input type="checkbox" id="quadCam"> Quad Cam</label>
-    <label><input type="checkbox" id="almaCam"> Alma Cam</label>
-    <label><input type="checkbox" id="datetime"> Current Date / Time</label>
-    <label><input type="checkbox" id="room"> TV Room Availability</label>
-    <label><input type="checkbox" id="news"> Top News Stories</label>
+    <div class="checkbox-group">
+        {% if show_stats is not defined or show_stats %}
+            <label><input type="checkbox" id="stats"> Website / Social Media Statistics</label>
+        {% endif %}
+        {% if show_quadCam is not defined or show_quadCam %}
+            <label><input type="checkbox" id="quadCam"> Quad Cam</label>
+        {% endif %}
+        {% if show_almaCam is not defined or show_almaCam %}
+            <label><input type="checkbox" id="almaCam"> Alma Cam</label>
+        {% endif %}
+        {% if show_datetime is not defined or show_datetime %}
+            <label><input type="checkbox" id="datetime"> Current Date / Time</label>
+        {% endif %}
+        {% if show_room is not defined or show_room %}
+            <label><input type="checkbox" id="room"> TV Room Availability</label>
+        {% endif %}
+        {% if show_news is not defined or show_news %}
+            <label><input type="checkbox" id="news"> Top News Stories</label>
+        {% endif %}
+    </div>
+    <button id="startButton" class="button-primary">Start</button>
+    </div>
+    </div>
 </div>
-
-<button class="button-primary" onclick="showSelections()">Confirm Selection</button>
-
-<div id="result" class="result" style="display: none;"></div>
-```
-
-</div>
-
-<script>
-function showSelections() {
-    const features = [
-        { id: "stats", name: "Website / Social Media Statistics" },
-        { id: "quadCam", name: "Quad Cam" },
-        { id: "almaCam", name: "Alma Cam" },
-        { id: "datetime", name: "Current Date / Time" },
-        { id: "room", name: "TV Room Availability" },
-        { id: "news", name: "Top News Stories" }
-    ];
-
-    const selected = features.filter(f => document.getElementById(f.id).checked).map(f => f.name);
-
-    const resultDiv = document.getElementById("result");
-    if (selected.length > 0) {
-        resultDiv.style.display = "block";
-        resultDiv.innerHTML = "<strong>Selected Features:</strong><br>" + selected.join("<br>");
-    } else {
-        resultDiv.style.display = "block";
-        resultDiv.innerHTML = "<em>No features selected.</em>";
-    }
-}
-</script>
-
-</body>
-</html>
+{% endblock %}
