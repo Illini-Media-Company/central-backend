@@ -85,6 +85,7 @@ from util.helpers.ap_datetime import (
     ap_date,
     ap_time,
 )
+from util.helpers.email_to_slackid import email_to_slackid
 
 from util.all_tools import format_restricted_groups
 
@@ -124,6 +125,7 @@ start_slack(app)
 app.jinja_env.filters["ap_datetime"] = ap_datetime
 app.jinja_env.filters["ap_date"] = ap_date
 app.jinja_env.filters["ap_time"] = ap_time
+app.jinja_env.filters["email_to_slackid"] = email_to_slackid
 app.jinja_env.filters["format_restricted_groups"] = format_restricted_groups
 
 
