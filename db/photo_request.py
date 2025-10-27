@@ -44,7 +44,7 @@ class PhotoRequest(ndb.Model):
     # Assignment and completion
     photogEmail = ndb.StringProperty()
     photogName = ndb.StringProperty()
-    claimTimestamp = ndb.DateTimeProperty()
+    claimTimestamp = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
     completedTimestamp = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
     driveURL = ndb.StringProperty()
 
@@ -121,25 +121,23 @@ def get_unclaimed_photo_requests():
 def get_claimed_photo_requests():
     """Return all claimed requests (ordered by submission date)."""
     with client.context():
-        requests = (
-            PhotoRequest.query(PhotoRequest.claimTimestamp != None)
-            .order(PhotoRequest.submissionTimestamp)
-            .fetch()
-        )
+        requests = PhotoRequest.query().order(PhotoRequest.submissionTimestamp).fetch()
 
-    return [request.to_dict() for request in requests]
+    return [
+        request.to_dict() for request in requests if request.claimTimestamp is not None
+    ]
 
 
 def get_completed_photo_requests():
     """Return all completed requests (ordered by submission date)."""
     with client.context():
-        requests = (
-            PhotoRequest.query(PhotoRequest.completedTimestamp != None)
-            .order(PhotoRequest.submissionTimestamp)
-            .fetch()
-        )
+        requests = PhotoRequest.query().order(PhotoRequest.submissionTimestamp).fetch()
 
-    return [request.to_dict() for request in requests]
+    return [
+        request.to_dict()
+        for request in requests
+        if request.completedTimestamp is not None
+    ]
 
 
 def get_inprogress_photo_requests():

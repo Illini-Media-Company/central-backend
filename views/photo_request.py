@@ -26,13 +26,55 @@ photo_request_routes = Blueprint(
 )
 
 
-# /dashboard — render all in-progress requests
-@photo_request_routes.route("/dashboard", methods=["GET"])
+# /dashboard — render photo requests based on selection (defaults to all requests)
+
+
+@photo_request_routes.route("/dashboard/<selection>", methods=["GET"])
+@photo_request_routes.route(
+    "/dashboard", defaults={"selection": "all"}, methods=["GET"]
+)
 @login_required
 @restrict_to(["student-managers", "editors", "imc-staff-webdev"])
-def dashboard():
-    requests = get_inprogress_photo_requests()
-    return render_template("/photo-req/photo_req_sheet.html", requests=requests)
+def dashboard(selection=None):
+    print(f'Fetching "{selection}" photo requests for dashboard...')
+
+    # Fetch the appropriate requests based on selection
+    # Format the selection name to display on the dashboard
+    match selection:
+        case "completed":
+            requests = get_completed_photo_requests()
+            selection_name = "Completed Requests"
+        case "in-progress":
+            requests = get_inprogress_photo_requests()
+            selection_name = "In-Progress Requests"
+        case "claimed":
+            requests = get_claimed_photo_requests()
+            selection_name = "Claimed Requests"
+        case "unclaimed":
+            requests = get_unclaimed_photo_requests()
+            selection_name = "Unclaimed Requests"
+        case "claimed-email":
+            email = request.args.get("email")
+            requests = get_claimed_photo_requests_for_user(email)
+            selection_name = f"Requests Claimed by {email}"
+        case "completed-email":
+            email = request.args.get("email")
+            requests = get_completed_photo_requests_for_user(email)
+            selection_name = f"Requests Completed by {email}"
+        case "submitted-email":
+            email = request.args.get("email")
+            requests = get_submitted_photo_requests_for_user(email)
+            selection_name = f"Requests Submitted by {email}"
+        case "all":
+            requests = get_all_photo_requests()
+            selection_name = "All Requests"
+        case _:
+            return "Invalid request selection", 404
+
+    print("Fetched.")
+    return render_template(
+        "/photo-req/photo_req_sheet.html", requests=requests, selection=selection_name
+    )
 
 
 # /form — form to submit a request
@@ -95,12 +137,14 @@ def api_submit():
 # /api/<uid>/claim — claim request
 @photo_request_routes.route("/api/<uid>/claim", methods=["POST"])
 @login_required
-@restrict_to(["imc-staff-photo" "imc-staff-webdev"])
+@restrict_to(["imc-staff-photo", "imc-staff-webdev"])
 def api_claim(uid):
+    print(f"Claiming photo request {uid}...")
     data = request.get_json() or {}
     name = data.get("photogName")
     email = data.get("photogEmail")
     if not name or not email:
+        print("Missing photogName or photogEmail.")
         return jsonify({"error": "photogName and photogEmail required"}), 400
 
     updated = claim_photo_request(uid=int(uid), photogName=name, photogEmail=email)
@@ -172,71 +216,76 @@ def api_fetch_all():
     return requests, 200
 
 
-# /api/fetch/completed — get all completed requests
-@photo_request_routes.route("/api/fetch/completed", methods=["GET"])
-@login_required
-def api_fetch_completed():
-    requests = get_completed_photo_requests()
-    if not requests:
-        return "Requests not found.", 400
-    return requests, 200
+# # /api/fetch/completed — get all completed requests
+# @photo_request_routes.route("/api/fetch/completed", methods=["GET"])
+# @login_required
+# def api_fetch_completed():
+#     requests = get_completed_photo_requests()
+#     if not requests:
+#         return "Requests not found.", 400
+#     return requests, 200
 
 
-# /api/fetch/in-progress — get all in-progess requests
-@photo_request_routes.route("/api/fetch/in-progress", methods=["GET"])
-@login_required
-def api_fetch_inprogress():
-    requests = get_inprogress_photo_requests()
-    if not requests:
-        return "Requests not found.", 400
-    return requests, 200
+# # /api/fetch/in-progress — get all in-progess requests
+# @photo_request_routes.route("/api/fetch/in-progress", methods=["GET"])
+# @login_required
+# def api_fetch_inprogress():
+#     requests = get_inprogress_photo_requests()
+#     if not requests:
+#         return "Requests not found.", 400
+#     return requests, 200
 
 
-# /api/fetch/claimed — get all claimed requests
-@photo_request_routes.route("/api/fetch/claimed", methods=["GET"])
-@login_required
-def api_fetch_claimed():
-    requests = get_claimed_photo_requests()
-    if not requests:
-        return "Requests not found.", 400
-    return requests, 200
+# # /api/fetch/claimed — get all claimed requests
+# @photo_request_routes.route("/api/fetch/claimed", methods=["GET"])
+# @login_required
+# def api_fetch_claimed():
+#     requests = get_claimed_photo_requests()
+#     if not requests:
+#         return "Requests not found.", 400
+#     return requests, 200
 
 
-# /api/fetch/unclaimed — get all unclaimed requests
-@photo_request_routes.route("/api/fetch/unclaimed", methods=["GET"])
-@login_required
-def api_fetch_unclaimed():
-    requests = get_unclaimed_photo_requests()
-    if not requests:
-        return "Requests not found.", 400
-    return requests, 200
+# # /api/fetch/unclaimed — get all unclaimed requests
+# @photo_request_routes.route("/api/fetch/unclaimed", methods=["GET"])
+# @login_required
+# def api_fetch_unclaimed():
+#     requests = get_unclaimed_photo_requests()
+#     if not requests:
+#         return "Requests not found.", 400
+#     return requests, 200
 
 
-# /api/fetch/claimed/<email> — get all requests claimed by a user with specified email
-@photo_request_routes.route("/api/fetch/claimed/<email>", methods=["GET"])
-@login_required
-def api_fetch_claimed_email(email):
-    requests = get_claimed_photo_requests_for_user(email)
-    if not requests:
-        return "Requests not found.", 400
-    return requests, 200
+# # /api/fetch/claimed/<email> — get all requests claimed by a user with specified email
+# @photo_request_routes.route("/api/fetch/claimed/<email>", methods=["GET"])
+# @login_required
+# def api_fetch_claimed_email(email):
+#     requests = get_claimed_photo_requests_for_user(email)
+#     if not requests:
+#         return "Requests not found.", 400
+#     return requests, 200
 
 
-# /api/fetch/completed/<email> — get all requests completed by a user with specified email
-@photo_request_routes.route("/api/fetch/completed/<email>", methods=["GET"])
-@login_required
-def api_fetch_completed_email(email):
-    requests = get_completed_photo_requests_for_user(email)
-    if not requests:
-        return "Requests not found.", 400
-    return requests, 200
+# # /api/fetch/completed/<email> — get all requests completed by a user with specified email
+# @photo_request_routes.route("/api/fetch/completed/<email>", methods=["GET"])
+# @login_required
+# def api_fetch_completed_email(email):
+#     requests = get_completed_photo_requests_for_user(email)
+#     if not requests:
+#         return "Requests not found.", 400
+#     return requests, 200
 
 
 # /api/fetch/submitted/<email> — get all requests submitted by a user with specified email
 @photo_request_routes.route("/api/fetch/submitted/<email>", methods=["GET"])
 @login_required
 def api_fetch_submitted_email(email):
+    print(f"Fetching submitted photo requests for {email}...")
     requests = get_submitted_photo_requests_for_user(email)
-    if not requests:
-        return "Requests not found.", 400
-    return requests, 200
+
+    return render_template(
+        "/photo-req/photo_req_sheet.html",
+        requests=requests,
+        selection="Your Requests",
+        hide_extras=True,
+    )
