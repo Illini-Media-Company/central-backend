@@ -2,8 +2,9 @@ from flask import Blueprint, request
 from util.slackbot import app
 from flask_login import current_user, login_required
 from util.employee_agreement_slackbot import send_employee_agreement_notification, follow_up_notification
-from db.employee_agreement import add_employee_agreement, get_employee_agreement_by_user
-
+from db.employee_agreement import add_employee_agreement, get_employee_agreement_by_user, get_pending_agreements_for_editor, get_pending_agreements_for_manager, get_pending_agreements_for_chief, get_agreement_object_by_user
+from zoneinfo import ZoneInfo
+from datetime import datetime
 employee_agreement_routes = Blueprint("employee_agreement_routes", __name__, url_prefix="/employee-agreement")
 
 
@@ -22,11 +23,17 @@ def send_notification():
 @employee_agreement_routes.route("/send-notification", methods=["POST"])
 @login_required
 def send_notification():
+    
     data = request.get_json()
     emails = data.get("emails", [])
 
     if not emails:
         return "No emails provided", 400
+    manager_email = data.get("manager", "")
+    chief_email = data.get("chief", "")
+    editor_email = data.get("editor", "")
+
+
 
     for email in emails:
         email = email.strip()
@@ -35,19 +42,28 @@ def send_notification():
 
         #we need to do the lookup by email for hring manager, editor, cheif
         #assume that the hiring manager would be the only one on this page 
-        hiring_email = current_user.email
-        hiring_data = app.client.users_lookupByEmail(email=hiring_email)
-        if not hiring_data.get("ok"):
-            return "Hiring manager not found", 404
-        hiring_slack_id = hiring_data["user"]["id"]
+        editor_data = app.client.users_lookupByEmail(email=editor_email)
+        if not editor_data.get("ok"):
+            return "editor manager not found", 404
+        editor_slack_id = editor_data["user"]["id"]
+
+        manager_data = app.client.users_lookupByEmail(email=manager_email)
+        if not manager_data.get("ok"):
+            return "Manager not found", 404
+        manager_slack_id = manager_data["user"]["id"]
+
+        chief_data = app.client.users_lookupByEmail(email=chief_email)
+        if not chief_data.get("ok"):
+            return "Chief not found", 404
+        chief_slack_id = chief_data["user"]["id"]
 
 
         if (user_data.get("ok")):
             user_slack_id = user_data["user"]["id"]
-            agreement_url = "http://example.com/agreement" #change to match the site that will be used for the agreement
+            agreement_url = "https://app.dailyillini.com/" 
 
-            #fix this with the correct stuff how are we getting managerid and cheif id, are these imputs from the hirer 
-            add_employee_agreement(user_id=user_slack_id, hiring_id=hiring_slack_id, manager_id="", chief_id="", agreement_url=agreement_url)
+             
+            add_employee_agreement(user_id=user_slack_id, editor_id=editor_slack_id, manager_id=manager_slack_id, chief_id=chief_slack_id, agreement_url=agreement_url)
 
             #we need to add the user to the db and then call the notification function
             send_employee_agreement_notification(user_slack_id, agreement_url)
@@ -59,77 +75,87 @@ def send_notification():
 
 
 
-#is it better to have a function that is universal or should we have multiple functions for each step of the process
-
 #called after the user signs the agreement on the webpage 
-@employee_agreement_routes.route("/send-next-notifcation", methods=["POST"])
+@employee_agreement_routes.route("/get-pending-signatures", methods=["GET"])
 @login_required
-def send_next_notification():
+def get_pending_signatures():
+    logged_in_user_email = current_user.email
+    user_data = app.client.users_lookupByEmail(email=logged_in_user_email)
+    if not user_data.get("ok"):
+        return "User not found", 404
+    user_slack_id = user_data["user"]["id"]
+    pending_agreements = []
+    my_agreement = get_employee_agreement_by_user(user_slack_id)
+
+    if my_agreement and my_agreement["user_signed"] is None:
+        pending_agreements.append(my_agreement)
+    # Check for pending agreements as editor
+    editor_agreements = get_pending_agreements_for_editor(user_slack_id)
+    pending_agreements.extend(editor_agreements)
+    # Check for pending agreements as manager
+    manager_agreements = get_pending_agreements_for_manager(user_slack_id)
+    pending_agreements.extend(manager_agreements)
+    # Check for pending agreements as chief
+    chief_agreements = get_pending_agreements_for_chief(user_slack_id)
+    pending_agreements.extend(chief_agreements)
+    return {"pending_agreements": pending_agreements}, 200
+
+
+
+@employee_agreement_routes.route("/sign-agreement", methods=["POST"])
+@login_required
+def sign_agreement():
+    data = request.get_json()
+    agreement_user_id = data.get("agreement_user_id")
+    if not agreement_user_id:
+        return "Agreement ID is required", 400
 
     logged_in_user_email = current_user.email
     user_data = app.client.users_lookupByEmail(email=logged_in_user_email)
-
     if not user_data.get("ok"):
         return "User not found", 404
+    signer_slack_id = user_data["user"]["id"]
+    agreement = get_agreement_object_by_user(agreement_user_id)
+    if not agreement:
+        return "Agreement not found", 404
     
-    employee_agreement = get_employee_agreement_by_user(user_data["user"]["id"])
 
-    if not employee_agreement:
-        return "Employee agreement not found", 404
-    # Logic to determine the next notification recipient
-    recipient_id = None
+    next_signer_id = None
+    next_signer_role = None
 
-    if employee_agreement["user_signed"] is None:
-        recipient_id = employee_agreement["user_id"]
-    elif employee_agreement["hriring_signed"] is None:
-        recipient_id = employee_agreement["hiring_id"]
-    elif employee_agreement["manager_signed"] is None:
-        recipient_id = employee_agreement["manager_id"]     
-    elif employee_agreement["chief_signed"] is None:
-        recipient_id = employee_agreement["cheif_id"]
-    
-    if recipient_id is None:
-        return "All parties have signed the agreement", 200
-    
-    agreement_url = employee_agreement["agreement_url"]
-    #we should send a follow up email maybe saying who has signed it so far and what is left to be signed
-    send_employee_agreement_notification(recipient_id, agreement_url)
-     
+    if signer_slack_id == agreement.user_id and agreement.user_signed is None:
+        agreement.user_signed = datetime.now(tz=ZoneInfo("America/Chicago"))
+        next_signer_id = agreement.editor_id 
+        next_signer_role = "editor" 
+    elif signer_slack_id == agreement.editor_id and agreement.editor_signed is None:
+        agreement.editor_signed = datetime.now(tz=ZoneInfo("America/Chicago"))
+        next_signer_id = agreement.manager_id 
+        next_signer_role = "manager"
+    elif signer_slack_id == agreement.manager_id and agreement.manager_signed is None:
+        agreement.manager_signed = datetime.now(tz=ZoneInfo("America/Chicago"))
+        next_signer_id = agreement.chief_id # FIX: Set next signer
+        next_signer_role = "chief"
+    elif signer_slack_id == agreement.chief_id and agreement.chief_signed is None:
+        agreement.chief_signed = datetime.now(tz=ZoneInfo("America/Chicago"))
+    else:
+        return "You are not authorized to sign this agreement or have already signed", 403
 
+    agreement.put()
 
-
-
-@employee_agreement_routes.route("/send-follow-up", methods=["POST"])
-@login_required
-def send_follow_up():
-    follow_up_notification("U09LTPY3MSP")
-    return "Follow-up sent", 200
-
-
-#in python and jinga we can do {{current_user.name}} to get the name of the user
-
-#app.client.users_lookupByEmail to find user by email 
-# need to make sure that the user and bot have the read.email 
+    if next_signer_id: # Check if there *is* a next signer
+        pending_list = []
+        if next_signer_role == "editor":
+            pending_list = get_pending_agreements_for_editor(next_signer_id)
+        elif next_signer_role == "manager":
+            pending_list = get_pending_agreements_for_manager(next_signer_id)
+        elif next_signer_role == "chief":
+            pending_list = get_pending_agreements_for_chief(next_signer_id)
 
 
-#we can get the user and the hiring manager id, how are we getting the editors id and how are we getting cheif id 
+        if len(pending_list) == 1:
+            send_employee_agreement_notification(next_signer_id, agreement.agreement_url)
 
 
-"""
-what it will look like:
-{
-    "ok": true,
-    "user": {
-        "id": "U0123ABCDE", // <-- This is the Slack User ID you need!
-        "team_id": "TXXXXXXXX",
-        "name": "john.doe",
-        "profile": {
-            "email": "user@example.com",
-            // ... other profile fields
-        },
-        """
+    return "Agreement signed successfully", 200
 
-#need to itterate thriough all inputs, create a user and their email based on their user id
-#store the perosn id and email in the db
-#then send the notification to the user based on their email
-# should check with group to see what  they have done 
+

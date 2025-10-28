@@ -114,6 +114,8 @@ app.register_blueprint(copy_schedule_routes)
 app.register_blueprint(map_points_routes)
 app.register_blueprint(overlooked_routes)
 app.register_blueprint(food_truck_routes)
+app.register_blueprint(onboarding_routes)
+app.register_blueprint(employee_agreement_routes)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
