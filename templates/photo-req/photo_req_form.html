@@ -30,6 +30,12 @@
 {% block content %}
 <h1>Submit a Photo Request</h1>
 
+<hr >
+
+<button class="button-secondary" onclick="window.location.href='/photo-requests/api/fetch/submitted/{{ current_user.email }}'">
+    View my previous requests
+</button>
+
 <hr style="margin-bottom: 2rem;">
 
 {% call form.form(id="photoRequestForm", class="photo-req-form", enctype="application/x-www-form-urlencoded", on_submit="return submitRequest(event)") %}
