@@ -4,6 +4,13 @@ from util.security import restrict_to
 from zoneinfo import ZoneInfo
 from datetime import datetime
 
+from util.photo_request import (
+    build_blocks_from_request,
+    dm_user_by_email,
+    post_photo_blocks,
+)
+
+
 from db.photo_request import (
     add_photo_request,
     get_all_photo_requests,
@@ -129,7 +136,32 @@ def api_submit():
 
     try:
         created = add_photo_request(**kwargs)
+
+        # Build the Slack blocks from the saved record
+        blocks = build_blocks_from_request(created)
+
+        # DM the requester a copy (always)
+        try:
+            dm_user_by_email(
+                email=created["submitterEmail"],
+                text="We got your request. Here’s a copy of your submission.",
+                blocks=blocks,
+            )
+        except Exception as e:
+            print(f"[photo_submit] DM failed: {e}")
+
+        # Post to photo channel unless it's a courtesy request
+        if not created.get("isCourtesy"):
+            try:
+                res = post_photo_blocks(
+                    blocks=blocks,
+                    request_id=str(created["uid"]),
+                )
+            except Exception as e:
+                print(f"[photo_submit] Channel post failed: {e}")
+
         return jsonify({"message": "submitted", "request": created}), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
