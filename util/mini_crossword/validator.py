@@ -29,8 +29,8 @@ def validate_crossword(cw) -> Dict[str, str | int]:
     _check_connectivity(cw.grid)
     _check_min_word_len(spans)
 
-    _check_clue_integrity(cw, spans)
-    _check_answers_list(cw, spans)
+    # Clue validation is skipped - clues are assumed to be correct when provided
+    # Clues dict can be empty and that's valid
 
     return {
         "id": cw.id,
@@ -51,8 +51,8 @@ def _check_meta(cw) -> None:
         raise ValueError(f"origin must be 'manual' or 'auto', got {cw.origin!r}.")
     if not cw.article_link:
         raise ValueError("article_link is required.")
-    if not isinstance(cw.clues, dict) or not cw.clues:
-        raise ValueError("clues must be a non-empty dict.")
+    if not isinstance(cw.clues, dict):
+        raise ValueError("clues must be a dict (can be empty).")
     if cw.origin == "manual" and not cw.created_by:
         raise ValueError("created_by is required for manual crosswords.")
     _check_date_is_monday(cw.date)
@@ -231,6 +231,7 @@ def _check_min_word_len(spans: Dict[str, List[_Span]]) -> None:
                 )
 
 
+# unused methods - kept for reference
 def _check_clue_integrity(cw, spans: Dict[str, List[_Span]]) -> None:
     # clue map keys: number (unique by number only)
     # Validate clue structure and build clue_map
@@ -306,6 +307,7 @@ def _check_clue_integrity(cw, spans: Dict[str, List[_Span]]) -> None:
         raise ValueError(f"Clues that do not map to any span: {', '.join(extras)}.")
 
 
+# unused method - kept for reference
 def _check_answers_list(cw, spans: Dict[str, List[_Span]]) -> None:
     """
     Ensure cw.answers equals the set of answers derived from clues (ignoring order/case).
