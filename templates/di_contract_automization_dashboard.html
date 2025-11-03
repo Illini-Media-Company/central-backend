@@ -22,44 +22,7 @@ endblock %} {% block content %}
 </div>
 
 <script>
-  // Consistent requirements for the form will allow for scalability. Always require title and what will be in the form itself
-  const documents = [
-    {
-      title: "Copy Editing Employment Agreement",
-      content: "Welcome to the copy editing team",
-    },
-    {
-      title: "Writing Staff Employment Agreement",
-      content: "Welcome to the writing staff",
-    },
-  ];
-
   const docList = document.getElementById("docList");
-
-  if (documents.length === 0) {
-    const nothingLeft = document.createElement("p");
-    nothingLeft.textContent = "Nothing left to do :D";
-    docList.appendChild(nothingLeft);
-
-    /*
-      If there is nothing in the documents to sign just let them now that
-    */
-  } else {
-    documents.forEach((doc) => {
-      const li = document.createElement("li");
-      li.classList.add("doc-item");
-      li.setAttribute("data-title", doc.title);
-      li.setAttribute("data-content", doc.content);
-      li.textContent = doc.title;
-
-      docList.appendChild(li);
-      /*
-        Create a standardized border for the documents required for them to sign in the 
-        list waiting for them to get signed
-      */
-    });
-  }
-
   const modal = document.getElementById("modal");
   const modalTitle = document.getElementById("modalTitle");
   const modalText = document.getElementById("modalText");
@@ -68,14 +31,49 @@ endblock %} {% block content %}
   const signature = document.getElementById("signature");
   const closeModal = document.querySelector(".close");
 
+  let pendingDocs = [];
   let currentDoc = null;
 
+  // Fetch pending agreements from backend
+  async function fetchPendingDocs() {
+    try {
+      const response = await fetch(
+        "/employee-agreement/get-pending-signatures"
+      );
+      if (!response.ok) throw new Error("Failed to fetch pending agreements");
+      const data = await response.json();
+      pendingDocs = data.pending_agreements || [];
+      renderDocs();
+    } catch (err) {
+      console.error(err);
+      docList.innerHTML = "<p>Failed to load pending agreements.</p>";
+    }
+  }
+
+  // Render pending agreements
+  function renderDocs() {
+    docList.innerHTML = "";
+    if (pendingDocs.length === 0) {
+      docList.innerHTML = "<p>Nothing left to do :D</p>";
+      return;
+    }
+    pendingDocs.forEach((doc) => {
+      const li = document.createElement("li");
+      li.classList.add("doc-item");
+      li.dataset.userId = doc.user_id;
+      li.dataset.agreementUrl = doc.agreement_url;
+      li.textContent = "Agreement for: Daily Illini Onboarding ";
+      docList.appendChild(li);
+    });
+  }
+
+  // Open modal on click
   docList.addEventListener("click", (event) => {
     const item = event.target.closest(".doc-item");
     if (!item) return;
     currentDoc = item;
-    modalTitle.textContent = item.dataset.title;
-    modalText.textContent = item.dataset.content;
+    modalTitle.textContent = "Pending Agreement";
+    modalText.textContent = `URL: ${item.dataset.agreementUrl}`;
     signature.textContent = "";
     signBtn.disabled = false;
     sendBtn.disabled = true;
@@ -87,23 +85,42 @@ endblock %} {% block content %}
     if (e.target === modal) modal.style.display = "none";
   });
 
-  //If signed button is clicked then set the sign button equal to true and wait till they click send
+  // Sign agreement
   signBtn.addEventListener("click", () => {
-    signature.textContent = "Adithya Raman";
+    signature.textContent = "Signed by you";
     signBtn.disabled = true;
     sendBtn.disabled = false;
   });
 
-  sendBtn.addEventListener("click", () => {
-    if (currentDoc) currentDoc.remove();
-    modal.style.display = "none";
+  // Send signed agreement
+  sendBtn.addEventListener("click", async () => {
+    if (!currentDoc) return;
 
-    // Check if there are any docs left
-    if (docList.children.length === 0) {
-      const nothingLeft = document.createElement("p");
-      nothingLeft.textContent = "Nothing left to do :D";
-      docList.appendChild(nothingLeft);
+    const agreementUserId = currentDoc.dataset.userId;
+
+    try {
+      const response = await fetch("/employee-agreement/sign-agreement", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": "{{ csrf_token() }}",
+        },
+        body: JSON.stringify({ agreement_user_id: agreementUserId }),
+      });
+      if (!response.ok) throw new Error("Failed to sign agreement");
+      // Remove signed doc from the list
+      currentDoc.remove();
+      modal.style.display = "none";
+
+      if (docList.children.length === 0) {
+        docList.innerHTML = "<p>Nothing left to do :D</p>";
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to sign agreement");
     }
   });
+
+  fetchPendingDocs();
 </script>
 {% endblock %}

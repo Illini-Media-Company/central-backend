@@ -66,7 +66,7 @@ from apscheduler.triggers.date import DateTrigger
 
 from util.slackbot import start_slack
 import util.employee_agreement_slackbot
-from views.employee_agreement import send_notification, send_follow_up
+from views.employee_agreement import send_notification
 from views.all_tools import tools_routes
 from views.content_doc import content_doc_routes
 from views.constant_contact import constant_contact_routes
@@ -389,10 +389,6 @@ def logout():
     else:
         logout_user()
         return redirect(url_for("index"))
-
-
-
-
 
 
 @app.route("/logout-success")
