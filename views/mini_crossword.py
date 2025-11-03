@@ -9,7 +9,7 @@ from flask_login import login_required
 # from flask_login import current_user, login_required
 # from util.illordle_generate_word import random_word
 
-# from db.mini_crossword import (
+# from db.mini_crossword_object import (
 #     # necessary functions to pull
 # )
 from db.story import get_recent_stories
