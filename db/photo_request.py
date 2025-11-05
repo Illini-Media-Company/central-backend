@@ -48,6 +48,15 @@ class PhotoRequest(ndb.Model):
     completedTimestamp = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
     driveURL = ndb.StringProperty()
 
+    # Slack metadata for updating the original channel post
+    slackChannel = ndb.StringProperty()
+    slackTs = ndb.StringProperty()
+
+    # Simple workflow state
+    status = ndb.StringProperty(
+        choices=["submitted", "claimed", "completed"], default="submitted"
+    )
+
     # Timestamps
     submissionTimestamp = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
 

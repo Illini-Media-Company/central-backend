@@ -8,6 +8,8 @@ from util.photo_request import (
     build_blocks_from_request,
     dm_user_by_email,
     post_photo_blocks,
+    _label_for_request,
+    send_claimer_confirmation,
 )
 
 
@@ -80,7 +82,7 @@ def dashboard(selection=None):
 
     print("Fetched.")
     return render_template(
-        "/photo-req/photo_req_sheet.html", requests=requests, selection=selection_name
+        "photo-req/photo_req_sheet.html", requests=requests, selection=selection_name
     )
 
 
@@ -88,7 +90,7 @@ def dashboard(selection=None):
 @photo_request_routes.route("/form", methods=["GET"])
 @login_required
 def form():
-    return render_template("/photo-req/photo_req_form.html")
+    return render_template("photo-req/photo_req_form.html")
 
 
 # /api/submit — create new request
@@ -157,6 +159,21 @@ def api_submit():
                     blocks=blocks,
                     request_id=str(created["uid"]),
                 )
+                # If posting succeeded, store channel + ts so we can update later
+                if isinstance(res, dict) and res.get("ok"):
+                    try:
+                        update_photo_request(
+                            uid=int(created["uid"]),
+                            slackChannel=res.get("channel"),
+                            slackTs=res.get("ts"),
+                        )
+                        # also mirror status explicitly, though add_photo_request defaulted to submitted
+                        update_photo_request(
+                            uid=int(created["uid"]), status="submitted"
+                        )
+                    except Exception as _e:
+                        print(f"[photo_submit] storing slack ids failed: {_e}")
+
             except Exception as e:
                 print(f"[photo_submit] Channel post failed: {e}")
 
@@ -179,9 +196,67 @@ def api_claim(uid):
         print("Missing photogName or photogEmail.")
         return jsonify({"error": "photogName and photogEmail required"}), 400
 
+    # DB: mark as claimed
     updated = claim_photo_request(uid=int(uid), photogName=name, photogEmail=email)
     if not updated:
         return jsonify({"error": "not found"}), 400
+
+    label = _label_for_request(req or {})
+    send_claimer_confirmation(
+        request_id=request_id, label=label, user_id=user_id, email=claimer_email
+    )
+
+    # Update the original channel message to reflect 'claimed'
+    try:
+        from util.photo_request import update_message_blocks, build_blocks_from_request
+
+        ch = updated.get("slackChannel")
+        ts = updated.get("slackTs")
+        if ch and ts:
+            new_blocks = build_blocks_from_request(updated)
+
+            # remove any action buttons in the original post
+            new_blocks = [b for b in new_blocks if b.get("type") != "actions"]
+
+            # append claimed-by context to match Slack-claim flow
+            claimer_name = name or email
+            claimer_display = f"*Claimed by* {claimer_name}"
+            claimer_block = {
+                "type": "context",
+                "elements": [
+                    {"type": "mrkdwn", "text": f"✅ {claimer_display}"},
+                    {"type": "mrkdwn", "text": f"*Request ID:* `{uid}`"},
+                ],
+            }
+
+            # avoid duplicating context footer if it already exists
+            if not any(
+                "Claimed" in (el.get("text") or "")
+                for b in new_blocks
+                if b.get("type") == "context"
+                for el in b.get("elements", [])
+            ):
+                new_blocks.append(claimer_block)
+
+            update_message_blocks(ch, ts, new_blocks, text="Photo request (claimed)")
+
+    except Exception as e:
+        print(f"[api_claim] Slack update failed: {e}")
+
+    # notify the requester
+    try:
+        from util.photo_request import dm_user_by_email as _dm
+
+        submitter = updated.get("submitterEmail")
+        if submitter:
+            label = _label_for_request(req or {})
+            _dm(
+                email=submitter,
+                text=f"📸 Your photo request #{label} has been *claimed* by {name}.",
+            )
+    except Exception as e:
+        print(f"[api_claim] DM to requester failed: {e}")
+
     return jsonify({"message": "claimed", "request": updated}), 200
 
 
@@ -198,6 +273,20 @@ def api_complete(uid):
     updated = complete_photo_request(uid=int(uid), driveURL=driveURL)
     if not updated:
         return jsonify({"error": "not found"}), 400
+
+    # Update the Slack channel post to reflect "completed" and show Drive link
+    try:
+        from util.photo_request import update_message_blocks, build_blocks_from_request
+
+        ch = updated.get("slackChannel")
+        ts = updated.get("slackTs")
+        if ch and ts:
+            new_blocks = build_blocks_from_request(updated)
+            new_blocks = [b for b in new_blocks if b.get("type") != "actions"]
+            update_message_blocks(ch, ts, new_blocks, text="Photo request (completed)")
+    except Exception as e:
+        print(f"[api_complete] Slack update failed: {e}")
+
     return jsonify({"message": "completed", "request": updated}), 200
 
 
@@ -316,7 +405,7 @@ def api_fetch_submitted_email(email):
     requests = get_submitted_photo_requests_for_user(email)
 
     return render_template(
-        "/photo-req/photo_req_sheet.html",
+        "photo-req/photo_req_sheet.html",
         requests=requests,
         selection="Your Requests",
         hide_extras=True,

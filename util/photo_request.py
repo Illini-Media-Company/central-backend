@@ -4,7 +4,12 @@ from typing import Any, Dict, List, Optional
 
 from constants import SLACK_BOT_TOKEN, ENV
 from util.slackbot import app
-from db.photo_request import get_photo_request_by_uid, claim_photo_request
+from db.photo_request import (
+    get_photo_request_by_uid,
+    claim_photo_request,
+    complete_photo_request,
+    update_photo_request,
+)
 
 
 PHOTO_REQUESTS_CHANNEL_ID = "C09NCRWU8T1" if ENV == "dev" else "YYYYYY"
@@ -38,6 +43,23 @@ def dm_user_by_email(
         return {"ok": False, "error": str(e)}
 
 
+def dm_user_by_id(
+    user_id: str, text: str, blocks: Optional[List[Dict[str, Any]]] = None
+) -> Dict[str, Any]:
+    """DM a Slack user by their Slack user id."""
+    try:
+        res = app.client.chat_postMessage(
+            token=SLACK_BOT_TOKEN,
+            channel=user_id,
+            text=text,
+            blocks=blocks or None,
+        )
+        return {"ok": True, "channel": res["channel"], "ts": res["ts"]}
+    except Exception as e:
+        print(f"[photo_request] DM by id failed: {e}")
+        return {"ok": False, "error": str(e)}
+
+
 def _label_for_request(req: dict, default: str = "this request") -> str:
     """Choose a label for the request without ever returning 'False'."""
 
@@ -59,6 +81,63 @@ def _label_for_request(req: dict, default: str = "this request") -> str:
 
     # 3) fallback
     return default
+
+
+import json as _json
+
+
+def send_claimer_confirmation(
+    *,
+    request_id: int | str,
+    label: str,
+    user_id: str | None = None,
+    email: str | None = None,
+) -> dict:
+    """
+    Send the exact same DM to the claimer (API or Slack-claim).
+    Prefers DM by Slack user_id; falls back to email lookup, then email DM.
+    """
+    msg_text = (
+        f"✅ You claimed *{label}*.\n\n"
+        "When you finish shooting, press the button below, then reply in this chat with the "
+        "*Google Drive folder* link."
+    )
+
+    ready_blocks = [
+        {
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Click if Photo Request Completed and Ready to Send Google Drive Link",
+                        "emoji": True,
+                    },
+                    "style": "primary",
+                    "action_id": "photo_mark_ready",
+                    "value": _json.dumps({"request_id": str(request_id)}),
+                }
+            ],
+        }
+    ]
+
+    # Prefer user_id (always works if we have it)
+    if user_id:
+        return dm_user_by_id(user_id=user_id, text=msg_text, blocks=ready_blocks)
+
+    # Try to resolve user_id from email, then DM by id
+    if email:
+        try:
+            uid = _lookup_user_id_by_email(email)
+            if uid:
+                return dm_user_by_id(user_id=uid, text=msg_text, blocks=ready_blocks)
+        except Exception:
+            pass
+        # Fallback to email-based DM
+        return dm_user_by_email(email=email, text=msg_text, blocks=ready_blocks)
+
+    return {"ok": False, "error": "no_recipient"}
 
 
 def ensure_claim_button(
@@ -236,17 +315,9 @@ def _handle_claim_generic(ack, body, logger):
             pass
 
         label = _label_for_request(req or {})
-
-        #  DMs: claimer + requester
-        try:
-            # DM claimer
-            if claimer_email:
-                dm_user_by_email(
-                    email=claimer_email,
-                    text=f"✅ You claimed photo request: {label}",
-                )
-        except Exception as e:
-            logger.error(f"[photo_claim] Claimer DM failed: {e}")
+        send_claimer_confirmation(
+            request_id=request_id, label=label, user_id=user_id, email=claimer_email
+        )
 
         try:
             # DM requester
@@ -462,5 +533,130 @@ def build_blocks_from_request(req: dict) -> list:
             )
         except Exception:
             pass
-
+    # Status footer
+    status = (str(req.get("status") or "submitted")).lower()
+    photog = req.get("photogName") or req.get("photogEmail")
+    drive = req.get("driveURL")
+    status_text = f"*Status:* {status.capitalize()}"
+    if status == "claimed" and photog:
+        status_text += f" — by {photog}"
+    if status == "completed":
+        if photog:
+            status_text += f" — by {photog}"
+        if drive:
+            status_text += f" — <{drive}|Drive folder>"
+    blocks.extend(
+        [
+            {"type": "divider"},
+            {"type": "context", "elements": [{"type": "mrkdwn", "text": status_text}]},
+        ]
+    )
     return blocks
+
+
+_PENDING_DRIVE_LINK: dict[str, int] = {}
+
+
+def _extract_drive_url(text: str) -> Optional[str]:
+    import re
+
+    rx = re.compile(r"https?://drive\.google\.com/[^\s>]+")
+    m = rx.search(text or "")
+    return m.group(0) if m else None
+
+
+@app.action("photo_mark_ready")
+def _photo_mark_ready(ack, body, logger):
+    """User clicked 'Mark Ready' in DM. Ask them for the Drive folder link next."""
+    ack()
+    try:
+        user_id = body["user"]["id"]
+        act = body.get("actions", [{}])[0]
+        raw_val = act.get("value")
+        req_id = None
+        if raw_val:
+            req_id = json.loads(raw_val).get("request_id")
+        if not req_id:
+            dm_user_by_id(
+                user_id,
+                "Hmm—I couldn’t identify that request. Try again from the original message.",
+            )
+            return
+        _PENDING_DRIVE_LINK[user_id] = int(req_id)
+        dm_user_by_id(
+            user_id,
+            f"Great—please reply with the Google Drive *folder* link for request `#{req_id}`.\n"
+            "I’ll update the dashboard and channel message automatically.",
+        )
+    except Exception as e:
+        logger.error(f"[mark_ready] error: {e}")
+
+
+@app.event("message")
+def _on_dm_message(body, logger, event):
+    """Capture the next DM message from the claimer; if it contains a Drive link, complete the request."""
+    try:
+        ev = event
+        # Ignore bot messages / edits / channel messages
+        if ev.get("bot_id"):
+            return
+        if ev.get("channel_type") != "im":
+            return
+        user_id = ev.get("user")
+        text = (ev.get("text") or "").strip()
+        if not user_id or not text:
+            return
+        # Only act if we're waiting on this user's link
+        if user_id not in _PENDING_DRIVE_LINK:
+            return
+        drive = _extract_drive_url(text)
+        if not drive:
+            # prompt again if no link found
+            dm_user_by_id(
+                user_id, "I didn’t see a Google Drive link—please paste the folder URL."
+            )
+            return
+
+        uid = _PENDING_DRIVE_LINK.pop(user_id, None)
+        if not uid:
+            return
+
+        # Update DB: store link + mark completed
+        updated = complete_photo_request(uid=int(uid), driveURL=drive)
+        if not updated:
+            dm_user_by_id(
+                user_id, "I couldn't find that request to update. Ping an editor."
+            )
+            return
+
+        # Update the original channel message (strip actions)
+        try:
+            ch = updated.get("slackChannel")
+            ts = updated.get("slackTs")
+            if ch and ts:
+                new_blocks = build_blocks_from_request(updated)
+                new_blocks = [b for b in new_blocks if b.get("type") != "actions"]
+                update_message_blocks(
+                    ch, ts, new_blocks, text="Photo request (completed)"
+                )
+        except Exception as e:
+            logger.error(f"[dm_link] slack update failed: {e}")
+
+        # DM confirmations
+        dm_user_by_id(
+            user_id, f"✅ Recorded Drive folder for request `#{uid}`.\nThanks!"
+        )
+        # Notify requester that it’s done
+        try:
+            req = get_photo_request_by_uid(int(uid))
+            submitter = (req or {}).get("submitterEmail")
+            if submitter:
+                dm_user_by_email(
+                    submitter,
+                    f"📸 Your photo request `#{uid}` is *done*. Folder: {drive}",
+                )
+        except Exception as e:
+            logger.error(f"[dm_link] notify requester failed: {e}")
+
+    except Exception as e:
+        logger.error(f"[dm_link] handler error: {e}")
