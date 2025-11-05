@@ -82,5 +82,77 @@
     </div>
   </section>
 </main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const sendBtn = document.getElementById("send-btn");
+
+  sendBtn.addEventListener("click", async () => {
+    // Collect form data
+    const employeeEmails = document
+      .getElementById("employee-emails")
+      .value
+      .split("\n")
+      .map(e => e.trim())
+      .filter(e => e.length > 0);
+
+    const editorEmail = document.getElementById("editor-email").value.trim();
+    const managerEmail = document.getElementById("manager-email").value.trim();
+    const chiefEmail   = document.getElementById("chief-email").value.trim();
+
+    // Validate inputs
+    if (employeeEmails.length === 0) {
+      await showTextAlert("Missing Info", "Please enter at least one employee email.", "OK");
+      return;
+    }
+
+    if (!editorEmail || !managerEmail || !chiefEmail) {
+      await showTextAlert("Missing Info", "Please fill out all email fields before sending.", "OK");
+      return;
+    }
+
+    // Confirm before sending
+    const confirmed = await showButtonAlert(
+      "Confirm Send",
+      `Send agreements to ${employeeEmails.length} employee(s)?`,
+      "Send",
+      "Cancel"
+    );
+
+    if (!confirmed) return;
+
+    try {
+      showLoading("Sending agreements...");
+
+      const payload = {
+        emails: employeeEmails,
+        editor_email: editorEmail,
+        manager_email: managerEmail,
+        chief_email: chiefEmail
+      };
+
+      const response = await fetch("/onboarding/send_agreement", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      hideLoading();
+
+      if (response.ok && result.status === "success") {
+        await showTextAlert("Success", "Agreements sent successfully!", "OK");
+        showInfoBar("Agreements sent successfully!");
+      } else {
+        await showTextAlert("Error", "Something went wrong while sending agreements.", "OK");
+      }
+    } catch (err) {
+      hideLoading();
+      console.error(err);
+      await showTextAlert("Error", "Network error occurred. Please try again later.", "OK");
+    }
+  });
+});
 </script>
 {% endblock %}
