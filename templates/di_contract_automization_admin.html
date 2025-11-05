@@ -1,9 +1,13 @@
-{% extends 'base.html' %} {% block title %}Employee Agreement Portal{% endblock
-%} {% block extra_head %}
+{% extends 'base.html' %}
+{% block title %}Employee Agreement Portal{% endblock %}
+{% block extra_head %}
 <link rel="stylesheet" href="/static/styles/styles_index.css" />
 <link rel="stylesheet" href="/static/styles/styles_employee-agreement-admin.css" />
-{% include "partials/loading.html" %} {% include "partials/info_bar.html" %} {%
-endblock %} {% block content %}
+{% include "partials/loading.html" %}
+{% include "partials/info_bar.html" %}
+{% endblock %}
+
+{% block content %}
 <header>
   <h1>Employee Agreement Portal</h1>
   <p class="subtitle">Send and track employee contracts in one place.</p>
@@ -19,182 +23,150 @@ endblock %} {% block content %}
 </header>
 
 <main class="di-contract-main">
-  <!-- Left Side of the Admin Page -->
   <section class="left">
     <h2>Send Agreement Form</h2>
     <p class="note">Enter employee and signer details to begin.</p>
+
     <div class="form-group">
       <label for="employee-emails">New Employee Emails</label>
       <textarea
         id="employee-emails"
         placeholder="Enter one email per line&#10;e.g. jdoe@illinimedia.com&#10;asmith@illinimedia.com"
       ></textarea>
-      <p class="hint">
-        Tip: Paste multiple emails — one per line. All must end with
-        @illinimedia.com
-      </p>
+      <p class="hint">Tip: Paste multiple emails — one per line. All must end with @illinimedia.com</p>
     </div>
 
     <div class="form-group">
       <label for="editor-email">Editor Email</label>
-      <input
-        type="email"
-        id="editor-email"
-        placeholder="e.g. editor@illinimedia.com"
-        pattern="^[^@\\s]+@illinimedia\\.com$"
-        title="Email must end with @illinimedia.com"
-        required
-      />
+      <input type="email" id="editor-email" placeholder="e.g. editor@illinimedia.com" required />
     </div>
 
     <div class="form-group">
       <label for="manager-email">Manager Email</label>
-      <input
-        type="email"
-        id="manager-email"
-        placeholder="e.g. manager@illinimedia.com"
-        pattern="^[^@\\s]+@illinimedia\\.com$"
-        title="Email must end with @illinimedia.com"
-        required
-      />
+      <input type="email" id="manager-email" placeholder="e.g. manager@illinimedia.com" required />
     </div>
 
     <div class="form-group">
       <label for="chief-email">Chief Email</label>
-      <input
-        type="email"
-        id="chief-email"
-        placeholder="e.g. chief@illinimedia.com"
-        pattern="^[^@\\s]+@illinimedia\\.com$"
-        title="Email must end with @illinimedia.com"
-        required
-      />
+      <input type="email" id="chief-email" placeholder="e.g. chief@illinimedia.com" required />
+    </div>
+
+    <div class="form-group">
+      <label for="agreement-link">Agreement Link</label>
+      <textarea
+        id="agreement-link"
+        placeholder="Paste the agreement link here&#10;e.g. https://illinimedia.com/contracts/employee_agreement.pdf"
+      ></textarea>
+      <p class="hint">
+        This link will be included in the message for employees to read the agreement.
+      </p>
     </div>
 
     <button id="send-btn">Send Agreements</button>
   </section>
 
-  <!-- RIGHT SIDE: Pending Contracts That the current manager needs to sign -->
   <section class="right">
     <h2>Pending Contracts</h2>
     <div class="doc-box" id="pendingContracts">
       <p class="loading-text">Loading pending contracts...</p>
     </div>
   </section>
+</main>
 
-  <!-- SCRIPT BLOCK -->
-  <script>
-    // ===== LEFT SIDE: SEND AGREEMENTS =====
-    document.getElementById("send-btn").addEventListener("click", async () => {
-      const emailsText = document
-        .getElementById("employee-emails")
-        .value.trim();
-      const editorEmail = document.getElementById("editor-email").value.trim();
-      const managerEmail = document
-        .getElementById("manager-email")
-        .value.trim();
-      const chiefEmail = document.getElementById("chief-email").value.trim();
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const sendBtn = document.getElementById("send-btn");
 
-      const emails = emailsText
-        .split("\n")
-        .map((e) => e.trim())
-        .filter((e) => e);
+  sendBtn.addEventListener("click", async () => {
+    const employeeEmails = document.getElementById("employee-emails").value
+      .split("\n").map(e => e.trim()).filter(e => e.length > 0);
 
-      // Validate that all emails end with @illinimedia.com
-      const invalidEmails = emails.filter(
-        (e) => !e.endsWith("@illinimedia.com")
-      );
-      if (invalidEmails.length > 0) {
-        alert(
-          "The following emails are invalid:\n" +
-            invalidEmails.join("\n") +
-            "\n\nAll emails must end with @illinimedia.com"
-        );
-        return;
-      }
+    const editorEmail = document.getElementById("editor-email").value.trim();
+    const managerEmail = document.getElementById("manager-email").value.trim();
+    const chiefEmail = document.getElementById("chief-email").value.trim();
+    const agreementLink = document.getElementById("agreement-link").value.trim();
 
-      // Validate single-line email inputs
-      const singleEmails = [editorEmail, managerEmail, chiefEmail];
-      for (const e of singleEmails) {
-        if (!e.endsWith("@illinimedia.com")) {
-          alert("All signer emails must end with @illinimedia.com");
-          return;
-        }
-      }
-
-      if (emails.length === 0) {
-        alert("Please enter at least one employee email.");
-        return;
-      }
-
-      const payload = {
-        emails: emails,
-        editor: editorEmail,
-        manager: managerEmail,
-        chief: chiefEmail,
-      };
-
-      try {
-        const response = await fetch("/employee-agreement/send-notification", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": "{{ csrf_token() }}",
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (response.ok) {
-          alert("Agreements successfully sent!");
-        } else if (response.status === 500) {
-          alert("Failed to send: Some names do not exist in Slack");
-        } else {
-          const errorText = await response.text();
-          alert(`Failed to send: ${errorText}`);
-        }
-      } catch (error) {
-        console.error("Fetch error:", error);
-        alert("An error occurred while sending the agreements.");
-      }
-    });
-
-    async function fetchPendingContracts() {
-      const container = document.getElementById("pendingContracts");
-      try {
-        const response = await fetch(
-          "/employee-agreement/get-pending-signatures"
-        );
-        if (!response.ok) throw new Error("Failed to load pending contracts.");
-        const data = await response.json();
-        const pending = data.pending_agreements || [];
-
-        container.innerHTML = ""; // clear loading text
-
-        if (pending.length === 0) {
-          container.innerHTML =
-            "<p class='no-docs'>No contracts need further action currently</p>";
-          return;
-        }
-
-        // Display each pending contract
-        pending.forEach((doc) => {
-          const div = document.createElement("div");
-          div.classList.add("doc-item");
-          div.innerHTML = `
-            <h3>Employee: ${doc.employee_name || "Unknown"}</h3>
-            <p>Status: ${doc.status || "Pending"}</p>
-          `;
-          container.appendChild(div);
-        });
-      } catch (err) {
-        console.error(err);
-        container.innerHTML =
-          "<p class='error-text'>❌ Failed to load pending contracts.</p>";
-      }
+    // Validate inputs
+    if (employeeEmails.length === 0) {
+      await showTextAlert("Missing Info", "Please enter at least one employee email.", "OK");
+      return;
+    }
+    if (!editorEmail || !managerEmail || !chiefEmail || !agreementLink) {
+      await showTextAlert("Missing Info", "Please fill out all fields before sending.", "OK");
+      return;
     }
 
-    // Load pending contracts when page loads
-    fetchPendingContracts();
-  </script>
-</main>
+    const confirmed = await showButtonAlert(
+      "Confirm Send",
+      `Send agreements to ${employeeEmails.length} employee(s)?`,
+      "Send",
+      "Cancel"
+    );
+    if (!confirmed) return;
+
+    try {
+      showLoading("Sending agreements...");
+      const payload = {
+        emails: employeeEmails,
+        editor_email: editorEmail,
+        manager_email: managerEmail,
+        chief_email: chiefEmail,
+        agreement_link: agreementLink
+      };
+
+      const response = await fetch("/onboarding/send_agreement", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+      hideLoading();
+
+      if (response.ok && result.status === "success") {
+        await showTextAlert("Success", "Agreements sent successfully!", "OK");
+        showInfoBar("Agreements sent successfully!");
+        fetchPendingContracts();
+      } else {
+        await showTextAlert("Error", "Something went wrong while sending agreements.", "OK");
+      }
+    } catch (err) {
+      hideLoading();
+      console.error(err);
+      await showTextAlert("Error", "Network error occurred. Please try again later.", "OK");
+    }
+  });
+
+  // Load pending contracts
+  async function fetchPendingContracts() {
+    const container = document.getElementById("pendingContracts");
+    try {
+      const response = await fetch("/employee-agreement/get-pending-signatures");
+      if (!response.ok) throw new Error("Failed to load pending contracts.");
+      const data = await response.json();
+      const pending = data.pending_agreements || [];
+
+      container.innerHTML = "";
+      if (pending.length === 0) {
+        container.innerHTML = "<p class='no-docs'>No contracts need further action currently</p>";
+        return;
+      }
+      pending.forEach(doc => {
+        const div = document.createElement("div");
+        div.classList.add("doc-item");
+        div.innerHTML = `
+          <h3>Employee: ${doc.employee_name || "Unknown"}</h3>
+          <p>Status: ${doc.status || "Pending"}</p>
+        `;
+        container.appendChild(div);
+      });
+    } catch (err) {
+      console.error(err);
+      container.innerHTML = "<p class='error-text'>❌ Failed to load pending contracts.</p>";
+    }
+  }
+
+  fetchPendingContracts();
+});
+</script>
 {% endblock %}
