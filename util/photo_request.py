@@ -10,7 +10,10 @@ from db.photo_request import (
     complete_photo_request,
     update_photo_request,
 )
-
+from util.helpers.ap_datetime import (
+    ap_daydate,
+    ap_daydatetime,
+)
 
 PHOTO_REQUESTS_CHANNEL_ID = "C09NCRWU8T1" if ENV == "dev" else "YYYYYY"
 
@@ -22,6 +25,19 @@ def _lookup_user_id_by_email(email: str) -> Optional[str]:
     except Exception as e:
         print(f"[photo_request] users_lookupByEmail({email}) failed: {e}")
         return None
+
+
+def get_slack_emoji(destination: Optional[str]) -> str:
+    """Return a Slack emoji code based on the destination."""
+    dest_map = {
+        "The Daily Illini": "dailyillini",
+        "Illio Yearbook": "illio",
+        "WPGU": "wpgu",
+        "Chambana Eats": "chambanaeats",
+        "Marketing": "imc",
+        "Other": "imc",
+    }
+    return dest_map.get(destination, "imc")  # default to IMC
 
 
 def dm_user_by_email(
@@ -373,12 +389,14 @@ def build_blocks_from_request(req: dict) -> list:
     if dest == "The Daily Illini" and dept:
         di_dept_suffix = f" for *{dept}*"
 
+    slack_emoji = get_slack_emoji(dest)
+
     blocks: list = [
         {
             "type": "header",
             "text": {
                 "type": "plain_text",
-                "text": ":dailyillini: The Daily Illini",
+                "text": f":{slack_emoji}: {dest}",
                 "emoji": True,
             },
         },
@@ -462,7 +480,7 @@ def build_blocks_from_request(req: dict) -> list:
         dt = req.get("eventDateTime")
         if dt:
             try:
-                dt_text = dt.strftime("%A, %b %d at %I:%M %p").lstrip("0")
+                dt_text = ap_daydatetime(dt)
                 event_elems.append(
                     {
                         "type": "rich_text_section",
@@ -510,7 +528,7 @@ def build_blocks_from_request(req: dict) -> list:
     due = req.get("dueDate")
     if due:
         try:
-            due_text = due.strftime("%A, %b %d")
+            due_text = ap_daydate(due)
             blocks.extend(
                 [
                     {"type": "divider"},
