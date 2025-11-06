@@ -60,3 +60,7 @@ CONTEND_DOC_AUD = (
 )
 
 TOOLS_ADMIN_ACCESS_GROUPS = ["webdev", "imc-staff-webdev", "ceo", "student-managers"]
+
+# Slack channels (used by Slack bot)
+PHOTO_REQUESTS_CHANNEL_ID = "C09NCRWU8T1" if ENV == "dev" else "YYYYYY"
+COURTESY_REQUESTS_CHANNEL_ID = "C09R16GJZBP" if ENV == "dev" else "ZZZZZZ"

@@ -104,7 +104,7 @@
             <tr>
                 <td>
                     {% if r.photogName %}
-                        <a href="https://thedailyillini.slack.com/team/{{ r.photogEmail|email_to_slackid }}" target="_blank">{{ r.photogName }}</a>
+                        <a href="https://thedailyillini.slack.com/team/{{ r.photogSlackId }}" target="_blank">{{ r.photogName }}</a>
                         <br>
                         <p style="font-size: 0.75rem; margin-top: 0.25rem; margin-bottom: 0;">Claimed {{ r.claimTimestamp|ap_datetime }}</p>
 
@@ -126,7 +126,7 @@
                     {% endif %}
                 </td>
                 <td>
-                    <a href="https://thedailyillini.slack.com/team/{{ r.submitterEmail|email_to_slackid }}" target="_blank">{{ r.submitterName }}</a>
+                    <a href="https://thedailyillini.slack.com/team/{{ r.submitterSlackId }}" target="_blank">{{ r.submitterName }}</a>
                     <br>
                     <p style="font-size: 0.75rem; margin-top: 0.25rem; margin-bottom: 0;">Submitted {{ r.submissionTimestamp|ap_datetime }}</p>
                 </td>
@@ -219,74 +219,78 @@
         window.location.href = `/photo-requests/dashboard/${selection_param}`;
     }
 
-    // Event listener to enable button when a selection is made
-    const selectionInput = document.getElementById("filterInput");
-    selectionInput.addEventListener("input", () => {
-        if (selectionInput.value != "Select...") {
-            document.getElementById("filterInputButton").disabled = false;
+    window.addEventListener('load', () => {
+        // Event listener to enable button when a selection is made
+        const selectionInput = document.getElementById("filterInput");
+        if (selectionInput) {
+            selectionInput.addEventListener("input", () => {
+                if (selectionInput.value != "Select...") {
+                    document.getElementById("filterInputButton").disabled = false;
+                }
+            });
         }
-    });
 
-    // Event listener to handle search query input and column sorting
-    const searchInput = document.getElementById("searchQuery");
-    const table = document.querySelector("table");
-    const tbody = table.querySelector("tbody");
-    const headers = table.querySelectorAll("th");
+        // Event listener to handle search query input and column sorting
+        const searchInput = document.getElementById("searchQuery");
+        const table = document.querySelector("table");
+        const tbody = table.querySelector("tbody");
+        const headers = table.querySelectorAll("th");
 
-    searchInput.addEventListener("input", () => {
-        const query = searchInput.value.toLowerCase().trim();
+        searchInput.addEventListener("input", () => {
+            const query = searchInput.value.toLowerCase().trim();
 
-        Array.from(tbody.querySelectorAll("tr:not(:first-child)")).forEach(row => {
-            const text = row.innerText.toLowerCase();
-            row.style.display = text.includes(query) ? "" : "none";
+            Array.from(tbody.querySelectorAll("tr:not(:first-child)")).forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.display = text.includes(query) ? "" : "none";
+            });
         });
-    });
 
-    // Handle column sorting
-    headers.forEach((header, index) => {
-        header.style.cursor = "pointer";
-        const caret = header.querySelector("i");
-        let asc = true;
+        // Handle column sorting
+        headers.forEach((header, index) => {
+            header.style.cursor = "pointer";
+            const caret = header.querySelector("i");
+            let asc = true;
 
-        header.addEventListener("click", () => {
-            const rows = Array.from(tbody.querySelectorAll("tr:not(:first-child)")).filter(
-                row => row.style.display !== "none"
-            );
+            header.addEventListener("click", () => {
+                const rows = Array.from(tbody.querySelectorAll("tr:not(:first-child)")).filter(
+                    row => row.style.display !== "none"
+                );
 
-            rows.sort((a, b) => {
-                const cellA = a.children[index].innerText.trim().toLowerCase();
-                const cellB = b.children[index].innerText.trim().toLowerCase();
+                rows.sort((a, b) => {
+                    const cellA = a.children[index].innerText.trim().toLowerCase();
+                    const cellB = b.children[index].innerText.trim().toLowerCase();
 
-                const dateA = Date.parse(cellA);
-                const dateB = Date.parse(cellB);
+                    const dateA = Date.parse(cellA);
+                    const dateB = Date.parse(cellB);
 
-                let cmp;
+                    let cmp;
 
-                if (!isNaN(dateA) && !isNaN(dateB)) {
-                    cmp = dateA - dateB;
-                } else if (!isNaN(parseFloat(cellA)) && !isNaN(parseFloat(cellB))) {
-                    cmp = Number(cellA) - Number(cellB);
-                } else {
-                    cmp = cellA.localeCompare(cellB);
+                    if (!isNaN(dateA) && !isNaN(dateB)) {
+                        cmp = dateA - dateB;
+                    } else if (!isNaN(parseFloat(cellA)) && !isNaN(parseFloat(cellB))) {
+                        cmp = Number(cellA) - Number(cellB);
+                    } else {
+                        cmp = cellA.localeCompare(cellB);
+                    }
+
+                    return asc ? cmp : -cmp;
+                });
+
+                rows.forEach(row => tbody.appendChild(row));
+
+                headers.forEach(h => {
+                    const c = h.querySelector("i");
+                    if (c) {
+                        c.className = "bi bi-caret-up";
+                    }
+                });
+
+                if (caret) {
+                    caret.className = asc ? "bi bi-caret-up-fill" : "bi bi-caret-down-fill";
                 }
 
-                return asc ? cmp : -cmp;
+                asc = !asc;
             });
-
-            rows.forEach(row => tbody.appendChild(row));
-
-            headers.forEach(h => {
-                const c = h.querySelector("i");
-                if (c) {
-                    c.className = "bi bi-caret-up";
-                }
-            });
-
-            if (caret) {
-                caret.className = asc ? "bi bi-caret-up-fill" : "bi bi-caret-down-fill";
-            }
-
-            asc = !asc;
         });
     });
 </script>

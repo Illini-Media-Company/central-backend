@@ -6,10 +6,13 @@ from datetime import datetime
 
 from util.photo_request import (
     build_blocks_from_request,
+    update_message_blocks,
     dm_user_by_email,
     post_photo_blocks,
     _label_for_request,
     send_claimer_confirmation,
+    claim_request,
+    complete_request,
 )
 
 
@@ -36,8 +39,6 @@ photo_request_routes = Blueprint(
 
 
 # /dashboard — render photo requests based on selection (defaults to all requests)
-
-
 @photo_request_routes.route("/dashboard/<selection>", methods=["GET"])
 @photo_request_routes.route(
     "/dashboard", defaults={"selection": "all"}, methods=["GET"]
@@ -140,42 +141,57 @@ def api_submit():
         created = add_photo_request(**kwargs)
 
         # Build the Slack blocks from the saved record
-        blocks = build_blocks_from_request(created)
+        blocks, fallback_text = build_blocks_from_request(created)
 
         # DM the requester a copy (always)
         try:
             dm_user_by_email(
                 email=created["submitterEmail"],
-                text="We got your request. Here’s a copy of your submission.",
+                text="I sent your request to the photo staff! I'll also send you updates, like when it's claimed or completed! Here’s a copy of your submission:",
+            )
+            res = dm_user_by_email(
+                email=created["submitterEmail"],
+                text=fallback_text,
                 blocks=blocks,
             )
+
+            # If posting succeeded, store channel + ts so we can update later
+            if isinstance(res, dict) and res.get("ok"):
+                try:
+                    update_photo_request(
+                        uid=int(created["uid"]),
+                        submitSlackChannel=res.get("channel"),
+                        submitSlackTs=res.get("ts"),
+                    )
+
+                except Exception as _e:
+                    print(f"[photo_submit] storing slack ids failed: {_e}")
+                    return {"ok": False, "error": "no_recipient"}
         except Exception as e:
             print(f"[photo_submit] DM failed: {e}")
 
-        # Post to photo channel unless it's a courtesy request
-        if not created.get("isCourtesy"):
-            try:
-                res = post_photo_blocks(
-                    blocks=blocks,
-                    request_id=str(created["uid"]),
-                )
-                # If posting succeeded, store channel + ts so we can update later
-                if isinstance(res, dict) and res.get("ok"):
-                    try:
-                        update_photo_request(
-                            uid=int(created["uid"]),
-                            slackChannel=res.get("channel"),
-                            slackTs=res.get("ts"),
-                        )
-                        # also mirror status explicitly, though add_photo_request defaulted to submitted
-                        update_photo_request(
-                            uid=int(created["uid"]), status="submitted"
-                        )
-                    except Exception as _e:
-                        print(f"[photo_submit] storing slack ids failed: {_e}")
+        # Post to the photo channel
+        try:
+            res = post_photo_blocks(
+                blocks=blocks,
+                request_id=str(created["uid"]),
+                courtesy=bool(created["isCourtesy"]),
+            )
+            # If posting succeeded, store channel + ts so we can update later
+            if isinstance(res, dict) and res.get("ok"):
+                try:
+                    update_photo_request(
+                        uid=int(created["uid"]),
+                        slackChannel=res.get("channel"),
+                        slackTs=res.get("ts"),
+                        status="submitted",  # also mirror status explicitly, though add_photo_request defaulted to submitted
+                    )
 
-            except Exception as e:
-                print(f"[photo_submit] Channel post failed: {e}")
+                except Exception as _e:
+                    print(f"[photo_submit] storing slack ids failed: {_e}")
+
+        except Exception as e:
+            print(f"[photo_submit] Channel post failed: {e}")
 
         return jsonify({"message": "submitted", "request": created}), 200
 
@@ -196,68 +212,8 @@ def api_claim(uid):
         print("Missing photogName or photogEmail.")
         return jsonify({"error": "photogName and photogEmail required"}), 400
 
-    # DB: mark as claimed
-    updated = claim_photo_request(uid=int(uid), photogName=name, photogEmail=email)
-    if not updated:
-        return jsonify({"error": "not found"}), 400
-
-    label = _label_for_request(req or {})
-    send_claimer_confirmation(
-        request_id=request_id, label=label, user_id=user_id, email=claimer_email
-    )
-
-    # Update the original channel message to reflect 'claimed'
-    try:
-        from util.photo_request import update_message_blocks, build_blocks_from_request
-
-        ch = updated.get("slackChannel")
-        ts = updated.get("slackTs")
-        if ch and ts:
-            new_blocks = build_blocks_from_request(updated)
-
-            # remove any action buttons in the original post
-            new_blocks = [b for b in new_blocks if b.get("type") != "actions"]
-
-            # append claimed-by context to match Slack-claim flow
-            claimer_name = name or email
-            claimer_display = f"*Claimed by* {claimer_name}"
-            claimer_block = {
-                "type": "context",
-                "elements": [
-                    {"type": "mrkdwn", "text": f"✅ {claimer_display}"},
-                    {"type": "mrkdwn", "text": f"*Request ID:* `{uid}`"},
-                ],
-            }
-
-            # avoid duplicating context footer if it already exists
-            if not any(
-                "Claimed" in (el.get("text") or "")
-                for b in new_blocks
-                if b.get("type") == "context"
-                for el in b.get("elements", [])
-            ):
-                new_blocks.append(claimer_block)
-
-            update_message_blocks(ch, ts, new_blocks, text="Photo request (claimed)")
-
-    except Exception as e:
-        print(f"[api_claim] Slack update failed: {e}")
-
-    # notify the requester
-    try:
-        from util.photo_request import dm_user_by_email as _dm
-
-        submitter = updated.get("submitterEmail")
-        if submitter:
-            label = _label_for_request(req or {})
-            _dm(
-                email=submitter,
-                text=f"📸 Your photo request #{label} has been *claimed* by {name}.",
-            )
-    except Exception as e:
-        print(f"[api_claim] DM to requester failed: {e}")
-
-    return jsonify({"message": "claimed", "request": updated}), 200
+    res, status = claim_request(uid=int(uid), name=name, email=email)
+    return jsonify(res), status
 
 
 # /api/<uid>/complete — complete with Drive URL
@@ -270,24 +226,7 @@ def api_complete(uid):
     if not driveURL:
         return jsonify({"error": "driveURL required"}), 400
 
-    updated = complete_photo_request(uid=int(uid), driveURL=driveURL)
-    if not updated:
-        return jsonify({"error": "not found"}), 400
-
-    # Update the Slack channel post to reflect "completed" and show Drive link
-    try:
-        from util.photo_request import update_message_blocks, build_blocks_from_request
-
-        ch = updated.get("slackChannel")
-        ts = updated.get("slackTs")
-        if ch and ts:
-            new_blocks = build_blocks_from_request(updated)
-            new_blocks = [b for b in new_blocks if b.get("type") != "actions"]
-            update_message_blocks(ch, ts, new_blocks, text="Photo request (completed)")
-    except Exception as e:
-        print(f"[api_complete] Slack update failed: {e}")
-
-    return jsonify({"message": "completed", "request": updated}), 200
+    res, status = complete_request(uid=int(uid), driveURL=driveURL)
 
 
 # /api/<uid>/remove — delete a request
@@ -335,66 +274,6 @@ def api_fetch_all():
     if not requests:
         return "Requests not found.", 400
     return requests, 200
-
-
-# # /api/fetch/completed — get all completed requests
-# @photo_request_routes.route("/api/fetch/completed", methods=["GET"])
-# @login_required
-# def api_fetch_completed():
-#     requests = get_completed_photo_requests()
-#     if not requests:
-#         return "Requests not found.", 400
-#     return requests, 200
-
-
-# # /api/fetch/in-progress — get all in-progess requests
-# @photo_request_routes.route("/api/fetch/in-progress", methods=["GET"])
-# @login_required
-# def api_fetch_inprogress():
-#     requests = get_inprogress_photo_requests()
-#     if not requests:
-#         return "Requests not found.", 400
-#     return requests, 200
-
-
-# # /api/fetch/claimed — get all claimed requests
-# @photo_request_routes.route("/api/fetch/claimed", methods=["GET"])
-# @login_required
-# def api_fetch_claimed():
-#     requests = get_claimed_photo_requests()
-#     if not requests:
-#         return "Requests not found.", 400
-#     return requests, 200
-
-
-# # /api/fetch/unclaimed — get all unclaimed requests
-# @photo_request_routes.route("/api/fetch/unclaimed", methods=["GET"])
-# @login_required
-# def api_fetch_unclaimed():
-#     requests = get_unclaimed_photo_requests()
-#     if not requests:
-#         return "Requests not found.", 400
-#     return requests, 200
-
-
-# # /api/fetch/claimed/<email> — get all requests claimed by a user with specified email
-# @photo_request_routes.route("/api/fetch/claimed/<email>", methods=["GET"])
-# @login_required
-# def api_fetch_claimed_email(email):
-#     requests = get_claimed_photo_requests_for_user(email)
-#     if not requests:
-#         return "Requests not found.", 400
-#     return requests, 200
-
-
-# # /api/fetch/completed/<email> — get all requests completed by a user with specified email
-# @photo_request_routes.route("/api/fetch/completed/<email>", methods=["GET"])
-# @login_required
-# def api_fetch_completed_email(email):
-#     requests = get_completed_photo_requests_for_user(email)
-#     if not requests:
-#         return "Requests not found.", 400
-#     return requests, 200
 
 
 # /api/fetch/submitted/<email> — get all requests submitted by a user with specified email

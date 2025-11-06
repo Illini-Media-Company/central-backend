@@ -1,6 +1,7 @@
 from __future__ import annotations
 import os, json
 from typing import Any, Dict, List, Optional
+from datetime import datetime
 
 from constants import SLACK_BOT_TOKEN, ENV
 from util.slackbot import app
@@ -9,13 +10,14 @@ from db.photo_request import (
     claim_photo_request,
     complete_photo_request,
     update_photo_request,
+    get_id_from_slack_claim_ts,
 )
-from util.helpers.ap_datetime import (
-    ap_daydate,
-    ap_daydatetime,
-)
+from util.helpers.ap_datetime import ap_daydate, ap_daydatetime, ap_datetime
 
-PHOTO_REQUESTS_CHANNEL_ID = "C09NCRWU8T1" if ENV == "dev" else "YYYYYY"
+from constants import (
+    PHOTO_REQUESTS_CHANNEL_ID,
+    COURTESY_REQUESTS_CHANNEL_ID,
+)
 
 
 # helpers
@@ -99,13 +101,11 @@ def _label_for_request(req: dict, default: str = "this request") -> str:
     return default
 
 
-import json as _json
-
-
 def send_claimer_confirmation(
     *,
     request_id: int | str,
     label: str,
+    submitter_id: str,
     user_id: str | None = None,
     email: str | None = None,
 ) -> dict:
@@ -114,44 +114,40 @@ def send_claimer_confirmation(
     Prefers DM by Slack user_id; falls back to email lookup, then email DM.
     """
     msg_text = (
-        f"✅ You claimed *{label}*.\n\n"
-        "When you finish shooting, press the button below, then reply in this chat with the "
-        "*Google Drive folder* link."
+        f"✅ You claimed *{label}* submitted by <@{submitter_id}>.\n\n"
+        "When the photos are ready and uploaded, reply to this message with the *Google Drive folder* link, or use the IMC Console."
     )
-
-    ready_blocks = [
-        {
-            "type": "actions",
-            "elements": [
-                {
-                    "type": "button",
-                    "text": {
-                        "type": "plain_text",
-                        "text": "Click if Photo Request Completed and Ready to Send Google Drive Link",
-                        "emoji": True,
-                    },
-                    "style": "primary",
-                    "action_id": "photo_mark_ready",
-                    "value": _json.dumps({"request_id": str(request_id)}),
-                }
-            ],
-        }
-    ]
 
     # Prefer user_id (always works if we have it)
     if user_id:
-        return dm_user_by_id(user_id=user_id, text=msg_text, blocks=ready_blocks)
+        res = dm_user_by_id(user_id=user_id, text=msg_text)
 
     # Try to resolve user_id from email, then DM by id
-    if email:
+    elif email:
         try:
             uid = _lookup_user_id_by_email(email)
             if uid:
-                return dm_user_by_id(user_id=uid, text=msg_text, blocks=ready_blocks)
+                res = dm_user_by_id(user_id=uid, text=msg_text)
+            else:
+                # Fallback to email-based DM
+                res = dm_user_by_email(email=email, text=msg_text)
         except Exception:
-            pass
-        # Fallback to email-based DM
-        return dm_user_by_email(email=email, text=msg_text, blocks=ready_blocks)
+            # Fallback to email-based DM
+            res = dm_user_by_email(email=email, text=msg_text)
+
+    if isinstance(res, dict) and res.get("ok"):
+        try:
+            update_photo_request(
+                uid=int(request_id),
+                claimSlackChannel=res.get("channel"),
+                claimSlackTs=res.get("ts"),
+            )
+
+            return {"ok": True, "message": res}
+
+        except Exception as _e:
+            print(f"[photo_submit] storing slack ids failed: {_e}")
+            return {"ok": False, "error": "no_recipient"}
 
     return {"ok": False, "error": "no_recipient"}
 
@@ -192,9 +188,17 @@ def post_photo_blocks(
     blocks: List[Dict[str, Any]],
     request_id: str,
     channel_id: Optional[str] = None,
+    courtesy: Optional[bool],
     fallback_text: str = "New photo request",
 ) -> Dict[str, Any]:
+    """
+    Post a photo request to Slack, ensure a Claim button exists,
+    and persist Slack identifiers (channel, ts) onto the request
+    so we can update the message later.
+    """
     ch = channel_id or PHOTO_REQUESTS_CHANNEL_ID
+    if courtesy:
+        ch = COURTESY_REQUESTS_CHANNEL_ID
     if not ch:
         return {"ok": False, "error": "photo_channel_not_configured"}
     final_blocks = ensure_claim_button(blocks, request_id=request_id)
@@ -205,6 +209,7 @@ def post_photo_blocks(
             text=fallback_text,  # Slack requires a text fallback
             blocks=final_blocks,
         )
+
         return {"ok": True, "channel": res["channel"], "ts": res["ts"]}
     except Exception as e:
         print(f"[photo_request] post_photo_blocks failed: {e}")
@@ -232,27 +237,31 @@ def update_message_blocks(
 def _handle_claim_generic(ack, body, logger):
     """
     Handles both 'photo_claim' and legacy 'actionId-0' button presses.
-    - Updates DB (claim_photo_request)
-    - Updates Slack message (remove actions, add 'Claimed by')
-    - confirm to claimer
-    - DMs claimer + requester
+    - Updates DB (claimTimestamp/photog*)
+    - Rebuilds Slack message from updated record (so Status footer flips to Claimed)
+    - Sends confirmation DM to claimer
+    - DMs requester and updates original requstor message
     """
     ack()
     logger.info(body)
 
     try:
-        user_id = body["user"]["id"]  # Slack ID of claimer
-        channel_id = body["channel"]["id"]  # Channel where the message lives
-        message = body["message"]
-        message_ts = message["ts"]
-        original_blocks = message.get("blocks", [])
+        channel_id = (body.get("channel") or {}).get("id") or (
+            body.get("container") or {}
+        ).get("channel_id")
+        message_ts = (body.get("message") or {}).get("ts") or (
+            body.get("container") or {}
+        ).get("message_ts")
+        user_id = (body.get("user") or {}).get("id")
 
-        # request_id is embedded in the button value (JSON)
-        act = body.get("actions", [{}])[0]
+        if not user_id:
+            logger.error("[photo_claim] Missing user_id in action payload")
+            return
+
+        # Parse request_id from the button value
+        act = (body.get("actions") or [{}])[0]
         raw_val = act.get("value")
         try:
-            import json
-
             request_id = str(json.loads(raw_val).get("request_id")) if raw_val else None
         except Exception:
             request_id = None
@@ -264,60 +273,26 @@ def _handle_claim_generic(ack, body, logger):
                     token=SLACK_BOT_TOKEN,
                     channel=channel_id,
                     user=user_id,
-                    text="Sorry — couldn’t identify this request.",
+                    text="Sorry, I couldn’t identify this request.",
                 )
             except Exception:
                 pass
             return
 
-        #  fetch the existing request
-        try:
-            req = get_photo_request_by_uid(int(request_id))
-        except Exception as e:
-            logger.error(f"[photo_claim] DB fetch failed for {request_id}: {e}")
-            req = None
-
-        #  get claimer email/name from Slack
+        # Get claimer identity from Slack (email may be None if hidden)
         try:
             user_info = app.client.users_info(token=SLACK_BOT_TOKEN, user=user_id)
             claimer_profile = user_info.get("user", {}).get("profile", {})
-            claimer_email = claimer_profile.get("email")  # may be None if hidden
+            claimer_email = claimer_profile.get("email")
             claimer_name = user_info.get("user", {}).get("real_name") or f"<@{user_id}>"
         except Exception as e:
             logger.error(f"[photo_claim] users_info failed for {user_id}: {e}")
             claimer_email, claimer_name = None, f"<@{user_id}>"
 
-        #  update DB
         try:
-            claim_photo_request(
-                uid=int(request_id),
-                photogName=claimer_name,
-                photogEmail=claimer_email,
-            )
-            logger.info(
-                f"[photo_claim] DB updated: request {request_id} → {claimer_name} ({claimer_email})"
-            )
+            claim_request(uid=int(request_id), name=claimer_name, email=claimer_email)
         except Exception as e:
-            logger.error(f"[photo_claim] DB update failed for {request_id}: {e}")
-
-        # update the Slack message: strip actions, append context 'claimed by'
-        new_blocks = [b for b in original_blocks if b.get("type") != "actions"]
-        # add a context footer
-        new_blocks.append(
-            {
-                "type": "context",
-                "elements": [
-                    {"type": "mrkdwn", "text": f"✅ *Claimed by* <@{user_id}>"},
-                    {"type": "mrkdwn", "text": f"*Request ID:* `{request_id}`"},
-                ],
-            }
-        )
-        try:
-            update_message_blocks(
-                channel_id, message_ts, new_blocks, text="Photo request (claimed)"
-            )
-        except Exception as e:
-            logger.error(f"[photo_claim] chat_update failed: {e}")
+            logger.error(f"[photo_claim] DB claim_request failed for {request_id}: {e}")
 
         #  ephemeral confirmation to claimer
         try:
@@ -329,22 +304,6 @@ def _handle_claim_generic(ack, body, logger):
             )
         except Exception:
             pass
-
-        label = _label_for_request(req or {})
-        send_claimer_confirmation(
-            request_id=request_id, label=label, user_id=user_id, email=claimer_email
-        )
-
-        try:
-            # DM requester
-            submitter_email = (req or {}).get("submitterEmail")
-            if submitter_email:
-                dm_user_by_email(
-                    email=submitter_email,
-                    text=f"📸 Your photo request '{label}' has been claimed by <@{user_id}>.",
-                )
-        except Exception as e:
-            logger.error(f"[photo_claim] Requester DM failed: {e}")
 
     except Exception as e:
         logger.error(f"[photo_slack] claim handler error: {e}")
@@ -362,10 +321,11 @@ def _photo_claim_legacy(ack, body, logger):
     _handle_claim_generic(ack, body, logger)
 
 
-def build_blocks_from_request(req: dict) -> list:
+def build_blocks_from_request(req: dict) -> tuple[list, str]:
     """
     Build Slack Block Kit for a photo request with your exact style and rules.
     Enforces that all 'text' values are strings (Slack requirement).
+    Also returns a simple string version for screen readers.
     """
 
     # --- helper: to safe string or None if empty
@@ -377,7 +337,7 @@ def build_blocks_from_request(req: dict) -> list:
         return s if s else None
 
     # submitter mention
-    submitter_mention = _st(req.get("submitterName")) or "Someone"
+    submitter_name = _st(req.get("submitterName")) or "Someone"
     submitter_slack_id = _st(req.get("submitterSlackId"))
     if submitter_slack_id:
         submitter_mention = f"<@{submitter_slack_id}>"
@@ -391,6 +351,7 @@ def build_blocks_from_request(req: dict) -> list:
 
     slack_emoji = get_slack_emoji(dest)
 
+    # Create the first block with the header displaying the destination and the person who submitted the request
     blocks: list = [
         {
             "type": "header",
@@ -410,6 +371,11 @@ def build_blocks_from_request(req: dict) -> list:
         {"type": "divider"},
     ]
 
+    # Add header to the fallback text
+    fallback_text = (
+        f"New photo request from {submitter_name} for {dest}{di_dept_suffix}."
+    )
+
     # --- main rich_text content
     rich_elems = []
 
@@ -417,6 +383,7 @@ def build_blocks_from_request(req: dict) -> list:
 
     rich_elems = []
 
+    # Append the title for the "memo" section
     # Title always shown now (never "False")
     rich_elems.append(
         {
@@ -425,6 +392,7 @@ def build_blocks_from_request(req: dict) -> list:
         }
     )
 
+    # Append the memo
     memo = _st(req.get("memo"))
     if memo:
         rich_elems.append(
@@ -433,14 +401,33 @@ def build_blocks_from_request(req: dict) -> list:
                 "elements": [{"type": "text", "text": memo}],
             }
         )
+        fallback_text += f"\nMemo: {memo}"
 
+    # Append the "Specific details" section
+    specific_details = _st(req.get("specificDetails"))
+    if specific_details:
+        rich_elems.extend(
+            [
+                {
+                    "type": "rich_text_section",
+                    "elements": [{"type": "text", "text": "Specific details:"}],
+                },
+                {
+                    "type": "rich_text_quote",
+                    "elements": [{"type": "text", "text": specific_details}],
+                },
+            ]
+        )
+        fallback_text += f"\nSpecific details: {specific_details}"
+
+    # Append the "More info" section (if present)
     more_info = _st(req.get("moreInfo"))
     if more_info:
         rich_elems.extend(
             [
                 {
                     "type": "rich_text_section",
-                    "elements": [{"type": "text", "text": "Additional details:"}],
+                    "elements": [{"type": "text", "text": "More info:"}],
                 },
                 {
                     "type": "rich_text_quote",
@@ -448,11 +435,12 @@ def build_blocks_from_request(req: dict) -> list:
                 },
             ]
         )
+        fallback_text += f"\nMore Info: {more_info}"
 
     if rich_elems:
         blocks.append({"type": "rich_text", "elements": rich_elems})
 
-    # Reference link
+    # Append the reference link as a hyperlink
     reference_url = _st(req.get("referenceURL"))
     if reference_url:
         blocks.append(
@@ -464,8 +452,9 @@ def build_blocks_from_request(req: dict) -> list:
                 },
             }
         )
+        fallback_text += f"\nReference URL: {reference_url}"
 
-    # Event details (only if there is a specific event)
+    # Append event details (only if there is a specific event)
     if req.get("specificEvent"):
         event_elems = [
             {
@@ -475,8 +464,9 @@ def build_blocks_from_request(req: dict) -> list:
                 ],
             }
         ]
+        fallback_text += f"\nEvent Details:"
 
-        # datetime
+        # Append the date and time of the event (formatted to AP style)
         dt = req.get("eventDateTime")
         if dt:
             try:
@@ -487,10 +477,11 @@ def build_blocks_from_request(req: dict) -> list:
                         "elements": [{"type": "text", "text": dt_text}],
                     }
                 )
+                fallback_text += f"\n\tDate/Time: {dt_text}"
             except Exception:
                 pass  # if it's not a datetime, skip
 
-        # location (italic)
+        # Append the location of the event (italic)
         loc = _st(req.get("eventLocation"))
         if loc:
             event_elems.append(
@@ -501,8 +492,9 @@ def build_blocks_from_request(req: dict) -> list:
                     ],
                 }
             )
+            fallback_text += f"\n\tLocation: {loc}"
 
-        # press credentials line (only if truthy)
+        # Append the press credential requestor line (only if truthy)
         if bool(req.get("pressPass")):
             requester = _st(req.get("pressPassRequester"))
             line = "Press credentials required"
@@ -519,16 +511,19 @@ def build_blocks_from_request(req: dict) -> list:
                     "elements": [{"type": "text", "text": line}],
                 }
             )
+            fallback_text += (
+                f"\n\tPress credentials required, requested by {requester}."
+            )
 
         if len(event_elems) > 1:
             blocks.append({"type": "divider"})
             blocks.append({"type": "rich_text", "elements": event_elems})
 
-    # Due date
+    # Append the due date
     due = req.get("dueDate")
     if due:
         try:
-            due_text = ap_daydate(due)
+            due_text = ap_daydate(due)  # Convert to AP style
             blocks.extend(
                 [
                     {"type": "divider"},
@@ -549,18 +544,22 @@ def build_blocks_from_request(req: dict) -> list:
                     },
                 ]
             )
+            fallback_text += f"\nPhoto Due Date: {due_text}"
         except Exception:
             pass
-    # Status footer
+
+    # Status footer (display if the request is submitted/claimed/completed)
     status = (str(req.get("status") or "submitted")).lower()
-    photog = req.get("photogName") or req.get("photogEmail")
+    photog = req.get("photogEmail")
+    photog_slack_id = req.get("photogSlackId")
     drive = req.get("driveURL")
     status_text = f"*Status:* {status.capitalize()}"
+    fallback_text += f"\nStatus: {status.capitalize()}"
     if status == "claimed" and photog:
-        status_text += f" — by {photog}"
+        status_text += f" — by <@{photog_slack_id}>"
     if status == "completed":
         if photog:
-            status_text += f" — by {photog}"
+            status_text += f" — by <@{photog_slack_id}>"
         if drive:
             status_text += f" — <{drive}|Drive folder>"
     blocks.extend(
@@ -569,10 +568,8 @@ def build_blocks_from_request(req: dict) -> list:
             {"type": "context", "elements": [{"type": "mrkdwn", "text": status_text}]},
         ]
     )
-    return blocks
 
-
-_PENDING_DRIVE_LINK: dict[str, int] = {}
+    return blocks, fallback_text
 
 
 def _extract_drive_url(text: str) -> Optional[str]:
@@ -583,36 +580,10 @@ def _extract_drive_url(text: str) -> Optional[str]:
     return m.group(0) if m else None
 
 
-@app.action("photo_mark_ready")
-def _photo_mark_ready(ack, body, logger):
-    """User clicked 'Mark Ready' in DM. Ask them for the Drive folder link next."""
-    ack()
-    try:
-        user_id = body["user"]["id"]
-        act = body.get("actions", [{}])[0]
-        raw_val = act.get("value")
-        req_id = None
-        if raw_val:
-            req_id = json.loads(raw_val).get("request_id")
-        if not req_id:
-            dm_user_by_id(
-                user_id,
-                "Hmm—I couldn’t identify that request. Try again from the original message.",
-            )
-            return
-        _PENDING_DRIVE_LINK[user_id] = int(req_id)
-        dm_user_by_id(
-            user_id,
-            f"Great—please reply with the Google Drive *folder* link for request `#{req_id}`.\n"
-            "I’ll update the dashboard and channel message automatically.",
-        )
-    except Exception as e:
-        logger.error(f"[mark_ready] error: {e}")
-
-
 @app.event("message")
 def _on_dm_message(body, logger, event):
     """Capture the next DM message from the claimer; if it contains a Drive link, complete the request."""
+    print("Got a message")
     try:
         ev = event
         # Ignore bot messages / edits / channel messages
@@ -624,57 +595,232 @@ def _on_dm_message(body, logger, event):
         text = (ev.get("text") or "").strip()
         if not user_id or not text:
             return
-        # Only act if we're waiting on this user's link
-        if user_id not in _PENDING_DRIVE_LINK:
+
+        # We only care about thread replies
+        thread_ts = None
+        if "thread_ts" in ev and ev.get("thread_ts") != ev.get("ts"):
+            thread_ts = ev.get(
+                "thread_ts"
+            )  # ts of the parent message, the one we stored in the db
+
+        channel = ev.get("channel")
+
+        if not thread_ts or not channel:
             return
+
+        print(channel, thread_ts)
+
+        req = get_id_from_slack_claim_ts(channel, thread_ts)
+
+        if not req:
+            return  # Simply return if this message isn't one we care about so we don't break other code
+
+        # Make sure the link is a valid Google Drive URL
         drive = _extract_drive_url(text)
         if not drive:
-            # prompt again if no link found
-            dm_user_by_id(
-                user_id, "I didn’t see a Google Drive link—please paste the folder URL."
-            )
-            return
-
-        uid = _PENDING_DRIVE_LINK.pop(user_id, None)
-        if not uid:
-            return
-
-        # Update DB: store link + mark completed
-        updated = complete_photo_request(uid=int(uid), driveURL=drive)
-        if not updated:
-            dm_user_by_id(
-                user_id, "I couldn't find that request to update. Ping an editor."
-            )
-            return
-
-        # Update the original channel message (strip actions)
-        try:
-            ch = updated.get("slackChannel")
-            ts = updated.get("slackTs")
-            if ch and ts:
-                new_blocks = build_blocks_from_request(updated)
-                new_blocks = [b for b in new_blocks if b.get("type") != "actions"]
-                update_message_blocks(
-                    ch, ts, new_blocks, text="Photo request (completed)"
+            # Let the user know if the link was invalid
+            try:
+                res = app.client.chat_postMessage(
+                    token=SLACK_BOT_TOKEN,
+                    channel=user_id,
+                    text=f"That doesn't look like a Google Drive link to me, could you try again?",
+                    thread_ts=thread_ts,
                 )
-        except Exception as e:
-            logger.error(f"[dm_link] slack update failed: {e}")
+                return {"ok": True, "channel": res["channel"], "ts": res["ts"]}
+            except Exception as e:
+                print(f"[dm_link] DM by id failed: {e}")
+                return {"ok": False, "error": str(e)}
 
-        # DM confirmations
-        dm_user_by_id(
-            user_id, f"✅ Recorded Drive folder for request `#{uid}`.\nThanks!"
-        )
-        # Notify requester that it’s done
-        try:
-            req = get_photo_request_by_uid(int(uid))
-            submitter = (req or {}).get("submitterEmail")
-            if submitter:
-                dm_user_by_email(
-                    submitter,
-                    f"📸 Your photo request `#{uid}` is *done*. Folder: {drive}",
+        # Check if the request has already been completed
+        if req.get("status") == "completed":
+            # Let the user know it was already completed
+            try:
+                res = app.client.chat_postMessage(
+                    token=SLACK_BOT_TOKEN,
+                    channel=user_id,
+                    text=f"This request has already been completed.",
+                    thread_ts=thread_ts,
                 )
+                return {"ok": True, "channel": res["channel"], "ts": res["ts"]}
+            except Exception as e:
+                print(f"[dm_link] DM by id failed: {e}")
+                return {"ok": False, "error": str(e)}
+
+        # Complete the request
+        try:
+            complete_request(uid=req.get("uid"), driveURL=drive)
         except Exception as e:
-            logger.error(f"[dm_link] notify requester failed: {e}")
+            logger.error(
+                f"[dm_link] DB complete_request failed for {req.get('uid')}: {e}"
+            )
 
     except Exception as e:
         logger.error(f"[dm_link] handler error: {e}")
+
+
+def claim_request(uid: int, name: str, email: str):
+    # DB: mark as claimed
+    updated = claim_photo_request(uid=int(uid), photogName=name, photogEmail=email)
+    if not updated:
+        return {"error": "not found"}, 400
+
+    # DM claimer
+    try:
+        label = _label_for_request(updated)
+        send_claimer_confirmation(
+            request_id=uid,
+            label=label,
+            email=email,
+            submitter_id=updated.get("submitterSlackId"),
+        )
+    except Exception as e:
+        print(f"[api_claim] DM to claimer failed: {e}")
+        return {"error": f"[api_claim] DM to claimer failed: {e}"}, 400
+
+    # Update the original channel message to reflect 'claimed'
+    try:
+        ch = updated.get("slackChannel")
+        ts = updated.get("slackTs")
+        if ch and ts:
+            new_blocks, fallback_text = build_blocks_from_request(updated)
+
+            # remove any action buttons in the original post
+            new_blocks = [b for b in new_blocks if b.get("type") != "actions"]
+
+            # append claimed-by context to match Slack-claim flow
+            claimer_name = name or email
+            claimer_block = {
+                "type": "context",
+                "elements": [
+                    {"type": "mrkdwn", "text": f"✅ *Claimed by* {claimer_name}"},
+                    {"type": "mrkdwn", "text": f"*Request ID:* `{uid}`"},
+                ],
+            }
+
+            # avoid duplicating context footer if it already exists
+            has_claimed_footer = any(
+                (el.get("text") or "").lower().find("claimed by") != -1
+                for b in new_blocks
+                if b.get("type") == "context"
+                for el in b.get("elements", [])
+            )
+            if not has_claimed_footer:
+                new_blocks.append(claimer_block)
+
+            update_message_blocks(ch, ts, new_blocks, text=fallback_text)
+
+            # Now update the original message that was sent to the submitter
+            sub_ch = updated.get("submitSlackChannel")
+            sub_ts = updated.get("submitSlackTs")
+            if sub_ch and sub_ts:
+                update_message_blocks(sub_ch, sub_ts, new_blocks, text=fallback_text)
+
+    except Exception as e:
+        print(f"[api_claim] Slack update failed: {e}")
+        return {"error": f"[api_claim] Slack update failed: {e}"}, 400
+
+    # notify the requester
+    try:
+        submitter = updated.get("submitterEmail")
+        if submitter:
+            label = _label_for_request(updated)
+            dm_user_by_email(
+                email=submitter,
+                text=f"📸 Your photo request *{label}* has been *claimed* by {name}.",
+            )
+    except Exception as e:
+        print(f"[api_claim] DM to requester failed: {e}")
+        return {"error": f"[api_claim] DM to requester failed: {e}"}, 400
+
+    return {"message": "claimed", "request": updated}, 200
+
+
+def complete_request(uid: int, driveURL: str):
+    # DB: mark as completed
+    updated = complete_photo_request(uid=int(uid), driveURL=driveURL)
+    if not updated:
+        return {"error": "not found"}, 400
+
+    # Update the original channel message to reflect 'completed'
+    try:
+        ch = updated.get("slackChannel")
+        ts = updated.get("slackTs")
+        if ch and ts:
+            new_blocks, fallback_text = build_blocks_from_request(updated)
+
+            # remove any action buttons in the original post
+            new_blocks = [b for b in new_blocks if b.get("type") != "actions"]
+
+            # append claimed-by context to match Slack-claim flow
+            claimer_block = {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"✅ *Completed on {ap_datetime(datetime.now())}*",
+                    },
+                    {"type": "mrkdwn", "text": f"*Request ID:* `{uid}`"},
+                ],
+            }
+
+            # avoid duplicating context footer if it already exists
+            has_claimed_footer = any(
+                (el.get("text") or "").lower().find("claimed by") != -1
+                for b in new_blocks
+                if b.get("type") == "context"
+                for el in b.get("elements", [])
+            )
+            if not has_claimed_footer:
+                new_blocks.append(claimer_block)
+
+            update_message_blocks(ch, ts, new_blocks, text=fallback_text)
+
+            # Now update the original message that was sent to the submitter
+            sub_ch = updated.get("submitSlackChannel")
+            sub_ts = updated.get("submitSlackTs")
+            if sub_ch and sub_ts:
+                update_message_blocks(sub_ch, sub_ts, new_blocks, text=fallback_text)
+
+    except Exception as e:
+        print(f"[api_complete] Slack update failed: {e}")
+        return {"error": f"[api_complete] Slack update failed: {e}"}, 400
+
+    # notify the requester (If it's not for DI or Illio)
+    try:
+        submitter = updated.get("submitterEmail")
+        if submitter:
+            label = _label_for_request(updated)
+            message_text = f"✅ Your photo request *{label}* has been completed!"
+
+            if updated.get("destination") not in ("The Daily Illini", "Illio Yearbook"):
+                message_text += "Here's the link to your photos: "
+                message_text += updated.get("driveURL")
+
+            dm_user_by_email(
+                email=submitter,
+                text=message_text,
+            )
+    except Exception as e:
+        print(f"[api_complete] DM to requester failed: {e}")
+        return {"error": f"[api_complete] DM to requester failed: {e}"}, 400
+
+    # Reply in a thread to the claimer's message
+    claim_ch = updated.get("claimSlackChannel")
+    claim_ts = updated.get("claimSlackTs")
+    if claim_ch and claim_ts:
+        try:
+            res = app.client.chat_postMessage(
+                token=SLACK_BOT_TOKEN,
+                channel=updated.get("photogSlackId"),
+                text=f"✅ I got the link! This photo request is now complete.\n{updated.get('driveURL')}",
+                thread_ts=claim_ts,
+            )
+            return {"ok": True, "channel": res["channel"], "ts": res["ts"]}
+        except Exception as e:
+            print(f"[photo_request] DM by id failed: {e}")
+            return {"ok": False, "error": str(e)}
+
+    return {
+        "ok": False,
+        "error": "[api_complete] Could not send confirmation to claimer.",
+    }, 400

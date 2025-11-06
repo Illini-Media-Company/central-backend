@@ -2,6 +2,8 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from google.cloud import ndb
 
+from util.helpers.email_to_slackid import email_to_slackid
+
 from . import client
 
 
@@ -19,6 +21,9 @@ class PhotoRequest(ndb.Model):
     # Submitter information
     submitterEmail = ndb.StringProperty(required=True)
     submitterName = ndb.StringProperty(required=True)
+    submitterSlackId = ndb.StringProperty(required=True)
+    submitSlackChannel = ndb.StringProperty()
+    submitSlackTs = ndb.StringProperty()
 
     # Target destination & DI department
     destination = ndb.StringProperty(required=True)  # e.g., DI, Illio, WPGU, Other
@@ -41,10 +46,14 @@ class PhotoRequest(ndb.Model):
     pressPass = ndb.BooleanProperty(required=False)
     pressPassRequester = ndb.StringProperty(required=False)
 
-    # Assignment and completion
+    # Photographer that claimed the request
     photogEmail = ndb.StringProperty()
     photogName = ndb.StringProperty()
+    photogSlackId = ndb.StringProperty()
     claimTimestamp = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
+    claimSlackChannel = ndb.StringProperty()
+    claimSlackTs = ndb.StringProperty()
+
     completedTimestamp = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
     driveURL = ndb.StringProperty()
 
@@ -87,6 +96,7 @@ def add_photo_request(
         entity = PhotoRequest(
             submissionTimestamp=datetime.now(ZoneInfo("America/Chicago")),
             submitterEmail=submitterEmail,
+            submitterSlackId=email_to_slackid(submitterEmail),
             submitterName=submitterName,
             destination=destination,
             department=department,
@@ -110,7 +120,7 @@ def add_photo_request(
 def get_all_photo_requests():
     """Return all requests (ordered by submission date)."""
     with client.context():
-        requests = PhotoRequest.query().order(PhotoRequest.submissionTimestamp).fetch()
+        requests = PhotoRequest.query().order(-PhotoRequest.submissionTimestamp).fetch()
 
     return [request.to_dict() for request in requests]
 
@@ -120,7 +130,7 @@ def get_unclaimed_photo_requests():
     with client.context():
         requests = (
             PhotoRequest.query(PhotoRequest.claimTimestamp == None)
-            .order(PhotoRequest.submissionTimestamp)
+            .order(-PhotoRequest.submissionTimestamp)
             .fetch()
         )
 
@@ -130,7 +140,7 @@ def get_unclaimed_photo_requests():
 def get_claimed_photo_requests():
     """Return all claimed requests (ordered by submission date)."""
     with client.context():
-        requests = PhotoRequest.query().order(PhotoRequest.submissionTimestamp).fetch()
+        requests = PhotoRequest.query().order(-PhotoRequest.submissionTimestamp).fetch()
 
     return [
         request.to_dict() for request in requests if request.claimTimestamp is not None
@@ -140,7 +150,7 @@ def get_claimed_photo_requests():
 def get_completed_photo_requests():
     """Return all completed requests (ordered by submission date)."""
     with client.context():
-        requests = PhotoRequest.query().order(PhotoRequest.submissionTimestamp).fetch()
+        requests = PhotoRequest.query().order(-PhotoRequest.submissionTimestamp).fetch()
 
     return [
         request.to_dict()
@@ -155,7 +165,7 @@ def get_inprogress_photo_requests():
         requests = (
             PhotoRequest.query()
             .filter(PhotoRequest.completedTimestamp == None)
-            .order(PhotoRequest.submissionTimestamp)
+            .order(-PhotoRequest.submissionTimestamp)
             .fetch()
         )
 
@@ -169,7 +179,7 @@ def get_claimed_photo_requests_for_user(email):
     with client.context():
         requests = (
             PhotoRequest.query(PhotoRequest.photogEmail == email)
-            .order(PhotoRequest.submissionTimestamp)
+            .order(-PhotoRequest.submissionTimestamp)
             .fetch()
         )
 
@@ -181,7 +191,7 @@ def get_completed_photo_requests_for_user(email):
     with client.context():
         requests = (
             PhotoRequest.query(PhotoRequest.photogEmail == email)
-            .order(PhotoRequest.submissionTimestamp)
+            .order(-PhotoRequest.submissionTimestamp)
             .fetch()
         )
 
@@ -197,7 +207,7 @@ def get_submitted_photo_requests_for_user(email):
     with client.context():
         requests = (
             PhotoRequest.query(PhotoRequest.submitterEmail == email)
-            .order(PhotoRequest.submissionTimestamp)
+            .order(-PhotoRequest.submissionTimestamp)
             .fetch()
         )
 
@@ -251,7 +261,9 @@ def claim_photo_request(uid, photogName, photogEmail):
             return None
         entity.photogName = photogName
         entity.photogEmail = photogEmail
+        entity.photogSlackId = email_to_slackid(photogEmail)
         entity.claimTimestamp = datetime.now(ZoneInfo("America/Chicago"))
+        entity.status = "claimed"
         entity.put()
         return entity.to_dict()
 
@@ -268,8 +280,20 @@ def complete_photo_request(uid, driveURL):
             return None
         entity.driveURL = driveURL
         entity.completedTimestamp = datetime.now(ZoneInfo("America/Chicago"))
+        entity.status = "completed"
         entity.put()
         return entity.to_dict()
+
+
+def get_id_from_slack_claim_ts(ch, thread_ts):
+    with client.context():
+        req = PhotoRequest.query(
+            PhotoRequest.claimSlackChannel == ch, PhotoRequest.claimSlackTs == thread_ts
+        ).get()
+
+        if req:
+            return req.to_dict()
+        return None
 
 
 def delete_photo_request(uid):
