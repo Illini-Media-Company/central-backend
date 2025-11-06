@@ -32,9 +32,11 @@
 
 <hr >
 
-<button class="button-secondary" onclick="window.location.href='/photo-requests/api/fetch/submitted/{{ current_user.email }}'">
-    View my previous requests
-</button>
+<a style="text-decoration: none; display: block; color: inherit;" href="/photo-requests/api/fetch/submitted/{{ current_user.email }}" target="_blank">
+    <button class="button-secondary">
+        View my previous requests
+    </button>
+</a>
 
 <hr style="margin-bottom: 2rem;">
 
