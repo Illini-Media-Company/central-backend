@@ -87,7 +87,7 @@ endblock %} {% block content %}
 
   // Sign agreement
   signBtn.addEventListener("click", () => {
-    signature.textContent = "Signed by you";
+    signature.textContent = currentDoc.userId;
     signBtn.disabled = true;
     sendBtn.disabled = false;
   });
