@@ -30,7 +30,7 @@
 {% block content %}
 <h1>Submit a Photo Request</h1>
 
-<hr >
+<hr>
 
 <a style="text-decoration: none; display: block; color: inherit;" href="/photo-requests/api/fetch/submitted/{{ current_user.email }}" target="_blank">
     <button class="button-secondary">
@@ -165,6 +165,14 @@
         nameInput.value = "{{ current_user.name }}";
     });
 
+    document.addEventListener("DOMContentLoaded", () => {
+        const msg = sessionStorage.getItem("infoBarMessage");
+        if (msg) {
+            showInfoBar(msg);
+            sessionStorage.removeItem("infoBarMessage"); // Clear it after showing
+        }
+    });
+
     // Submit the photo request
     async function submitRequest(event) {
         event.preventDefault();
@@ -251,6 +259,7 @@
         // Check if it was successful
         if (response.status === 200) {
             // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", "Request successfully submitted."); // Safe so we can display after reload
             window.location.reload();
         } else {
             // Alert of the error

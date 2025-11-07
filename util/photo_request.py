@@ -815,10 +815,10 @@ def complete_request(uid: int, driveURL: str):
                 text=f"✅ I got the link! This photo request is now complete.\n{updated.get('driveURL')}",
                 thread_ts=claim_ts,
             )
-            return {"ok": True, "channel": res["channel"], "ts": res["ts"]}
+            return {"ok": True, "channel": res["channel"], "ts": res["ts"]}, 200
         except Exception as e:
             print(f"[photo_request] DM by id failed: {e}")
-            return {"ok": False, "error": str(e)}
+            return {"ok": False, "error": str(e)}, 400
 
     return {
         "ok": False,
