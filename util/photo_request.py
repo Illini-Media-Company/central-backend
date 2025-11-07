@@ -793,7 +793,7 @@ def complete_request(uid: int, driveURL: str):
             message_text = f"✅ Your photo request *{label}* has been completed!"
 
             if updated.get("destination") not in ("The Daily Illini", "Illio Yearbook"):
-                message_text += "Here's the link to your photos: "
+                message_text += " Here's the link to your photos: "
                 message_text += updated.get("driveURL")
 
             dm_user_by_email(

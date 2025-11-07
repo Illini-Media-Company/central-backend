@@ -227,6 +227,7 @@ def api_complete(uid):
         return jsonify({"error": "driveURL required"}), 400
 
     res, status = complete_request(uid=int(uid), driveURL=driveURL)
+    return jsonify(res), status
 
 
 # /api/<uid>/remove — delete a request
