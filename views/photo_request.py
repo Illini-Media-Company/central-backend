@@ -8,18 +8,15 @@ and completing photo requests.
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required
 from util.security import restrict_to
-from zoneinfo import ZoneInfo
 from datetime import datetime
 
 from util.slackbots.photo_request import (
     build_blocks_from_request,
-    update_message_blocks,
     dm_user_by_email,
     post_photo_blocks,
-    _label_for_request,
-    send_claimer_confirmation,
     claim_request,
     complete_request,
+    delete_request,
 )
 
 
@@ -266,10 +263,9 @@ def api_complete(uid):
 @restrict_to(["photo", "imc-staff-webdev"])
 def api_remove(uid):
     """Deletes a photo request by UID."""
-    ok = delete_photo_request(int(uid))
-    if not ok:
-        return jsonify({"error": "not found"}), 400
-    return jsonify({"message": "deleted"}), 200
+
+    res, status = delete_request(uid=int(uid))
+    return jsonify(res), status
 
 
 # /api/<uid>/modify — update an existing request

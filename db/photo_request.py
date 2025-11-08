@@ -335,14 +335,14 @@ def get_id_from_slack_claim_ts(ch, thread_ts):
 def delete_photo_request(uid):
     """Delete a single PhotoRequest by UID.
 
-    Returns True if deleted, False if not found.
+    Returns the deleted entity if deleted, False if not found.
     """
     with client.context():
         entity = PhotoRequest.get_by_id(uid)
         if entity is None:
             return False
         entity.key.delete()
-        return True
+        return entity.to_dict()
 
 
 def delete_all_photo_requests():

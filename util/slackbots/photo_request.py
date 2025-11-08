@@ -3,6 +3,7 @@ import json
 import re
 from typing import Any, Dict, List, Optional
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from constants import SLACK_BOT_TOKEN, ENV
 from util.slackbots._slackbot import app
@@ -11,6 +12,7 @@ from db.photo_request import (
     complete_photo_request,
     update_photo_request,
     get_id_from_slack_claim_ts,
+    delete_photo_request,
 )
 from util.helpers.ap_datetime import ap_daydate, ap_daydatetime, ap_datetime
 
@@ -789,8 +791,8 @@ def complete_request(uid: int, driveURL: str):
                 update_message_blocks(sub_ch, sub_ts, new_blocks, text=fallback_text)
 
     except Exception as e:
-        print(f"[api_complete] Slack update failed: {e}")
-        return {"error": f"[api_complete] Slack update failed: {e}"}, 400
+        print(f"[complete_request] Slack update failed: {e}")
+        return {"error": f"[complete_request] Slack update failed: {e}"}, 400
 
     # notify the requester. Only include the link if its not for The DI or Illio
     try:
@@ -808,8 +810,8 @@ def complete_request(uid: int, driveURL: str):
                 text=message_text,
             )
     except Exception as e:
-        print(f"[api_complete] DM to requester failed: {e}")
-        return {"error": f"[api_complete] DM to requester failed: {e}"}, 400
+        print(f"[complete_request] DM to requester failed: {e}")
+        return {"error": f"[complete_request] DM to requester failed: {e}"}, 400
 
     # Reply in a thread to the claimer's message
     claim_ch = updated.get("claimSlackChannel")
@@ -829,5 +831,105 @@ def complete_request(uid: int, driveURL: str):
 
     return {
         "ok": False,
-        "error": "[api_complete] Could not send confirmation to claimer.",
+        "error": "[complete_request] Could not send confirmation to claimer.",
     }, 400
+
+
+def delete_request(uid: int):
+    """
+    Delete a photo request. Called only by API. Deleted the request via the
+    database. Updates the original message sent to both the channel and the
+    requestor to reflect the new deleted status as well as the date and time
+    that it was deleted. Notifies the requestor that their request has been
+    deleted. If someone claimed the request, it notifies them that it was
+    deleted and deletes the original confirmation message.
+
+    :param uid: The UID of the request to delete
+    :type uid: int
+    :returns: Message and HTTP status code
+    :rtype: tuple
+    """
+
+    # DB: delete request
+    deleted = delete_photo_request(uid=int(uid))
+    if not deleted:
+        return {"error": "not found"}, 400
+
+    label = _label_for_request(deleted)
+
+    # Update the original message sent to the channel and the requestor to reflect 'deleted'
+    try:
+        ch = deleted.get("slackChannel")
+        ts = deleted.get("slackTs")
+
+        if ch and ts:
+            blocks: list = [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"🗑️ This photo request \"*{label}*\" was deleted on {ap_datetime(datetime.now(ZoneInfo('America/Chicago')))}.",
+                    },
+                }
+            ]
+            fallback_text = f'🗑️ This photo request "*{label}*" was deleted.'
+
+            update_message_blocks(ch, ts, blocks, text=fallback_text)
+
+            # Now update the original message that was sent to the submitter
+            sub_ch = deleted.get("submitSlackChannel")
+            sub_ts = deleted.get("submitSlackTs")
+            if sub_ch and sub_ts:
+                update_message_blocks(sub_ch, sub_ts, blocks, text=fallback_text)
+
+    except Exception as e:
+        print(f"[delete_request] Slack update failed: {e}")
+        return {"error": f"[delete_request] Slack update failed: {e}"}, 400
+
+    # Notify the requestor
+    try:
+        submitter = deleted.get("submitterSlackId")
+        if submitter:
+            message_text = f'🗑️ Your photo request "*{label}*" was deleted. If you believe this was an error, please contact a photo editor.'
+
+            dm_user_by_id(
+                user_id=submitter,
+                text=message_text,
+            )
+    except Exception as e:
+        print(f"[delete_request] DM to requester failed: {e}")
+        return {"error": f"[delete_request] DM to requester failed: {e}"}, 400
+
+    # Notify the claimer and delete the claim confirmation message (if the request was claimed)
+    claimer = deleted.get("photogSlackId")
+
+    if claimer:
+        try:
+            # Delete the message originally telling them that they claimed a photo
+            ch = deleted.get("claimSlackChannel")
+            ts = deleted.get("claimSlackTs")
+
+            app.client.chat_delete(
+                token=SLACK_BOT_TOKEN,
+                channel=ch,
+                ts=ts,
+            )
+
+        except Exception as e:
+            print(f"[delete_request] Deleting message to claimer failed: {e}")
+            return {
+                "error": f"[delete_request] Deleting message to claimer failed: {e}"
+            }, 400
+
+        try:
+            message_text = f'🗑️ A photo request you claimed "*{label}*" was deleted.'
+
+            dm_user_by_id(
+                user_id=claimer,
+                text=message_text,
+            )
+        except Exception as e:
+            print(f"[delete_request] DM to claimer failed: {e}")
+            return {"error": f"[delete_request] DM to claimer failed: {e}"}, 400
+
+    return {"ok": True, "message": "Request successfully deleted."}, 200
