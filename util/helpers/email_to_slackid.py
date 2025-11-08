@@ -1,4 +1,4 @@
-from util.slackbot import app
+from util.slackbots._slackbot import app
 
 
 def email_to_slackid(email):

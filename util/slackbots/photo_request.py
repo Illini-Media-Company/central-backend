@@ -1,12 +1,12 @@
 from __future__ import annotations
-import os, json
+import json
+import re
 from typing import Any, Dict, List, Optional
 from datetime import datetime
 
 from constants import SLACK_BOT_TOKEN, ENV
-from util.slackbot import app
+from util.slackbots._slackbot import app
 from db.photo_request import (
-    get_photo_request_by_uid,
     claim_photo_request,
     complete_photo_request,
     update_photo_request,
@@ -114,7 +114,7 @@ def send_claimer_confirmation(
     Prefers DM by Slack user_id; falls back to email lookup, then email DM.
     """
     msg_text = (
-        f"✅ You claimed *{label}* submitted by <@{submitter_id}>.\n\n"
+        f'✅ You claimed "*{label}*" submitted by <@{submitter_id}>.\n\n'
         "When the photos are ready and uploaded, reply to this message with the *Google Drive folder* link, or use the IMC Console."
     )
 
@@ -556,10 +556,14 @@ def build_blocks_from_request(req: dict) -> tuple[list, str]:
     status_text = f"*Status:* {status.capitalize()}"
     fallback_text += f"\nStatus: {status.capitalize()}"
     if status == "claimed" and photog:
-        status_text += f" — by <@{photog_slack_id}>"
+        claim_time = req.get("claimTimestamp")
+        claim_time = ap_datetime(claim_time)
+        status_text += f" by <@{photog_slack_id}> on {claim_time}"
     if status == "completed":
         if photog:
-            status_text += f" — by <@{photog_slack_id}>"
+            complete_time = req.get("completedTimestamp")
+            complete_time = ap_datetime(complete_time)
+            status_text += f" by <@{photog_slack_id}> on {complete_time}"
         if drive:
             status_text += f" — <{drive}|Drive folder>"
     blocks.extend(
@@ -573,7 +577,11 @@ def build_blocks_from_request(req: dict) -> tuple[list, str]:
 
 
 def _extract_drive_url(text: str) -> Optional[str]:
-    import re
+    """
+    Parses a Google Drive link out of a message body.
+    If the message contains a valid Drive URL, this function
+    returns the URL. Otherwise, it returns None
+    """
 
     rx = re.compile(r"https?://drive\.google\.com/[^\s>]+")
     m = rx.search(text or "")
@@ -582,8 +590,18 @@ def _extract_drive_url(text: str) -> Optional[str]:
 
 @app.event("message")
 def _on_dm_message(body, logger, event):
-    """Capture the next DM message from the claimer; if it contains a Drive link, complete the request."""
-    print("Got a message")
+    """
+    Function is called on Slack message events. When a message is posted
+    in a channel that the bot user is in, this function will run.
+
+    Handles replies in a thread by the photographer when they complete
+    a photo request. First checks that the message was in a direct message
+    channel, then checks that it was a reply in a thread. Checks that the
+    parent message in the thread is relevant to any photo request. Validates
+    that the user provided input is a valid Google Drive URL, then replies
+    to confirm receipt of the message. Also completes the photo request.
+    """
+
     try:
         ev = event
         # Ignore bot messages / edits / channel messages
@@ -659,6 +677,22 @@ def _on_dm_message(body, logger, event):
 
 
 def claim_request(uid: int, name: str, email: str):
+    """
+    Claim a photo request. Called by both the API and when a user clicks the claim
+    button in Slack. Claims the request via the database. DMs the claimer a
+    confirmation message. Updates the original message sent in the channel to
+    reflect the new claimed status as well as the claimer and timestamp. Notifies
+    the requestor that their request has been claimed.
+
+    :param uid: The UID of the request to claim
+    :type uid: int
+    :param name: The name of the photographer that claimed the request
+    :type name: string
+    :param email: The email address of the photographer that claimed the request
+    :returns: Message and HTTP status code
+    :rtype: tuple
+    """
+
     # DB: mark as claimed
     updated = claim_photo_request(uid=int(uid), photogName=name, photogEmail=email)
     if not updated:
@@ -687,26 +721,6 @@ def claim_request(uid: int, name: str, email: str):
             # remove any action buttons in the original post
             new_blocks = [b for b in new_blocks if b.get("type") != "actions"]
 
-            # append claimed-by context to match Slack-claim flow
-            claimer_name = name or email
-            claimer_block = {
-                "type": "context",
-                "elements": [
-                    {"type": "mrkdwn", "text": f"✅ *Claimed by* {claimer_name}"},
-                    {"type": "mrkdwn", "text": f"*Request ID:* `{uid}`"},
-                ],
-            }
-
-            # avoid duplicating context footer if it already exists
-            has_claimed_footer = any(
-                (el.get("text") or "").lower().find("claimed by") != -1
-                for b in new_blocks
-                if b.get("type") == "context"
-                for el in b.get("elements", [])
-            )
-            if not has_claimed_footer:
-                new_blocks.append(claimer_block)
-
             update_message_blocks(ch, ts, new_blocks, text=fallback_text)
 
             # Now update the original message that was sent to the submitter
@@ -726,7 +740,7 @@ def claim_request(uid: int, name: str, email: str):
             label = _label_for_request(updated)
             dm_user_by_email(
                 email=submitter,
-                text=f"📸 Your photo request *{label}* has been *claimed* by {name}.",
+                text=f"📸 Your photo request \"*{label}*\" has been *claimed* by <@{updated.get('photogSlackId')}>.",
             )
     except Exception as e:
         print(f"[api_claim] DM to requester failed: {e}")
@@ -736,6 +750,21 @@ def claim_request(uid: int, name: str, email: str):
 
 
 def complete_request(uid: int, driveURL: str):
+    """
+    Complete a photo request. Called by both the API and when a user replies to a
+    confirmation message in Slack. Completes the request via the database. Updates
+    the original message sent to both the channel and the requestor to reflect the
+    new completed status as well as the photographer and completion timestamp.
+    Notifies the requestor that their request has been completed. Replies in a
+    thread to the claimer confirming that the request has been completed.
+
+    :param uid: The UID of the request to complete
+    :type uid: int
+    :param driveURL: The URL of the folder containing the photos
+    :type driveURL: string
+    :returns: Message and HTTP status code
+    :rtype: tuple
+    """
     # DB: mark as completed
     updated = complete_photo_request(uid=int(uid), driveURL=driveURL)
     if not updated:
@@ -751,28 +780,6 @@ def complete_request(uid: int, driveURL: str):
             # remove any action buttons in the original post
             new_blocks = [b for b in new_blocks if b.get("type") != "actions"]
 
-            # append claimed-by context to match Slack-claim flow
-            claimer_block = {
-                "type": "context",
-                "elements": [
-                    {
-                        "type": "mrkdwn",
-                        "text": f"✅ *Completed on {ap_datetime(datetime.now())}*",
-                    },
-                    {"type": "mrkdwn", "text": f"*Request ID:* `{uid}`"},
-                ],
-            }
-
-            # avoid duplicating context footer if it already exists
-            has_claimed_footer = any(
-                (el.get("text") or "").lower().find("claimed by") != -1
-                for b in new_blocks
-                if b.get("type") == "context"
-                for el in b.get("elements", [])
-            )
-            if not has_claimed_footer:
-                new_blocks.append(claimer_block)
-
             update_message_blocks(ch, ts, new_blocks, text=fallback_text)
 
             # Now update the original message that was sent to the submitter
@@ -785,12 +792,12 @@ def complete_request(uid: int, driveURL: str):
         print(f"[api_complete] Slack update failed: {e}")
         return {"error": f"[api_complete] Slack update failed: {e}"}, 400
 
-    # notify the requester (If it's not for DI or Illio)
+    # notify the requester. Only include the link if its not for The DI or Illio
     try:
         submitter = updated.get("submitterEmail")
         if submitter:
             label = _label_for_request(updated)
-            message_text = f"✅ Your photo request *{label}* has been completed!"
+            message_text = f'✅ Your photo request "*{label}*" has been completed!'
 
             if updated.get("destination") not in ("The Daily Illini", "Illio Yearbook"):
                 message_text += " Here's the link to your photos: "
