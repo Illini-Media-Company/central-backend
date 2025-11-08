@@ -32,6 +32,13 @@ def send_notification():
 """
 
 
+@employee_agreement_routes.route("/get-current-user", methods=["GET"])
+@login_required
+def getCurrentUser():
+    # Return JSON with email and name
+    return {"name": current_user.name, "email": current_user.email}, 200
+
+
 @employee_agreement_routes.route("/send-notification", methods=["POST"])
 @login_required
 def send_notification():

@@ -1,37 +1,38 @@
-{% extends 'base.html' %}
-{% block title %}Employee Agreement Portal{% endblock %}
-{% block extra_head %}
+{% extends 'base.html' %} {% block title %}Employee Agreement Portal{% endblock
+%} {% block extra_head %}
 <link rel="stylesheet" href="/static/styles/styles_index.css" />
 <link rel="stylesheet" href="/static/DI_Contract_Automization.css" />
-{% include "partials/loading.html" %}
-{% include "partials/info_bar.html" %}
-{% endblock %}
-
-{% block content %}
+{% include "partials/loading.html" %} {% include "partials/info_bar.html" %} {%
+endblock %} {% block content %}
 <header>
   <h1>Employee Agreement Portal</h1>
   <p class="subtitle">Send and track employee contracts in one place.</p>
 
   <div class="dashboard-btn-container">
-    <button class="dashboard-btn" onclick="window.location.href='/onboarding/dashboard'">
+    <button
+      class="dashboard-btn"
+      onclick="window.location.href='/onboarding/dashboard'"
+    >
       Go to Dashboard
-    </button>    
+    </button>
   </div>
 </header>
 
 <main class="di-contract-main">
-  <!-- LEFT SIDE: Send Agreement Form -->
+  <!-- Left Side of the Admin Page -->
   <section class="left">
     <h2>Send Agreement Form</h2>
     <p class="note">Enter employee and signer details to begin.</p>
-
     <div class="form-group">
       <label for="employee-emails">New Employee Emails</label>
       <textarea
         id="employee-emails"
         placeholder="Enter one email per line&#10;e.g. jdoe@illinimedia.com&#10;asmith@illinimedia.com"
       ></textarea>
-      <p class="hint">Tip: Paste multiple emails — one per line. All must end with @illinimedia.com</p>
+      <p class="hint">
+        Tip: Paste multiple emails — one per line. All must end with
+        @illinimedia.com
+      </p>
     </div>
 
     <div class="form-group">
@@ -73,7 +74,7 @@
     <button id="send-btn">Send Agreements</button>
   </section>
 
-  <!-- RIGHT SIDE: Pending Contracts Overview -->
+  <!-- RIGHT SIDE: Pending Contracts That the current manager needs to sign -->
   <section class="right">
     <h2>Pending Contracts</h2>
     <div class="doc-box" id="pendingContracts">
@@ -85,17 +86,30 @@
   <script>
     // ===== LEFT SIDE: SEND AGREEMENTS =====
     document.getElementById("send-btn").addEventListener("click", async () => {
-      const emailsText = document.getElementById("employee-emails").value.trim();
+      const emailsText = document
+        .getElementById("employee-emails")
+        .value.trim();
       const editorEmail = document.getElementById("editor-email").value.trim();
-      const managerEmail = document.getElementById("manager-email").value.trim();
+      const managerEmail = document
+        .getElementById("manager-email")
+        .value.trim();
       const chiefEmail = document.getElementById("chief-email").value.trim();
 
-      const emails = emailsText.split("\n").map(e => e.trim()).filter(e => e);
+      const emails = emailsText
+        .split("\n")
+        .map((e) => e.trim())
+        .filter((e) => e);
 
       // Validate that all emails end with @illinimedia.com
-      const invalidEmails = emails.filter(e => !e.endsWith("@illinimedia.com"));
+      const invalidEmails = emails.filter(
+        (e) => !e.endsWith("@illinimedia.com")
+      );
       if (invalidEmails.length > 0) {
-        alert("The following emails are invalid:\n" + invalidEmails.join("\n") + "\n\nAll emails must end with @illinimedia.com");
+        alert(
+          "The following emails are invalid:\n" +
+            invalidEmails.join("\n") +
+            "\n\nAll emails must end with @illinimedia.com"
+        );
         return;
       }
 
@@ -117,7 +131,7 @@
         emails: emails,
         editor: editorEmail,
         manager: managerEmail,
-        chief: chiefEmail
+        chief: chiefEmail,
       };
 
       try {
@@ -125,13 +139,15 @@
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-CSRFToken": "{{ csrf_token() }}"
+            "X-CSRFToken": "{{ csrf_token() }}",
           },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
         });
 
         if (response.ok) {
           alert("Agreements successfully sent!");
+        } else if (response.status === 500) {
+          alert("Failed to send: Some names do not exist in Slack");
         } else {
           const errorText = await response.text();
           alert(`Failed to send: ${errorText}`);
@@ -145,7 +161,9 @@
     async function fetchPendingContracts() {
       const container = document.getElementById("pendingContracts");
       try {
-        const response = await fetch("/employee-agreement/get-pending-signatures");
+        const response = await fetch(
+          "/employee-agreement/get-pending-signatures"
+        );
         if (!response.ok) throw new Error("Failed to load pending contracts.");
         const data = await response.json();
         const pending = data.pending_agreements || [];
@@ -153,7 +171,8 @@
         container.innerHTML = ""; // clear loading text
 
         if (pending.length === 0) {
-          container.innerHTML = "<p class='no-docs'>No contracts need further action currently</p>";
+          container.innerHTML =
+            "<p class='no-docs'>No contracts need further action currently</p>";
           return;
         }
 
@@ -169,7 +188,8 @@
         });
       } catch (err) {
         console.error(err);
-        container.innerHTML = "<p class='error-text'>❌ Failed to load pending contracts.</p>";
+        container.innerHTML =
+          "<p class='error-text'>❌ Failed to load pending contracts.</p>";
       }
     }
 
