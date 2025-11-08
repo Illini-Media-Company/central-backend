@@ -3,6 +3,9 @@ Flask routes for photo request management.
 
 Handles web interface and API endpoints for creating, viewing, claiming,
 and completing photo requests.
+
+Created on Oct. 18, 2025 by Alan Xie
+Last modified Nov. 8, 2025
 """
 
 from flask import Blueprint, render_template, request, jsonify

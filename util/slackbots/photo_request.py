@@ -1,3 +1,9 @@
+"""
+
+Created on Oct. 28 by Jon Hogg
+Last modified Nov. 8, 2025
+"""
+
 from __future__ import annotations
 import json
 import re

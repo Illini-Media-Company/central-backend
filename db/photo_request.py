@@ -3,6 +3,9 @@ Photo request database models and operations.
 
 Handles storing and retrieving photo requests that staff submit.
 Tracks the full lifecycle: submission -> claim -> completion.
+
+Created on Oct. 15, 2025 by Jon Hogg
+Last modified Nov. 8, 2025
 """
 
 from datetime import datetime
