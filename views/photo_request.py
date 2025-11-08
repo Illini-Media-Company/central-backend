@@ -1,3 +1,10 @@
+"""
+Flask routes for photo request management.
+
+Handles web interface and API endpoints for creating, viewing, claiming,
+and completing photo requests.
+"""
+
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required
 from util.security import restrict_to
@@ -46,6 +53,12 @@ photo_request_routes = Blueprint(
 @login_required
 @restrict_to(["student-managers", "editors", "imc-staff-webdev"])
 def dashboard(selection=None):
+    """
+    Renders the photo requests dashboard with filtered view.
+
+    Selection can be: all, completed, in-progress, claimed, unclaimed,
+    claimed-email, completed-email, or submitted-email
+    """
     print(f'Fetching "{selection}" photo requests for dashboard...')
 
     # Fetch the appropriate requests based on selection
@@ -91,6 +104,7 @@ def dashboard(selection=None):
 @photo_request_routes.route("/form", methods=["GET"])
 @login_required
 def form():
+    """Renders the photo request submission form."""
     return render_template("photo-req/photo_req_form.html")
 
 
@@ -98,6 +112,12 @@ def form():
 @photo_request_routes.route("/api/submit", methods=["POST"])
 @login_required
 def api_submit():
+    """
+    Creates a new photo request and posts it to Slack.
+
+    Validates required fields, saves to database, sends DM to submitter,
+    and posts to the photo channel.
+    """
     data = request.get_json() or {}
     required = [
         "submitterEmail",
@@ -204,6 +224,11 @@ def api_submit():
 @login_required
 @restrict_to(["imc-staff-photo", "imc-staff-webdev"])
 def api_claim(uid):
+    """
+    Claims a photo request for a photographer.
+
+    Requires photogName and photogEmail in request body.
+    """
     print(f"Claiming photo request {uid}...")
     data = request.get_json() or {}
     name = data.get("photogName")
@@ -221,6 +246,11 @@ def api_claim(uid):
 @login_required
 @restrict_to(["imc-staff-photo", "imc-staff-webdev"])
 def api_complete(uid):
+    """
+    Marks a photo request as complete with a Google Drive URL.
+
+    Requires driveURL in request body.
+    """
     data = request.get_json() or {}
     driveURL = data.get("driveURL")
     if not driveURL:
@@ -235,6 +265,7 @@ def api_complete(uid):
 @login_required
 @restrict_to(["photo", "imc-staff-webdev"])
 def api_remove(uid):
+    """Deletes a photo request by UID."""
     ok = delete_photo_request(int(uid))
     if not ok:
         return jsonify({"error": "not found"}), 400
@@ -246,6 +277,7 @@ def api_remove(uid):
 @login_required
 @restrict_to(["photo", "imc-staff-webdev"])
 def api_modify(uid):
+    """Updates fields on an existing photo request."""
     data = request.get_json() or {}
     updated = update_photo_request(uid=int(uid), **data)
     if not updated:
@@ -261,6 +293,7 @@ def api_modify(uid):
 @login_required
 @restrict_to(["imc-staff-photo", "imc-staff-webdev"])
 def api_get(uid):
+    """Fetches a single photo request by UID."""
     req = get_photo_request_by_uid(int(uid))
     if not req:
         return "Request not found.", 400
@@ -271,6 +304,7 @@ def api_get(uid):
 @photo_request_routes.route("/api/fetch/all", methods=["GET"])
 @login_required
 def api_fetch_all():
+    """Fetches all photo requests."""
     requests = get_all_photo_requests()
     if not requests:
         return "Requests not found.", 400
@@ -281,6 +315,7 @@ def api_fetch_all():
 @photo_request_routes.route("/api/fetch/submitted/<email>", methods=["GET"])
 @login_required
 def api_fetch_submitted_email(email):
+    """Fetches all requests submitted by a specific user email."""
     print(f"Fetching submitted photo requests for {email}...")
     requests = get_submitted_photo_requests_for_user(email)
 

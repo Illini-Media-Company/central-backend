@@ -1,3 +1,10 @@
+"""
+Photo request database models and operations.
+
+Handles storing and retrieving photo requests that staff submit.
+Tracks the full lifecycle: submission -> claim -> completion.
+"""
+
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from google.cloud import ndb
@@ -87,9 +94,28 @@ def add_photo_request(
     pressPassRequester,
     eventDateTime=None,
 ):
-    """Create and store a new PhotoRequest.
+    """
+    Creates a new photo request in the database.
 
-    Returns: dict representation including `uid` (unique request identifier).
+    Args:
+        submitterEmail: Email of person submitting the request
+        submitterName: Name of submitter
+        destination: Where the photo is going (DI, Illio, WPGU, etc.)
+        department: If DI, which desk (news, sports, etc.)
+        memo: Short headline or description
+        specificDetails: More detailed info about the request
+        referenceURL: Optional link to related story/content
+        dueDate: When the photos are needed (date object)
+        moreInfo: Any additional notes
+        isCourtesy: Whether this is a courtesy photo
+        specificEvent: If this is for a specific event
+        eventLocation: Where the event is
+        pressPass: Whether a press pass is needed
+        pressPassRequester: Who should request the press pass
+        eventDateTime: When the event is (if applicable)
+
+    Returns:
+        Dict with all the request data including the uid
     """
     print("Adding new photo request to db...")
     with client.context():
@@ -118,7 +144,7 @@ def add_photo_request(
 
 
 def get_all_photo_requests():
-    """Return all requests (ordered by submission date)."""
+    """Returns all photo requests, newest first."""
     with client.context():
         requests = PhotoRequest.query().order(-PhotoRequest.submissionTimestamp).fetch()
 
@@ -286,6 +312,16 @@ def complete_photo_request(uid, driveURL):
 
 
 def get_id_from_slack_claim_ts(ch, thread_ts):
+    """
+    Finds a photo request by its Slack claim channel and thread timestamp.
+
+    Args:
+        ch: Slack channel ID where the claim happened
+        thread_ts: Slack thread timestamp of the claim message
+
+    Returns:
+        Dict of the request if found, None otherwise
+    """
     with client.context():
         req = PhotoRequest.query(
             PhotoRequest.claimSlackChannel == ch, PhotoRequest.claimSlackTs == thread_ts
