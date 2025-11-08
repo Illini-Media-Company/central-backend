@@ -4,7 +4,7 @@ from util.security import restrict_to
 from zoneinfo import ZoneInfo
 from datetime import datetime
 
-from util.photo_request import (
+from util.slackbots.photo_request import (
     build_blocks_from_request,
     update_message_blocks,
     dm_user_by_email,
