@@ -59,13 +59,13 @@ from util.gcal import get_allstaff_events
 
 from db.json_store import json_store_set
 
-from util.copy_editing import scheduler as copy_scheduler
+from util.slackbots.copy_editing import scheduler as copy_scheduler
 from util.map_point import scheduler as map_scheduler
 from util.scheduler import scheduler_to_json, db_to_scheduler
 from apscheduler.triggers.date import DateTrigger
 
-from util.slackbot import start_slack
-import util.photo_request
+from util.slackbots._slackbot import start_slack
+import util.slackbots.photo_request
 from views.all_tools import tools_routes
 from views.content_doc import content_doc_routes
 from views.constant_contact import constant_contact_routes
