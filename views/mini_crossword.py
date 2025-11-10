@@ -24,7 +24,6 @@ mini_routes = Blueprint("mini_routes", __name__, url_prefix="/mini")
 
 
 @mini_routes.route("", methods=["GET"])
-@login_required
 def all_days():
     """
     Return data; all saved crosswods
@@ -33,20 +32,11 @@ def all_days():
 
 
 @mini_routes.route("/today", methods=["GET"])
-@login_required
 def today():
     """
     Return today's crossword data
     """
-    return ""
-
-
-@mini_routes.route("/word/<mm>/<dd>/<yyyy>", methods=["GET"])
-@login_required
-def retrieve_word(mm, dd, yyyy):
-    """
-    Return a specific day's crossword data
-    """
+    today = datetime.today().strftime("%a, %d %b %Y %H:%M:%S GMT")
     return ""
 
 
