@@ -1,0 +1,121 @@
+{% block title %}TV Rotation{% endblock %}
+
+{# === 1 PUT YOUR LINKS HERE (one per feature key) === #}
+<!-- {% set urls = {
+  "stats":    "???",
+  "quad":     "https://www.youtube.com/watch?v=g_973tJqDe8",
+  "alma":     "https://www.youtube.com/watch?v=rpfmExOpfKM",
+  "datetime": "???",
+  "room":     "???",
+  "news":    "???"
+} %} -->
+
+{% block extra_head %}
+<style>
+  html, body { height: 100%; margin: 0; background: #000; }
+  .rotator { height: 100vh; width: 100vw; background: #000; color: #fff; }
+  .panel { display: none; height: 100%; width: 100%; }
+  .panel.active { display: block; }
+  .frame { border: 0; width: 100%; height: 100%; }
+  .empty {
+    display:flex; align-items:center; justify-content:center;
+    height:100%; color:#bbb; font: 16px/1.4 system-ui, sans-serif; text-align:center; padding:1rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rotator" id="rotator" data-interval-ms="{{ rotate_ms | default(30000) | int }}">
+  {% if show_quad %}
+  <section class="panel">
+    <iframe class="frame"
+      src="https://www.youtube.com/embed/g_973tJqDe8?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1"
+      title="YouTube: Quad"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      referrerpolicy="strict-origin-when-cross-origin"
+      allowfullscreen></iframe>
+  </section>
+  {% endif %}
+
+  {% if show_alma %}
+  <section class="panel">
+    <iframe class="frame"
+      src="https://www.youtube.com/embed/rpfmExOpfKM?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1"
+      title="YouTube: Alma"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      referrerpolicy="strict-origin-when-cross-origin"
+      allowfullscreen></iframe>
+  </section>
+  {% endif %}
+
+  <!-- Daily Illini as a link card (most news sites block iframing) -->
+  {% if show_news %}
+<section class="panel">
+  <iframe class="frame" src="/static/news.html" title="Headlines"></iframe>
+</section>
+{% endif %}
+
+  <!-- Clock panel -->
+  {% if show_datetime %}
+  <section class="panel" style="display:flex;align-items:center;justify-content:center;background:#0b1220">
+    <div id="clock" data-timezone="{{ time_zone | default('America/Chicago') }}"
+         style="font:700 4.8vw/1.15 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;text-align:center">
+      <div id="clock-time" style="font-size:12vw;letter-spacing:.04em">--:--:--</div>
+      <div id="clock-date" style="font-size:4vw;opacity:.9;margin-top:.35em">Loading date…</div>
+    </div>
+  </section>
+  {% endif %}
+</div>
+
+<script>
+  // --- clock ---
+  (function initClock(){
+    const root = document.getElementById('clock');
+    if (!root) return;
+    const tz = root.dataset.timezone || undefined;
+    const timeFmt = new Intl.DateTimeFormat(undefined, { timeZone: tz, hour:'numeric', minute:'2-digit', second:'2-digit', hour12:true });
+    const dateFmt = new Intl.DateTimeFormat(undefined, { timeZone: tz, weekday:'short', year:'numeric', month:'short', day:'numeric', timeZoneName:'short' });
+    const tEl = document.getElementById('clock-time'), dEl = document.getElementById('clock-date');
+    function tick(){ const now = new Date(); tEl.textContent = timeFmt.format(now); dEl.textContent = dateFmt.format(now); }
+    tick(); setInterval(tick, 1000);
+  })();
+
+  // --- rotation (uses only rendered panels) ---
+  (function rotatePanels(){
+    const root = document.getElementById('rotator');
+    if (!root) return;
+    const interval = parseInt(root.dataset.intervalMs || '30000', 10);
+    const panels = Array.from(root.querySelectorAll('.panel'));
+    if (panels.length === 0) return;
+    let i = 0;
+    panels[i].classList.add('active');
+    if (panels.length === 1) return;
+    setInterval(() => {
+      panels[i].classList.remove('active');
+      i = (i + 1) % panels.length;
+      panels[i].classList.add('active');
+    }, interval);
+  })();
+
+  // --- optional fullscreen helper (first user gesture) ---
+  function tryEnterFullscreen() {
+    const el = document.documentElement;
+    if (!document.fullscreenElement && el.requestFullscreen) {
+      el.requestFullscreen().catch(()=>{});
+    }
+  }
+  (function armFullscreenOnce(){
+    const h = () => { tryEnterFullscreen(); };
+    window.addEventListener('click', h,  { once:true });
+    window.addEventListener('keydown', h, { once:true });
+  })();
+  window.addEventListener('keydown', async (e) => {
+    if (e.key === 'Escape') {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        try { await document.exitFullscreen(); } catch(_) {}
+      }
+      window.close();
+    }
+  });
+</script>
+{% endblock %}

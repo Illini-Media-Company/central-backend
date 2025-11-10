@@ -78,6 +78,31 @@
     </div>
     <button id="startButton" class="button-primary">Start</button>
     </div>
-    </div>
-</div>
+    <script>
+      // map checkbox IDs -> query param keys the backend will read
+      const idToParam = {
+        stats:    'show_stats',
+        quadCam:  'show_quad',
+        almaCam:  'show_alma',
+        datetime: 'show_datetime',
+        room:     'show_room',
+        news:     'show_news'
+      };
+    
+      const toStrBool = (v) => (v ? 'true' : 'false');
+    
+      document.getElementById('startButton')?.addEventListener('click', () => {
+        const params = new URLSearchParams();
+    
+        // send every flag explicitly as true/false
+        Object.entries(idToParam).forEach(([id, qp]) => {
+          const el = document.getElementById(id);
+          if (el) params.set(qp, toStrBool(el.checked));
+        });
+    
+        // open the rotating screen in a new tab
+        const url = `/tv-rotation/screen?${params.toString()}`;
+        window.open(url, '_blank', 'noopener,noreferrer');
+      });
+    </script>
 {% endblock %}
