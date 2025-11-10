@@ -37,31 +37,18 @@ def send_notification():
 
 @employee_agreement_routes.route("/dashboard", methods=["GET"])
 @login_required
-@restrict_to(["imc-staff-webdev"])
 def dashboard():
-    return render_template("di_contract_automization_dashboard.html")
+    user_name = current_user.name
+    return render_template(
+        "di_contract_automization_dashboard.html", currentUserName=user_name
+    )
 
 
 @employee_agreement_routes.route("/admin", methods=["GET"])
 @login_required
-@restrict_to(["imc-staff-webdev"])
+@restrict_to(["imc-staff-webdev", "di-section-editors"])
 def admin_dashboard():
     return render_template("di_contract_automization_admin.html")
-
-
-@employee_agreement_routes.route("/send_agreement", methods=["POST"])
-@login_required
-def send_agreement():
-    data = request.get_json()
-    print("📨 Received:", data)
-    return {"status": "success"}, 200
-
-
-@employee_agreement_routes.route("/get-current-user", methods=["GET"])
-@login_required
-def getCurrentUser():
-    # Return JSON with email and name
-    return {"name": current_user.name, "email": current_user.email}, 200
 
 
 @employee_agreement_routes.route("/send-notification", methods=["POST"])
