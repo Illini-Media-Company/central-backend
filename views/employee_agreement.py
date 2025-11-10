@@ -1,5 +1,6 @@
-from flask import Blueprint, request
+from flask import Blueprint, request, render_template
 from util.slackbots.slackbot import app
+from util.security import restrict_to
 from flask_login import current_user, login_required
 from util.slackbots.employee_agreement_slackbot import (
     send_employee_agreement_notification,
@@ -32,6 +33,28 @@ def send_notification():
     send_employee_agreement_notification("U09LTPY3MSP", "http://example.com/agreement")
     return "Notification sent", 200
 """
+
+
+@employee_agreement_routes.route("/dashboard", methods=["GET"])
+@login_required
+@restrict_to(["imc-staff-webdev"])
+def dashboard():
+    return render_template("di_contract_automization_dashboard.html")
+
+
+@employee_agreement_routes.route("/admin", methods=["GET"])
+@login_required
+@restrict_to(["imc-staff-webdev"])
+def admin_dashboard():
+    return render_template("di_contract_automization_admin.html")
+
+
+@employee_agreement_routes.route("/send_agreement", methods=["POST"])
+@login_required
+def send_agreement():
+    data = request.get_json()
+    print("📨 Received:", data)
+    return {"status": "success"}, 200
 
 
 @employee_agreement_routes.route("/get-current-user", methods=["GET"])
