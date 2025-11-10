@@ -36,8 +36,16 @@ def today():
     """
     Return today's crossword data
     """
-    today = datetime.today().strftime("%a, %d %b %Y %H:%M:%S GMT")
-    return ""
+    today = datetime.today()
+    days_since_monday = today.weekday()
+
+    most_recent_monday = today - timedelta(days=days_since_monday)
+
+    most_recent_monday.date()
+    crossword = get_crossword(most_recent_monday.date())
+    if crossword:
+        return crossword
+    return {"NO_CROSSWORD_ERROR": "No crossword scheduled for this date."}
 
 
 @mini_routes.route("/dashboard")
