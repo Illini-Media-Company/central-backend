@@ -1,4 +1,4 @@
-from util.slackbot import app
+from util.slackbots.slackbot import app
 from constants import ENV
 from constants import SLACK_BOT_TOKEN
 

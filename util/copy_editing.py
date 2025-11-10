@@ -7,7 +7,7 @@ from constants import COPY_EDITING_GCAL_ID, SLACK_BOT_TOKEN, ENV
 from db.kv_store import kv_store_get, kv_store_set
 from db.user import add_user, get_user, update_user_last_edited
 from util.security import get_creds
-from util.slackbot import app
+from util.slackbots.slackbot import app
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.schedulers.background import BackgroundScheduler
 import random

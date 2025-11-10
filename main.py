@@ -64,8 +64,8 @@ from util.map_point import scheduler as map_scheduler
 from util.scheduler import scheduler_to_json, db_to_scheduler
 from apscheduler.triggers.date import DateTrigger
 
-from util.slackbot import start_slack
-import util.employee_agreement_slackbot
+from util.slackbots.slackbot import start_slack
+import util.slackbots.employee_agreement_slackbot
 from views.employee_agreement import send_notification
 from views.all_tools import tools_routes
 from views.content_doc import content_doc_routes

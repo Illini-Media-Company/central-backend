@@ -2,7 +2,7 @@ from flask import Blueprint, redirect, request, url_for
 from slack_bolt import App
 from slack_bolt.adapter.flask import SlackRequestHandler
 from slack_bolt.adapter.socket_mode import SocketModeHandler
-from util.slackbot import app
+from util.slackbots.slackbot import app
 from flask_login import login_required
 from db.story import add_story, get_recent_stories
 from util.stories import get_published_url, get_title_from_url
@@ -15,7 +15,7 @@ DI_COPYING_ID = "C06LYTJ5N6S"
 COPYING_MESSAGE = [
     {"type": "divider"},
     {
-        "type":"header",
+        "type": "header",
         "text": {
             "type": "plain_text",
             "text": ":rotating_light:*BREAKING NEWS HAS BEEN POSTED*:rotating_light:",
@@ -27,7 +27,7 @@ COPYING_MESSAGE = [
         "text": {
             "type": "mrkdwn",
             "text": "Check if the story is published",
-        }
+        },
     },
     {
         "type": "actions",
@@ -49,7 +49,7 @@ COPYING_MESSAGE = [
 POSTED_SUCCESFULLY = [
     {"type": "divider"},
     {
-        "type":"header",
+        "type": "header",
         "text": {
             "type": "plain_text",
             "text": ":rotating_light:*BREAKING NEWS HAS BEEN POSTED*:rotating_light:",
@@ -61,14 +61,14 @@ POSTED_SUCCESFULLY = [
         "text": {
             "type": "mrkdwn",
             "text": ":white_check_mark: Story has been published :white_check_mark:",
-        }
+        },
     },
     {"type": "divider"},
 ]
 NOT_POSTED = [
     {"type": "divider"},
     {
-        "type":"header",
+        "type": "header",
         "text": {
             "type": "plain_text",
             "text": ":rotating_light:*BREAKING NEWS HAS BEEN POSTED*:rotating_light:",
@@ -80,7 +80,7 @@ NOT_POSTED = [
         "text": {
             "type": "mrkdwn",
             "text": "Check if the story is published",
-        }
+        },
     },
     {
         "type": "actions",
@@ -100,7 +100,10 @@ NOT_POSTED = [
     {"type": "divider"},
 ]
 
-slack_breaking_routes = Blueprint("slack_breaking_routes", __name__, url_prefix="/bot_breaking")
+slack_breaking_routes = Blueprint(
+    "slack_breaking_routes", __name__, url_prefix="/bot_breaking"
+)
+
 
 @slack_breaking_routes.route("/post", methods=["POST"])
 @login_required
@@ -112,11 +115,12 @@ def post_message():
         username="IMC Notification Bot",
         channel=DI_COPYING_ID,
         blocks=COPYING_MESSAGE,
-        text="BREAKING NEWS ALERT"
+        text="BREAKING NEWS ALERT",
     )
 
     add_story(story_title, story_url, False, False, result["ts"], "User")
     return "success", 200
+
 
 @app.action("breaking_button")
 def breaking_button(ack, logger, body):
@@ -125,19 +129,19 @@ def breaking_button(ack, logger, body):
     ts = body["message"]["ts"]
 
     url = story_url_from_ts(20, ts)
-    if (url == None):
+    if url == None:
         print("story is no longer recent")
-    elif (get_published_url(url) == None):
+    elif get_published_url(url) == None:
         app.client.chat_update(
-            token=SLACK_BOT_TOKEN, 
+            token=SLACK_BOT_TOKEN,
             channel=DI_COPYING_ID,
             ts=ts,
             blocks=NOT_POSTED,
             text="STORY HAS NOT BEEN POSTED",
         )
-    elif (get_published_url(url) != None):
+    elif get_published_url(url) != None:
         app.client.chat_update(
-            token=SLACK_BOT_TOKEN, 
+            token=SLACK_BOT_TOKEN,
             channel=DI_COPYING_ID,
             ts=ts,
             blocks=POSTED_SUCCESFULLY,
@@ -148,6 +152,6 @@ def breaking_button(ack, logger, body):
 def story_url_from_ts(count, ts):
     stories = get_recent_stories(count)
     for i in stories:
-        if (i["slack_message_id"] == ts):
+        if i["slack_message_id"] == ts:
             return i["url"]
     return None

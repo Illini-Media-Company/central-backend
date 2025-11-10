@@ -1,7 +1,9 @@
 from flask import Blueprint, request
-from util.slackbot import app
+from util.slackbots.slackbot import app
 from flask_login import current_user, login_required
-from util.employee_agreement_slackbot import send_employee_agreement_notification
+from util.slackbots.employee_agreement_slackbot import (
+    send_employee_agreement_notification,
+)
 from db.employee_agreement import (
     add_employee_agreement,
     get_employee_agreement_by_user,
