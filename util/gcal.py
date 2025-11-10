@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 from datetime import datetime, timedelta
 from gcsa.google_calendar import GoogleCalendar
 from util.security import get_creds
-from util.helpers.ap_datetime import ap_datetime, ap_date
+from util.helpers.ap_datetime import ap_datetime, ap_date, ap_time
 
 from constants import MAIN_IMC_GCAL_ID
 
@@ -45,6 +45,44 @@ def get_allstaff_events():
                 "start": start,
                 "end": end,
                 "description": event.description if event.description else "",
+            }
+        )
+
+    return formatted_events
+
+
+def get_resource_events_today(resource_calid):
+    creds = get_creds(SCOPES)
+    gc = GoogleCalendar(resource_calid, credentials=creds)
+
+    tz = ZoneInfo("America/Chicago")
+    now = datetime.now()
+    start_of_day = datetime(now.year, now.month, now.day, tzinfo=tz)
+    end_of_day = start_of_day + timedelta(days=1)
+    day_seconds = (end_of_day - start_of_day).total_seconds()
+
+    events = gc.get_events(
+        time_min=start_of_day,
+        time_max=end_of_day,
+        single_events=True,
+        order_by="startTime",
+    )
+
+    formatted_events = []
+    for event in events:
+        start = event.start
+        end = event.end
+
+        start_percent = ((start - start_of_day).total_seconds() / day_seconds) * 100
+        duration_percent = ((end - start).total_seconds() / day_seconds) * 100
+
+        formatted_events.append(
+            {
+                "title": event.summary,
+                "start": ap_time(start),
+                "end": ap_time(end),
+                "start_percent": start_percent,
+                "duration_percent": duration_percent,
             }
         )
 

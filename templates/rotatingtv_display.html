@@ -1,208 +1,288 @@
 <style>
-  html, body { 
-    height: 100%; 
-    margin: 0; 
-    background: var(--main-dk-gray-color); 
-  }
+    html, body { 
+        height: 100%; 
+        margin: 0; 
+        background: var(--main-dk-gray-color); 
+    }
 
-  .rotator { 
-    height: 100vh; 
-    width: 100vw; 
-    background: var(--main-dk-gray-color); 
-    color: var(--main-lt-gray-color); 
-  }
+    .rotator { 
+        height: 100vh; 
+        width: 100vw; 
+        background: var(--main-dk-gray-color); 
+        color: var(--main-lt-gray-color); 
+    }
 
-  .panel { 
-    display: none; 
-    height: 100%; 
-    width: 100%; 
-  }
+    .panel { 
+        display: none; 
+        height: 100%; 
+        width: 100%; 
+    }
 
-  .panel.active { 
-    display: flex;
-  }
+    .panel.active { 
+        display: flex;
+    }
 
-  .frame { 
-    border: 0; 
-    width: 100%; 
-    height: 100%; 
-  }
+    .frame { 
+        border: 0; 
+        width: 100%; 
+        height: 100%; 
+    }
 
-  .empty {
-    display: flex; 
-    align-items: center; 
-    justify-content: center;
-    height: 100%; 
-    color: #bbb; 
-    font: 16px/1.4 system-ui, sans-serif; 
-    text-align: center; 
-    padding: 1rem;
-  }
+    .empty {
+        display: flex; 
+        align-items: center; 
+        justify-content: center;
+        height: 100%; 
+        color: #bbb; 
+        font: 16px/1.4 system-ui, sans-serif; 
+        text-align: center; 
+        padding: 1rem;
+    }
+
+    .timeline {
+        position: relative;
+        height: 60px;
+        background: linear-gradient(to right, #f0f0f0, #fafafa);
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 20px 0;
+        width: 90%;
+    }
+
+    .event {
+        position: absolute;
+        top: 10px;
+        height: 40px;
+        background-color: #4285f4;
+        color: white;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 12px;
+        overflow: hidden;
+        white-space: nowrap;
+        padding: 2px 6px;
+        box-shadow: var(--main-box-shadow);
+    }
+
+    .event-title {
+        display: block;
+        font-weight: bold;
+    }
+
+    .time-marker {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: red;
+        z-index: 10;
+        transition: left 30s linear; /* smooth movement */
+    }
 </style>
 
 <!doctype html>
 <html>
-  <head>
-    <title>
-      TV Display
-    </title>
+    <head>
+        <title>
+            TV Display
+        </title>
 
-    <link rel="stylesheet" href="https://use.typekit.net/tid3tgd.css">
-    <link rel="stylesheet" href="/static/globals.css">
-  </head>
+        <link rel="stylesheet" href="https://use.typekit.net/tid3tgd.css">
+        <link rel="stylesheet" href="/static/globals.css">
+    </head>
 
-  <body>
-    <div class="rotator" id="rotator" data-interval-ms="{{ rotate_ms | default(30000) | int }}">
-      <!-- Clock panel -->
-      {% if show_datetime %}
-        <section class="panel" style="align-items: center; justify-content: center;">
+    <body>
+        <div class="rotator" id="rotator" data-interval-ms="{{ rotate_ms | default(30000) | int }}">
+            <!-- Clock panel -->
+            {% if show_datetime %}
+                <section class="panel" style="align-items: center; justify-content: center;">
 
-          <div id="clock" style="display: flex; flex-direction: column; justify-content: flex-start; height: 100vh;">
-            <img src="/static/logo_IMC.svg" alt="Illini Media Company Logo" style="height: 2rem; width: auto; margin: 2rem 0;">
+                    <div id="clock" style="display: flex; flex-direction: column; justify-content: flex-start; height: 100vh;">
+                        <img src="/static/logo_IMC.svg" alt="Illini Media Company Logo" style="height: 2rem; width: auto; margin: 2rem 0;">
 
-            <div style="display: flex; flex-direction: row; align-items: baseline; gap: 3rem; margin-top: 15vh">
-              <h1 id="current-time"    style="font-size: 15rem; margin-bottom: 0; margin-top: 0;">——:——</h1>
-              <h3 id="current-seconds" style="font-size: 5rem;  margin-bottom: 0; margin-top: 0;">——</h3>
-            </div>
-            <h3 style="font-size: 5rem; text-align: center; margin-bottom: 0; margin-top: 0;">{{ current_date }}</h3>
-          </div>
+                        <div style="display: flex; flex-direction: row; align-items: baseline; gap: 3rem; margin-top: 15vh">
+                            <h1 id="current-time"    style="font-size: 15rem; margin-bottom: 0; margin-top: 0;">——:——</h1>
+                            <h3 id="current-seconds" style="font-size: 5rem;  margin-bottom: 0; margin-top: 0;">——</h3>
+                        </div>
+                        <h3 style="font-size: 5rem; text-align: center; margin-bottom: 0; margin-top: 0;">{{ current_date }}</h3>
+                    </div>
 
-        </section>
-      {% endif %}
+                </section>
+            {% endif %}
 
-      {% if show_quad %}
-        <section class="panel">
-          <iframe class="frame"
-            src="https://www.youtube.com/embed/g_973tJqDe8?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1"
-            title="YouTube: Quad"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            referrerpolicy="strict-origin-when-cross-origin"
-            allowfullscreen></iframe>
-        </section>
-      {% endif %}
+            {% if show_quad %}
+                <section class="panel">
+                    <iframe class="frame"
+                        src="https://www.youtube.com/embed/g_973tJqDe8?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1"
+                        title="YouTube: Quad"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        referrerpolicy="strict-origin-when-cross-origin"
+                        allowfullscreen></iframe>
+                </section>
+            {% endif %}
 
-      {% if show_alma %}
-        <section class="panel">
-          <iframe class="frame"
-            src="https://www.youtube.com/embed/rpfmExOpfKM?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1"
-            title="YouTube: Alma"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            referrerpolicy="strict-origin-when-cross-origin"
-            allowfullscreen></iframe>
-        </section>
-      {% endif %}
-    </div>
-  </body>
+            {% if show_alma %}
+                <section class="panel">
+                    <iframe class="frame"
+                        src="https://www.youtube.com/embed/rpfmExOpfKM?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1"
+                        title="YouTube: Alma"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        referrerpolicy="strict-origin-when-cross-origin"
+                        allowfullscreen></iframe>
+                </section>
+            {% endif %}
+
+            {% if show_nc_avail %}
+                <section class="panel" style="justify-content: center;">
+                    <!-- <div>
+                        {% for event in nc_avail_events %}
+                            <h4>{{ event.title }}</h4>
+                            <p>{{ event.start }} until {{ event.end }}</p>
+                        {% endfor %}
+                    </div> -->
+
+                    <div class="timeline">
+                        <div class="time-marker" id="current-time-marker"></div>
+
+                        {% for event in nc_avail_events %}
+                            <div class="event" style="left: {{ event.start_percent }}vw; width: {{ event.duration_percent }}vw;">
+                                <span class="event-title">{{ event.title }}</span>
+                                <span class="event-time">{{ event.start }}–{{ event.end }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                </section>
+            {% endif %}
+        </div>
+    </body>
 </html>
 
 <script>
-  // --- clock ---
-  (function initClock() {
-    const root = document.getElementById('clock');
-    if (!root) 
-      return;
+    // --- clock ---
+    (function initClock() {
+        const root = document.getElementById('clock');
+        if (!root) 
+            return;
 
-    const timeFormat = new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/Chicago",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: false
+        const timeFormat = new Intl.DateTimeFormat("en-US", {
+            timeZone: "America/Chicago",
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: false
+        });
+
+        const timeElem = document.getElementById('current-time');
+        const secsElem = document.getElementById('current-seconds');
+
+        function tick() {
+            const now = new Date();
+            const [hourStr, minute] = timeFormat.format(now).split(':');
+
+            let hour = parseInt(hourStr, 10);
+            hour = hour % 12 || 12;
+
+            timeElem.textContent = `${hour}:${minute}`
+
+            const seconds = now.getSeconds();
+            secsElem.textContent = seconds.toString().padStart(2, '0');
+        }
+
+        tick();
+        setInterval(tick, 1000);
+    })();
+
+    // --- rotation (uses only rendered panels) ---
+    (function rotatePanels() {
+        const root = document.getElementById('rotator');
+
+        if (!root) 
+            return;
+        
+        const interval = parseInt(root.dataset.intervalMs || '30000', 10);
+
+        const panels = Array.from(root.querySelectorAll('.panel'));
+        if (panels.length === 0) 
+            return;
+
+        let i = 0;
+        panels[i].classList.add('active');
+
+        if (panels.length === 1) 
+            return;
+
+        setInterval(() => {
+            panels[i].classList.remove('active');
+            i = (i + 1) % panels.length;
+            panels[i].classList.add('active');
+        }, interval);
+    })();
+
+    // --- optional fullscreen helper (first user gesture) ---
+    function tryEnterFullscreen() {
+        const el = document.documentElement;
+        if (!document.fullscreenElement && el.requestFullscreen) {
+            el.requestFullscreen().catch(()=>{});
+        }
+    }
+
+    (function armFullscreenOnce(){
+        const h = () => { 
+            tryEnterFullscreen(); 
+        };
+
+        window.addEventListener('click', h,  { once:true });
+        window.addEventListener('keydown', h, { once:true });
+    })();
+
+    window.addEventListener('keydown', async (e) => {
+        if (e.key === 'Escape') {
+            if (document.fullscreenElement && document.exitFullscreen) {
+                try { await document.exitFullscreen(); } catch(_) {}
+            }
+            window.close();
+        }
     });
 
-    const timeElem = document.getElementById('current-time');
-    const secsElem = document.getElementById('current-seconds');
+    // Try and keep the screen awake
+    (async function requestWakeLock() {
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log('Wake lock acquired');
 
-    function tick() {
-      const now = new Date();
-      const [hourStr, minute] = timeFormat.format(now).split(':');
+            // Re-acquire if the lock is released (some browsers auto-release on visibility change)
+            document.addEventListener('visibilitychange', async () => {
+                if (wakeLock !== null && document.visibilityState === 'visible') {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            });
+        } catch (err) {
+            console.warn('Wake lock failed:', err);
+        }
+    })();
 
-      let hour = parseInt(hourStr, 10);
-      hour = hour % 12 || 12;
-
-      timeElem.textContent = `${hour}:${minute}`
-
-      const seconds = now.getSeconds();
-      secsElem.textContent = seconds.toString().padStart(2, '0');
-    }
-
-    tick();
-    setInterval(tick, 1000);
-  })();
-
-  // --- rotation (uses only rendered panels) ---
-  (function rotatePanels() {
-    const root = document.getElementById('rotator');
-
-    if (!root) 
-      return;
-    
-    const interval = parseInt(root.dataset.intervalMs || '30000', 10);
-
-    const panels = Array.from(root.querySelectorAll('.panel'));
-    if (panels.length === 0) 
-      return;
-
-    let i = 0;
-    panels[i].classList.add('active');
-
-    if (panels.length === 1) 
-      return;
-
+    // Try instead just moving the screen elements very slightly on an interval
     setInterval(() => {
-      panels[i].classList.remove('active');
-      i = (i + 1) % panels.length;
-      panels[i].classList.add('active');
-    }, interval);
-  })();
+        const el = document.getElementById('rotator');
+        if (el) {
+            el.style.transform = 'translateX(0.01px)';
+        }
+    }, 15000);
 
-  // --- optional fullscreen helper (first user gesture) ---
-  function tryEnterFullscreen() {
-    const el = document.documentElement;
-    if (!document.fullscreenElement && el.requestFullscreen) {
-      el.requestFullscreen().catch(()=>{});
+    function updateTimeMarker() {
+        const marker = document.getElementById("current-time-marker");
+        const now = new Date();
+        const startOfDay = new Date(now);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(startOfDay);
+        endOfDay.setDate(endOfDay.getDate() + 1);
+
+        const percent =
+            ((now - startOfDay) / (endOfDay - startOfDay)) * 100;
+        marker.style.left = percent + "vw";
     }
-  }
 
-  (function armFullscreenOnce(){
-    const h = () => { 
-      tryEnterFullscreen(); 
-    };
-
-    window.addEventListener('click', h,  { once:true });
-    window.addEventListener('keydown', h, { once:true });
-  })();
-
-  window.addEventListener('keydown', async (e) => {
-    if (e.key === 'Escape') {
-      if (document.fullscreenElement && document.exitFullscreen) {
-        try { await document.exitFullscreen(); } catch(_) {}
-      }
-      window.close();
-    }
-  });
-
-  // Try and keep the screen awake
-  (async function requestWakeLock() {
-    try {
-        wakeLock = await navigator.wakeLock.request('screen');
-        console.log('Wake lock acquired');
-
-        // Re-acquire if the lock is released (some browsers auto-release on visibility change)
-        document.addEventListener('visibilitychange', async () => {
-            if (wakeLock !== null && document.visibilityState === 'visible') {
-                wakeLock = await navigator.wakeLock.request('screen');
-            }
-        });
-    } catch (err) {
-        console.warn('Wake lock failed:', err);
-    }
-  })();
-
-  // Try instead just moving the screen elements very slightly on an interval
-  setInterval(() => {
-    const el = document.getElementById('rotator');
-    if (el) {
-        el.style.transform = 'translateX(0.01px)';
-    }
-  }, 15000);
+    // initial update + refresh every minute
+    updateTimeMarker();
+    setInterval(updateTimeMarker, 60000);
 </script>

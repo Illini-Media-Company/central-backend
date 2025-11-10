@@ -1,7 +1,12 @@
 from flask import request, render_template, Blueprint
 from util.helpers.ap_datetime import ap_date
+from util.gcal import get_resource_events_today
 from datetime import datetime
 from zoneinfo import ZoneInfo
+
+NEWS_CONF_RESOURCE_GCAL_ID = (
+    "c_1880trl645hpqj39k57idpvutni6g@resource.calendar.google.com"
+)
 
 
 rotate_tv_routes = Blueprint("rotate_tv_routes", __name__, url_prefix="/tv-rotation")
@@ -23,13 +28,18 @@ def tv_rotation_screen():
     show_quad = b("show_quad")
     show_alma = b("show_alma")
     show_datetime = b("show_datetime")
-    show_nc_avail = b("show_nc_avail")      # News conference table availability
-    show_bc_avail = b("show_bc_avail")      # Business conference table availability
+    show_nc_avail = b("show_nc_avail")  # News conference table availability
+    show_bc_avail = b("show_bc_avail")  # Business conference table availability
 
-    if show_datetime:
-        current_date = ap_date(datetime.now(ZoneInfo("America/Chicago")))
-    else:
-        current_date = None
+    # Get the current date in AP Style
+    current_date = (
+        ap_date(datetime.now(ZoneInfo("America/Chicago"))) if show_datetime else None
+    )
+
+    # Get the events for the news conference table
+    nc_avail_events = (
+        get_resource_events_today(NEWS_CONF_RESOURCE_GCAL_ID) if show_nc_avail else None
+    )
 
     return render_template(
         "rotatingtv_display.html",
@@ -38,7 +48,8 @@ def tv_rotation_screen():
         show_quad=show_quad,
         show_alma=show_alma,
         show_datetime=show_datetime,
-        show_nc_avail=show_nc_avail,
-        show_bc_avail=show_bc_avail,
         current_date=current_date,
+        show_nc_avail=show_nc_avail,
+        nc_avail_events=nc_avail_events,
+        show_bc_avail=show_bc_avail,
     )
