@@ -3,7 +3,12 @@ from flask_cors import cross_origin
 from flask_login import login_required
 
 from constants import APPS_SCRIPT_RUNNER_EMAIL, CONTEND_DOC_AUD
-from util.copy_editing import notify_copy_editor, get_copy_editor, test, scheduler
+from util.slackbots.copy_editing import (
+    notify_copy_editor,
+    get_copy_editor,
+    test,
+    scheduler,
+)
 from util.security import csrf, restrict_to
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo

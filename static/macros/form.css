@@ -1,3 +1,4 @@
+/* Overall form styling */
 .form {
     display: flex;
     flex-direction: column;
@@ -12,13 +13,23 @@
     gap: 0.5rem;
 }
 
-.text-label {
+.field-label {
     font-size: 1rem;
     font-weight: 500;
     font-style: normal;
     white-space: nowrap;
 }
 
+.subtext {
+    margin-bottom: 0;
+}
+
+.submit-button {
+    align-self: flex-start;
+}
+/* ——————————————————————————————————————————————— */
+
+/* Text input field */
 .text-input {
     padding: 0.25rem 0.5rem;
     border-radius: var(--main-border-radius);
@@ -28,7 +39,71 @@
     font-style: normal;
     width: 100%;
 }
+/* ——————————————————————————————————————————————— */
 
-.submit-button {
-    align-self: flex-start;
+/* Radio input field */
+.radio-input-container {
+    display: flex;
+    flex-direction: column;
+    margin-left: 0.5rem;
 }
+
+.radio-input {
+    accent-color: var(--main-accent-color);
+}
+
+.radio-label {
+    margin-left: 0.25rem;
+}
+/* ——————————————————————————————————————————————— */
+
+/* Select input field */
+.select-input {
+    position: relative;
+}
+.select-input select{
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--main-border-radius);
+    border: 1px solid var(--main-md-gray-color);
+    font-size: 1rem;
+    font-weight: 300;
+    font-style: normal;
+    width: 100%;
+    margin-right: 1.5rem;
+
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+
+    background-color: var(--main-bg-color);
+    color: var(--main-text-color);
+}
+
+.select-input .select-dropdown-icon {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--main-md-gray-color);
+    font-size: 1rem;
+    line-height: 1;
+}
+/* ——————————————————————————————————————————————— */
+
+/* Text area input field */
+.textarea-input {
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--main-border-radius);
+    border: 1px solid var(--main-md-gray-color);
+    font-size: 1rem;
+    font-weight: 300;
+    font-style: normal;
+    width: 100%;
+}
+/* ——————————————————————————————————————————————— */
+
+/* ---- input field */
+/* ——————————————————————————————————————————————— */
+
+

@@ -11,3 +11,18 @@ indexes:
     properties:
       - name: end_date
       - name: start_date
+  - kind: PhotoRequest
+    properties:
+      - name: claimTimestamp
+      - name: submissionTimestamp
+        direction: desc
+  - kind: PhotoRequest
+    properties:
+      - name: photogEmail
+      - name: submissionTimestamp
+        direction: desc
+  - kind: PhotoRequest
+    properties:
+      - name: completedTimestamp
+      - name: submissionTimestamp
+        direction: desc

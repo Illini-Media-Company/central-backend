@@ -1,0 +1,132 @@
+{% if 0 %}
+<!-- 
+This file defines HTML that can be imported into any template by adding:
+
+include "partials/text_entry_alert.html" inside of curly braces with % on either
+side.
+
+Defines an alert screen with header, body text, text input area and two buttons. 
+To call this in a script in another file:
+
+result = await showTextEntryAlert(header, body, hintText, alertButtonText, cancelButtonText)
+
+All inputs are strings. Function returns the input if user clicks the alert button,
+returns false if the user clicks the cancel button.
+
+Calling hideTextEntryAlert() will remove the alert from the screen regardless
+of whether the user has clicked a button.
+
+Created by Jacob Slabosz on Nov. 6, 2025
+Last modified Nov. 6, 2025 
+-->
+{% endif %}
+
+{% import "macros/form.html" as form %}
+
+<style>
+    #text-entry-alert-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+
+        background-color: rgba(255, 255, 255, 0.8);
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9998;
+    }
+
+    .text-entry-alert-container {
+        background-color: var(--main-bg-color);
+        border-radius: var(--main-border-radius);
+        box-shadow: var(--main-box-shadow);
+
+        text-align: center;
+
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+
+        padding: 1rem;
+        max-width: 50%;
+    }
+
+    .text-entry-alert-button-container {
+        display: flex;
+        flex-direction: row;
+        gap: 0.5rem;
+    }
+
+    .text-entry-text-input {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        width: 80%;
+        margin-bottom: 1rem;
+    }
+
+</style>
+
+<div id="text-entry-alert-screen">
+    <div class="text-entry-alert-container">
+        <h3 style="margin-top: 1rem;" id="text-entry-alert-header">Alert</h3>
+        <p id="text-entry-alert-text" style="margin-bottom: 0.25rem;">
+            Message
+        </p>
+        {{ form.text_input(
+            name="text-entry-alert-input-box",
+            placeholder="",
+            class="text-entry-text-input"
+        ) }}
+        <div class="text-entry-alert-button-container">
+            <button id="text-entry-alert-cancel-button" class="button-secondary">
+                Text
+            </button>
+            <button id="text-entry-alert-alert-button" class="button-primary">
+                Text
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Displays a full-screen alert message with two buttons and text entry.
+    // Returns the inputted text if the user clicks alert button, false if the user clicks cancel button
+    // Need to await the response of this function when calling it
+    function showTextEntryAlert(header, body, hintText, alertButtonText, cancelButtonText) {
+
+        return new Promise((resolve) => {
+            const alertScreen  = document.getElementById("text-entry-alert-screen");
+            const cancelButton = document.getElementById("text-entry-alert-cancel-button");
+            const alertButton  = document.getElementById("text-entry-alert-alert-button");
+            const headerText   = document.getElementById("text-entry-alert-header");
+            const bodyText     = document.getElementById("text-entry-alert-text");
+            const textInput    = document.getElementById("text-entry-alert-input-box")
+
+            // Show the alert, set the text for each element
+            alertScreen.style.display = "flex";
+            if (header) headerText.innerText = header;
+            if (body) bodyText.innerText = body;
+            if (hintText) textInput.placeholder = hintText;
+            if (alertButtonText) alertButton.innerText = alertButtonText;
+            if (cancelButtonText) cancelButton.innerText = cancelButtonText;
+
+            alertButton.onclick = () => {
+                alertScreen.style.display = "none";
+                resolve(textInput.value);
+            };
+
+            cancelButton.onclick = () => {
+                alertScreen.style.display = "none";
+                resolve(false);
+            };
+        });
+    }
+
+    function hideTextEntryAlert() {
+        document.getElementById("text-entry-alert-screen").style.display = "none";
+    }
+</script>
