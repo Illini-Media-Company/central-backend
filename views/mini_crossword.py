@@ -16,6 +16,9 @@ from util.stories import get_title_from_url
 from util.mini_crossword.validator import validate_crossword
 from datetime import date as _date
 
+from db.mini_crossword_object import add_crossword
+from flask_login import current_user
+
 
 mini_routes = Blueprint("mini_routes", __name__, url_prefix="/mini")
 
@@ -99,7 +102,11 @@ def validate():
 
     origin = payload.get("origin") or "manual"
     article_link = payload.get("article_link") or ""
-    created_by = payload.get("created_by") or ""
+    created_by = (
+        getattr(current_user, "email", None)
+        or getattr(current_user, "name", None)
+        or ""
+    )
 
     # Build a lightweight object with attributes expected by validator
     class _Crossword:
@@ -134,3 +141,38 @@ def validate():
         )
 
     return jsonify({"ok": True, "summary": summary})
+
+
+@mini_routes.route("/save", methods=["POST"])
+@login_required
+def save_crossword():
+    payload = request.get_json(silent=True) or {}
+
+    cw_date_str = payload.get("date")
+    grid = payload.get("grid")
+    if not cw_date_str or not grid:
+        return jsonify({"ok": False, "error": "date and grid are required"}), 400
+
+    try:
+        cw_date = _date.fromisoformat(cw_date_str)
+    except:
+        return jsonify({"ok": False, "error": "Invalid date format"}), 400
+
+    cw_id = int(cw_date.strftime("%Y%m%d"))
+
+    crossword = add_crossword(
+        id=cw_id,
+        date=cw_date,
+        grid=grid,
+        clues=payload.get("clues", {}),
+        answers=payload.get("answers", []),
+        origin=payload.get("origin", "manual"),
+        article_link=payload.get("article_link", ""),
+        created_by=(
+            getattr(current_user, "email", None)
+            or getattr(current_user, "name", None)
+            or ""
+        ),
+    )
+
+    return jsonify({"ok": True, "crossword": crossword})
