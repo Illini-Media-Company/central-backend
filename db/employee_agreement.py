@@ -5,13 +5,13 @@ from . import client
 
 # class for each employee agreement
 class EmployeeAgreement(ndb.Model):
-    user_id = ndb.StringProperty()
+    user_id = ndb.StringProperty()  # Slack ID for the employee
     user_signed = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
-    editor_id = ndb.StringProperty()
+    editor_id = ndb.StringProperty()  # Slack ID for the editor
     editor_signed = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
-    manager_id = ndb.StringProperty()
+    manager_id = ndb.StringProperty()  # Slack ID for the managing editor
     manager_signed = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
-    chief_id = ndb.StringProperty()
+    chief_id = ndb.StringProperty()  # Slack ID for the Editor-in-Chief
     chief_signed = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
     agreement_url = ndb.StringProperty()
 
@@ -98,13 +98,3 @@ def get_pending_agreements_for_chief(chief_id):
             for agreement in agreements
             if agreement.manager_signed is not None
         ]
-
-
-# og person
-# their editor
-# manager of their section
-# cheif
-
-# check which type of user
-# taht tells us what user to pull
-# pull employee agreement by editor, manager, cheif ETC.

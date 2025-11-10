@@ -62,6 +62,7 @@ def send_notification():
     manager_email = data.get("manager", "")
     chief_email = data.get("chief", "")
     editor_email = data.get("editor", "")
+    url = data.get("url", "")
 
     for email in emails:
         email = email.strip()
@@ -87,7 +88,7 @@ def send_notification():
 
         if user_data.get("ok"):
             user_slack_id = user_data["user"]["id"]
-            agreement_url = "https://app.dailyillini.com/"
+            agreement_url = url
 
             add_employee_agreement(
                 user_id=user_slack_id,
@@ -98,7 +99,7 @@ def send_notification():
             )
 
             # we need to add the user to the db and then call the notification function
-            send_employee_agreement_notification(user_slack_id, agreement_url)
+            send_employee_agreement_notification(user_slack_id)
         else:
             return f"User with email {email} not found", 404
     return "Emails sucessfully sent", 200
@@ -182,8 +183,6 @@ def sign_agreement():
             pending_list = get_pending_agreements_for_chief(next_signer_id)
 
         if len(pending_list) == 1:
-            send_employee_agreement_notification(
-                next_signer_id, agreement.agreement_url
-            )
+            send_employee_agreement_notification(next_signer_id)
 
     return "Agreement signed successfully", 200
