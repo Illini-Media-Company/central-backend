@@ -1,23 +1,35 @@
-{% extends 'base.html' %} {% block title %}Home{% endblock %} {% block
-extra_head %}
+{% extends 'base.html' %} 
+
+{% block title %}
+Employee Agreements
+{% endblock %} 
+
+{% block extra_head %}
 <link rel="stylesheet" href="/static/styles/styles_index.css" />
 <link rel="stylesheet" href="/static/styles/styles_employee-agreement-dashboard.css" />
-<!-- Includes from your setup -->
-{% include "partials/loading.html" %} {% include "partials/info_bar.html" %} {%
-endblock %} {% block content %}
-<h2>Pending Documents</h2>
+{%endblock %} 
+
+{% include "partials/loading.html" %}
+{% include "partials/info_bar.html" %} 
+
+{% block content %}
+<h2>Employee Agreements</h2>
+
+<hr>
 
 <ul class="doc-list" id="docList"></ul>
 
 <div class="modal" id="modal">
   <div class="modal-content">
-    <span class="close">&times;</span>
+    <span class="close"><i class="bi bi-x-lg"></i></span>
     <h3 id="modalTitle"></h3>
     <p id="modalText"></p>
 
     <div id="signature" class="signature"></div>
-    <button id="signBtn" class="sign-btn">Sign</button>
-    <button id="sendBtn" class="send-btn" disabled>Send</button>
+    <div style="display: flex; flex-direction: row; gap: 0.5rem; justify-content: center;">
+      <button id="signBtn" class="button-primary">Sign</button>
+      <button id="sendBtn" class="button-secondary" disabled>Complete</button>
+    </div>
   </div>
 </div>
 

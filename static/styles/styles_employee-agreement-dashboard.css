@@ -1,83 +1,59 @@
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background-color: #f9f9f9;
-}
-
-h2 {
-  margin-bottom: 20px;
+.doc-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .doc-item {
-  border: 1px solid #ccc;
-  border-radius: 12px;
-  padding: 15px 20px;
-  margin-bottom: 10px;
-  background-color: white;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  cursor: pointer;
-  transition: 0.2s;
+    border-radius: var(--main-border-radius);
+    padding: 0.75rem 1rem;
+    background-color: var(--main-bg-color);
+    box-shadow: var(--main-box-shadow);
+    cursor: pointer;
+    transition: 0.2s;
 }
 
 .doc-item:hover {
-  background-color: #f0f8ff;
+    background-color: var(--main-lt-gray-color);
 }
 
 .modal {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  justify-content: center;
-  align-items: center;
-  z-index: 10;
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    justify-content: center;
+    align-items: center;
+    z-index: 9997;
 }
 
 .modal-content {
-  background: white;
-  border-radius: 10px;
-  padding: 20px;
-  width: 80%;
-  max-width: 600px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-  max-height: 80vh;
-  overflow-y: auto;
-  position: relative;
+    background: var(--main-bg-color);
+    border-radius: var(--main-border-radius);
+    padding: 1rem;
+    width: 80%;
+    max-width: 60vw;
+    border: none !important;
+    box-shadow: var(--main-box-shadow);
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
 }
 
 .close {
-  position: absolute;
-  top: 10px;
-  right: 15px;
-  font-size: 24px;
-  cursor: pointer;
-}
-
-button {
-  margin-top: 15px;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 16px;
-  cursor: pointer;
-  border: none;
-}
-
-.sign-btn {
-  background-color: #ff7300;
-  color: white;
-}
-
-.send-btn {
-  background-color: #676767;
-  color: white;
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 1.5rem;
+    cursor: pointer;
 }
 
 .signature {
-  font-family: "Brush Script MT";
-  font-size: 28px;
-  color: rgb(0, 0, 0);
-  margin-top: 10px;
+    font-family: "Brush Script MT";
+    font-size: 2rem;
+    color: var(--main-text-color);
+    margin-top: 10px;
 }
