@@ -114,16 +114,15 @@ def notify_copy_editor(story_url, is_breaking, copy_chief_email=None, call=False
         print(f"\tEditor decided Copy Chief ({copy_chief_email}).")
         email = copy_chief_email
 
-    slack_id = app.client.users_lookupByEmail(email=email)["user"]["id"] #looks up the id in slack based on their email 
+    slack_id = app.client.users_lookupByEmail(email=email)["user"]["id"]
     app.client.chat_postMessage(
         token=SLACK_BOT_TOKEN,
-        username="IMC Notification Bot", #this is the display name of what it is in slack
+        username="IMC Notification Bot",
         channel=DI_COPY_TAG_CHANNEL_ID,
         text=f"<@{slack_id}> A new story is ready to be copy edited.\n {story_url}",
     )
     print(f"Slack message sent to {email}.")
 
-#slack api documentation 
 
 def add_copy_editor(editor_email, day_of_week, shift_num):
     creds = get_creds(SCOPES)

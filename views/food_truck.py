@@ -30,7 +30,7 @@ food_truck_routes = Blueprint("food_truck_routes", __name__, url_prefix="/food-t
 
 # Admin page, renders food_truck_admin.html
 # Gets all registered food trucks
-@food_truck_routes.route("/helper", methods=["GET"])
+@food_truck_routes.route("/admin", methods=["GET"])
 @login_required
 @restrict_to(["food-truck-admin", "imc-staff-webdev"])
 def admin():
