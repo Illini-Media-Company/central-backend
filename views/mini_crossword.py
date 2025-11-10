@@ -9,7 +9,7 @@ from flask_login import login_required
 # from flask_login import current_user, login_required
 # from util.illordle_generate_word import random_word
 
-from db.mini_crossword_object import get_crossword
+from db.mini_crossword_object import get_crossword, get_all_crosswords
 from db.story import get_recent_stories
 from util.security import restrict_to
 from util.stories import get_title_from_url
@@ -29,7 +29,7 @@ def all_days():
     """
     Return data; all saved crosswods
     """
-    return ""
+    return get_all_crosswords()
 
 
 @mini_routes.route("/today", methods=["GET"])
