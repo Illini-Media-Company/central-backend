@@ -84,30 +84,9 @@ endblock %} {% block content %}
   modal.addEventListener("click", (e) => {
     if (e.target === modal) modal.style.display = "none";
   });
-  let currentUserName = "";
-
-  async function fetchCurrentUser() {
-    try {
-      const response = await fetch("/employee-agreement/get-current-user", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": "{{ csrf_token() }}",
-        },
-      });
-      if (!response.ok) throw new Error("Failed to get current user");
-      const data = await response.json();
-      currentUserName = data.name || data.username || "HERE RIGHT NOW";
-    } catch (err) {
-      console.error(err);
-      currentUserName = "User";
-    }
-  }
-
-  fetchCurrentUser();
 
   signBtn.addEventListener("click", () => {
-    signature.textContent = currentUserName;
+    signature.textContent = "{{ currentUserName }}";
     signBtn.disabled = true;
     sendBtn.disabled = false;
   });
