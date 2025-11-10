@@ -59,12 +59,13 @@ from util.gcal import get_allstaff_events
 
 from db.json_store import json_store_set
 
-from util.copy_editing import scheduler as copy_scheduler
+from util.slackbots.copy_editing import scheduler as copy_scheduler
 from util.map_point import scheduler as map_scheduler
 from util.scheduler import scheduler_to_json, db_to_scheduler
 from apscheduler.triggers.date import DateTrigger
 
-from util.slackbot import start_slack
+from util.slackbots._slackbot import start_slack
+import util.slackbots.photo_request
 from views.all_tools import tools_routes
 from views.content_doc import content_doc_routes
 from views.constant_contact import constant_contact_routes
@@ -78,12 +79,16 @@ from views.copy_schedule import copy_schedule_routes
 from views.map_points import map_points_routes
 from views.overlooked import overlooked_routes
 from views.food_truck import food_truck_routes
+from views.photo_request import photo_request_routes
 
 from util.helpers.ap_datetime import (
     ap_datetime,
     ap_date,
     ap_time,
+    ap_daydate,
+    ap_daydatetime,
 )
+from util.helpers.email_to_slackid import email_to_slackid
 
 from util.all_tools import format_restricted_groups
 
@@ -110,6 +115,7 @@ app.register_blueprint(copy_schedule_routes)
 app.register_blueprint(map_points_routes)
 app.register_blueprint(overlooked_routes)
 app.register_blueprint(food_truck_routes)
+app.register_blueprint(photo_request_routes)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -122,6 +128,9 @@ start_slack(app)
 app.jinja_env.filters["ap_datetime"] = ap_datetime
 app.jinja_env.filters["ap_date"] = ap_date
 app.jinja_env.filters["ap_time"] = ap_time
+app.jinja_env.filters["ap_daydate"] = ap_daydate
+app.jinja_env.filters["ap_daydatetime"] = ap_daydatetime
+app.jinja_env.filters["email_to_slackid"] = email_to_slackid
 app.jinja_env.filters["format_restricted_groups"] = format_restricted_groups
 
 

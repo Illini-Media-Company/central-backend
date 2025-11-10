@@ -1,0 +1,423 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Photo Request Form
+{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="/static/macros/form.css">
+    <style>
+        .photo-req-form-row {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .photo-req-form {
+            gap: 1rem;
+        }
+
+        .initial-no-show {
+            display: none;
+        }
+    </style>
+{% endblock %}
+
+{% import "macros/form.html" as form %}
+
+{% include "partials/loading.html" %}
+{% include "partials/text_alert.html" %}
+
+{% block content %}
+<h1>Submit a Photo Request</h1>
+
+<hr>
+
+<a style="text-decoration: none; display: block; color: inherit;" href="/photo-requests/api/fetch/submitted/{{ current_user.email }}" target="_blank">
+    <button class="button-secondary">
+        View my previous requests
+    </button>
+</a>
+
+<hr style="margin-bottom: 2rem;">
+
+{% call form.form(id="photoRequestForm", class="photo-req-form", enctype="application/x-www-form-urlencoded", on_submit="return submitRequest(event)") %}
+    {{ form.text_input( 
+        name="email",
+        label="Submitter's email address (@illinimedia.com)",
+        required=true,
+        placeholder="NetID@illinimedia.com",
+        pattern=".*@illinimedia\.com$",
+        class="photo-req-form-row"
+    ) }}
+    {{ form.text_input( 
+        name="name",
+        label="Submitter's full name",
+        required=true,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.select_input( 
+        name="destination",
+        label="What is the photo for?",
+        options=["The Daily Illini", "Illio Yearbook", "WPGU", "Chambana Eats", "Marketing", "Other"],
+        required=true,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.select_input( 
+        name="department",
+        label="What section is this for?",
+        options=["Arts & Entertainment", "Opinions", "News", "Sports"],
+        required=true,
+        class="photo-req-form-row initial-no-show"
+    ) }}
+    {{ form.textarea_input( 
+        name="memo",
+        label="Memo",
+        subtext="This could be the story's headline (if applicable) or something like \"Photo of the Main Quad.\" Otherwise, it should be a short (5-10 word) description of what the photo is.",
+        required=true,
+        maxlength=75,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.textarea_input( 
+        name="specificDetails",
+        label="Specific details or more information",
+        required=true,
+        maxlength=400,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.text_input( 
+        name="url",
+        label="Reference link",
+        subtext="Optionally include a link to a working draft of the story, an inspiration picture or a relevant document (like an event flyer). If this is a Google Drive link, please make sure di-staff-photo@illinimedia.com has access to view.",
+        alt_type="url",
+        required=false,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.text_input( 
+        name="dueDate",
+        label="When do you need this photo by?",
+        subtext="If this is a story for The Daily Illini, this should be the estimated publish date. In general, most photo requests should be submitted at least two full days before the due date.",
+        alt_type="date",
+        required=true,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.radio_input( 
+        name="isCourtesy",
+        label="Is this a courtesy photo?",
+        subtext="More specifically, do you need a photo of an album cover, movie poster, national event or something else that our photographers will be unable to photograph?",
+        options=["Yes", "No"],
+        required=true,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.radio_input( 
+        name="isEvent",
+        label="Is this a photo of a specific event?",
+        subtext="More specifically, will this be a photo of something that has a predetermined date/time like a protest, interview, show or game?",
+        options=["Yes", "No"],
+        required=false,
+        class="photo-req-form-row initial-no-show"
+    ) }}
+    {{ form.text_input( 
+        name="eventDate",
+        label="What is the date and time of the event?",
+        alt_type="datetime-local",
+        required=false,
+        class="photo-req-form-row initial-no-show"
+    ) }}
+    {{ form.text_input( 
+        name="eventLocation",
+        label="What is the location of the event?",
+        placeholder="Address and specific location (room number, etc.)",
+        required=false,
+        class="photo-req-form-row initial-no-show"
+    ) }}
+    {{ form.radio_input( 
+        name="presspass",
+        label="Does thie event require press credentials?",
+        options=["Yes", "No"],
+        required=false,
+        class="photo-req-form-row initial-no-show"
+    ) }}
+    {{ form.select_input( 
+        name="presspassRequestor",
+        label="Who will or who needs to request the credentials?",
+        subtext="For The Daily Illini, this should always be \"Editor/Supervisor\"",
+        options=["Submitter", "Editor/Supervisor", "Photographer"],
+        required=false,
+        class="photo-req-form-row initial-no-show"
+    ) }}
+    {{ form.textarea_input( 
+        name="info",
+        label="Any other information?",
+        subtext="Is there any other information you need to share that has not bee covered yet? This field is optional.",
+        required=false,
+        class="photo-req-form-row"
+    ) }}
+    {{ form.submit_button(text="Submit", label="submitButton") }}
+{% endcall %}
+
+<script>
+    // Prefill the email and name fields with the current user's info
+    window.addEventListener("load", () => {
+        const submissionForm = document.getElementById("photoRequestForm");
+        const emailInput = submissionForm.querySelector("#email");
+        const nameInput = submissionForm.querySelector("#name");
+
+        emailInput.value = "{{ current_user.email }}";
+        nameInput.value = "{{ current_user.name }}";
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const msg = sessionStorage.getItem("infoBarMessage");
+        if (msg) {
+            showInfoBar(msg);
+            sessionStorage.removeItem("infoBarMessage"); // Clear it after showing
+        }
+    });
+
+    // Submit the photo request
+    async function submitRequest(event) {
+        event.preventDefault();
+        console.log("Submitting...");
+
+        showLoading("Verifying input...");
+
+        // Get the response data from the form (all as strings)
+        const formData = new FormData(submissionForm);
+        const valEmail = formData.get("email");                 
+        const valName = formData.get("name");                   
+        const valDest = formData.get("destination");            
+        const valDept = formData.get("department");              // Not always submitted
+        const valMemo = formData.get("memo");                   
+        const valDetails = formData.get("specificDetails");     
+        const valUrl = formData.get("url");                     // Not always submitted
+        const valDue = formData.get("dueDate"); 
+        var valCourt = formData.get("isCourtesy-options");    
+        var valEvent = formData.get("isEvent-options");       // Not always submitted
+        const valEvDate = formData.get("eventDate");            // Not alwys submitted || This is naive with no TZ
+        const valEvLoc = formData.get("eventLocation");         // Not always submitted
+        var valPass = formData.get("presspass-options");      // Not always submitted
+        const valPpReq = formData.get("presspassRequestor");    // Not always submitted
+        const valInfo = formData.get("info");                   // Not always submitted
+
+        // Validate the input, cancel the submission if not valid
+        valid = await validateInput(valEmail, valName, valDest, valDept, valMemo,
+                                    valDetails, valUrl, valDue, valCourt, valEvent,
+                                    valEvDate, valEvLoc, valPass, valPpReq, valInfo);
+        if (!valid) {
+            hideLoading();
+            return;
+        }
+
+        // Turn the valCourt into boolean
+        if (valCourt == "Yes") 
+            valCourt = true;
+        else 
+            valCourt = false;
+        
+        // Turn the valEvent into boolean
+        if (valEvent == "Yes")
+            valEvent = true;
+        else
+            valEvent = false;
+        
+        // Turn the valPass into boolean
+        if (valPass == "Yes")
+            valPass = true;
+        else
+            valPass = false;
+
+        showLoading("Submitting...:");
+        
+        // Send the data to the backend endpoint
+        let endpoint = "/photo-requests/api/submit";
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+            submitterEmail: valEmail,
+            submitterName: valName,
+            destination: valDest,
+            department: valDept,
+            memo: valMemo,
+            specificDetails: valDetails,
+            referenceURL: valUrl,
+            dueDate: valDue,
+            isCourtesy: valCourt,
+            specificEvent: valEvent,
+            eventDateTime: valEvDate,
+            eventLocation: valEvLoc,
+            pressPass: valPass,
+            pressPassRequester: valPpReq,
+            moreInfo: valInfo,
+        };
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        // Check if it was successful
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", "Request successfully submitted."); // Safe so we can display after reload
+            window.location.reload();
+        } else {
+            // Alert of the error
+            console.log("Submitting Photo Request to database failed!");
+            const message = await response.text();
+            console.error(message);
+            await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            hideLoading();
+        }
+
+    }
+
+    // Function to validate the input of the form
+    async function validateInput(valEmail, valName, valDest, valDept, valMemo,
+                                 valDetails, valUrl, valDue, valCourt, valEvent,
+                                 valEvDate, valEvLoc, valPass, valPpReq, valInfo) {
+
+        // Make sure there is a department if it's for The Daily Illini
+        if (valDest == "The Daily Illini") {
+            if (valDept == "" || valDept == "Select...") {
+                await showTextAlert(
+                    header = "Invalid input",
+                    body = "Please select a department.",
+                    buttonText = "Dismiss"
+                );
+                return false;
+            }
+        }
+
+        // If it's not a courtesy, make sure the other fields are all complete
+        if (valCourt == false) {
+            if (valEvent == true) {
+                if (valEvDate == "") {
+                    await showTextAlert(
+                        header = "Invalid input",
+                        body = "Please indicate the date and time of the event.",
+                        buttonText = "Dismiss"
+                    );
+                    return false;
+                }
+
+                if (valEvLoc == "") {
+                    await showTextAlert(
+                        header = "Invalid input",
+                        body = "Please indicate the location of the event.",
+                        buttonText = "Dismiss"
+                    );
+                    return false;
+                }
+
+                if (valPass == "") {
+                    await showTextAlert(
+                        header = "Invalid input",
+                        body = "Please indicate whether this event requires press credentials.",
+                        buttonText = "Dismiss"
+                    );
+                    return false;
+                } else if (valPass == "Yes") {
+                    if (valPpReq == "" || valPpReq == "Select...") {
+                        await showTextAlert(
+                            header = "Invalid input",
+                            body = "Please indicate who is is requesting the credentials.",
+                            buttonText = "Dismiss"
+                        );
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    // Get all the relevant form elements for dynamic showing/hiding
+    const submissionForm = document.getElementById("photoRequestForm");
+    const destInput = submissionForm.querySelector("#destination");
+    const deptInput = submissionForm.querySelector("#department");
+    const courtInput = submissionForm.querySelectorAll('input[name="isCourtesy-options"]');
+    const eventInput = submissionForm.querySelectorAll('input[name="isEvent-options"]');
+    const evDateInput = submissionForm.querySelector("#eventDate");
+    const evLocInput = submissionForm.querySelector("#eventLocation");
+    const passInput = submissionForm.querySelectorAll('input[name="presspass-options"]');
+    const ppReqInput = submissionForm.querySelector("#presspassRequestor");
+
+    const deptContainer = submissionForm.querySelector("#formfield-department");
+    const eventContainer = submissionForm.querySelector("#formfield-isEvent");
+    const evDateContainer = submissionForm.querySelector("#formfield-eventDate");
+    const evLocContainer = submissionForm.querySelector("#formfield-eventLocation");
+    const passContainer = submissionForm.querySelector("#formfield-presspass");
+    const ppReqContainer = submissionForm.querySelector("#formfield-presspassRequestor");
+
+    // Event listener to show the department question if the destination is The Daily Illini
+    destInput.addEventListener("input", () => {
+        if (destInput.value == "The Daily Illini") {
+            deptContainer.classList.remove("initial-no-show");
+        } else {
+            // Hide the question again and clear its value
+            deptContainer.classList.add("initial-no-show");
+            deptInput.value = "";
+        }
+    });
+
+    // Event listener to show the event question if it's not a courtesy
+    courtInput.forEach(input => {
+        input.addEventListener("change", () => {
+            if (input.value == "No") {
+                eventContainer.classList.remove("initial-no-show");
+            } else {
+                eventContainer.classList.add("initial-no-show");
+                evDateContainer.classList.add("initial-no-show");
+                evLocContainer.classList.add("initial-no-show");
+                passContainer.classList.add("initial-no-show");
+                ppReqContainer.classList.add("initial-no-show");
+
+                // Clear the input for the following questions
+                eventInput.forEach(evt => evt.checked = false);
+                evDateInput.value = "";
+                evLocInput.value = "";
+                passInput.forEach(evt => evt.checked = false);
+                ppReqInput.value = "";
+            }
+        });
+    });
+
+    // Event listener to show the other event questions if it's not a courtesy
+    eventInput.forEach(input => {
+        input.addEventListener("change", () => {
+            if (input.value == "Yes") {
+                evDateContainer.classList.remove("initial-no-show");
+                evLocContainer.classList.remove("initial-no-show");
+                passContainer.classList.remove("initial-no-show");
+            } else {
+                evDateContainer.classList.add("initial-no-show");
+                evLocContainer.classList.add("initial-no-show");
+                passContainer.classList.add("initial-no-show");
+                ppReqContainer.classList.add("initial-no-show");
+
+                // Clear the input for the following questions
+                evDateInput.value = "";
+                evLocInput.value = "";
+                passInput.forEach(evt => evt.checked = false);
+                ppReqInput.value = "";
+            }
+        });
+    });
+
+    // Event listener to show the presspass requestor question if it needs a press pass
+    passInput.forEach(input => {
+        input.addEventListener("change", () => {
+            if (input.value == "Yes") {
+                ppReqContainer.classList.remove("initial-no-show");
+            } else {
+                ppReqContainer.classList.add("initial-no-show");
+                ppReqInput.value = "";
+            }
+        });
+    });
+</script>
+
+{% endblock %}

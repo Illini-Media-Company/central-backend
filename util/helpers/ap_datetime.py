@@ -17,7 +17,22 @@ def ap_datetime(value):
     if date == -1 or time == -1:
         return -1
 
-    return f"{ap_date(value)}, {ap_time(value)}"
+    return f"{date}, {time}"
+
+
+def ap_daydatetime(value):
+    """Format a datetime in AP style using ap_date and ap_time, including the dat of the week. Returns -1 if the input is incorrect."""
+    if not value:
+        return ""
+
+    if isinstance(value, str):
+        value = datetime.fromisoformat(value)
+
+    date_time = ap_datetime(value)
+    if date_time == -1:
+        return -1
+
+    return f"{value.strftime('%A')}, {date_time}"
 
 
 def ap_date(value):
@@ -48,7 +63,19 @@ def ap_date(value):
     return f"{month_str} {value.day}"
 
 
-from datetime import datetime, time
+def ap_daydate(value):
+    """Format a date in AP style (month abbreviations, day) including the day of the week. Returns -1 if the input is incorrect."""
+    if not value:
+        return ""
+
+    if isinstance(value, str):
+        value = datetime.fromisoformat(value)
+
+    date_str = ap_date(value)
+    if date_str == -1:
+        return -1
+
+    return f"{value.strftime('%A')}, {date_str}"
 
 
 def ap_time(value):
