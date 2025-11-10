@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    TV Display Settings
+{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="/static/styles/styles_index.css">
+
+    <style>
+        /* Page-specific layout styles */
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <h1>Start TV Rotation</h1>
+
+    <div class="section-container">
+        <div class="section-header">
+            <h2 style="margin-bottom: 0">Select Screens</h2>
+        </div>
+
+        <div class="inner-container">
+            <div class="checkbox-group">
+                <label><input type="checkbox" id="stats">Website / Social Media Statistics</label>
+                <label><input type="checkbox" id="quadCam">Quad Cam</label>
+                <label><input type="checkbox" id="almaCam">Alma Cam</label>
+                <label><input type="checkbox" id="datetime">Date / Time</label>
+                <label><input type="checkbox" id="nc_avail">News Conference Table Availability</label>
+                <label><input type="checkbox" id="bc_avail">Business Conference Table Availability</label>
+            </div>
+            <button id="startButton" class="button-primary">Start</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // map checkbox IDs -> query param keys the backend will read
+    const idToParam = {
+        stats:    'show_stats',
+        quadCam:  'show_quad',
+        almaCam:  'show_alma',
+        datetime: 'show_datetime',
+        nc_avail:     'show_nc_avail'
+    };
+
+    const toStrBool = (v) => (v ? 'true' : 'false');
+
+    document.getElementById('startButton')?.addEventListener('click', () => {
+    const params = new URLSearchParams();
+
+    // send every flag explicitly as true/false
+    Object.entries(idToParam).forEach(([id, qp]) => {
+        const el = document.getElementById(id);
+        if (el) params.set(qp, toStrBool(el.checked));
+    });
+
+        // open the rotating screen in a new tab
+        const url = `/tv-rotation/screen?${params.toString()}`;
+        window.open(url, '_blank', 'noopener,noreferrer');
+    });
+</script>
+    
+{% endblock %}
