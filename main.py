@@ -62,6 +62,7 @@ from db.json_store import json_store_set
 from util.slackbots.copy_editing import scheduler as copy_scheduler
 from util.map_point import scheduler as map_scheduler
 from util.scheduler import scheduler_to_json, db_to_scheduler
+from util.changelog_parser import parse_changelog
 from apscheduler.triggers.date import DateTrigger
 
 from util.slackbots._slackbot import start_slack
@@ -375,6 +376,16 @@ def callback():
 def url_history():
     url_history = session.get("url_history", [])
     return render_template("url_history.html", url_history=url_history)
+
+
+# The route for the changelog page, information pulled from CHANGELOG.md via /util/changelog_parser.py
+@app.route("/changelog")
+@login_required
+def changelog():
+    releases = parse_changelog()
+    latest = releases[0] if releases else None
+    older = releases[1:] if len(releases) > 1 else []
+    return render_template("changelog.html", latest=latest, older=older)
 
 
 @app.route("/api-query")
