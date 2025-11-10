@@ -13,7 +13,7 @@ from db.mini_crossword_object import get_crossword, get_all_crosswords
 from db.story import get_recent_stories
 from util.security import restrict_to
 from util.stories import get_title_from_url
-from util.mini_crossword.validator import validate_crossword
+from util.mini_crossword_validator import validate_crossword
 from datetime import date as _date
 
 from db.mini_crossword_object import add_crossword
@@ -54,10 +54,9 @@ def validate():
     Expected JSON body:
       {
         "date": "YYYY-MM-DD" | omitted (defaults to today),
-        "grid": [[str,...] x5],  # '#' for black cells, 'A'-'Z' for letters
+        "grid": [[str,...] x5],  # '#' for black cells, 'A'-'Z' for letters (no empty cells)
         "origin": "manual"|"auto" (optional, defaults to "manual"),
-        "article_link": str (optional, defaults to ""),
-        "created_by": str (optional, defaults to "")
+        "article_link": str (optional, defaults to "")
       }
     """
 
@@ -90,6 +89,19 @@ def validate():
     else:
         cw_date_obj = cw_date_str
 
+    # Check if crossword with this date already exists BEFORE validation
+    existing = get_crossword(cw_date_obj)
+    if existing:
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": f"A crossword already exists for {cw_date_obj}. Please change the date.",
+                }
+            ),
+            400,
+        )
+
     origin = payload.get("origin") or "manual"
     article_link = payload.get("article_link") or ""
     created_by = (
@@ -106,8 +118,8 @@ def validate():
     cw.id = None
     cw.date = cw_date_obj
     cw.grid = grid
-    cw.clues = payload.get("clues") or {}
-    cw.answers = payload.get("answers") or []
+    cw.clues = {}  # Always empty - clues not set yet
+    cw.answers = []  # Always empty - answers not set yet
     cw.origin = origin
     cw.article_link = article_link
     cw.created_by = created_by
@@ -116,19 +128,6 @@ def validate():
         summary = validate_crossword(cw)
     except ValueError as e:
         return jsonify({"ok": False, "error": str(e)}), 400
-
-    # Only after successful validation, check if crossword with this date already exists
-    existing = get_crossword(cw_date_obj)
-    if existing:
-        return (
-            jsonify(
-                {
-                    "ok": False,
-                    "error": f"A crossword already exists for {cw_date_obj}. Please change the date.",
-                }
-            ),
-            400,
-        )
 
     return jsonify({"ok": True, "summary": summary})
 

@@ -48,18 +48,18 @@ def validate_crossword(cw) -> Dict[str, str | int]:
 
 def _check_meta(cw) -> None:
     if cw.origin not in ("manual", "auto"):
-        raise ValueError(f"origin must be 'manual' or 'auto', got {cw.origin!r}.")
+        raise ValueError(f"Origin must be 'manual' or 'auto', got {cw.origin!r}.")
     if not cw.article_link:
-        raise ValueError("article_link is required.")
+        raise ValueError("An article link is required.")
     if not isinstance(cw.clues, dict):
-        raise ValueError("clues must be a dict (can be empty).")
+        raise ValueError("Clues must be a dict (can be empty).")
     if cw.origin == "manual" and not cw.created_by:
-        raise ValueError("created_by is required for manual crosswords.")
+        raise ValueError("Created By is required for manual crosswords.")
     _check_date_is_monday(cw.date)
 
 
 def _check_date_is_monday(cw_date) -> None:
-    """Check that the crossword date is a Monday.
+    """Check that the crossword date is a Monday and not before today.
 
     Handles date as:
     - datetime.date object (from NDB's to_dict())
@@ -76,6 +76,13 @@ def _check_date_is_monday(cw_date) -> None:
     elif not isinstance(cw_date, date):
         raise ValueError(
             f"date must be a date object or string; got {type(cw_date).__name__}."
+        )
+
+    # Check that date is not before today
+    today = date.today()
+    if cw_date < today:
+        raise ValueError(
+            f"Crossword date cannot be before today ({today}). Got {cw_date}."
         )
 
     # Monday is weekday 0 in Python's datetime
@@ -113,7 +120,9 @@ def _check_grid_chars(grid: List[List[str]]) -> None:
 def _check_black_cap(grid: List[List[str]]) -> None:
     num_blacks = sum(ch == "#" for row in grid for ch in row)
     if num_blacks > MAX_BLACKS:
-        raise ValueError(f"Too many black cells: {num_blacks} > {MAX_BLACKS}.")
+        raise ValueError(
+            f"Too many black cells: {num_blacks}. Only {MAX_BLACKS} are allowed."
+        )
 
 
 class _Span:
@@ -152,9 +161,11 @@ def _extract_spans(grid: List[List[str]]) -> Dict[str, List[_Span]]:
     for r in range(GRID_SIZE):
         c = 0
         while c < GRID_SIZE:
+            # Start of a word: cell is not black, and (at start of row OR previous cell is black)
             if grid[r][c] != "#" and (c == 0 or grid[r][c - 1] == "#"):
                 cells: List[Tuple[int, int]] = []
                 j = c
+                # Continue while we have non-black cells
                 while j < GRID_SIZE and grid[r][j] != "#":
                     cells.append((r, j))
                     j += 1
@@ -171,9 +182,11 @@ def _extract_spans(grid: List[List[str]]) -> Dict[str, List[_Span]]:
     for c in range(GRID_SIZE):
         r = 0
         while r < GRID_SIZE:
+            # Start of a word: cell is not black, and (at start of column OR previous cell is black)
             if grid[r][c] != "#" and (r == 0 or grid[r - 1][c] == "#"):
                 cells: List[Tuple[int, int]] = []
                 i = r
+                # Continue while we have non-black cells
                 while i < GRID_SIZE and grid[i][c] != "#":
                     cells.append((i, c))
                     i += 1
@@ -190,6 +203,7 @@ def _extract_spans(grid: List[List[str]]) -> Dict[str, List[_Span]]:
 
 def _check_connectivity(grid: List[List[str]]) -> None:
     """Using BFS to check all white cells are 4-way connected (no isolated islands)."""
+    # White cells are non-black cells (can be empty, "-", or letters)
     whites = [
         (r, c) for r in range(GRID_SIZE) for c in range(GRID_SIZE) if grid[r][c] != "#"
     ]
@@ -217,9 +231,13 @@ def _check_connectivity(grid: List[List[str]]) -> None:
 def _check_max_spans(spans: Dict[str, List[_Span]]) -> None:
     """Check that we don't exceed maximum spans: 5 across, 5 down."""
     if len(spans["across"]) > 5:
-        raise ValueError(f"Too many across spans: {len(spans['across'])} > 5.")
+        raise ValueError(
+            f"Too many across spans: {len(spans['across'])}. Only 5 are allowed."
+        )
     if len(spans["down"]) > 5:
-        raise ValueError(f"Too many down spans: {len(spans['down'])} > 5.")
+        raise ValueError(
+            f"Too many down spans: {len(spans['down'])}. Only 5 are allowed."
+        )
 
 
 def _check_min_word_len(spans: Dict[str, List[_Span]]) -> None:
