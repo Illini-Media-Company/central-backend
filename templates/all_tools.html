@@ -257,6 +257,9 @@
             form.querySelector("#category").value = tool.category;
             form.querySelector("#restrict_to").value = format(tool.restricted_to);
 
+            // Make sure this element is within view
+            document.getElementById(`info-${uid}`).scrollIntoView();
+
         } else {
             const message = await response.text();
             console.error(message);
