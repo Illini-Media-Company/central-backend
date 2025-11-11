@@ -1,19 +1,15 @@
 from flask import request, render_template, Blueprint
-from util.helpers.ap_datetime import ap_date
+from util.helpers.ap_datetime import ap_daydate
 from util.gcal import get_resource_events_today
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-NEWS_CONF_RESOURCE_GCAL_ID = (
-    "c_1880trl645hpqj39k57idpvutni6g@resource.calendar.google.com"
+from constants import (
+    NEWS_CONF_RESOURCE_GCAL_ID,
+    BIS_CONF_RESOURCE_GCAL_ID,
+    WPGU_OFFICE_RESOURCE_GCAL_ID,
+    WPGU_ONAIR_GCAL_ID,
 )
-BIS_CONF_RESOURCE_GCAL_ID = (
-    "c_188756k7nm7tkgu4gpsiqsb07802a@resource.calendar.google.com"
-)
-WPGU_OFFICE_RESOURCE_GCAL_ID = (
-    "c_188ejl7c2di5uisrjp7qdcu8f7pto@resource.calendar.google.com"
-)
-WPGU_ONAIR_GCAL_ID = "c_b888554deb36a74a61aea32bac28ab500ade0003cd2ae61085354e07c2fa0fa0@group.calendar.google.com"
 
 
 rotate_tv_routes = Blueprint("rotate_tv_routes", __name__, url_prefix="/tv-rotation")
@@ -40,7 +36,7 @@ def tv_rotation_screen():
     show_pgu_onair = b("show_pgu_onair")  # WPGU on-air calendar
 
     # Get the current date in AP Style
-    current_date = ap_date(datetime.now(ZoneInfo("America/Chicago")))
+    current_date = ap_daydate(datetime.now(ZoneInfo("America/Chicago")))
 
     # Check which events to show
     if show_nc_avail:

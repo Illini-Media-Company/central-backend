@@ -63,7 +63,18 @@ MAIN_IMC_GCAL_ID = (
     "illinimedia.com_8cati95103kg5o3h8i11hmu0lo@group.calendar.google.com"
 )
 COPY_EDITING_GCAL_ID = "c_ce11637c04b9e766b04cf09ca41c971bd6b567648308d2ee53823cea6672ae4a@group.calendar.google.com"
-WPGU_ON_AIR_GCAL_ID = "c_b888554deb36a74a61aea32bac28ab500ade0003cd2ae61085354e07c2fa0fa0@group.calendar.google.com"
+
+# Google Resource Calendar IDs
+NEWS_CONF_RESOURCE_GCAL_ID = (
+    "c_1880trl645hpqj39k57idpvutni6g@resource.calendar.google.com"
+)
+BIS_CONF_RESOURCE_GCAL_ID = (
+    "c_188756k7nm7tkgu4gpsiqsb07802a@resource.calendar.google.com"
+)
+WPGU_OFFICE_RESOURCE_GCAL_ID = (
+    "c_188ejl7c2di5uisrjp7qdcu8f7pto@resource.calendar.google.com"
+)
+WPGU_ONAIR_GCAL_ID = "c_b888554deb36a74a61aea32bac28ab500ade0003cd2ae61085354e07c2fa0fa0@group.calendar.google.com"
 
 # Lists of Google Groups that control access to APIs
 TOOLS_ADMIN_ACCESS_GROUPS = [
