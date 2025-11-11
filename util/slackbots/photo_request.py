@@ -867,9 +867,12 @@ def delete_request(uid: int):
     # DB: delete request
     deleted = delete_photo_request(uid=int(uid))
     if not deleted:
+        print("[delete_request] Failed to delete request from the DB.")
         return {"error": "not found"}, 400
 
     label = _label_for_request(deleted)
+
+    print("[delete_request] Deleted request from the DB.")
 
     # Update the original message sent to the channel and the requestor to reflect 'deleted'
     try:
@@ -890,11 +893,14 @@ def delete_request(uid: int):
 
             update_message_blocks(ch, ts, blocks, text=fallback_text)
 
+            print("[delete_request] Updated message to photo channel.")
+
             # Now update the original message that was sent to the submitter
             sub_ch = deleted.get("submitSlackChannel")
             sub_ts = deleted.get("submitSlackTs")
             if sub_ch and sub_ts:
                 update_message_blocks(sub_ch, sub_ts, blocks, text=fallback_text)
+                print("[delete_request] Updated message to requestor.")
 
     except Exception as e:
         print(f"[delete_request] Slack update failed: {e}")
