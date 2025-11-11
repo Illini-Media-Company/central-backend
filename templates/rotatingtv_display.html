@@ -8,8 +8,8 @@
     .rotator { 
         height: 100vh; 
         width: 100vw; 
-        background: var(--main-dk-gray-color); 
-        color: var(--main-lt-gray-color); 
+        background: var(--main-bg-color); 
+        color: var(--main-dk-gray-color); 
     }
 
     .panel { 
@@ -41,42 +41,62 @@
 
     .timeline {
         position: relative;
-        height: 60px;
-        background: linear-gradient(to right, #f0f0f0, #fafafa);
-        border-radius: 10px;
+        height: 100%;
+        background: var(--main-bg-color);
+        border-radius: var(--main-border-radius);
         overflow: hidden;
-        margin: 20px 0;
-        width: 90%;
+        margin: 0;
+        width: 40%;
     }
 
     .event {
         position: absolute;
-        top: 10px;
-        height: 40px;
-        background-color: #4285f4;
-        color: white;
-        border-radius: 8px;
-        text-align: center;
-        font-size: 12px;
+        right: 2.5%;
+        width: 80%;
+        background-color: var(--main-accent-color);
+        color: var(--main--main-bg-color);
+        border-radius: var(--main-border-radius);
+        text-align: left;
         overflow: hidden;
         white-space: nowrap;
-        padding: 2px 6px;
+        padding: 0.25rem 0.5rem;
+        box-sizing: border-box;
         box-shadow: var(--main-box-shadow);
     }
 
     .event-title {
-        display: block;
-        font-weight: bold;
+        margin: 0;
+        font-size: 1.25rem;
+        color: var(--main-lt-gray-color);
+    }
+
+    .event-time {
+        margin: 0;
+        margin-left: 0.5rem;
+        font-size: 1rem;
+        font-weight: 300;
+        font-style: normal;
+        color: var(--main-lt-gray-color);
     }
 
     .time-marker {
         position: absolute;
-        top: 0;
-        bottom: 0;
-        width: 2px;
-        background: red;
-        z-index: 10;
-        transition: left 30s linear; /* smooth movement */
+        left: 0;
+        right: 0;
+        height: 0.1rem;
+        background: var(--main-md-gray-color);
+    }
+
+    .time-label {
+        position: absolute;
+        left: 0.5rem;
+        padding-top: 0.5rem;
+    }
+
+    #current-time-marker, #current-time-marker-pgu1, #current-time-marker-pgu2 {
+        background: var(--main-dk-gray-color);
+        z-index: 9997;
+        transition: bottom 30s linear;
     }
 </style>
 
@@ -87,8 +107,11 @@
             TV Display
         </title>
 
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
         <link rel="stylesheet" href="https://use.typekit.net/tid3tgd.css">
         <link rel="stylesheet" href="/static/globals.css">
+        <link rel="stylesheet" href="/static/styles/styles_index.css">
     </head>
 
     <body>
@@ -132,27 +155,141 @@
                 </section>
             {% endif %}
 
-            {% if show_nc_avail %}
-                <section class="panel" style="justify-content: center;">
-                    <!-- <div>
-                        {% for event in nc_avail_events %}
-                            <h4>{{ event.title }}</h4>
-                            <p>{{ event.start }} until {{ event.end }}</p>
-                        {% endfor %}
-                    </div> -->
+            {% if show_avail %}
+                <section class="panel" style="justify-content: center; align-items: center;">
+                    <div class="section-container" style="flex-direction: row; position: relative; height: calc(100% - 4rem); width: calc(100% - 4rem)">
+                        <div class="timeline">
+                            <div class="time-marker" id="current-time-marker"></div>
+                            <div class="time-label"  style="top: 8.33%">10 a.m.</div>
+                            <div class="time-marker" style="top: 8.33%"></div>
+                            <div class="time-label"  style="top: 16.67%">11 a.m.</div>
+                            <div class="time-marker" style="top: 16.67%"></div>
+                            <div class="time-label"  style="top: 25%">Noon</div>
+                            <div class="time-marker" style="top: 25%"></div>
+                            <div class="time-label"  style="top: 33.33%">1 p.m.</div>
+                            <div class="time-marker" style="top: 33.33%"></div>
+                            <div class="time-label"  style="top: 41.67%">2 p.m.</div>
+                            <div class="time-marker" style="top: 41.67%"></div>
+                            <div class="time-label"  style="top: 50%">3 p.m.</div>
+                            <div class="time-marker" style="top: 50%"></div>
+                            <div class="time-label"  style="top: 58.33%">4 p.m.</div>
+                            <div class="time-marker" style="top: 58.33%"></div>
+                            <div class="time-label"  style="top: 66.67%">5 p.m.</div>
+                            <div class="time-marker" style="top: 66.67%"></div>
+                            <div class="time-label"  style="top: 75%">6 p.m.</div>
+                            <div class="time-marker" style="top: 75%"></div>
+                            <div class="time-label"  style="top: 83.33%">7 p.m.</div>
+                            <div class="time-marker" style="top: 83.33%"></div>
+                            <div class="time-label"  style="top: 91.66%">8 p.m.</div>
+                            <div class="time-marker" style="top: 91.66%"></div>
 
-                    <div class="timeline">
-                        <div class="time-marker" id="current-time-marker"></div>
+                            {% for event in avail_events %}
+                                <div class="event" style="top: {{ event.start_percent + 0.25 }}%; height: {{ event.duration_percent - 0.25 }}%;">
+                                    <h3 class="event-title">{{ event.title }}<span class="event-time">{{ event.start }} – {{ event.end }}</span></h3>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <div class="inner-container" style="width: 60%; justify-content: center; display: flex; flex-direction: column; gap: 15%; justify-content: flex-start;">
+                            <div style="margin-bottom: 0.5rem;">
+                                <h1 style="text-align: center; margin-bottom: 0; font-size: 3.5rem;">{{ avail_header_text }}</h1>
+                                <h3 style="text-align: center; margin-top: 0; font-size: 2.5rem;">{{ avail_subtext }}</h3>
+                            </div>
 
-                        {% for event in nc_avail_events %}
-                            <div class="event" style="left: {{ event.start_percent }}vw; width: {{ event.duration_percent }}vw;">
-                                <span class="event-title">{{ event.title }}</span>
-                                <span class="event-time">{{ event.start }}–{{ event.end }}</span>
+                            <div id="clock" style="display: flex; flex-direction: column; justify-content: flex-start; align-items: center;">
+                                <div style="display: flex; flex-direction: row; align-items: baseline; gap: 1.5rem;">
+                                    <h1 id="current-time"    style="font-size: 10rem; margin-bottom: 0; margin-top: 0;">——:——</h1>
+                                    <h3 id="current-seconds" style="font-size: 3rem;  margin-bottom: 0; margin-top: 0;">——</h3>
+                                </div>
+                                <h3 style="font-size: 3rem; text-align: center; margin-bottom: 0; margin-top: 0;">{{ current_date }}</h3>
+                            </div>
+
+                        </div>
+                    </div>
+                </section>
+            {% endif %}
+
+            {% if show_onair %}
+            <section class="panel" style="justify-content: center; align-items: center;">
+                <div class="section-container" style="flex-direction: row; position: relative; height: calc(100% - 4rem); width: calc(100% - 4rem)">
+                    <div class="inner-container" style="width: 60%; justify-content: center; display: flex; flex-direction: column; gap: 15%; justify-content: flex-start;">
+                            <div style="margin-bottom: 0.5rem;">
+                                <h1 style="text-align: center; margin-bottom: 0; font-size: 3.5rem;">On-Air</h1>
+                                <h3 style="text-align: center; margin-top: 0; font-size: 2.5rem;">{{ current_date }}</h3>
+                            </div>
+
+                            <div id="clock" style="display: flex; flex-direction: column; justify-content: flex-start; align-items: center;">
+                                <div style="display: flex; flex-direction: row; align-items: baseline; gap: 1.5rem;">
+                                    <h1 id="current-time"    style="font-size: 10rem; margin-bottom: 0; margin-top: 0;">——:——</h1>
+                                    <h3 id="current-seconds" style="font-size: 3rem;  margin-bottom: 0; margin-top: 0;">——</h3>
+                                </div>
+                                <h3 style="font-size: 3rem; text-align: center; margin-bottom: 0; margin-top: 0;">{{ current_date }}</h3>
+                            </div>
+
+                        </div>
+                    <div class="timeline" style="width: 50%">
+                        <div class="time-marker" id="current-time-marker-pgu1"></div>
+                        <div class="time-label"  style="top: 8.33%">1 a.m.</div>
+                        <div class="time-marker" style="top: 8.33%"></div>
+                        <div class="time-label"  style="top: 16.67%">2 a.m.</div>
+                        <div class="time-marker" style="top: 16.67%"></div>
+                        <div class="time-label"  style="top: 25%">3 a.m.</div>
+                        <div class="time-marker" style="top: 25%"></div>
+                        <div class="time-label"  style="top: 33.33%">4 a.m.</div>
+                        <div class="time-marker" style="top: 33.33%"></div>
+                        <div class="time-label"  style="top: 41.67%">5 a.m.</div>
+                        <div class="time-marker" style="top: 41.67%"></div>
+                        <div class="time-label"  style="top: 50%">6 a.m.</div>
+                        <div class="time-marker" style="top: 50%"></div>
+                        <div class="time-label"  style="top: 58.33%">7 a.m.</div>
+                        <div class="time-marker" style="top: 58.33%"></div>
+                        <div class="time-label"  style="top: 66.67%">8 a.m.</div>
+                        <div class="time-marker" style="top: 66.67%"></div>
+                        <div class="time-label"  style="top: 75%">9 a.m.</div>
+                        <div class="time-marker" style="top: 75%"></div>
+                        <div class="time-label"  style="top: 83.33%">10 a.m.</div>
+                        <div class="time-marker" style="top: 83.33%"></div>
+                        <div class="time-label"  style="top: 91.66%">11 a.m.</div>
+                        <div class="time-marker" style="top: 91.66%"></div>
+
+                        {% for event in onair_events1 %}
+                            <div class="event" style="top: {{ event.start_percent + 0.25 }}%; height: {{ event.duration_percent - 0.25 }}%;">
+                                <h3 class="event-title">{{ event.title }}<span class="event-time">{{ event.start }} – {{ event.end }}</span></h3>
                             </div>
                         {% endfor %}
                     </div>
+                    <div class="timeline" style="width: 50%">
+                        <div class="time-marker" id="current-time-marker-pgu2"></div>
+                        <div class="time-label"  style="top: 8.33%">1 p.m.</div>
+                        <div class="time-marker" style="top: 8.33%"></div>
+                        <div class="time-label"  style="top: 16.67%">2 p.m.</div>
+                        <div class="time-marker" style="top: 16.67%"></div>
+                        <div class="time-label"  style="top: 25%">3 p.m.</div>
+                        <div class="time-marker" style="top: 25%"></div>
+                        <div class="time-label"  style="top: 33.33%">4 p.m.</div>
+                        <div class="time-marker" style="top: 33.33%"></div>
+                        <div class="time-label"  style="top: 41.67%">5 p.m.</div>
+                        <div class="time-marker" style="top: 41.67%"></div>
+                        <div class="time-label"  style="top: 50%">6 p.m.</div>
+                        <div class="time-marker" style="top: 50%"></div>
+                        <div class="time-label"  style="top: 58.33%">7 p.m.</div>
+                        <div class="time-marker" style="top: 58.33%"></div>
+                        <div class="time-label"  style="top: 66.67%">8 p.m.</div>
+                        <div class="time-marker" style="top: 66.67%"></div>
+                        <div class="time-label"  style="top: 75%">9 p.m.</div>
+                        <div class="time-marker" style="top: 75%"></div>
+                        <div class="time-label"  style="top: 83.33%">10 p.m.</div>
+                        <div class="time-marker" style="top: 83.33%"></div>
+                        <div class="time-label"  style="top: 91.66%">11 p.m.</div>
+                        <div class="time-marker" style="top: 91.66%"></div>
 
-                </section>
+                        {% for event in onair_events2 %}
+                            <div class="event" style="top: {{ event.start_percent + 0.25 }}%; height: {{ event.duration_percent - 0.25 }}%;">
+                                <h3 class="event-title">{{ event.title }}<span class="event-time">{{ event.start }} – {{ event.end }}</span></h3>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
             {% endif %}
         </div>
     </body>
@@ -161,8 +298,8 @@
 <script>
     // --- clock ---
     (function initClock() {
-        const root = document.getElementById('clock');
-        if (!root) 
+        const roots = document.querySelectorAll('#clock');
+        if (!roots.length) 
             return;
 
         const timeFormat = new Intl.DateTimeFormat("en-US", {
@@ -172,9 +309,6 @@
             hour12: false
         });
 
-        const timeElem = document.getElementById('current-time');
-        const secsElem = document.getElementById('current-seconds');
-
         function tick() {
             const now = new Date();
             const [hourStr, minute] = timeFormat.format(now).split(':');
@@ -182,10 +316,15 @@
             let hour = parseInt(hourStr, 10);
             hour = hour % 12 || 12;
 
-            timeElem.textContent = `${hour}:${minute}`
+            roots.forEach(root => {
+                const timeElem = root.querySelector('#current-time');
+                const secsElem = root.querySelector('#current-seconds');
 
-            const seconds = now.getSeconds();
-            secsElem.textContent = seconds.toString().padStart(2, '0');
+                if (!timeElem || !secsElem) return;
+
+                timeElem.textContent = `${hour}:${minute}`;
+                secsElem.textContent = now.getSeconds().toString().padStart(2, '0');
+            });
         }
 
         tick();
@@ -272,17 +411,75 @@
     function updateTimeMarker() {
         const marker = document.getElementById("current-time-marker");
         const now = new Date();
-        const startOfDay = new Date(now);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(startOfDay);
-        endOfDay.setDate(endOfDay.getDate() + 1);
 
-        const percent =
-            ((now - startOfDay) / (endOfDay - startOfDay)) * 100;
-        marker.style.left = percent + "vw";
+        if (!marker) return;
+
+        const startOfDay = new Date(now);
+        startOfDay.setHours(9, 0, 0, 0);
+
+        const endOfDay = new Date(startOfDay);
+        endOfDay.setHours(21, 0, 0, 0);
+
+        let percent = ((now - startOfDay) / (endOfDay - startOfDay)) * 100;
+        precent = Math.max(0, Math.min(100, percent))
+
+        marker.style.top = percent + "%";
     }
 
     // initial update + refresh every minute
     updateTimeMarker();
     setInterval(updateTimeMarker, 60000);
+
+    // Reload the page at midnight to update dates, etc. (if the TV is still on)
+    function scheduleMidnightReload() {
+        const now = new Date();
+        const nextMidnight = new Date(now)
+        nextMidnight.setHours(24, 0, 0, 0);
+
+        const msUntilMidnight = nextMidnight - now;
+
+        setTimeout(() => {
+            window.location.reload();
+        }, msUntilMidnight);
+    }
+    
+    scheduleMidnightReload();
 </script>
+
+{% if show_onair %}
+<script>
+    function updatePguTimeMarkers() {
+        const marker1 = document.getElementById("current-time-marker-pgu1");
+        const marker2 = document.getElementById("current-time-marker-pgu2");
+        const now = new Date();
+
+        // Update the marker for the left side
+        const startOfDay = new Date(now);
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const endOfDay = new Date(startOfDay);
+        endOfDay.setHours(12, 0, 0, 0);
+
+        let percent = ((now - startOfDay) / (endOfDay - startOfDay)) * 100;
+        precent = Math.max(0, Math.min(100, percent))
+
+        marker1.style.top = percent + "%";
+
+        // Update the marker for the right side
+        const startOfDay2 = new Date(now);
+        startOfDay2.setHours(12, 0, 0, 0);
+
+        const endOfDay2 = new Date(startOfDay2);
+        endOfDay2.setHours(24, 0, 0, 0);
+
+        let percent2 = ((now - startOfDay2) / (endOfDay2 - startOfDay2)) * 100;
+        percent2 = Math.max(0, Math.min(100, percent2))
+
+        marker2.style.top = percent2 + "%";
+    }
+
+    // initial update + refresh every minute
+    updatePguTimeMarkers();
+    setInterval(updatePguTimeMarkers, 60000);
+</script>
+{% endif %}

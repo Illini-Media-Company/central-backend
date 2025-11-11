@@ -36,12 +36,13 @@
 
         <div class="inner-container">
             <div class="checkbox-group">
-                <label><input type="checkbox" id="stats">Website / Social Media Statistics</label>
                 <label><input type="checkbox" id="quadCam">Quad Cam</label>
                 <label><input type="checkbox" id="almaCam">Alma Cam</label>
                 <label><input type="checkbox" id="datetime">Date / Time</label>
                 <label><input type="checkbox" id="nc_avail">News Conference Table Availability</label>
                 <label><input type="checkbox" id="bc_avail">Business Conference Table Availability</label>
+                <label><input type="checkbox" id="pgu_avail">WPGU Office Availability</label>
+                <label><input type="checkbox" id="pgu_onair">WPGU On-Air Calendar</label>
             </div>
             <button id="startButton" class="button-primary">Start</button>
         </div>
@@ -51,11 +52,13 @@
 <script>
     // map checkbox IDs -> query param keys the backend will read
     const idToParam = {
-        stats:    'show_stats',
-        quadCam:  'show_quad',
-        almaCam:  'show_alma',
-        datetime: 'show_datetime',
-        nc_avail:     'show_nc_avail'
+        quadCam:   'show_quad',
+        almaCam:   'show_alma',
+        datetime:  'show_datetime',
+        nc_avail:  'show_nc_avail',
+        bc_avail:  'show_bc_avail',
+        pgu_avail: 'show_pgu_avail',
+        pgu_onair: 'show_pgu_onair'
     };
 
     const toStrBool = (v) => (v ? 'true' : 'false');
