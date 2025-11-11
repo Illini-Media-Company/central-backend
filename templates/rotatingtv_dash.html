@@ -43,6 +43,8 @@
                 <label><input type="checkbox" id="bc_avail">Business Conference Table Availability</label>
                 <label><input type="checkbox" id="pgu_avail">WPGU Office Availability</label>
                 <label><input type="checkbox" id="pgu_onair">WPGU On-Air Calendar</label>
+                <br>
+                <label><input type="checkbox" id="computer_display">Check this box to display on a non Fire TV device</label>
             </div>
             <button id="startButton" class="button-primary">Start</button>
         </div>
@@ -52,6 +54,7 @@
 <script>
     // map checkbox IDs -> query param keys the backend will read
     const idToParam = {
+        computer_display: 'computer_display',
         quadCam:   'show_quad',
         almaCam:   'show_alma',
         datetime:  'show_datetime',

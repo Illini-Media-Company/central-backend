@@ -78,13 +78,17 @@ def get_resource_events_today(resource_calid: str, start_hour: int, end_hour: in
 
     tz = ZoneInfo("America/Chicago")
     now = datetime.now()
+
     start_of_day = datetime(now.year, now.month, now.day, tzinfo=tz)
+    window_start = start_of_day + timedelta(hours=start_hour)
+    window_end = start_of_day + timedelta(hours=end_hour)
     end_of_day = start_of_day + timedelta(days=1)
+
     day_seconds = (end_of_day - start_of_day).total_seconds()
 
     events = gc.get_events(
-        time_min=start_of_day,
-        time_max=end_of_day,
+        time_min=window_start,
+        time_max=window_end,
         single_events=True,
         order_by="startTime",
     )

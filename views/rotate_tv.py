@@ -15,7 +15,7 @@ from constants import (
 rotate_tv_routes = Blueprint("rotate_tv_routes", __name__, url_prefix="/tv-rotation")
 
 
-@rotate_tv_routes.route("/dashboard", methods=["GET"])
+@rotate_tv_routes.route("/", methods=["GET"])
 def tv_rotation_dashboard():
     return render_template("rotatingtv_dash.html")
 
@@ -27,6 +27,7 @@ def tv_rotation_screen():
         lambda key: g(key, "false").lower() == "true"
     )  # "true" -> True, everything else -> False
 
+    computer_display = b("computer_display")  # Whether or not to display on a computer
     show_quad = b("show_quad")
     show_alma = b("show_alma")
     show_datetime = b("show_datetime")
@@ -72,6 +73,7 @@ def tv_rotation_screen():
     return render_template(
         "rotatingtv_display.html",
         rotate_ms=30000,
+        computer_display=computer_display,
         show_quad=show_quad,
         show_alma=show_alma,
         show_datetime=show_datetime,

@@ -59,24 +59,32 @@
         text-align: left;
         overflow: hidden;
         white-space: nowrap;
-        padding: 0.25rem 0.5rem;
+        padding: 0 0.5rem;
         box-sizing: border-box;
         box-shadow: var(--main-box-shadow);
     }
 
     .event-title {
         margin: 0;
-        font-size: 1.25rem;
         color: var(--main-lt-gray-color);
+        {% if computer_display %}
+            font-size: 1.25rem;
+        {% else %}
+            font-size: 1rem;
+        {% endif %}
     }
 
     .event-time {
         margin: 0;
         margin-left: 0.5rem;
-        font-size: 1rem;
         font-weight: 300;
         font-style: normal;
         color: var(--main-lt-gray-color);
+        {% if computer_display %}
+            font-size: 1rem;
+        {% else %}
+            font-size: 0.75rem;
+        {% endif %}
     }
 
     .time-marker {
@@ -91,6 +99,11 @@
         position: absolute;
         left: 0.5rem;
         padding-top: 0.5rem;
+        {% if computer_display %}
+            font-size: 1rem;
+        {% else %}
+            font-size: 0.75rem;
+        {% endif %}
     }
 
     #current-time-marker, #current-time-marker-pgu1, #current-time-marker-pgu2 {
@@ -123,7 +136,7 @@
                     <div id="clock" style="display: flex; flex-direction: column; justify-content: flex-start; height: 100vh;">
                         <img src="/static/logo_IMC.svg" alt="Illini Media Company Logo" style="height: 2rem; width: auto; margin: 2rem 0;">
 
-                        <div style="display: flex; flex-direction: row; align-items: baseline; gap: 3rem; margin-top: 18vh">
+                        <div style="display: flex; flex-direction: row; align-items: baseline; gap: 3rem; {% if computer_display %} margin-top: 18vh {% endif %}">
                             <h1 id="current-time"    style="font-size: 15rem; margin-bottom: 0; margin-top: 0;">——:——</h1>
                             <h3 id="current-seconds" style="font-size: 5rem;  margin-bottom: 0; margin-top: 0;">——</h3>
                         </div>
@@ -189,18 +202,18 @@
                                 </div>
                             {% endfor %}
                         </div>
-                        <div class="inner-container" style="width: 60%; justify-content: center; display: flex; flex-direction: column; gap: 15%; justify-content: flex-start;">
+                        <div class="inner-container" style="width: 60%; justify-content: center; display: flex; flex-direction: column; {% if computer_display %} gap: 15%; {% else %} gap: 5%; {% endif %} justify-content: flex-start;">
                             <div style="margin-bottom: 0.5rem;">
-                                <h1 style="text-align: center; margin-bottom: 0; font-size: 3.5rem;">{{ avail_header_text }}</h1>
-                                <h3 style="text-align: center; margin-top: 0; font-size: 2.5rem;">{{ avail_subtext }}</h3>
+                                <h1 style="text-align: center; margin-bottom: 0; {% if computer_display %} font-size: 3.5rem; {% else %} font-size: 2.5rem; {% endif %}">{{ avail_header_text }}</h1>
+                                <h3 style="text-align: center; margin-top: 0; {% if computer_display %} font-size: 2.5rem; {% else %} font-size: 1.5rem; {% endif %}">{{ avail_subtext }}</h3>
                             </div>
 
                             <div id="clock" style="display: flex; flex-direction: column; justify-content: flex-start; align-items: center;">
                                 <div style="display: flex; flex-direction: row; align-items: baseline; gap: 1.5rem;">
-                                    <h1 id="current-time"    style="font-size: 10rem; margin-bottom: 0; margin-top: 0;">——:——</h1>
-                                    <h3 id="current-seconds" style="font-size: 3rem;  margin-bottom: 0; margin-top: 0;">——</h3>
+                                    <h1 id="current-time"    style="{% if computer_display %}font-size: 10rem; {% else %} font-size: 6rem; {% endif %} margin-bottom: 0; margin-top: 0;">——:——</h1>
+                                    <h3 id="current-seconds" style="{% if computer_display %}font-size: 3rem; {% else %} font-size: 2rem; {% endif %}  margin-bottom: 0; margin-top: 0;">——</h3>
                                 </div>
-                                <h3 style="font-size: 3rem; text-align: center; margin-bottom: 0; margin-top: 0;">{{ current_date }}</h3>
+                                <h3 style="{% if computer_display %}font-size: 3rem; {% else %} font-size: 2rem; {% endif %} text-align: center; margin-bottom: 0; margin-top: 0;">{{ current_date }}</h3>
                             </div>
 
                         </div>
@@ -211,7 +224,7 @@
             {% if show_onair %}
             <section class="panel" style="justify-content: center; align-items: center;">
                 <div class="section-container" style="flex-direction: row; position: relative; height: calc(100% - 4rem); width: calc(100% - 4rem)">
-                    <div class="inner-container" style="width: 60%; justify-content: center; display: flex; flex-direction: column; gap: 15%; justify-content: flex-start;">
+                    <div class="inner-container" style="width: 60%; justify-content: center; display: flex; flex-direction: column; {% if computer_display %} gap: 15%; {% else %} gap: 5%; {% endif %} justify-content: flex-start;">
                             <div style="margin-bottom: 0.5rem;">
                                 <h1 style="text-align: center; margin-bottom: 0; font-size: 3.5rem;">On-Air</h1>
                                 <h3 style="text-align: center; margin-top: 0; font-size: 2.5rem;">{{ current_date }}</h3>
@@ -219,10 +232,10 @@
 
                             <div id="clock" style="display: flex; flex-direction: column; justify-content: flex-start; align-items: center;">
                                 <div style="display: flex; flex-direction: row; align-items: baseline; gap: 1.5rem;">
-                                    <h1 id="current-time"    style="font-size: 10rem; margin-bottom: 0; margin-top: 0;">——:——</h1>
-                                    <h3 id="current-seconds" style="font-size: 3rem;  margin-bottom: 0; margin-top: 0;">——</h3>
+                                    <h1 id="current-time"    style="{% if computer_display %}font-size: 10rem; {% else %} font-size: 6rem; {% endif %} margin-bottom: 0; margin-top: 0;">——:——</h1>
+                                    <h3 id="current-seconds" style="{% if computer_display %}font-size: 3rem; {% else %} font-size: 2rem; {% endif %}  margin-bottom: 0; margin-top: 0;">——</h3>
                                 </div>
-                                <h3 style="font-size: 3rem; text-align: center; margin-bottom: 0; margin-top: 0;">{{ current_date }}</h3>
+                                <h3 style="{% if computer_display %}font-size: 3rem; {% else %} font-size: 2rem; {% endif %} text-align: center; margin-bottom: 0; margin-top: 0;">{{ current_date }}</h3>
                             </div>
 
                         </div>
