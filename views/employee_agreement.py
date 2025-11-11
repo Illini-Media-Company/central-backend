@@ -7,11 +7,11 @@ from util.slackbots.employee_agreement_slackbot import (
 )
 from db.employee_agreement import (
     add_employee_agreement,
-    get_employee_agreement_by_user,
+    get_employee_agreements_by_user,
     get_pending_agreements_for_editor,
     get_pending_agreements_for_manager,
     get_pending_agreements_for_chief,
-    get_agreement_object_by_user,
+    get_agreement_objects_by_user,
 )
 from zoneinfo import ZoneInfo
 from datetime import datetime
@@ -114,10 +114,11 @@ def get_pending_signatures():
         return "User not found", 404
     user_slack_id = user_data["user"]["id"]
     pending_agreements = []
-    my_agreement = get_employee_agreement_by_user(user_slack_id)
+    my_agreements_list = get_employee_agreements_by_user(user_slack_id)
 
-    if my_agreement and my_agreement["user_signed"] is None:
-        pending_agreements.append(my_agreement)
+    for agreement in my_agreements_list:
+        if agreement["user_signed"] is None:
+            pending_agreements.append(agreement)
     # Check for pending agreements as editor
     editor_agreements = get_pending_agreements_for_editor(user_slack_id)
     pending_agreements.extend(editor_agreements)
@@ -143,9 +144,28 @@ def sign_agreement():
     if not user_data.get("ok"):
         return "User not found", 404
     signer_slack_id = user_data["user"]["id"]
-    agreement = get_agreement_object_by_user(agreement_user_id)
-    if not agreement:
+    agreement_list = get_agreement_objects_by_user(agreement_user_id)
+    if not agreement_list:
         return "Agreement not found", 404
+    
+    agreement = None
+
+    for agr in agreement_list:
+        if (signer_slack_id == agr.user_id and agr.user_signed is None):
+            agreement = agr
+            break
+        elif (signer_slack_id == agr.editor_id and agr.editor_signed is None):
+            agreement = agr
+            break   
+        elif (signer_slack_id == agr.manager_id and agr.manager_signed is None):
+            agreement = agr
+            break
+        elif (signer_slack_id == agr.chief_id and agr.chief_signed is None):
+            agreement = agr
+            break
+            
+    if not agreement:
+        return ("You are not authorized to sign this agreement, it's not your turn, or it has already been signed",403,)
 
     next_signer_id = None
     next_signer_role = None
