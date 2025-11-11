@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.2.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.1.1...v2.2.0) (2025-11-11)
+
+
+### Features
+
+* Add feature to view recent changes at URL path /changelog ([55d3209](https://github.com/Illini-Media-Company/central-backend/commit/55d320957674d81a0aa248bc934b7e584d404209))
+* Add functionality to submit photo requests ([#54](https://github.com/Illini-Media-Company/central-backend/issues/54)) ([7ff7beb](https://github.com/Illini-Media-Company/central-backend/commit/7ff7bebb145015227ab8230ddebee4976b542345))
+* Add page to show a rotating display of useful information on office TVs ([#57](https://github.com/Illini-Media-Company/central-backend/issues/57)) ([34ab45d](https://github.com/Illini-Media-Company/central-backend/commit/34ab45d16f2b2563188aacb3086b57f31e0ee586))
+
 ## [2.1.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.1.0...v2.1.1) (2025-10-13)
 
 
