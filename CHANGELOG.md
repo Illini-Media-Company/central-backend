@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.2.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.2.0...v2.2.1) (2025-11-11)
+
+
+### Bug Fixes
+
+* Allow prof. staff, photo, DI editors access to photo dash ([3729348](https://github.com/Illini-Media-Company/central-backend/commit/37293488303ebca81ba14883f43bc7e26f877624))
+* Fix issue with TV displaying showing wrong on Fire TVs ([65d16b9](https://github.com/Illini-Media-Company/central-backend/commit/65d16b92956c750f9c2df08d6c1a73e7932d77ad))
+* Scout now responds differently to @ mentions ([09e25fb](https://github.com/Illini-Media-Company/central-backend/commit/09e25fbd352be1d9b92eabca86373dc4ce933e1e))
+* Tools now appear in-view when editing on admin panel ([e232619](https://github.com/Illini-Media-Company/central-backend/commit/e2326197250f082b2c3887f07353d05376556dfb))
+
 ## [2.2.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.1.1...v2.2.0) (2025-11-11)
 
 
