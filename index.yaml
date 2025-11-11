@@ -26,3 +26,8 @@ indexes:
       - name: completedTimestamp
       - name: submissionTimestamp
         direction: desc
+  - kind: PhotoRequest
+    properties:
+      - name: submitterEmail
+      - name: submissionTimestamp
+        direction: desc
