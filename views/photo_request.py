@@ -48,7 +48,15 @@ photo_request_routes = Blueprint(
     "/dashboard", defaults={"selection": "all"}, methods=["GET"]
 )
 @login_required
-@restrict_to(["student-managers", "editors", "imc-staff-webdev"])
+@restrict_to(
+    [
+        "student-managers",
+        "di-section-editors",
+        "imc-staff-photo",
+        "imc-staff-webdev",
+        "professional-staff",
+    ]
+)
 def dashboard(selection=None):
     """
     Renders the photo requests dashboard with filtered view.
