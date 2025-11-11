@@ -387,16 +387,12 @@ def build_blocks_from_request(req: dict) -> tuple[list, str]:
     # --- main rich_text content
     rich_elems = []
 
-    label = _label_for_request(req)
-
-    rich_elems = []
-
     # Append the title for the "memo" section
     # Title always shown now (never "False")
     rich_elems.append(
         {
             "type": "rich_text_section",
-            "elements": [{"type": "text", "text": label, "style": {"bold": True}}],
+            "elements": [{"type": "text", "text": "Memo", "style": {"bold": True}}],
         }
     )
 
@@ -418,7 +414,13 @@ def build_blocks_from_request(req: dict) -> tuple[list, str]:
             [
                 {
                     "type": "rich_text_section",
-                    "elements": [{"type": "text", "text": "Specific details:"}],
+                    "elements": [
+                        {
+                            "type": "text",
+                            "text": "Specific details:",
+                            "style": {"bold": True},
+                        }
+                    ],
                 },
                 {
                     "type": "rich_text_quote",
@@ -435,7 +437,9 @@ def build_blocks_from_request(req: dict) -> tuple[list, str]:
             [
                 {
                     "type": "rich_text_section",
-                    "elements": [{"type": "text", "text": "More info:"}],
+                    "elements": [
+                        {"type": "text", "text": "More info:", "style": {"bold": True}}
+                    ],
                 },
                 {
                     "type": "rich_text_quote",
@@ -610,6 +614,8 @@ def _on_dm_message(body, logger, event):
     to confirm receipt of the message. Also completes the photo request.
     """
 
+    print("[slack_dm] Received.")
+
     try:
         ev = event
         # Ignore bot messages / edits / channel messages
@@ -634,12 +640,14 @@ def _on_dm_message(body, logger, event):
         if not thread_ts or not channel:
             return
 
-        print(channel, thread_ts)
+        print("[slack_dm] DM reply received; channel, ts = ", channel, thread_ts)
 
         req = get_id_from_slack_claim_ts(channel, thread_ts)
 
         if not req:
             return  # Simply return if this message isn't one we care about so we don't break other code
+
+        print("[slack_dm] Identified DM for current photo request.")
 
         # Make sure the link is a valid Google Drive URL
         drive = _extract_drive_url(text)
