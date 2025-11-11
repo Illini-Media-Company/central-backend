@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.1.0...v2.1.1) (2025-10-13)
+
+
+### Bug Fixes
+
+* Fix issue where not all copy notifcation messages would send. ([58ab10e](https://github.com/Illini-Media-Company/central-backend/commit/58ab10eaf3b375a4aff9e61f9661b42dadc3691b))
+* Update Datastore indexes to fix MapPoint issue ([c21e6bb](https://github.com/Illini-Media-Company/central-backend/commit/c21e6bb489c521b666edb04e5dc446091cf778d7))
+
 ## [2.1.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.0.0...v2.1.0) (2025-10-12)
 
 
