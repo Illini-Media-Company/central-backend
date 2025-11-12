@@ -1,0 +1,344 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Mini Crossword Admin
+{% endblock %}
+
+{% block content %}
+<style>
+    .container {
+        width: 80%;
+        margin: 0 auto;
+        margin-top: 25px;
+    }
+    .modifiable-input {
+        display: none;
+    }
+    .modifiable-url-input {
+        display: none;
+    }
+    .table th:nth-child(1),
+    .table td:nth-child(1) {
+        width: 12.5%; /* Set a fixed width for the Date column */
+    }
+    .table th:nth-child(2),
+    .table td:nth-child(2) {
+        width: 15%; /* Set a fixed width for the Word column */
+    }
+    .table th:nth-child(3),
+    .table td:nth-child(3) {
+        width: 10%; /* Set a fixed width for the Word column */
+    }
+    .table th:nth-child(4),
+    .table td:nth-child(4) {
+        width: 45%; /* Set a fixed width for the Related Story column */
+    }
+    .table th:nth-child(5),
+    .table td:nth-child(5) {
+        width: 17.5%; /* Set a fixed width for the Actions column */
+    }
+    .error-message {
+        color: red;
+        font-size: 1.2em;
+        font-weight: bold;
+    }
+
+    .crossword-input {
+        padding-bottom: 2vh;
+        float: left;
+        width: 50%;
+    }
+    .clues-input {
+        float: left;
+        width: 50%;
+    }
+    .crossword-row {
+        padding: 0;
+    }
+    .letter {
+        height: 10vh;
+        width: 10vh;
+        font-size: 9vh;
+        padding: 0;
+    }
+    .letter-blacked-out {
+        background-color: black;
+    }
+</style>
+
+<div class="container">
+    <div class="d-flex justify-content-center">
+        <div class="w-100">
+            <h3>Mini Crossword Dashboard</h3>
+            <h2>Crossword Creation Instructions: </h2>
+            <p>1. Double-click a square to black it out.</p>
+            <p>2. Enter all letters before adding clues.</p>
+            <form id="cw-form">
+                <label for="crossword-date">Crossword Date:</label>
+                <input type="date" id="crossword-date" name="crossword-date" required>
+                <br><br>
+                <label for="article-link">Related Article Link:</label>
+                <input type="text" id="article-link" placeholder="https://dailyillini.com/..." required>
+                <br><br>
+                <div class="crossword-input">
+                    {% for r in [0, 1, 2, 3, 4] %}
+                    <div class="crossword-row" id="cross-row-{{r}}">
+                        {% for c in [0, 1, 2, 3, 4] %}
+                        <input type="text" class="letter" maxlength=1 id="cross-box-{{r}}-{{c}}">
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                
+                <input type="button" value="Add Clues" onclick=addClues()>
+                </div>
+                <div id="clues-input" class="clues-input">
+
+                </div>
+                <!-- <input type="submit" value="Add Clues"> -->
+                <div id="save-msg" style="color:red; margin-top:12px; font-weight:bold; font-size:1.2em;"></div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+    //CSRF cookie reader
+    function getCookie(name) {
+        const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+        return m ? decodeURIComponent(m[1]) : null;
+    }
+    const CSRF = getCookie('_csrf_token');
+    // set up toggling 
+    for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 5; c++) {
+            let id = "cross-box-" + String(r) + "-" + String(c);
+            document.getElementById(id).addEventListener('dblclick', function() {
+                this.classList.toggle('letter-blacked-out');
+                if (this.getAttribute("maxlength") == 0) {
+                    this.setAttribute("maxlength", 1);
+                } else {
+                    this.setAttribute("maxlength", 0);
+                }
+            });
+        }
+    }
+
+    async function addClues() {
+        const cluesEl = document.getElementById("clues-input");
+        const msgEl = document.getElementById("save-msg");
+        
+        // Clear previous messages and clues
+        cluesEl.innerHTML = "";
+        msgEl.textContent = "";
+        
+        // Get form values
+        const dateEl = document.getElementById("crossword-date");
+        const dateVal = dateEl && dateEl.value ? dateEl.value : null;
+        const articleLink = document.getElementById("article-link").value || "";
+        
+        // Build payload for validation (use readGrid for proper format)
+        let payload;
+        try {
+            payload = {
+                date: dateVal,
+                grid: readGrid(),
+                origin: "manual",
+                article_link: articleLink
+            };
+        } catch (e) {
+            msgEl.style.color = "red";
+            msgEl.textContent = e.message || "Please fill all cells with letters (A-Z or a-z) or black them out.";
+            return;
+        }
+        
+        // Validate crossword first
+        try {
+            const res = await fetch("/mini/validate", {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": CSRF 
+                },
+                body: JSON.stringify(payload),
+            });
+            
+            const data = await res.json();
+            if (!res.ok || !data.ok) {
+                msgEl.style.color = "red";
+                msgEl.textContent = data.error || "Validation failed.";
+                return;
+            }
+            
+            // Validation passed
+            msgEl.style.color = "green";
+            msgEl.textContent = "Validation passed. Go ahead and add clues.";
+            
+        } catch (e) {
+            msgEl.style.color = "red";
+            msgEl.textContent = "Error during validation: " + e;
+            return;
+        }
+        
+        // If validation passed, proceed with clue extraction
+        // Extract words from grid (only "#" or letters, no empty cells)
+        const grid = payload.grid;
+        
+        console.log(grid);
+        
+        // Extract across words (left to right)
+        const acrossClues = [];
+        for (let r = 0; r < 5; r++) {
+            let word = "";
+            for (let c = 0; c < 5; c++) {
+                const cell = grid[r][c];
+                if (cell === "#") {
+                    // Black cell - end current word if we have one
+                    if (word !== "") {
+                        acrossClues.push(word);
+                        word = "";
+                    }
+                } else {
+                    // Letter - add to current word
+                    word += cell;
+                }
+            }
+            // End of row - save word if we have one
+            if (word !== "") {
+                acrossClues.push(word);
+            }
+        }
+        
+        // Extract down words (top to bottom)
+        let downClues = [];
+        for (let c = 0; c < 5; c++) {
+            let word = "";
+            for (let r = 0; r < 5; r++) {
+                const cell = grid[r][c];
+                if (cell === "#") {
+                    // Black cell - end current word if we have one
+                    if (word !== "") {
+                        downClues.push(word);
+                        word = "";
+                    }
+                } else {
+                    // Letter - add to current word
+                    word += cell;
+                }
+            }
+            // End of column - save word if we have one
+            if (word !== "") {
+                downClues.push(word);
+            }
+        }
+        
+        console.log(acrossClues);
+        console.log(downClues);
+        
+        // Display clue inputs
+        // Across clues
+        if (acrossClues.length > 0) {
+            cluesEl.innerHTML += "<h4>Across: </h4>";
+            acrossClues.forEach((word, i) => {
+                cluesEl.innerHTML += String(i + 1) + ". " + word + ": <input type='text' id='" + word + "-clue'></br>";
+            });
+            cluesEl.innerHTML += "</br>";
+        }
+        
+        // Down clues
+        if (downClues.length > 0) {
+            cluesEl.innerHTML += "<h4>Down: </h4>";
+            downClues.forEach((word, i) => {
+                cluesEl.innerHTML += String(i + 1) + ". " + word + ": <input type='text' id='" + word + "-clue'></br>";
+            });
+            cluesEl.innerHTML += "</br>";
+        }
+        
+        cluesEl.innerHTML += "<button type='submit'>Save crossword</button>";
+    }
+
+    //Call submission handler
+    document.getElementById("cw-form").addEventListener("submit", onSubmit);
+
+    //Crossword reader/formatter for backend:
+    function readGrid() {
+    const grid = [];
+    for (let r = 0; r<5; r++) {
+        const row = [];
+        for (let c = 0; c < 5; c++) {
+        const el = document.getElementById(`cross-box-${r}-${c}`);
+        const isBlack = el.classList.contains("letter-blacked-out");
+        if (isBlack) {
+            row.push("#");
+        } else {
+            const inputValue = (el.value || "").trim();
+            // Allow lowercase or uppercase letters - convert to uppercase
+            if (inputValue.length !== 1 || !/[A-Za-z]/.test(inputValue)) {
+                throw new Error(`Cell at row ${r+1}, column ${c+1} must contain a letter (A-Z or a-z) or be blacked out.`);
+            }
+            // Convert to uppercase before sending to API
+            const ch = inputValue.toUpperCase();
+            row.push(ch);
+        }
+        }
+        grid.push(row);
+    }
+    return grid;
+    }
+
+    async function onSubmit(event) {
+    event.preventDefault();
+    const msg = document.getElementById("save-msg");
+    msg.textContent = "";
+
+    const dateEl = document.getElementById("crossword-date");
+    const dateVal = dateEl && dateEl.value ? dateEl.value : null;
+
+    //JSON Obj w/ crossword data:
+    let payload;
+    try {
+        payload = {
+            date: dateVal,
+            grid: readGrid(),
+            origin: "manual",
+            article_link: document.getElementById("article-link").value || ""
+        };
+    } catch (e) {
+        msg.style.color = "red";
+        msg.textContent = e.message || "Please fill all cells with letters (A-Z or a-z) or black them out.";
+        return;
+    }
+
+    // Save crossword (validation was already done when "Add Clues" was clicked)
+    msg.style.color = "blue";
+    msg.textContent = "Saving crossword...";
+
+    try {
+        const saveRes = await fetch("/mini/save", {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json",
+                "X-CSRFToken": CSRF 
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const saveData = await saveRes.json();
+        console.log("saved crossword:", saveData);
+
+        if (!saveRes.ok || !saveData.ok) {
+            msg.style.color = "red";
+            msg.textContent = saveData.error || "Failed to save crossword.";
+            return;
+        }
+
+        msg.style.color = "green";
+        msg.textContent = "Crossword saved successfully!";
+    } catch (e) {
+        msg.style.color = "red";
+        msg.textContent = "Error during save: " + e;
+    }
+    }
+
+    
+</script>
+
+{% endblock %}
