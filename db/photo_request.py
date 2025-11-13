@@ -130,6 +130,8 @@ def add_photo_request(
     if eventDateTime:
         if isinstance(eventDateTime, str):
             eventDateTime = datetime.strptime(eventDateTime, "%Y-%m-%dT%H:%M")
+    else:
+        eventDateTime = None
 
     with client.context():
         entity = PhotoRequest(

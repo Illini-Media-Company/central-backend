@@ -143,7 +143,7 @@
                         {% endif %}
                     {% endif %}                    
                 </td>
-                <td>{{ r.dueDate|ap_date }}</td>
+                <td>{{ r.dueDate|ap_date }} {% if r.lateSubmit %}<span title="Submitted less than 48 hours in advance." style="cursor: default; margin-left: 0.25rem;">🕐</span>{% endif %}</td>
                 <td>{{ r.memo }}</td>
                 <td>
                     {{ r.destination }}

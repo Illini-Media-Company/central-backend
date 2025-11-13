@@ -99,6 +99,16 @@ def dashboard(selection=None):
         case _:
             return "Invalid request selection", 404
 
+    for req in requests:
+        if req["dueDate"] and req["submissionTimestamp"]:
+            due_dt = datetime.combine(req["dueDate"], datetime.max.time())
+
+            if req["submissionTimestamp"].tzinfo is not None:
+                due_dt = due_dt.replace(tzinfo=req["submissionTimestamp"].tzinfo)
+
+            diff = due_dt - req["submissionTimestamp"]
+            req["lateSubmit"] = diff.total_seconds() < 48 * 60 * 60
+
     print("Fetched.")
     return render_template(
         "photo-req/photo_req_sheet.html", requests=requests, selection=selection_name
