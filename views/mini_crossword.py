@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo
 
 from flask import Blueprint, render_template, request, jsonify
 
-# from flask_cors import cross_origin
+from flask_cors import cross_origin
 from flask_login import login_required
 
 # from flask_login import current_user, login_required
@@ -24,6 +24,7 @@ mini_routes = Blueprint("mini_routes", __name__, url_prefix="/mini")
 
 
 @mini_routes.route("", methods=["GET"])
+@login_required
 def all_days():
     """
     Return data; all saved crosswods
@@ -32,6 +33,7 @@ def all_days():
 
 
 @mini_routes.route("/today", methods=["GET"])
+@cross_origin()
 def today():
     """
     Return today's crossword data
@@ -50,6 +52,7 @@ def today():
 
 @mini_routes.route("/dashboard")
 @login_required
+@restrict_to(["di-section-editors", "imc-staff-webdev"])
 def dashboard():
     return render_template("mini_crossword.html")
 
@@ -142,6 +145,7 @@ def validate():
 
 @mini_routes.route("/save", methods=["POST"])
 @login_required
+@restrict_to(["di-section-editors", "imc-staff-webdev"])
 def save_crossword():
     payload = request.get_json(silent=True) or {}
 
