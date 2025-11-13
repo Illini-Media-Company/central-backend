@@ -1,21 +1,15 @@
-{% extends 'base.html' %} 
-
-{% block title %}
-Employee Agreements
-{% endblock %} 
-
+{% extends 'base.html' %} {% block title %} Employee Agreements {% endblock %}
 {% block extra_head %}
 <link rel="stylesheet" href="/static/styles/styles_index.css" />
-<link rel="stylesheet" href="/static/styles/styles_employee-agreement-dashboard.css" />
-{%endblock %} 
-
-{% include "partials/loading.html" %}
-{% include "partials/info_bar.html" %} 
-
-{% block content %}
+<link
+  rel="stylesheet"
+  href="/static/styles/styles_employee-agreement-dashboard.css"
+/>
+{%endblock %} {% include "partials/loading.html" %} {% include
+"partials/info_bar.html" %} {% block content %}
 <h2>Employee Agreements</h2>
 
-<hr>
+<hr />
 
 <ul class="doc-list" id="docList">
   <!-- Ignore this for now I will explain it soon {% for agreement in agreements %}
@@ -30,7 +24,14 @@ Employee Agreements
     <p id="modalText"></p>
 
     <div id="signature" class="signature"></div>
-    <div style="display: flex; flex-direction: row; gap: 0.5rem; justify-content: center;">
+    <div
+      style="
+        display: flex;
+        flex-direction: row;
+        gap: 0.5rem;
+        justify-content: center;
+      "
+    >
       <button id="signBtn" class="button-primary">Sign</button>
       <button id="sendBtn" class="button-secondary" disabled>Complete</button>
     </div>
@@ -89,7 +90,7 @@ Employee Agreements
     if (!item) return;
     currentDoc = item;
     modalTitle.textContent = "Pending Agreement";
-    modalText.textContent = `URL: ${item.dataset.agreementUrl}`;
+    modalText.innerHTML = `Agreement URL: <a href="${item.dataset.agreementUrl}" target="_blank">Open Agreement</a>`;
     signature.textContent = "";
     signBtn.disabled = false;
     sendBtn.disabled = true;

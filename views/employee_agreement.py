@@ -62,7 +62,7 @@ def send_notification():
     manager_email = data.get("manager", "")
     chief_email = data.get("chief", "")
     editor_email = data.get("editor", "")
-    url = data.get("url", "")
+    url = data.get("agreement_link", "")
 
     for email in emails:
         email = email.strip()
@@ -147,25 +147,28 @@ def sign_agreement():
     agreement_list = get_agreement_objects_by_user(agreement_user_id)
     if not agreement_list:
         return "Agreement not found", 404
-    
+
     agreement = None
 
     for agr in agreement_list:
-        if (signer_slack_id == agr.user_id and agr.user_signed is None):
+        if signer_slack_id == agr.user_id and agr.user_signed is None:
             agreement = agr
             break
-        elif (signer_slack_id == agr.editor_id and agr.editor_signed is None):
-            agreement = agr
-            break   
-        elif (signer_slack_id == agr.manager_id and agr.manager_signed is None):
+        elif signer_slack_id == agr.editor_id and agr.editor_signed is None:
             agreement = agr
             break
-        elif (signer_slack_id == agr.chief_id and agr.chief_signed is None):
+        elif signer_slack_id == agr.manager_id and agr.manager_signed is None:
             agreement = agr
             break
-            
+        elif signer_slack_id == agr.chief_id and agr.chief_signed is None:
+            agreement = agr
+            break
+
     if not agreement:
-        return ("You are not authorized to sign this agreement, it's not your turn, or it has already been signed",403,)
+        return (
+            "You are not authorized to sign this agreement, it's not your turn, or it has already been signed",
+            403,
+        )
 
     next_signer_id = None
     next_signer_role = None
