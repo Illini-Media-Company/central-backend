@@ -139,31 +139,11 @@ def api_submit():
 
     print("All required fields present, submitting photo request...")
 
-    kwargs = {
-        "submitterEmail": data.get("submitterEmail"),
-        "submitterName": data.get("submitterName"),
-        "destination": data.get("destination"),
-        "department": data.get("department"),
-        "memo": data.get("memo"),
-        "specificDetails": data.get("specificDetails"),
-        "referenceURL": data.get("referenceURL"),
-        "dueDate": datetime.strptime(data.get("dueDate"), "%Y-%m-%d").date(),
-        "moreInfo": data.get("moreInfo"),
-        "isCourtesy": data.get("isCourtesy"),
-        "specificEvent": data.get("specificEvent"),
-        "eventLocation": data.get("eventLocation"),
-        "pressPass": data.get("pressPass"),
-        "pressPassRequester": data.get("pressPassRequester"),
-    }
-
-    # Only want eventDateTime if it was actually set otherwise it will error
-    if data.get("eventDateTime"):
-        kwargs["eventDateTime"] = datetime.strptime(
-            data.get("eventDateTime"), "%Y-%m-%dT%H:%M"
-        )
+    # Remove the CSRF token from the JSON to pass to the function
+    del data["_csrf_token"]
 
     try:
-        created = add_photo_request(**kwargs)
+        created = add_photo_request(**data)
 
         # Build the Slack blocks from the saved record
         blocks, fallback_text = build_blocks_from_request(created)
@@ -283,10 +263,17 @@ def api_remove(uid):
 def api_modify(uid):
     """Updates fields on an existing photo request."""
     data = request.get_json() or {}
-    updated = update_photo_request(uid=int(uid), **data)
-    if not updated:
-        return jsonify({"error": "not found or no changes"}), 400
-    return jsonify({"message": "updated", "request": updated}), 200
+
+    if data:
+        # Remove the CSRF token from the JSON to pass to the function
+        del data["_csrf_token"]
+
+        updated = update_photo_request(uid=int(uid), **data)
+        if not updated:
+            return jsonify({"error": "not found or no changes"}), 400
+        return jsonify({"message": "updated", "request": updated}), 200
+
+    return jsonify({"error": "no changes"}), 400
 
 
 # —————————————————————————————————————————————————————————————————————— #

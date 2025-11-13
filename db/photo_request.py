@@ -43,7 +43,7 @@ class PhotoRequest(ndb.Model):
     memo = ndb.StringProperty(required=True)  # short headline / blurb
     specificDetails = ndb.StringProperty(required=True)
     referenceURL = ndb.StringProperty(required=False)
-    dueDate = ndb.DateProperty(tzinfo=ZoneInfo("America/Chicago"), required=True)
+    dueDate = ndb.DateProperty(required=True)
     moreInfo = ndb.StringProperty(required=False)
 
     # Whether the photo is a courtesy
@@ -121,6 +121,16 @@ def add_photo_request(
         Dict with all the request data including the uid
     """
     print("Adding new photo request to db...")
+
+    # Format dueDate if it's passed as a string
+    if isinstance(dueDate, str):
+        dueDate = datetime.strptime(dueDate, "%Y-%m-%d").date()
+
+    # Format eventDateTime if its passed as a string
+    if eventDateTime:
+        if isinstance(eventDateTime, str):
+            eventDateTime = datetime.strptime(eventDateTime, "%Y-%m-%dT%H:%M")
+
     with client.context():
         entity = PhotoRequest(
             submissionTimestamp=datetime.now(ZoneInfo("America/Chicago")),
@@ -269,10 +279,16 @@ def update_photo_request(uid, **fields):
             return None
         for key, value in fields.items():
             if hasattr(entity, key):
+                # Format eventDateTime if it's passed as a string
                 if key == "eventDateTime":
-                    value = datetime.strptime(value, "%Y-%m-%dT%H:%M")
+                    if isinstance(value, str):
+                        value = datetime.strptime(value, "%Y-%m-%dT%H:%M")
+
+                # Format dueDate if it's passed as a string
                 if key == "dueDate":
-                    value = datetime.strptime(value, "%Y-%m-%d")
+                    if isinstance(value, str):
+                        value = datetime.strptime(value, "%Y-%m-%d").date()
+
                 setattr(entity, key, value)
         entity.put()
         return entity.to_dict()

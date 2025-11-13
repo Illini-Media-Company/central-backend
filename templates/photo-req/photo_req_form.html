@@ -132,7 +132,7 @@
     ) }}
     {{ form.radio_input( 
         name="presspass",
-        label="Does thie event require press credentials?",
+        label="Does this event require press credentials?",
         options=["Yes", "No"],
         required=false,
         class="photo-req-form-row initial-no-show"
@@ -193,7 +193,7 @@
         const valDue = formData.get("dueDate"); 
         var valCourt = formData.get("isCourtesy-options");    
         var valEvent = formData.get("isEvent-options");       // Not always submitted
-        const valEvDate = formData.get("eventDate");            // Not alwys submitted || This is naive with no TZ
+        const valEvDate = formData.get("eventDate");            // Not always submitted || This is naive with no TZ
         const valEvLoc = formData.get("eventLocation");         // Not always submitted
         var valPass = formData.get("presspass-options");      // Not always submitted
         const valPpReq = formData.get("presspassRequestor");    // Not always submitted
