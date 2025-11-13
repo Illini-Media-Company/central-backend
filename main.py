@@ -104,6 +104,7 @@ app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 Talisman(app, content_security_policy=[])
 csrf.init_app(app)
 
+print("[main] Registering blueprints...")
 app.register_blueprint(tools_routes)
 app.register_blueprint(content_doc_routes)
 app.register_blueprint(constant_contact_routes)
@@ -119,15 +120,21 @@ app.register_blueprint(overlooked_routes)
 app.register_blueprint(food_truck_routes)
 app.register_blueprint(rotate_tv_routes)
 app.register_blueprint(photo_request_routes)
+print("[main] Done registering blueprints.")
 
+print("[main] Initializing login manager...")
 login_manager = LoginManager()
 login_manager.init_app(app)
+print("[main] Initialized login manager.")
 
 client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
+print("[main] Starting Slack app...")
 start_slack(app)
+print("[main] Slack app started.")
 
-# Regiser filters with Jinja
+# Register filters with Jinja
+print("[main] Registering Jinja filters...")
 app.jinja_env.filters["ap_datetime"] = ap_datetime
 app.jinja_env.filters["ap_date"] = ap_date
 app.jinja_env.filters["ap_time"] = ap_time
@@ -135,6 +142,7 @@ app.jinja_env.filters["ap_daydate"] = ap_daydate
 app.jinja_env.filters["ap_daydatetime"] = ap_daydatetime
 app.jinja_env.filters["email_to_slackid"] = email_to_slackid
 app.jinja_env.filters["format_restricted_groups"] = format_restricted_groups
+print("[main] Done registering Jinja filters.")
 
 
 @atexit.register
@@ -174,7 +182,7 @@ def unauthorized_callback():
     return redirect("/login?state=" + urllib.parse.quote(request.path))
 
 
-# Everythhing in this function will be available in all templates
+# Everything in this function will be available in all templates
 @app.context_processor
 def add_template_context():
     # Checks if the current user is in any of the groups passed in, calls a function from util/security.py
@@ -423,4 +431,5 @@ if __name__ == "__main__":
         db_to_scheduler(copy_scheduler, "COPY_JOBS")
     except Exception as e:
         print(f"{e} no jobs to import")
+    print("[main] Starting Flask app...")
     app.run(port=5001, ssl_context="adhoc")
