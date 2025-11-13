@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.2.2](https://github.com/Illini-Media-Company/central-backend/compare/v2.2.1...v2.2.2) (2025-11-13)
+
+
+### Bug Fixes
+
+* Fix issue where photo requests reported incorrect due date ([b565684](https://github.com/Illini-Media-Company/central-backend/commit/b565684a18f707add4261dfdf5f7c9af075a9da4))
+* Photo request form notifies submitter if &lt;48hrs in advance ([9646949](https://github.com/Illini-Media-Company/central-backend/commit/9646949fb20801b3a8e8d57c44b8024df7f2a18d))
+
+
+### Documentation
+
+* Add new recommended extension to README ([36b0827](https://github.com/Illini-Media-Company/central-backend/commit/36b0827b89b8aabd2fa2a6ecb05fc232342ceb46))
+
 ## [2.2.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.2.0...v2.2.1) (2025-11-11)
 
 
