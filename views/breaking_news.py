@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request
 from flask_login import current_user, login_required
 from util.security import restrict_to
-from util.copy_editing import notify_copy_editor
+from util.slackbots.copy_editing import notify_copy_editor
 
 from db.story import Story, add_story, get_recent_stories
 

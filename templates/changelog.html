@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Changelog
+{% endblock %}
+
+{% block content %}
+
+<h1>Recent Changes</h1>
+
+{% if latest %}
+    <section class="section-container" style="margin-bottom: 2rem">
+        <div class="section-header" style="justify-content: flex-start; gap: 1rem; align-items: baseline;">
+            {% if latest.version %}
+                <h2 style="margin-bottom: 0">Version {{ latest.version }}</h2> 
+            {% endif %}
+            {% if latest.date %}
+                <p style="margin-bottom: 0">Released on {{ latest.date|ap_date }}</p>
+            {% endif %}
+        </div>
+
+        <div class="inner-container">
+            {{ latest.content_html|safe }}
+        </div>
+    </section>
+{% endif %}
+
+{% if older %}
+    <hr>
+    <h1>Older Changes</h1>
+    {% for ver in older %}
+        <section class="section-container" style="margin-bottom: 2rem">
+            <div class="section-header" style="justify-content: flex-start; gap: 1rem; align-items: baseline;">
+                {% if ver.version %}
+                    <h2 style="margin-bottom: 0">Version {{ ver.version }}</h2> 
+                {% endif %}
+                {% if ver.date %}
+                    <p style="margin-bottom: 0">Released on {{ ver.date|ap_date }}</p>
+                {% endif %}
+            </div>
+
+            <div class="inner-container">
+                {{ ver.content_html|safe }}
+            </div>
+        </section>
+    {% endfor %}
+{% endif %}
+
+{% endblock %}
