@@ -1,0 +1,46 @@
+<!--
+This file defines a macro for adding paginated scroll for pages rendered server-side.
+To access it in a file, add the following outside of any other Jinja block:
+
+    import "macros/pagination.html" 
+
+inside of curly braces with % on either side. There is no CSS file for this macro.
+
+To use it in-place in a file, put the following inside double curly braces:
+
+    pagination(xxx, yyy, zzz, "www")
+
+Where xxx should be replaced with the page that is currently loaded. yyy should be 
+replaced with the total number of items, zzz should be replaced with the number of 
+items to display per page. www should be replaced with the URL parameter that the 
+view function will check for. All of the above must be Jinja variables passed into 
+the template from the view function. For an example, look at 
+templates/employee_agreement_admin.html
+
+Created by Jacob Slabosz on Nov. 16, 2025
+Last modified Nov. 16, 2025
+-->
+
+{% macro pagination(page, total, per_page, param) %}
+<div style="display: flex; flex-direction: row; justify-content: space-between; align-items: baseline;">
+    <div style="width: 6rem;">
+        {% if page > 1 %}
+            <a href="?{{ param }}={{ page - 1 }}" class="button-secondary">
+                <i class="bi bi-arrow-left-short"></i>Prev.
+            </a>
+        {% endif %}
+    </div>
+
+    <p style="margin-bottom: 0;">
+        Page {{ page }} of {{ (total + per_page - 1) // per_page }}
+    </p>
+
+    <div style="width: 6rem; text-align: right;">
+        {% if page * per_page < total %}
+            <a href="?{{ param }}={{ page + 1 }}" class="button-secondary">
+                Next<i class="bi bi-arrow-right-short"></i>
+            </a>
+        {% endif %}
+    </div>
+</div>
+{% endmacro %}
