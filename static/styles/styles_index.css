@@ -28,36 +28,6 @@ hr {
     padding: 0 0.5rem;
 }
 
-.section-container {
-    display: flex;
-    gap: 0.5rem;
-    flex-direction: column;
-
-    background-color: var(--main-lt-gray-color);
-    border-radius: calc(var(--main-border-radius) + 0.5rem);
-    padding: 0.5rem;
-
-    box-shadow: var(--main-box-shadow);
-}
-
-.section-header {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-
-    width: 100%;
-    padding: 0 0.5rem;
-    margin-top: 0.25rem;
-}
-
-.inner-container {
-    border-radius: var(--main-border-radius);
-    background-color: var(--main-bg-color);
-    padding: 0.5rem;
-    width: 100%
-}
-
 /* USED FOR UPCOMING GCAL EVENTS */
 .upcoming-event-text {
     margin: 0;

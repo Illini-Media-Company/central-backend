@@ -9,7 +9,7 @@ from flask_login import login_required
 from db.story import add_story, get_recent_stories
 from db.social_post import SocialPlatform
 from util.stories import get_published_url
-from util.slackbots.slackbot import app
+from util.slackbots._slackbot import app
 from constants import SLACK_BOT_TOKEN
 from util.security import csrf
 

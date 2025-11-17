@@ -12,6 +12,7 @@
     /* Define global colors as variables */
     --main-bg-color: #FFFFFF;
     --main-text-color: #212121;
+    --main-extralight-color: #FAFAFA;
     --main-lt-gray-color: #EEEEEE;
     --main-md-gray-color: #DDDDDD;
     --main-dk-gray-color: #212121;
@@ -76,6 +77,12 @@ h4 {
 
 .button-primary:hover {
     background-color: var(--main-accent-color-darkened);
+}
+
+.button-primary:disabled {
+    background-color: var(--main-md-gray-color);
+    color: var(--main-text-color);
+    cursor: not-allowed;
 }
 
 .button-secondary {
