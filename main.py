@@ -39,6 +39,7 @@ from db.user import (
     update_user,
     get_user,
     get_user_favorite_tools,
+    get_user_name,
 )
 from util.security import (
     csrf,
@@ -64,7 +65,7 @@ from util.map_point import scheduler as map_scheduler
 from util.scheduler import scheduler_to_json, db_to_scheduler
 from apscheduler.triggers.date import DateTrigger
 
-from util.slackbots.slackbot import start_slack
+from util.slackbots._slackbot import start_slack
 import util.slackbots.employee_agreement_slackbot
 from views.all_tools import tools_routes
 from views.content_doc import content_doc_routes
@@ -126,6 +127,7 @@ app.jinja_env.filters["ap_datetime"] = ap_datetime
 app.jinja_env.filters["ap_date"] = ap_date
 app.jinja_env.filters["ap_time"] = ap_time
 app.jinja_env.filters["format_restricted_groups"] = format_restricted_groups
+app.jinja_env.filters["to_user_name"] = get_user_name
 
 
 @atexit.register
