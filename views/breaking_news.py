@@ -14,7 +14,7 @@ from constants import SLACK_BOT_TOKEN
 from util.security import csrf
 
 DI_COPYING_ID = "C50E93LJG"
-POSTED_SUCCESFULLY = [
+POSTED_SUCCESSFULLY = [
     {"type": "divider"},
     {
         "type": "header",
@@ -165,7 +165,7 @@ def breaking_button(ack, logger, body):
             token=SLACK_BOT_TOKEN,
             channel=DI_COPYING_ID,
             ts=ts,
-            blocks=POSTED_SUCCESFULLY,
+            blocks=POSTED_SUCCESSFULLY,
             text="STORY HAS BEEN POSTED",
         )
 

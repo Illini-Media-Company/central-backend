@@ -1,7 +1,7 @@
 from datetime import datetime, date, time
 
 
-# This function properly formates datetimes into AP style. It is also registered as a
+# This function properly formats datetimes into AP style. It is also registered as a
 # Jinja filter to it can be used in HTML templates by appending |ap_datetime to a variable.
 def ap_datetime(value):
     """Format a datetime in AP style using ap_date and ap_time. Returns -1 if the input is incorrect."""
@@ -71,7 +71,7 @@ def ap_date(value):
         formatted += f", {value.year}"
 
     return formatted
- 
+
 
 def ap_daydate(value):
     """Format a date in AP style (month abbreviations, day) including the day of the week. Returns -1 if the input is incorrect."""

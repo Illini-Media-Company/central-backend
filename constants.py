@@ -12,7 +12,7 @@ ENV = os.environ.get("ENV", "dev")
 ADMIN_EMAIL = "di_admin@illinimedia.com"
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", None)
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", None)
-GOOGLE_POJECT_ID = os.environ.get("DATASTORE_PROJECT_ID", None)
+GOOGLE_PROJECT_ID = os.environ.get("DATASTORE_PROJECT_ID", None)
 GOOGLE_MAP_API = os.environ.get("GOOGLE_MAP_API", None)
 FOOD_TRUCK_MAPS_ID = os.environ.get("FOOD_TRUCK_MAPS_ID", None)
 
