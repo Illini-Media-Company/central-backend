@@ -1,4 +1,5 @@
-<!--
+{% if 0 %}
+{#
 This file defines a macro for adding paginated scroll for pages rendered server-side.
 To access it in a file, add the following outside of any other Jinja block:
 
@@ -19,7 +20,7 @@ templates/employee_agreement_admin.html
 
 Created by Jacob Slabosz on Nov. 16, 2025
 Last modified Nov. 16, 2025
--->
+#}
 
 {% macro pagination(page, total, per_page, param) %}
 <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: baseline;">

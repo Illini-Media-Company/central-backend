@@ -33,7 +33,7 @@ Food Truck Tracker (Admin)
     </h2>
 
     <div class="dashboard-main-container">
-        <!-- Form to register/modify a truck -->
+        {# Form to register/modify a truck #}
         <div class="dashboard-truck-list">
             <h3 style="margin-top: 0; margin-bottom: 0;">
                 Register New Truck:
@@ -103,7 +103,7 @@ Food Truck Tracker (Admin)
             </div>
         </div>
         
-        <!-- List of all registered trucks -->
+        {# List of all registered trucks #}
         <div class="dashboard-truck-list">
             <h3 style="margin-top: 0; margin-bottom: 0.5em;">
                 All Registered Trucks:
@@ -351,7 +351,7 @@ Food Truck Tracker (Admin)
         }
     }
 
-    // Function to make the accordian infobox work
+    // Function to make the accordion infobox work
     function toggleAccordion(button) {
         const content = button.nextElementSibling;
         const icon = button.querySelector('.accordion-icon');

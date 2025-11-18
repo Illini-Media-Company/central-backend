@@ -43,7 +43,7 @@ Food Truck Tracker (Dashboard)
     </h2>
 
     <div class="dashboard-main-container {% if not truck %}center-form{% endif %}">
-        <!-- Login form -->
+        {# Login form #}
         {% if not login_email %}
             <form id="login-form" method="GET" action="{{ url_for('food_truck_routes.dashboard') }}" enctype="application/x-www-form-urlencoded">
                 <h3>
@@ -81,7 +81,7 @@ Food Truck Tracker (Dashboard)
             </form>
         {% endif %}
 
-        <!-- Truck's registration information -->
+        {# Truck's registration information #}
         {% if truck %}
             <div class="dashboard-truck-list" >
                 <h3 style="margin-top: 0;">
@@ -138,7 +138,7 @@ Food Truck Tracker (Dashboard)
                     </button>
                 </div>
 
-                <!-- Form to add locTimes -->
+                {# Form to add locTimes #}
                 <form id="add-loctime-form" enctype="application/x-www-form-urlencoded" style="display: none;">
                     <hr>
                     <div class="form">
@@ -218,7 +218,7 @@ Food Truck Tracker (Dashboard)
             </div>
         {% endif %}
 
-        <!-- Upcoming locTimes for the truck -->
+        {# Upcoming locTimes for the truck #}
         {% if truck %}
             <div class="dashboard-truck-list">
                 <h3 style="margin-top: 0; margin-bottom: 0.5em;">
@@ -266,7 +266,7 @@ Food Truck Tracker (Dashboard)
                         </p>
                     </div>
 
-                    <!-- Form to modify locTimes -->
+                    {# Form to modify locTimes #}
                     <form id="modify-loctime-form-{{ loctime.uid }}" enctype="application/x-www-form-urlencoded" style="display: none;">
                         <div class="form">
                             <div class="form-row">

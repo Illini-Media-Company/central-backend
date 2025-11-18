@@ -1,41 +1,41 @@
-<!-- Page to add and modify tools for all users on the home page -->
+{# Page to add and modify tools for all users on the home page #}
 
-<!-- Ensures that the navigation bar and other things from base.html are included -->
+{# Ensures that the navigation bar and other things from base.html are included #}
  {% extends 'base.html' %}
 
-<!-- The title of the page -->
+{# The title of the page #}
 {% block title %}
     Tools Admin Panel
 {% endblock %}
 
-<!-- Add extra information to the head of the page -->
+{# Add extra information to the head of the page #}
 {% block extra_head %}
     <link rel="stylesheet" href="/static/styles/styles_alltools.css">
     <link rel="stylesheet" href="/static/styles/styles_index.css">
     <link rel="stylesheet" href="/static/macros/form.css">
 {% endblock %}
 
-<!-- Lets us use the loading and alert screens on this page -->
+{# Lets us use the loading and alert screens on this page #}
 {% include "partials/loading.html" %}
 {% include "partials/button_alert.html" %}
 {% include "partials/text_alert.html" %}
 
-<!-- Lets us use the form macros. We also import form.css in extra_head -->
+{# Lets us use the form macros. We also import form.css in extra_head #}
 {% import "macros/form.html" as form %}
 
-<!-- Content specific to this page -->
+{# Content specific to this page #}
 {% block content %}
 <div class="main-container">
     <h1>Tools Admin Panel</h1>
 
     <div class="upper-container">
-        <!-- This is the box for adding new tools -->
+        {# This is the box for adding new tools #}
         <div class="section-container mobile-stretch" style="flex: 2">
             <div class="section-header">
                 <h2 style="margin-bottom: 0">Add New Tool</h2>
             </div>
             <hr class="tool-category-divider" style="margin-top: 0.5rem;">
-            <!-- Form to add a new tool -->
+            {# Form to add a new tool #}
             {% call form.form(id="toolForm", enctype="application/x-www-form-urlencoded", on_submit="return addTool(event)") %}
                 {{ form.text_input(name="name", label="Name:", required=false) }}
                 {{ form.text_input(name="description", label="Description:", required=false) }}
@@ -47,7 +47,7 @@
             {% endcall %}
         </div>
 
-        <!-- This is the text box that explains the fields -->
+        {# This is the text box that explains the fields #}
         <div class="section-container" style="flex: 1">
             <div class="section-header">
                 <h2 style="margin-bottom: 0">Field Specifications</h2>
@@ -83,7 +83,7 @@
                 <div>
                     <h4 style="display: inline;">Restricted to:</h4>
                     <p style="display: inline">
-                        The Google Groups to restrict this tool do. Does not restrict acces, 
+                        The Google Groups to restrict this tool do. Does not restrict access, 
                         only whose dashboard it will display on. Enter the part of the group's 
                         email before the @. To add multiple groups, separate them with a comma 
                         and a space.
@@ -106,12 +106,12 @@
                 <h3 style="margin-bottom: 0;">{{ category }}</h3>
             </div>
 
-            <!-- Container that holds all tools in a cetegory -->
+            {# Container that holds all tools in a category #}
             <div class="tool-category-admin">
                 {% for tool in tools_list %}
-                    <!-- Container for an individual tool -->
+                    {# Container for an individual tool #}
                     <div class="tool-item-container-admin">
-                        <!-- This div holds the information display for a tool; displays by default and hidden in the "edit" view -->
+                        {# This div holds the information display for a tool; displays by default and hidden in the "edit" view #}
                         <div id="info-{{ tool.uid }}">
                             <div class="tool-item-header">
                                 <i class="{{ tool.icon }} tool-item-icon"></i>
@@ -137,7 +137,7 @@
                                 <h4 class="tool-item-info-header">Restricted to:</h4><p style="display: inline;">{{ tool.restricted_to|format_restricted_groups }}</p>
                             </div>
                         </div>
-                        <!-- This div holds the edit form for a tool; not displayed by default and only showed on "edit" view -->
+                        {# This div holds the edit form for a tool; not displayed by default and only showed on "edit" view #}
                         <div id="edit-{{ tool.uid }}" style="display: none;">
                             <div class="tool-item-header">
                                 <h4 style="margin-bottom: 0; margin-left: 0.25rem">
@@ -242,7 +242,7 @@
         saveButton.disabled   = false;
         cancelButton.disabled = false;
 
-        // TODO: Pull data from endpooint, populate form
+        // TODO: Pull data from endpoint, populate form
         showLoading("Pulling data...");
  
         let endpoint = '/tools/' + uid + '/get'; 
@@ -518,7 +518,7 @@
         if (!regex.test(restrict_to.trim()) && restrict_to.trim() != "") {
             await showTextAlert(
                 header = "Invalid input",
-                body = "'Resctricted to' needs a comma and a space between each group (with no comma at the end).",
+                body = "'Restricted to' needs a comma and a space between each group (with no comma at the end).",
                 buttonText = "Dismiss"
             );
             return false;

@@ -1,26 +1,26 @@
-<!-- The home page of the IMC Console -->
+{# The home page of the IMC Console #}
 
-<!-- Ensures that the navivaation bar and other things from base.html are included -->
+{# Ensures that the navigation bar and other things from base.html are included #}
 {% extends 'base.html' %}
 
-<!-- The title of the page (Home) -->
+{# The title of the page (Home) #}
 {% block title %}
     Home
 {% endblock %}
 
-<!-- Add extra information to the head of the page -->
+{# Add extra information to the head of the page #}
 {% block extra_head %}
     <link rel="stylesheet" href="/static/styles/styles_index.css">
 
-    <!-- Lets us use the loading screen on this page -->
+    {# Lets us use the loading screen on this page #}
     {% include "partials/loading.html" %}
     {% include "partials/info_bar.html" %}
 {% endblock %}
 
-<!-- Content specific to this page -->
+{# Content specific to this page #}
 {% block content %}
 <div class="index-container">
-    <!-- If the user is not logged in, show a login link. If they are logged in, show a welcome message. -->
+    {# If the user is not logged in, show a login link. If they are logged in, show a welcome message. #}
     {% if not current_user.is_authenticated %}
         <style>
             .index-container {
@@ -42,21 +42,21 @@
 
         <hr>
 
-        <!-- Upcoming events section -->
+        {# Upcoming events section #}
         <section class="section-container">
             <div class="section-header">
                 <h2 style="margin-bottom: 0">Upcoming All-Staff Events</h2>
                 <a href="{{ get_gcal_url(constants.MAIN_IMC_GCAL_ID) }}" target="_blank" style="text-align: right">View the full calendar</a>
             </div>
-            <!-- If there are no upcoming events, display a message -->
+            {# If there are no upcoming events, display a message #}
             {% if not upcoming_events %}
                 <div class="inner-container" style="align-items: center; text-align: center;">
                     <p style="margin-bottom: 0;">There are no all-staff events within the next 14 days</p>
                 </div>
             
-            <!-- Otherwise, show all of the events in the next 14 days -->
+            {# Otherwise, show all of the events in the next 14 days #}
             {% else %}
-                <!-- Loop through all of the upcoming events and display them -->
+                {# Loop through all of the upcoming events and display them #}
                 {% for event in upcoming_events %}
                     <div class="inner-container">
                         <h4>{{ event.title }}</h4>
@@ -68,7 +68,7 @@
 
         <hr>
 
-        <!-- User's favorite tools section -->
+        {# User's favorite tools section #}
         <section class="section-container" id="favorites-container">
             <div class="section-header">
                 <h2 style="margin-bottom: 0">Your Favorite Tools</h2>
@@ -105,7 +105,7 @@
 
         <hr>
 
-        <!-- All tools section -->
+        {# All tools section #}
         <section class="section-container">
             <div class="section-header">
                 <h2 style="margin-bottom: 0">Employee Tools</h2>
