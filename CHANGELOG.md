@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.2.2...v2.3.0) (2025-11-18)
+
+
+### Features
+
+* Add feature to automate employee agreements ([#61](https://github.com/Illini-Media-Company/central-backend/issues/61)) ([3c4099b](https://github.com/Illini-Media-Company/central-backend/commit/3c4099b13291398582aaf2a5e44c8bd7214e03fe))
+
 ## [2.2.2](https://github.com/Illini-Media-Company/central-backend/compare/v2.2.1...v2.2.2) (2025-11-13)
 
 
