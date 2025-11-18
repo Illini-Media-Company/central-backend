@@ -71,7 +71,7 @@ def ap_date(value):
         formatted += f", {value.year}"
 
     return formatted
-
+ 
 
 def ap_daydate(value):
     """Format a date in AP style (month abbreviations, day) including the day of the week. Returns -1 if the input is incorrect."""
