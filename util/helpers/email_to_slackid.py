@@ -1,8 +1,16 @@
 from util.slackbots._slackbot import app
 
 
-def email_to_slackid(email):
-    """Convert an email address to a Slack user ID using the Slack API."""
+def email_to_slackid(email: str):
+    """
+    Convert an email address to a Slack user ID using the Slack API.
+
+    :param email: The @illinimedia.com email address of the user
+    :type email: str
+    :returns: The corresponding Slack ID
+    :rtype: str
+    """
+
     print(f"Converting email {email} to Slack ID...")
     try:
         user_info = app.client.users_lookupByEmail(email=email)

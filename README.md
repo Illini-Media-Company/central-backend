@@ -149,7 +149,7 @@ Creating, using and running Slack apps (Copy Bot, Breaking News Bot, News Scrape
   - Most importantly, this file creates the `app` variable which is used by all other files referencing a Slack app. Additionally, it contains the function to initialize the app which is called from `main.py`.
 - Slackbots that do not have Central Backend APIs (like the Copy Editing Bot) are located under `/util/xxx`.
 - Slackbots that *have* Central Backend APIs (like the Breaking News Bot) are located under `/views/xxx`.
-- All Slackbot files must import the main app (`from util.slackbot import app`) as well as the Bot Token (`from constants import SLACK_BOT_TOKEN`)
+- All Slackbot files must import the main app (`from util.slackbots._slackbot import app`) as well as the Bot Token (`from constants import SLACK_BOT_TOKEN`)
 - All apps can define the username that the message is sent from. For example:
     ```
     app.client.chat_postMessage(

@@ -39,6 +39,7 @@ from db.user import (
     update_user,
     get_user,
     get_user_favorite_tools,
+    get_user_name,
 )
 from util.security import (
     csrf,
@@ -66,6 +67,7 @@ from util.changelog_parser import parse_changelog
 from apscheduler.triggers.date import DateTrigger
 
 from util.slackbots._slackbot import start_slack
+import util.slackbots.employee_agreement_slackbot
 import util.slackbots.photo_request
 from views.all_tools import tools_routes
 from views.content_doc import content_doc_routes
@@ -80,6 +82,7 @@ from views.copy_schedule import copy_schedule_routes
 from views.map_points import map_points_routes
 from views.overlooked import overlooked_routes
 from views.food_truck import food_truck_routes
+from views.employee_agreement import employee_agreement_routes
 from views.rotate_tv import rotate_tv_routes
 from views.photo_request import photo_request_routes
 
@@ -118,6 +121,7 @@ app.register_blueprint(copy_schedule_routes)
 app.register_blueprint(map_points_routes)
 app.register_blueprint(overlooked_routes)
 app.register_blueprint(food_truck_routes)
+app.register_blueprint(employee_agreement_routes)
 app.register_blueprint(rotate_tv_routes)
 app.register_blueprint(photo_request_routes)
 print("[main] Done registering blueprints.")
@@ -142,6 +146,7 @@ app.jinja_env.filters["ap_daydate"] = ap_daydate
 app.jinja_env.filters["ap_daydatetime"] = ap_daydatetime
 app.jinja_env.filters["email_to_slackid"] = email_to_slackid
 app.jinja_env.filters["format_restricted_groups"] = format_restricted_groups
+app.jinja_env.filters["to_user_name"] = get_user_name
 print("[main] Done registering Jinja filters.")
 
 
