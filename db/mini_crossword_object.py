@@ -6,26 +6,30 @@ from . import client
 class MiniCrossword(ndb.Model):
     id = ndb.IntegerProperty()
     date = ndb.DateProperty()
+    datestr = ndb.StringProperty()
     grid = ndb.JsonProperty()
-    clues = ndb.JsonProperty()
-    answers = ndb.JsonProperty()
+    data = ndb.JsonProperty()
     origin = ndb.StringProperty()  # "manual" or "auto" origin
-    article_link = ndb.StringProperty()
+    story_link = ndb.StringProperty()
+    story_title = ndb.StringProperty()
     created_by = ndb.StringProperty()
     created_at = ndb.DateTimeProperty(auto_now_add=True)
 
 
 # add new crossword to datastore
-def add_crossword(id, date, grid, clues, answers, origin, article_link, created_by):
+def add_crossword(
+    id, date, datestr, grid, data, origin, article_link, article_title, created_by
+):
     with client.context():
         crossword = MiniCrossword(
             id=id,
             date=date,
+            datestr=datestr,
             grid=grid,
-            clues=clues,
-            answers=answers,
+            data=data,
             origin=origin,
-            article_link=article_link,
+            story_link=article_link,
+            story_title=article_title,
             created_by=created_by,
         )
         crossword.put()

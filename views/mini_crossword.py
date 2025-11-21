@@ -2,17 +2,14 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from flask import Blueprint, render_template, request, jsonify
-
 from flask_cors import cross_origin
 from flask_login import login_required
-
-# from flask_login import current_user, login_required
-# from util.illordle_generate_word import random_word
 
 from db.mini_crossword_object import get_crossword, get_all_crosswords
 from db.story import get_recent_stories
 from util.security import restrict_to
 from util.stories import get_title_from_url
+from util.helpers.ap_datetime import ap_daydate
 from util.mini_crossword_validator import validate_crossword
 from datetime import date as _date
 
@@ -27,7 +24,7 @@ mini_routes = Blueprint("mini_routes", __name__, url_prefix="/mini")
 @login_required
 def all_days():
     """
-    Return data; all saved crosswods
+    Return data; all saved crosswords
     """
     return get_all_crosswords()
 
@@ -57,7 +54,7 @@ def dashboard():
     return render_template("mini_crossword.html")
 
 
-@mini_routes.route("/validate", methods=["POST"])
+@mini_routes.route("/api/validate", methods=["POST"])
 @login_required
 def validate():
     """
@@ -73,6 +70,7 @@ def validate():
 
     payload = request.get_json(silent=True) or {}
 
+    # Fetch the grid
     grid = payload.get("grid")
     if not isinstance(grid, list):
         return (
@@ -116,8 +114,8 @@ def validate():
     origin = payload.get("origin") or "manual"
     article_link = payload.get("article_link") or ""
     created_by = (
-        getattr(current_user, "email", None)
-        or getattr(current_user, "name", None)
+        getattr(current_user, "name", None)
+        or getattr(current_user, "email", None)
         or ""
     )
 
@@ -130,7 +128,7 @@ def validate():
     cw.date = cw_date_obj
     cw.grid = grid
     cw.clues = {}  # Always empty - clues not set yet
-    cw.answers = []  # Always empty - answers not set yet
+    # cw.answers = []  # Always empty - answers not set yet
     cw.origin = origin
     cw.article_link = article_link
     cw.created_by = created_by
@@ -140,40 +138,54 @@ def validate():
     except ValueError as e:
         return jsonify({"ok": False, "error": str(e)}), 400
 
-    return jsonify({"ok": True, "summary": summary})
+    return jsonify({"ok": True, "summary": summary}), 200
 
 
-@mini_routes.route("/save", methods=["POST"])
+@mini_routes.route("/api/submit", methods=["POST"])
 @login_required
 @restrict_to(["di-section-editors", "imc-staff-webdev"])
 def save_crossword():
+    """ """
+
     payload = request.get_json(silent=True) or {}
 
+    # Get the date and the grid
     cw_date_str = payload.get("date")
     grid = payload.get("grid")
-    if not cw_date_str or not grid:
-        return jsonify({"ok": False, "error": "date and grid are required"}), 400
+    data = payload.get("data")
+    if not cw_date_str or not grid or not data:
+        return jsonify({"ok": False, "error": "Date, grid and data are required."}), 400
 
     try:
         cw_date = _date.fromisoformat(cw_date_str)
+        ap_date = ap_daydate(cw_date)
     except:
-        return jsonify({"ok": False, "error": "Invalid date format"}), 400
+        return jsonify({"ok": False, "error": "Invalid date format."}), 400
 
+    # Make the ID the date
     cw_id = int(cw_date.strftime("%Y%m%d"))
+
+    # Get the article link and get the corresponding title (if present)
+    link = payload.get("article_link", "")
+    if link:
+        title = get_title_from_url(link)
+    else:
+        title = ""
 
     crossword = add_crossword(
         id=cw_id,
         date=cw_date,
+        datestr=ap_date,
         grid=grid,
-        clues=payload.get("clues", {}),
-        answers=payload.get("answers", []),
+        data=data,
         origin=payload.get("origin", "manual"),
-        article_link=payload.get("article_link", ""),
+        article_link=link,
+        article_title=title,
         created_by=(
-            getattr(current_user, "email", None)
-            or getattr(current_user, "name", None)
+            getattr(current_user, "name", None)
+            or getattr(current_user, "email", None)
             or ""
         ),
     )
 
-    return jsonify({"ok": True, "crossword": crossword})
+    return jsonify({"ok": True, "crossword": crossword}), 200

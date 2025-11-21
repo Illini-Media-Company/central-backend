@@ -30,15 +30,99 @@ def validate_crossword(cw) -> Dict[str, str | int]:
     _check_min_word_len(spans)
 
     # Clue validation is skipped - clues are assumed to be correct when provided
-    # Clues dict can be empty and that's valid
+
+    # This will be the number of a word/clue in the final puzzle
+    cur_num = 1
+
+    across_words = {}
+    # Loop through each row to get across words
+    for r in range(0, GRID_SIZE):
+        word = ""
+        for c in range(0, GRID_SIZE):
+            # Get one specific cell
+            cell = cw.grid[r][c]
+
+            # Check if the cell is blacked out
+            if cell == "#":
+                # Check if we have a word
+                if word != "":
+                    across_words[cur_num] = {
+                        "answer": word,  # The word
+                        "row": r,  # The row index the word starts at
+                        "col": (c - len(word)),  # The col index the word starts at
+                    }
+                    word = ""
+                    cur_num += 1
+
+            # Otherwise, add this letter to the word
+            else:
+                word += cell
+
+        # Got to the end of a row
+        if word != "":
+            across_words[cur_num] = {
+                "answer": word,  # The word
+                "row": r,  # The row index the word starts at
+                "col": (c - len(word) + 1),  # The col index the word starts at
+            }
+            cur_num += 1
+
+    down_words = {}
+    # Loop through each col to get down words
+    for c in range(0, GRID_SIZE):
+        word = ""
+        for r in range(0, GRID_SIZE):
+            # Get one specific cell
+            cell = cw.grid[r][c]
+
+            # Check if the cell is blacked out
+            if cell == "#":
+                # Check if we have a word
+                if word != "":
+                    # Need to see if there's an across word starting at this position
+                    existing_num = _find_matching_across(across_words, r - len(word), c)
+                    if existing_num:
+                        number = existing_num
+                    else:
+                        number = cur_num
+                        cur_num += 1
+
+                    down_words[number] = {
+                        "answer": word,  # The word
+                        "row": (r - len(word)),  # The row index the word starts at
+                        "col": c,  # The col index the word starts at
+                    }
+                    word = ""
+
+            # Otherwise, add this letter to the word
+            else:
+                word += cell
+
+        # Got to the end of a column
+        if word != "":
+            # Need to see if there's an across word starting at this position
+            existing_num = _find_matching_across(across_words, r - len(word) + 1, c)
+            if existing_num:
+                number = existing_num
+            else:
+                number = cur_num
+                cur_num += 1
+
+            down_words[number] = {
+                "answer": word,  # The word
+                "row": (r - len(word) + 1),  # The row index the word starts at
+                "col": c,  # The col index the word starts at
+            }
+
+    data = {"across": across_words, "down": down_words}
+    print(data)
 
     return {
         "id": cw.id,
         "date": str(cw.date),
         "origin": cw.origin,
         "article_link": cw.article_link,
-        "across_count": len(spans["across"]),
-        "down_count": len(spans["down"]),
+        "data": data,
         "total_entries": len(spans["across"]) + len(spans["down"]),
     }
 
@@ -46,7 +130,36 @@ def validate_crossword(cw) -> Dict[str, str | int]:
 # HELPER FUNCTIONS:
 
 
+def _find_matching_across(across_words: dict, row: int, col: int) -> int | None:
+    """
+    Checks if there is an across word that begins at the specified row and column.
+
+    :param across_words: The dictionary of across words
+    :type across_words: dict
+    :param row: The row index that the word starts at
+    :type row: int
+    :param col: The column index that the word starts at
+    :type col: int
+
+    :returns: The number for the corresponding across word that starts at row, col,
+        None if no such word exists
+    :rtype: int | None
+    """
+    for number, data in across_words.items():
+        if data["row"] == row and data["col"] == col:
+            return number
+
+    return None
+
+
 def _check_meta(cw) -> None:
+    """
+    Validate crossword meta fields. Ensures the origin is "manual" or "auto",
+    article_link is present, clues is a dict, and created_by is present for manual
+    crosswords. Also checks that the date is a Monday.
+
+    :raises ValueError: If any meta field is invalid
+    """
     if cw.origin not in ("manual", "auto"):
         raise ValueError(f"Origin must be 'manual' or 'auto', got {cw.origin!r}.")
     if not cw.article_link:
@@ -79,11 +192,11 @@ def _check_date_is_monday(cw_date) -> None:
         )
 
     # Check that date is not before today
-    today = date.today()
-    if cw_date < today:
-        raise ValueError(
-            f"Crossword date cannot be before today ({today}). Got {cw_date}."
-        )
+    # today = date.today()
+    # if cw_date < today:
+    #     raise ValueError(
+    #         f"Crossword date cannot be before today ({today}). Got {cw_date}."
+    #     )
 
     # Monday is weekday 0 in Python's datetime
     if cw_date.weekday() != 0:
