@@ -97,3 +97,9 @@ h4 {
 .button-secondary:hover {
     background-color: var(--main-md-gray-color);
 }
+
+.button-secondary:disabled {
+    background-color: var(--main-md-gray-color);
+    color: var(--main-text-color);
+    cursor: not-allowed;
+}
