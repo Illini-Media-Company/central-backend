@@ -8,13 +8,20 @@ load_dotenv()
 
 ENV = os.environ.get("ENV", "dev")
 
+# Google API keys and secrets
 ADMIN_EMAIL = "di_admin@illinimedia.com"
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", None)
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", None)
-GOOGLE_POJECT_ID = os.environ.get("DATASTORE_PROJECT_ID", None)
+GOOGLE_PROJECT_ID = os.environ.get("DATASTORE_PROJECT_ID", None)
 GOOGLE_MAP_API = os.environ.get("GOOGLE_MAP_API", None)
 FOOD_TRUCK_MAPS_ID = os.environ.get("FOOD_TRUCK_MAPS_ID", None)
 
+APPS_SCRIPT_RUNNER_EMAIL = "apps-script-runner@illinimedia.com"
+CONTEND_DOC_AUD = (
+    "906651552672-3vsqi0s6ggr50gs1u7chgcn15hqlgg4e.apps.googleusercontent.com"
+)
+
+# Reddit API information
 REDDIT_USERNAME = "TheDailyIllini"
 REDDIT_PASSWORD = os.environ.get("REDDIT_PASSWORD", None)
 REDDIT_CLIENT_ID = os.environ.get("REDDIT_CLIENT_ID", None)
@@ -22,17 +29,20 @@ REDDIT_CLIENT_SECRET = os.environ.get("REDDIT_CLIENT_SECRET", None)
 SUBREDDIT = "UIUC"
 FLAIR_ID = "a3994b2e-d384-11ea-bf32-0e7e74729027"  # News flair
 
+# Twitter API information
 TWITTER_API_KEY = os.environ.get("TWITTER_API_KEY", None)
 TWITTER_API_KEY_SECRET = os.environ.get("TWITTER_API_KEY_SECRET", None)
 TWITTER_ACCESS_TOKEN = os.environ.get("TWITTER_ACCESS_TOKEN", None)
 TWITTER_ACCESS_TOKEN_SECRET = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET", None)
 
+# Tokens and secrets for the Slack app
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", None)
 SLACK_APP_TOKEN = os.environ.get("SLACK_APP_TOKEN", None)
 SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET", None)
 
 RECAPTCHA_SECRET_KEY = os.environ.get("RECAPTCHA_SECRET_KEY", None)
 
+# Constant Contact secrets and keys
 CC_CLIENT_ID = os.environ.get("CC_CLIENT_ID", None)
 CC_CLIENT_SECRET = os.environ.get("CC_CLIENT_SECRET", None)
 CC_LIST_MAPPING = {
@@ -48,15 +58,36 @@ OV_ENDPOINT = os.environ.get("OV_ENDPOINT", None)
 
 RETOOL_API_KEY = os.environ.get("RETOOL_API_KEY", None)
 
+# Google Calendar IDs
 MAIN_IMC_GCAL_ID = (
     "illinimedia.com_8cati95103kg5o3h8i11hmu0lo@group.calendar.google.com"
 )
 COPY_EDITING_GCAL_ID = "c_ce11637c04b9e766b04cf09ca41c971bd6b567648308d2ee53823cea6672ae4a@group.calendar.google.com"
-WPGU_ON_AIR_GCAL_ID = "c_b888554deb36a74a61aea32bac28ab500ade0003cd2ae61085354e07c2fa0fa0@group.calendar.google.com"
 
-APPS_SCRIPT_RUNNER_EMAIL = "apps-script-runner@illinimedia.com"
-CONTEND_DOC_AUD = (
-    "906651552672-3vsqi0s6ggr50gs1u7chgcn15hqlgg4e.apps.googleusercontent.com"
+# Google Resource Calendar IDs
+NEWS_CONF_RESOURCE_GCAL_ID = (
+    "c_1880trl645hpqj39k57idpvutni6g@resource.calendar.google.com"
 )
+BIS_CONF_RESOURCE_GCAL_ID = (
+    "c_188756k7nm7tkgu4gpsiqsb07802a@resource.calendar.google.com"
+)
+WPGU_OFFICE_RESOURCE_GCAL_ID = (
+    "c_188ejl7c2di5uisrjp7qdcu8f7pto@resource.calendar.google.com"
+)
+WPGU_ONAIR_GCAL_ID = "c_b888554deb36a74a61aea32bac28ab500ade0003cd2ae61085354e07c2fa0fa0@group.calendar.google.com"
 
-TOOLS_ADMIN_ACCESS_GROUPS = ["webdev", "imc-staff-webdev", "ceo", "student-managers"]
+# Lists of Google Groups that control access to APIs
+TOOLS_ADMIN_ACCESS_GROUPS = [
+    "webdev",
+    "imc-staff-webdev",
+    "ceo",
+    "student-managers",
+]  # Ability to add and modify tools that display on the index page
+
+# Slack channels (used by Slack bot)
+PHOTO_REQUESTS_CHANNEL_ID = (
+    "C09NCRWU8T1" if ENV == "dev" else "C09CJMTAYHW"
+)  # #imc_photo — Channel that all photo request get sent to
+COURTESY_REQUESTS_CHANNEL_ID = (
+    "C09R16GJZBP" if ENV == "dev" else "C09SG769Y6L"
+)  # #imc_courtesy-photos — Channel that all courtesy photo requests get sent to

@@ -1,5 +1,45 @@
 # Changelog
 
+## [2.2.2](https://github.com/Illini-Media-Company/central-backend/compare/v2.2.1...v2.2.2) (2025-11-13)
+
+
+### Bug Fixes
+
+* Fix issue where photo requests reported incorrect due date ([b565684](https://github.com/Illini-Media-Company/central-backend/commit/b565684a18f707add4261dfdf5f7c9af075a9da4))
+* Photo request form notifies submitter if &lt;48hrs in advance ([9646949](https://github.com/Illini-Media-Company/central-backend/commit/9646949fb20801b3a8e8d57c44b8024df7f2a18d))
+
+
+### Documentation
+
+* Add new recommended extension to README ([36b0827](https://github.com/Illini-Media-Company/central-backend/commit/36b0827b89b8aabd2fa2a6ecb05fc232342ceb46))
+
+## [2.2.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.2.0...v2.2.1) (2025-11-11)
+
+
+### Bug Fixes
+
+* Allow prof. staff, photo, DI editors access to photo dash ([3729348](https://github.com/Illini-Media-Company/central-backend/commit/37293488303ebca81ba14883f43bc7e26f877624))
+* Fix issue with TV displaying showing wrong on Fire TVs ([65d16b9](https://github.com/Illini-Media-Company/central-backend/commit/65d16b92956c750f9c2df08d6c1a73e7932d77ad))
+* Scout now responds differently to @ mentions ([09e25fb](https://github.com/Illini-Media-Company/central-backend/commit/09e25fbd352be1d9b92eabca86373dc4ce933e1e))
+* Tools now appear in-view when editing on admin panel ([e232619](https://github.com/Illini-Media-Company/central-backend/commit/e2326197250f082b2c3887f07353d05376556dfb))
+
+## [2.2.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.1.1...v2.2.0) (2025-11-11)
+
+
+### Features
+
+* Add feature to view recent changes at URL path /changelog ([55d3209](https://github.com/Illini-Media-Company/central-backend/commit/55d320957674d81a0aa248bc934b7e584d404209))
+* Add functionality to submit photo requests ([#54](https://github.com/Illini-Media-Company/central-backend/issues/54)) ([7ff7beb](https://github.com/Illini-Media-Company/central-backend/commit/7ff7bebb145015227ab8230ddebee4976b542345))
+* Add page to show a rotating display of useful information on office TVs ([#57](https://github.com/Illini-Media-Company/central-backend/issues/57)) ([34ab45d](https://github.com/Illini-Media-Company/central-backend/commit/34ab45d16f2b2563188aacb3086b57f31e0ee586))
+
+## [2.1.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.1.0...v2.1.1) (2025-10-13)
+
+
+### Bug Fixes
+
+* Fix issue where not all copy notifcation messages would send. ([58ab10e](https://github.com/Illini-Media-Company/central-backend/commit/58ab10eaf3b375a4aff9e61f9661b42dadc3691b))
+* Update Datastore indexes to fix MapPoint issue ([c21e6bb](https://github.com/Illini-Media-Company/central-backend/commit/c21e6bb489c521b666edb04e5dc446091cf778d7))
+
 ## [2.1.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.0.0...v2.1.0) (2025-10-12)
 
 

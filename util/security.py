@@ -14,7 +14,7 @@ from googleapiclient.discovery import build
 import networkx as nx
 import requests
 
-from constants import ENV, ADMIN_EMAIL, GOOGLE_POJECT_ID, RECAPTCHA_SECRET_KEY
+from constants import ENV, ADMIN_EMAIL, GOOGLE_PROJECT_ID, RECAPTCHA_SECRET_KEY
 from db.group import add_group
 from db.user import update_user_groups
 
@@ -39,7 +39,7 @@ def get_creds(scopes):
     if ENV == "dev":
         creds = impersonated_credentials.Credentials(
             source_credentials=default_creds,
-            target_principal=f"{GOOGLE_POJECT_ID}@appspot.gserviceaccount.com",
+            target_principal=f"{GOOGLE_PROJECT_ID}@appspot.gserviceaccount.com",
             delegates=[],
             target_scopes=scopes,
             lifetime=300,
@@ -113,7 +113,7 @@ def require_internal(func):
     return wrapper
 
 
-# Restrict an endpoint to specifc user email addresses or Google Groups.
+# Restrict an endpoint to specific user email addresses or Google Groups.
 # Optionally allow Google OIDC ID tokens from an external source.
 # If using ID tokens, user email(s) must be explicitly included in users_or_groups.
 def restrict_to(users_or_groups, google_id_token_aud=None):

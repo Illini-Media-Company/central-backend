@@ -1,0 +1,328 @@
+"""
+Flask routes for photo request management.
+
+Handles web interface and API endpoints for creating, viewing, claiming,
+and completing photo requests.
+
+Created on Oct. 18, 2025 by Alan Xie
+Last modified Nov. 8, 2025
+"""
+
+from flask import Blueprint, render_template, request, jsonify
+from flask_login import login_required
+from util.security import restrict_to
+from datetime import datetime
+
+from util.slackbots.photo_request import (
+    build_blocks_from_request,
+    dm_user_by_email,
+    post_photo_blocks,
+    claim_request,
+    complete_request,
+    delete_request,
+)
+
+
+from db.photo_request import (
+    add_photo_request,
+    get_all_photo_requests,
+    update_photo_request,
+    get_photo_request_by_uid,
+    get_completed_photo_requests,
+    get_inprogress_photo_requests,
+    get_claimed_photo_requests,
+    get_unclaimed_photo_requests,
+    get_claimed_photo_requests_for_user,
+    get_completed_photo_requests_for_user,
+    get_submitted_photo_requests_for_user,
+)
+
+photo_request_routes = Blueprint(
+    "photo_request_routes", __name__, url_prefix="/photo-requests"
+)
+
+
+# /dashboard — render photo requests based on selection (defaults to all requests)
+@photo_request_routes.route("/dashboard/<selection>", methods=["GET"])
+@photo_request_routes.route(
+    "/dashboard", defaults={"selection": "all"}, methods=["GET"]
+)
+@login_required
+@restrict_to(
+    [
+        "student-managers",
+        "di-section-editors",
+        "imc-staff-photo",
+        "imc-staff-webdev",
+        "professional-staff",
+    ]
+)
+def dashboard(selection=None):
+    """
+    Renders the photo requests dashboard with filtered view.
+
+    Selection can be: all, completed, in-progress, claimed, unclaimed,
+    claimed-email, completed-email, or submitted-email
+    """
+    print(f'Fetching "{selection}" photo requests for dashboard...')
+
+    # Fetch the appropriate requests based on selection
+    # Format the selection name to display on the dashboard
+    match selection:
+        case "completed":
+            requests = get_completed_photo_requests()
+            selection_name = "Completed Requests"
+        case "in-progress":
+            requests = get_inprogress_photo_requests()
+            selection_name = "In-Progress Requests"
+        case "claimed":
+            requests = get_claimed_photo_requests()
+            selection_name = "Claimed Requests"
+        case "unclaimed":
+            requests = get_unclaimed_photo_requests()
+            selection_name = "Unclaimed Requests"
+        case "claimed-email":
+            email = request.args.get("email")
+            requests = get_claimed_photo_requests_for_user(email)
+            selection_name = f"Requests Claimed by {email}"
+        case "completed-email":
+            email = request.args.get("email")
+            requests = get_completed_photo_requests_for_user(email)
+            selection_name = f"Requests Completed by {email}"
+        case "submitted-email":
+            email = request.args.get("email")
+            requests = get_submitted_photo_requests_for_user(email)
+            selection_name = f"Requests Submitted by {email}"
+        case "all":
+            requests = get_all_photo_requests()
+            selection_name = "All Requests"
+        case _:
+            return "Invalid request selection", 404
+
+    for req in requests:
+        if req["dueDate"] and req["submissionTimestamp"]:
+            due_dt = datetime.combine(req["dueDate"], datetime.max.time())
+
+            if req["submissionTimestamp"].tzinfo is not None:
+                due_dt = due_dt.replace(tzinfo=req["submissionTimestamp"].tzinfo)
+
+            diff = due_dt - req["submissionTimestamp"]
+            req["lateSubmit"] = diff.total_seconds() < 48 * 60 * 60
+
+    print("Fetched.")
+    return render_template(
+        "photo-req/photo_req_sheet.html", requests=requests, selection=selection_name
+    )
+
+
+# /form — form to submit a request
+@photo_request_routes.route("/form", methods=["GET"])
+@login_required
+def form():
+    """Renders the photo request submission form."""
+    return render_template("photo-req/photo_req_form.html")
+
+
+# /api/submit — create new request
+@photo_request_routes.route("/api/submit", methods=["POST"])
+@login_required
+def api_submit():
+    """
+    Creates a new photo request and posts it to Slack.
+
+    Validates required fields, saves to database, sends DM to submitter,
+    and posts to the photo channel.
+    """
+    data = request.get_json() or {}
+    required = [
+        "submitterEmail",
+        "submitterName",
+        "destination",
+        "memo",
+        "specificDetails",
+        "dueDate",
+        "isCourtesy",
+    ]
+    for field in required:
+        if field not in data or data[field] == "" or data[field] is None:
+            return jsonify({"error": "missing required fields"}), 400
+
+    print("All required fields present, submitting photo request...")
+
+    # Remove the CSRF token from the JSON to pass to the function
+    del data["_csrf_token"]
+
+    try:
+        created = add_photo_request(**data)
+
+        # Build the Slack blocks from the saved record
+        blocks, fallback_text = build_blocks_from_request(created)
+
+        # DM the requester a copy (always)
+        try:
+            dm_user_by_email(
+                email=created["submitterEmail"],
+                text="I sent your request to the photo staff! I'll also send you updates, like when it's claimed or completed! Here’s a copy of your submission:",
+            )
+            res = dm_user_by_email(
+                email=created["submitterEmail"],
+                text=fallback_text,
+                blocks=blocks,
+            )
+
+            # If posting succeeded, store channel + ts so we can update later
+            if isinstance(res, dict) and res.get("ok"):
+                try:
+                    update_photo_request(
+                        uid=int(created["uid"]),
+                        submitSlackChannel=res.get("channel"),
+                        submitSlackTs=res.get("ts"),
+                    )
+
+                except Exception as _e:
+                    print(f"[photo_submit] storing slack ids failed: {_e}")
+                    return {"ok": False, "error": "no_recipient"}
+        except Exception as e:
+            print(f"[photo_submit] DM failed: {e}")
+
+        # Post to the photo channel
+        try:
+            res = post_photo_blocks(
+                blocks=blocks,
+                request_id=str(created["uid"]),
+                courtesy=bool(created["isCourtesy"]),
+            )
+            # If posting succeeded, store channel + ts so we can update later
+            if isinstance(res, dict) and res.get("ok"):
+                try:
+                    update_photo_request(
+                        uid=int(created["uid"]),
+                        slackChannel=res.get("channel"),
+                        slackTs=res.get("ts"),
+                        status="submitted",  # also mirror status explicitly, though add_photo_request defaulted to submitted
+                    )
+
+                except Exception as _e:
+                    print(f"[photo_submit] storing slack ids failed: {_e}")
+
+        except Exception as e:
+            print(f"[photo_submit] Channel post failed: {e}")
+
+        return jsonify({"message": "submitted", "request": created}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+# /api/<uid>/claim — claim request
+@photo_request_routes.route("/api/<uid>/claim", methods=["POST"])
+@login_required
+@restrict_to(["imc-staff-photo", "imc-staff-webdev"])
+def api_claim(uid):
+    """
+    Claims a photo request for a photographer.
+
+    Requires photogName and photogEmail in request body.
+    """
+    print(f"Claiming photo request {uid}...")
+    data = request.get_json() or {}
+    name = data.get("photogName")
+    email = data.get("photogEmail")
+    if not name or not email:
+        print("Missing photogName or photogEmail.")
+        return jsonify({"error": "photogName and photogEmail required"}), 400
+
+    res, status = claim_request(uid=int(uid), name=name, email=email)
+    return jsonify(res), status
+
+
+# /api/<uid>/complete — complete with Drive URL
+@photo_request_routes.route("/api/<uid>/complete", methods=["POST"])
+@login_required
+@restrict_to(["imc-staff-photo", "imc-staff-webdev"])
+def api_complete(uid):
+    """
+    Marks a photo request as complete with a Google Drive URL.
+
+    Requires driveURL in request body.
+    """
+    data = request.get_json() or {}
+    driveURL = data.get("driveURL")
+    if not driveURL:
+        return jsonify({"error": "driveURL required"}), 400
+
+    res, status = complete_request(uid=int(uid), driveURL=driveURL)
+    return jsonify(res), status
+
+
+# /api/<uid>/remove — delete a request
+@photo_request_routes.route("/api/<uid>/remove", methods=["POST"])
+@login_required
+@restrict_to(["photo", "imc-staff-webdev"])
+def api_remove(uid):
+    """Deletes a photo request by UID."""
+
+    res, status = delete_request(uid=int(uid))
+    return jsonify(res), status
+
+
+# /api/<uid>/modify — update an existing request
+@photo_request_routes.route("/api/<uid>/modify", methods=["POST"])
+@login_required
+@restrict_to(["photo", "imc-staff-webdev"])
+def api_modify(uid):
+    """Updates fields on an existing photo request."""
+    data = request.get_json() or {}
+
+    if data:
+        # Remove the CSRF token from the JSON to pass to the function
+        del data["_csrf_token"]
+
+        updated = update_photo_request(uid=int(uid), **data)
+        if not updated:
+            return jsonify({"error": "not found or no changes"}), 400
+        return jsonify({"message": "updated", "request": updated}), 200
+
+    return jsonify({"error": "no changes"}), 400
+
+
+# —————————————————————————————————————————————————————————————————————— #
+
+
+# /api/<uid>/get — get a specific request
+@photo_request_routes.route("/api/<uid>/get", methods=["GET"])
+@login_required
+@restrict_to(["imc-staff-photo", "imc-staff-webdev"])
+def api_get(uid):
+    """Fetches a single photo request by UID."""
+    req = get_photo_request_by_uid(int(uid))
+    if not req:
+        return "Request not found.", 400
+    return req, 200
+
+
+# /api/fetch/all — get all requests
+@photo_request_routes.route("/api/fetch/all", methods=["GET"])
+@login_required
+def api_fetch_all():
+    """Fetches all photo requests."""
+    requests = get_all_photo_requests()
+    if not requests:
+        return "Requests not found.", 400
+    return requests, 200
+
+
+# /api/fetch/submitted/<email> — get all requests submitted by a user with specified email
+@photo_request_routes.route("/api/fetch/submitted/<email>", methods=["GET"])
+@login_required
+def api_fetch_submitted_email(email):
+    """Fetches all requests submitted by a specific user email."""
+    print(f"Fetching submitted photo requests for {email}...")
+    requests = get_submitted_photo_requests_for_user(email)
+
+    return render_template(
+        "photo-req/photo_req_sheet.html",
+        requests=requests,
+        selection="Your Requests",
+        hide_extras=True,
+    )

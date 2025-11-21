@@ -13,7 +13,7 @@ The app is deployed to [Google App Engine](https://cloud.google.com/appengine?hl
 
 ### IDE (Integrated Development Environment)
 
-Illini Media Company recommends [Visual Studio Code](https://code.visualstudio.com/) — or VSCode — as your primary IDE. Most poeple are fimiliar with this as it is free, open-source and has many useful extensions.
+Illini Media Company recommends [Visual Studio Code](https://code.visualstudio.com/) — or VSCode — as your primary IDE. Most people are familiar with this as it is free, open-source and has many useful extensions.
 
 **Recommended Extensions**
 - [Black Formatter](https://marketplace.visualstudio.com/items?itemName=ms-python.black-formatter)
@@ -26,6 +26,8 @@ Illini Media Company recommends [Visual Studio Code](https://code.visualstudio.c
 - [Pylance](https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-pylance)
 - [Python Debugger](https://marketplace.visualstudio.com/items?itemName=ms-python.debugpy)
 - [Python Environments](https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-python-envs)
+- [Code Spell Checker](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker)
+    - To make sure your code and comments don't have any typos!
 
 ### Prerequisites
 
@@ -42,14 +44,14 @@ Make sure you have all of the following:
 ### Steps
 
 1. Clone this repo on your computer using either GitHub Desktop or the `git` CLI tool.
-    - You can do this by either using the GitHub Desktop application, directly through VSCode, or running the following in a new termnal **inside of the folder/directory where you would like your local copy**:
+    - You can do this by either using the GitHub Desktop application, directly through VSCode, or running the following in a new terminal **inside of the folder/directory where you would like your local copy**:
       ```
       git clone https://github.com/Illini-Media-Company/central-backend
       ```
 
 2. Get the `.env` file from your supervisor and place it in the `central-backend` folder you just cloned.
     - It is crucial that the file is located in the root directory and named `.env` exactly.
-    - Note that many of the secrets located in this file are specific to development. On deployement, different secrets may be used.
+    - Note that many of the secrets located in this file are specific to development. On deployment, different secrets may be used.
     - Many API keys are restricted to specific URLs, meaning you will be unable to use them for other projects.
 
 3. Setup Google Cloud CLI
@@ -71,7 +73,7 @@ Make sure you have all of the following:
             - `To continue, you must log in. Would you like to log in (Y/n)?`: Type `Y` then proceed with logging in using your @illinimedia.com account.
             - `Pick cloud project to use` followed by choices: Select the option for `central-backend-399421`.
                 - If you do not see this option, it likely means that your supervisor has not yet added you to the required Google Group.
-                - Have them do so, then run `gloud auth login` or `gcloud init` to start the process over.
+                - Have them do so, then run `gcloud auth login` or `gcloud init` to start the process over.
             - `Which compute zone would you like to use as a project default?`: This does not matter. Choose any option, or do not set a default zone.
     - Once you have completed these steps, you may close this terminal.
 
@@ -128,7 +130,7 @@ Once you have completed the setup steps above for the first time, restarting the
 ### Closing the Server
 
 To stop running the local development server, simply:
-  - Terminate the termnal running the server by typing Ctrl + C, then close the window. Do this step first to prevent potential issues.
+  - Terminate the terminal running the server by typing Ctrl + C, then close the window. Do this step first to prevent potential issues.
   - Terminate the terminal running `gcloud` by typing Ctrl + C, then close the window. If you do not terminate first, sometimes it may continue to run in the background and cause future issues (though this is not always the case)
 
 ## Slack Apps
@@ -143,11 +145,11 @@ Creating, using and running Slack apps (Copy Bot, Breaking News Bot, News Scrape
 ### Implementation
 
 - The file `/util/slackbot.py` defines and creates the main Slack app, called IMC Bot.
-  - The same file also defines the IMC Welcome Bot, which is an extention of the IMC Bot app and is responsible for sending welcome messages to everyone added to the workspace and routing them to the correct channels.
+  - The same file also defines the IMC Welcome Bot, which is an extension of the IMC Bot app and is responsible for sending welcome messages to everyone added to the workspace and routing them to the correct channels.
   - Most importantly, this file creates the `app` variable which is used by all other files referencing a Slack app. Additionally, it contains the function to initialize the app which is called from `main.py`.
 - Slackbots that do not have Central Backend APIs (like the Copy Editing Bot) are located under `/util/xxx`.
 - Slackbots that *have* Central Backend APIs (like the Breaking News Bot) are located under `/views/xxx`.
-- All Slackbot files must import the main app (`from util.slackbot import app`) as well as the Bot Token (`from constants import SLACK_BOT_TOKEN`)
+- All Slackbot files must import the main app (`from util.slackbots._slackbot import app`) as well as the Bot Token (`from constants import SLACK_BOT_TOKEN`)
 - All apps can define the username that the message is sent from. For example:
     ```
     app.client.chat_postMessage(
@@ -166,7 +168,7 @@ Creating, using and running Slack apps (Copy Bot, Breaking News Bot, News Scrape
 - When running the Central Backend locally, it pulls all secrets from the `.env` file. These are development secrets and are (usually) different than the production secrets located in GitHub Actions.
 - Because of this, the Slack App will run the app in the Central Backend Testing workspace on Slack. This means you are able to make changes locally and see them work without having to flood the main Workspace with messages.
 - Messages that are sent in specific channels do so by using the channel's ID. The main workspace and the testing workspace have different channel IDs, so it is necessary to define them both.
-- All channel IDs are defined in the file speciic to each Slackbot. For example, in `/util/copy_editing.py` you'll see the line:
+- All channel IDs are defined in the file specific to each Slackbot. For example, in `/util/copy_editing.py` you'll see the line:
     ```
     DI_COPY_TAG_CHANNEL_ID = "XXXXXX" if ENV == "prod" else "YYYYYY"
     ```

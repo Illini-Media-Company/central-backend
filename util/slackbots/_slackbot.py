@@ -325,7 +325,7 @@ app = App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
 
 @app.event("app_mention")
 def handle_mention(event, say):
-    say("IMC Welcome Bot is up and running")
+    say("👋 Hey!")
 
 
 @app.event("member_joined_channel")

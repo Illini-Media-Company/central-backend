@@ -1,0 +1,315 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Employee Agreement Portal
+{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="/static/styles/styles_base.css" />
+    <link rel="stylesheet" href="/static/macros/form.css">
+    <link rel="stylesheet" href="/static/styles/styles_employee-agreement-admin.css" />
+
+    <style>
+        .upper-container {
+            display: flex; 
+            flex-direction: row; 
+            gap: 2rem; 
+            align-items: flex-start
+        }
+
+        @media (max-width: 480px) {
+            .upper-container {
+                flex-direction: column;
+            }
+
+            .mobile-stretch {
+                width: 100%
+            }
+        }
+
+        .employee-agreement-form-row {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        textarea {
+        height: 8rem;
+        }
+    </style>
+{% endblock %}
+
+{% include "partials/loading.html" %}
+{% include "partials/info_bar.html" %}
+{% include "partials/text_alert.html" %}
+{% import "macros/form.html" as form %}
+{% from "macros/pagination.html" import pagination %}
+
+{% block content %}
+<h1>Employee Agreement Portal</h1>
+<p>Send and track employee contracts in one place.</p>
+
+<button class="button-primary" onclick="window.location.href='/employee-agreement/dashboard'">Go to Dashboard</button>
+
+<hr>
+
+<div class="upper-container">
+    <section class="section-container mobile-stretch" style="flex: 2;">
+        <div class="section-header" style="flex-direction: column; align-items: baseline;">
+            <h2 style="margin-bottom: 0">Send a New Agreement</h2>
+            <p style="margin-bottom: 0;">Enter employee and signer details to begin.</p>
+        </div>
+        <hr style="margin-top: 1rem;">
+        <div class="inner-container" style="display: flex; flex-direction: column; gap: 0.75rem; padding: 0.75rem;">
+            {{ form.textarea_input(
+                name = "employee-emails",
+                label = "Employee Emails",
+                subtext = "Tip: Paste multiple emails — one per line. All must end with @illinimedia.com",
+                placeholder = "Enter one email per line, e.g.:\nnetid1@illinimedia.com\nnetid2@illinimedia.com",
+                class = "employee-agreement-form-row",
+            ) }}
+            {{ form.text_input(
+                name = "editor-email",
+                label = "Editor Email",
+                placeholder = "netid@illinimedia.com",
+                pattern = "^[^@\\s]+@illinimedia\\.com$",
+                required = True,
+                class = "employee-agreement-form-row",
+            ) }}
+            {{ form.text_input(
+                name = "manager-email",
+                label = "Manager Email",
+                placeholder = "netid@illinimedia.com",
+                pattern = "^[^@\\s]+@illinimedia\\.com$",
+                required = True,
+                class = "employee-agreement-form-row",
+            ) }}
+            {{ form.text_input(
+                name = "chief-email",
+                label = "Editor-in-Chief Email",
+                placeholder = "netid@illinimedia.com",
+                pattern = "^[^@\\s]+@illinimedia\\.com$",
+                required = True,
+                class = "employee-agreement-form-row",
+            ) }}
+            {{ form.text_input(
+                name = "agreement-link",
+                label = "Agreement Link (URL)",
+                subtext = "A Google Doc or PDF that employees will read before digitally signing.",
+                placeholder = "Paste a link here",
+                required = True,
+                class = "employee-agreement-form-row",
+            ) }}
+            {{ form.text_input(
+                name = "agreement-name",
+                label = "Agreement Name",
+                subtext = "A few words describing what this agreement is, like \"Daily Illini Employee Agreement\"",
+                required = True,
+                class = "employee-agreement-form-row",
+            ) }}
+
+            <div style="margin-top: 0.5rem;">
+                <button class="button-primary"id="send-btn">Send Agreements</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="section-container mobile-stretch" style="flex: 1;">
+        <div class="section-header" style="flex-direction: column; align-items: baseline;">
+            <h2 style="margin-bottom: 0">In-Progress Agreements</h2>
+        </div>
+        <hr style="margin-top: 1rem;">
+        {% if inprogress_agreements %}
+            {% for agreement in inprogress_agreements %}
+            <div class="inner-container" style="padding: 0.75rem;" id="{{ agreement.uid }}">
+                <h4 style="margin-bottom: 0.25rem;">{{ agreement.agreement_name }}</h4>
+                <p style="margin-bottom: 0;">{{ agreement.user_email|to_user_name }} ({{ agreement.user_email }})</p>
+                <p style="margin-bottom: 0; font-size: 0.75rem;">Created on {{ agreement.create_time|ap_datetime }}</p>
+                <p style="margin-bottom: 0; font-size: 0.75rem;">
+                    {% if agreement.user_signed %}
+                    Signed by 
+                    {% if agreement.user_email|to_user_name %}
+                        {{ agreement.user_email|to_user_name }} 
+                    {% else %}
+                        employee
+                    {% endif %}
+                    on {{ agreement.user_signed|ap_datetime }}
+                    {% endif %} 
+                </p>
+                <p style="margin-bottom: 0; font-size: 0.75rem;">
+                    {% if agreement.editor_signed %}
+                    Signed by 
+                    {% if agreement.editor_email|to_user_name %}
+                        {{ agreement.editor_email|to_user_name }} 
+                    {% else %}
+                        editor
+                    {% endif %}
+                    on {{ agreement.editor_signed|ap_datetime }}
+                    {% endif %} 
+                </p>
+                <p style="margin-bottom: 0; font-size: 0.75rem;">
+                    {% if agreement.manager_signed %}
+                    Signed by 
+                    {% if agreement.manager_email|to_user_name %}
+                        {{ agreement.manager_email|to_user_name }} 
+                    {% else %}
+                        manager
+                    {% endif %}
+                    on {{ agreement.manager_signed|ap_datetime }}
+                    {% endif %} 
+                </p>
+                <p style="margin-bottom: 0; font-size: 0.75rem;">
+                    {% if agreement.chief_signed %}
+                    Signed by 
+                    {% if agreement.chief_email|to_user_name %}
+                        {{ agreement.chief_email|to_user_name }} 
+                    {% else %}
+                        Editor-in-Chief
+                    {% endif %}
+                    on {{ agreement.chief_signed|ap_datetime }}
+                    {% endif %} 
+                </p>
+            </div>
+            {% endfor %}
+            {{ pagination(page_inprog, total_inprog, per_page_inprog, "page-inprog") }}
+        {% else %}
+            <div class="inner-container" style="padding: 0.75rem; align-items: center; text-align: center;">
+                <p style="margin-bottom: 0;">There are no in-progress agreements.</p>
+            </div>
+        {% endif %}
+    </section>
+</div>
+
+<script>
+    // Show the confirmation info bar after the page reloads
+    document.addEventListener("DOMContentLoaded", () => {
+        const msg = sessionStorage.getItem("infoBarMessage");
+        if (msg) {
+            showInfoBar(msg);
+            sessionStorage.removeItem("infoBarMessage"); // Clear it after showing
+        }
+    });
+    
+    // ===== LEFT SIDE: SEND AGREEMENTS =====
+    document.getElementById("send-btn").addEventListener("click", async () => {
+        showLoading("Submitting...");
+
+        const emailsText = document
+            .getElementById("employee-emails")
+            .value.trim();
+        const editorEmail = document.getElementById("editor-email").value.trim();
+        const managerEmail = document
+            .getElementById("manager-email")
+            .value.trim();
+        const chiefEmail = document.getElementById("chief-email").value.trim();
+        const agreementLink = document
+            .getElementById("agreement-link")
+            .value.trim();
+        
+        const agreementName = document
+            .getElementById("agreement-name")
+            .value.trim();
+
+        const emails = emailsText
+            .split("\n")
+            .map((e) => e.trim())
+            .filter((e) => e);
+
+        // Validate required fields
+        if (emails.length === 0) {
+            showTextAlert(
+                header="Invalid entry:",
+                body="Please enter at least one employee email.",
+                buttonText="Dismiss"
+            );
+            hideLoading()
+            return;
+        }
+        if (!agreementLink) {
+            showTextAlert(
+                header="Invalid entry:",
+                body="Please provide the agreement link.",
+                buttonText="Dismiss"
+            );
+            hideLoading()
+            return;
+        }
+        if (!agreementName) {
+            showTextAlert(
+                header="Invalid entry:",
+                body="Please provide the agreement name.",
+                buttonText="Dismiss"
+            );
+            hideLoading()
+            return;
+        }
+
+        // Validate that all emails end with @illinimedia.com
+        const invalidEmails = emails.filter(
+            (e) => !e.endsWith("@illinimedia.com")
+        );
+        if (invalidEmails.length > 0) {
+            let text = "The following emails are invalid:\n" +
+                invalidEmails.join("\n") +
+                "\n\nAll emails must end with @illinimedia.com";
+            showTextAlert(
+                header="Invalid entry:",
+                body=text,
+                buttonText="Dismiss"
+            );
+            hideLoading()
+            return;
+        }
+
+        // Validate signer emails
+        const singleEmails = [editorEmail, managerEmail, chiefEmail];
+        for (const e of singleEmails) {
+            if (!e.endsWith("@illinimedia.com")) {
+                showTextAlert(
+                header="Invalid entry:",
+                body="All signer emails must end with @illinimedia.com",
+                buttonText="Dismiss"
+            );
+            hideLoading()
+                return;
+            }
+        }
+
+        const payload = {
+            emails: emails,
+            editor: editorEmail,
+            manager: managerEmail,
+            chief: chiefEmail,
+            agreement_link: agreementLink,
+            agreement_name: agreementName,
+        };
+
+        let endpoint = "/employee-agreement/submit";
+
+        const response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token() }}",
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", "Agreements successfully sent."); // Safe so we can display after reload
+            window.location.reload();
+        } else {
+            // Alert of the error and re-enable the submit button
+            console.log("Failed to submit agreements.");
+            const message = await response.text();
+            console.error(message);
+            await showTextAlert(
+                header = "There was an error:",
+                body = message,
+                buttonText = "Dismiss",
+            );
+            hideLoading();
+        }
+    });
+</script>
+{% endblock %}
