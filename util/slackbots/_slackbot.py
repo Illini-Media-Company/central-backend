@@ -6,29 +6,28 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 from constants import ENV, SLACK_BOT_TOKEN, SLACK_APP_TOKEN, SLACK_SIGNING_SECRET
 from util.security import csrf
 
-
-IMC_GENERAL_ID = "C13TEC3QE" if ENV == "prod" else "C06GADGT60Z"
-IMC_GENERAL_TEST_ID = "C06LDL7RG3X" if ENV == "prod" else None
-DI_ANNOUNCEMENTS_ID = "C06BSL71W2Z" if ENV == "prod" else "C06G089F8S0"
-ILLIO_ANNOUNCEMENTS_ID = "C06BVLLQPAP" if ENV == "prod" else "C06FXMB42MR"
-WPGU_ANNOUNCEMENTS_ID = "C06BY7S6F44" if ENV == "prod" else "C06G08KP11S"
-CWA_GENERAL_ID = "C06CB7QMZ97" if ENV == "prod" else "C06FXQSRB5G"
-
-IMC_ADVERTISING_ID = "C06C12D8H6Y" if ENV == "prod" else "C06FR635SPQ"
-IMC_MARKETING_ID = "C06BYF9TD99" if ENV == "prod" else "C06FR63HURL"
-IMC_FRONTDESK_ID = "C0696V7DMJQ" if ENV == "prod" else "C06FUT4LHHT"
-
-ILLIO_DESIGN_ID = "C06BV3CL1B4" if ENV == "prod" else "C06FXMHUQ3V"
-ILLIO_PHOTO_ID = "C06BV033D4K" if ENV == "prod" else "C06GAE3QKMX"
-ILLIO_WRITER_ID = "C06BXGP8Y12" if ENV == "prod" else "C06FH8HF46B"
-
-WPGU_ENGINEERING_ID = "C06C11L8C8L" if ENV == "prod" else "C06G08SQZEG"
-WPGU_ILLINI_DRIVE_ID = "C06BJ1XSPK9" if ENV == "prod" else "C06FXMKG97D"
-WPGU_MARKETING_ID = "C06BJ1VEAMV" if ENV == "prod" else "C06FXMKPMU3"
-WPGU_MUSIC_ID = "C06CB6ZC8JV" if ENV == "prod" else "C06GLJD5VUY"
-WPGU_NEWS_ID = "C06BYEFRJ03" if ENV == "prod" else "C06FXML7BHR"
-WPGU_ON_AIR_ID = "C06BRUCMUG6" if ENV == "prod" else "C06FR61KDJS"
-WPGU_PRODUCTION_ID = "C06BVKXSJ0M" if ENV == "prod" else "C06FXQXKJAE"
+from constants import (
+    IMC_GENERAL_ID,
+    IMC_GENERAL_TEST_ID,
+    DI_ANNOUNCEMENTS_ID,
+    ILLIO_ANNOUNCEMENTS_ID,
+    WPGU_ANNOUNCEMENTS_ID,
+    ICS_GENERAL_ID,
+    IMC_ADVERTISING_ID,
+    IMC_MARKETING_ID,
+    IMC_FRONTDESK_ID,
+    ILLIO_DESIGN_ID,
+    ILLIO_PHOTO_ID,
+    ILLIO_WRITER_ID,
+    WPGU_ENGINEERING_ID,
+    WPGU_ILLINI_DRIVE_ID,
+    WPGU_MARKETING_ID,
+    WPGU_MUSIC_ID,
+    WPGU_NEWS_ID,
+    WPGU_ON_AIR_ID,
+    WPGU_PRODUCTION_ID,
+    WPGU_SPORTS_ID,
+)
 
 ILLIO_MESSAGE = [
     {
@@ -158,6 +157,16 @@ WPGU_MESSAGE = [
                 "value": "click_me_123",
                 "action_id": "wpgu_production_button",
             },
+            {
+                "type": "button",
+                "text": {
+                    "type": "plain_text",
+                    "text": ":football: Sports",
+                    "emoji": True,
+                },
+                "value": "click_me_123",
+                "action_id": "wpgu_sports_button",
+            },
         ],
     },
 ]
@@ -232,7 +241,7 @@ IMC_WELCOME_MESSAGE = [
         "type": "section",
         "text": {
             "type": "mrkdwn",
-            "text": ':bell:\nMake sure you have downloaded Slack on both your phone and laptop and have all notifications turned on. You\'ll have to click "You" in the bottom right corner, then "Notifications," then change the top option to "All new messages."',
+            "text": ':bell:\nMake sure you have downloaded Slack on both your phone and laptop and have all notifications turned on. You’ll have to click "You" in the bottom right corner, then "Notifications," then change the top option to "All new messages."',
         },
     },
     {"type": "divider"},
@@ -240,7 +249,7 @@ IMC_WELCOME_MESSAGE = [
         "type": "section",
         "text": {
             "type": "mrkdwn",
-            "text": ':adult:\nStart by customizing your profile! All users should have their full name in their Slack profile, along with a profile photo (it doesn\'t have to be you). You should also add your title. You should format your title as follows:\n\n"[Department] — [Title]"\n\nFor example, a staff photography for The Daily Illini would input "DI — Staff Photographer"\n\nFor those with positions in multiple departments, format it as follows:\n\n"DI — Staff Photographer | Illio — Staff Photographer"',
+            "text": ':adult:\nStart by customizing your profile! All users should have their full name in their Slack profile, along with a profile photo (it doesn’t have to be you). You should also add your title. You should format your title as follows:\n\n"[Department] — [Title]"\n\nFor example, a staff photographer for IMC would input "IMC — Staff Photographer"\n\nFor those with positions in multiple departments, format it as follows:\n\n"IMC — Staff Photographer | DI — Reporter"\n\nPlease use an em dash, not a hyphen!',
         },
     },
     {"type": "divider"},
@@ -301,7 +310,7 @@ IMC_WELCOME_MESSAGE = [
                     "emoji": True,
                 },
                 "value": "click_me_123",
-                "action_id": "cwa_button",
+                "action_id": "ics_button",
             },
             {
                 "type": "button",
@@ -381,7 +390,7 @@ def buttonWrapper(buttonName, buttonHashtag, channel, userName, userId):
         app.client.chat_postMessage(
             token=SLACK_BOT_TOKEN,
             channel=userId,
-            text=userName + ", you have been added to " + buttonHashtag,
+            text=f"<@{userId}>, you have been added to <#{channel}>.",
         )
         print("  User " + userName + " has been added to " + buttonHashtag + "\n")
     except Exception as e:
@@ -389,7 +398,7 @@ def buttonWrapper(buttonName, buttonHashtag, channel, userName, userId):
         app.client.chat_postMessage(
             token=SLACK_BOT_TOKEN,
             channel=userId,
-            text=userName + ", you are already in " + buttonHashtag,
+            text=f"<@{userId}>, you are already in <#{channel}>.",
         )
 
 
@@ -429,15 +438,15 @@ def illioButton(ack, body, logger):
     )
 
 
-# Executed if a user clicks the "Creative Works Agency" button
-@app.action("cwa_button")
-def cwa_button(ack, body, logger):
+# Executed if a user clicks the "Illini Content Studio" button
+@app.action("ics_button")
+def ics_button(ack, body, logger):
     ack()
     logger.info(body)
     userName = body["user"]["name"]
     userId = body["user"]["id"]
     buttonWrapper(
-        "Creative Works Agency", "#cwa_general", CWA_GENERAL_ID, userName, userId
+        "Illini Content Studio", "#ics_general", ICS_GENERAL_ID, userName, userId
     )
 
 
@@ -554,7 +563,11 @@ def wpgu_illini_drive_button(ack, body, logger):
     userName = body["user"]["name"]
     userId = body["user"]["id"]
     buttonWrapper(
-        "WPGU Illini Drive", "#wpgu_illinidrive", WPGU_ILLINI_DRIVE_ID, userName, userId
+        "WPGU Illini Drive",
+        "#wpgu_illini-drive",
+        WPGU_ILLINI_DRIVE_ID,
+        userName,
+        userId,
     )
 
 
@@ -610,6 +623,16 @@ def wpgu_production_button(ack, body, logger):
     buttonWrapper(
         "WPGU Production", "#wpgu_production", WPGU_PRODUCTION_ID, userName, userId
     )
+
+
+# Executed if a user clicks the WPGU Sports button
+@app.action("wpgu_sports_button")
+def wpgu_sports_button(ack, body, logger):
+    ack()
+    logger.info(body)
+    userName = body["user"]["name"]
+    userId = body["user"]["id"]
+    buttonWrapper("WPGU Sports", "#wpgu_sports", WPGU_SPORTS_ID, userName, userId)
 
 
 def start_slack(flask_app):

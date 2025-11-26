@@ -85,6 +85,30 @@ TOOLS_ADMIN_ACCESS_GROUPS = [
 ]  # Ability to add and modify tools that display on the index page
 
 # Slack channels (used by Slack bot)
+IMC_GENERAL_ID = "C13TEC3QE" if ENV == "prod" else "C06GADGT60Z"
+IMC_GENERAL_TEST_ID = "C06LDL7RG3X" if ENV == "prod" else None
+DI_ANNOUNCEMENTS_ID = "C06BSL71W2Z" if ENV == "prod" else "C06G089F8S0"
+ILLIO_ANNOUNCEMENTS_ID = "C06BVLLQPAP" if ENV == "prod" else "C06FXMB42MR"
+WPGU_ANNOUNCEMENTS_ID = "C06BY7S6F44" if ENV == "prod" else "C06G08KP11S"
+ICS_GENERAL_ID = "C06CB7QMZ97" if ENV == "prod" else "C06FXQSRB5G"
+
+IMC_ADVERTISING_ID = "C06C12D8H6Y" if ENV == "prod" else "C06FR635SPQ"
+IMC_MARKETING_ID = "C06BYF9TD99" if ENV == "prod" else "C06FR63HURL"
+IMC_FRONTDESK_ID = "C0696V7DMJQ" if ENV == "prod" else "C06FUT4LHHT"
+
+ILLIO_DESIGN_ID = "C06BV3CL1B4" if ENV == "prod" else "C06FXMHUQ3V"
+ILLIO_PHOTO_ID = "C06BV033D4K" if ENV == "prod" else "C06GAE3QKMX"
+ILLIO_WRITER_ID = "C06BXGP8Y12" if ENV == "prod" else "C06FH8HF46B"
+
+WPGU_ENGINEERING_ID = "C09E51RTPRB" if ENV == "prod" else "C06G08SQZEG"
+WPGU_ILLINI_DRIVE_ID = "C06BJ1XSPK9" if ENV == "prod" else "C06FXMKG97D"
+WPGU_MARKETING_ID = "C09FP4VLHL4" if ENV == "prod" else "C06FXMKPMU3"
+WPGU_MUSIC_ID = "C09E7KWAR7C" if ENV == "prod" else "C06GLJD5VUY"
+WPGU_NEWS_ID = "C08KCADDCD8" if ENV == "prod" else "C06FXML7BHR"
+WPGU_ON_AIR_ID = "C06BRUCMUG6" if ENV == "prod" else "C06FR61KDJS"
+WPGU_PRODUCTION_ID = "C09ET1PT762" if ENV == "prod" else "C06FXQXKJAE"
+WPGU_SPORTS_ID = "C09FRSTPVAL" if ENV == "prod" else "C09V8V4K5K8"
+
 PHOTO_REQUESTS_CHANNEL_ID = (
     "C09NCRWU8T1" if ENV == "dev" else "C09CJMTAYHW"
 )  # #imc_photo — Channel that all photo request get sent to
