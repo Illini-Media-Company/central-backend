@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.3.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.2.2...v2.3.0) (2025-11-26)
+
+
+### Features
+
+* Add admin functionality for DI Mini Crossword game ([#59](https://github.com/Illini-Media-Company/central-backend/issues/59)) ([f1a5fff](https://github.com/Illini-Media-Company/central-backend/commit/f1a5ffff81381f8e9652be9d49ce509c8cf4e1a5))
+* Add feature to automate employee agreements ([#61](https://github.com/Illini-Media-Company/central-backend/issues/61)) ([3c4099b](https://github.com/Illini-Media-Company/central-backend/commit/3c4099b13291398582aaf2a5e44c8bd7214e03fe))
+
+
+### Bug Fixes
+
+* Welcome Bot: Update WPGU channel IDs ([547571e](https://github.com/Illini-Media-Company/central-backend/commit/547571e5c09de1db047cde2a2fc348d4f7f5a791))
+
 ## [2.2.2](https://github.com/Illini-Media-Company/central-backend/compare/v2.2.1...v2.2.2) (2025-11-13)
 
 
