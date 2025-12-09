@@ -4,7 +4,7 @@ from google.cloud import ndb
 from . import client
 
 
-class DiStorySocials(ndb.Model):
+class DiSocialStory(ndb.Model):
     uid = ndb.ComputedProperty(
         lambda self: self.key.id() if self.key else None, indexed=False
     )
@@ -31,7 +31,7 @@ def add_social_story(url, name):
         dict: The created story as a dictionary
     """
     with client.context():
-        story = DiStorySocials(
+        story = DiSocialStory(
             story_url=url,
             story_name=name,
             story_posted_timestamp=datetime.now(),
@@ -58,7 +58,7 @@ def update_slack_details(url, timestamp):
         dict: Updated story as dictionary, or None if not found
     """
     with client.context():
-        query = DiStorySocials.query().filter(DiStorySocials.story_url == url)
+        query = DiSocialStory.query().filter(DiSocialStory.story_url == url)
         story = query.get()
         if story:
             story.slack_message_timestamp = timestamp
@@ -80,7 +80,7 @@ def update_social(url, social_media_name):
         dict: Updated story as dictionary, or None if not found
     """
     with client.context():
-        query = DiStorySocials.query().filter(DiStorySocials.story_url == url)
+        query = DiSocialStory.query().filter(DiSocialStory.story_url == url)
         story = query.get()
         if story:
             now = datetime.now()
@@ -112,7 +112,7 @@ def get_all_stories():
         list: List of all stories as dictionaries
     """
     with client.context():
-        stories = [story.to_dict() for story in DiStorySocials.query().fetch()]
+        stories = [story.to_dict() for story in DiSocialStory.query().fetch()]
     return stories
 
 
@@ -129,8 +129,8 @@ def get_recent_stories(count):
     with client.context():
         stories = [
             story.to_dict()
-            for story in DiStorySocials.query()
-            .order(-DiStorySocials.story_posted_timestamp)
+            for story in DiSocialStory.query()
+            .order(-DiSocialStory.story_posted_timestamp)
             .fetch(limit=count)
         ]
     return stories
@@ -147,7 +147,7 @@ def get_story_by_url(url):
         dict: Story as dictionary, or None if not found
     """
     with client.context():
-        query = DiStorySocials.query().filter(DiStorySocials.story_url == url)
+        query = DiSocialStory.query().filter(DiSocialStory.story_url == url)
         story = query.get()
         if story:
             return story.to_dict()
@@ -163,7 +163,7 @@ def delete_all_stories():
         str: Confirmation message
     """
     with client.context():
-        stories = DiStorySocials.query().fetch()
+        stories = DiSocialStory.query().fetch()
         for story in stories:
             story.key.delete()
     return "All social stories deleted"
@@ -187,22 +187,22 @@ def check_limit(social_media_name, limit, days):
 
         # Determine which timestamp field to check based on social media name
         if social_media_name == "Slack":
-            timestamp_field = DiStorySocials.slack_message_timestamp
+            timestamp_field = DiSocialStory.slack_message_timestamp
         elif social_media_name == "Instagram":
-            timestamp_field = DiStorySocials.instagram_timestamp
+            timestamp_field = DiSocialStory.instagram_timestamp
         elif social_media_name == "Facebook":
-            timestamp_field = DiStorySocials.facebook_timestamp
+            timestamp_field = DiSocialStory.facebook_timestamp
         elif social_media_name == "Reddit":
-            timestamp_field = DiStorySocials.reddit_timestamp
+            timestamp_field = DiSocialStory.reddit_timestamp
         elif social_media_name == "X":
-            timestamp_field = DiStorySocials.x_timestamp
+            timestamp_field = DiSocialStory.x_timestamp
         elif social_media_name == "Threads":
-            timestamp_field = DiStorySocials.threads_timestamp
+            timestamp_field = DiSocialStory.threads_timestamp
         else:
             raise ValueError(f"Invalid social media name: {social_media_name}")
 
         recent_posts = (
-            DiStorySocials.query()
+            DiSocialStory.query()
             .filter(
                 timestamp_field >= start_datetime,
                 timestamp_field <= current_datetime,
