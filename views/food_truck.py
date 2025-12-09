@@ -25,6 +25,9 @@ from db import client
 import logging
 from constants import GOOGLE_MAP_API, FOOD_TRUCK_MAPS_ID
 
+from util.google_analytics import send_ga4_event
+from constants import IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID
+
 food_truck_routes = Blueprint("food_truck_routes", __name__, url_prefix="/food-truck")
 
 
@@ -262,6 +265,15 @@ def get_loctime(uid):
 @cross_origin()
 @csrf.exempt
 def list_food_trucks_json():
+    # Log in Google Analytics
+    utm_source = request.args.get("utm_source", "none")
+    utm_medium = request.args.get("utm_medium", "none")
+    send_ga4_event(
+        "foodtruck_json_fetch",
+        IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID,
+        {"utm_source": utm_source, "utm_medium": utm_medium},
+    )
+
     with client.context():
         trucks_with_loctimes = get_all_trucks_with_loctimes()
 
