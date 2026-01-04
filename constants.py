@@ -76,6 +76,35 @@ WPGU_OFFICE_RESOURCE_GCAL_ID = (
 )
 WPGU_ONAIR_GCAL_ID = "c_b888554deb36a74a61aea32bac28ab500ade0003cd2ae61085354e07c2fa0fa0@group.calendar.google.com"
 
+# Employee Management System
+IMC_BRANDS = ["imc", "di", "wpgu", "illio", "chambana-eats", "ics"]
+PAY_TYPES = ["unpaid", "hourly", "salary", "stipend"]
+DEPART_CATEGORIES = ["voluntary", "involuntary", "administrative"]
+DEPART_REASON_VOL = [
+    "resigned",
+    "dissatisfaction",
+    "did not return",
+    "higher pay elsewhere",
+    "personal reasons",
+]
+DEPART_REASON_INVOL = [
+    "terminated for performance",
+    "terminated for misconduct",
+    "attendance issue",
+    "position eliminated",
+    "insubordination",
+]
+DEPART_REASON_ADMIN = [
+    "promoted",
+    "completed term",
+    "graduated",
+    "no longer student",
+    "duplicate record",
+    "administrative error",
+    "reorganization",
+    "other/unknown",
+]
+
 # Lists of Google Groups that control access to APIs
 TOOLS_ADMIN_ACCESS_GROUPS = [
     "webdev",
