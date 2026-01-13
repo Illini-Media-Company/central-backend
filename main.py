@@ -5,6 +5,7 @@ from threading import Thread
 import urllib
 import atexit
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from db import client as dbclient
 
@@ -38,6 +39,7 @@ from db.user import (
     add_user,
     update_user,
     get_user,
+    get_all_users,
     get_user_favorite_tools,
     get_user_name,
 )
@@ -344,6 +346,7 @@ def callback():
                     name=user_name,
                     email=user_email,
                     picture=user_picture,
+                    last_login=datetime.now(ZoneInfo("America/Chicago")),
                     groups=[],
                 )
             else:
@@ -358,6 +361,7 @@ def callback():
                 name=user_name,
                 email=user_email,
                 picture=user_picture,
+                last_login=datetime.now(ZoneInfo("America/Chicago")),
                 groups=[],
             )
         # Otherwise, make sure we have the most recent name and email
@@ -366,6 +370,7 @@ def callback():
                 name=user_name,
                 email=user_email,
                 picture=user_picture,
+                last_login=datetime.now(ZoneInfo("America/Chicago")),
             )
 
         # Create new thread to sync user's group memberships
@@ -386,6 +391,13 @@ def callback():
         return redirect(url_for("index"))
     else:
         return "User email not available or not verified by Google.", 400
+
+
+@app.route("/all-users")
+@login_required
+def all_users():
+    users = get_all_users()
+    return render_template("all_users.html", users=users)
 
 
 @app.route("/url-history")
