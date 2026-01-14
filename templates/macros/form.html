@@ -53,6 +53,9 @@ maxlength is the maximum length of the input in characters
         <div>
             <label for="{{ name }}" class="field-label">
                 {{ label }}
+                {% if required %}
+                    <span title="Required field" style="color: var(--main-accent-color);">*</span>
+                {% endif %}
             </label>
             {% if subtext %}
                 <p class="subtext">{{ subtext }}</p>
@@ -102,6 +105,9 @@ option_container is the name of a class to override
         <div>
             <label for="{{ name }}" class="field-label">
                 {{ label }}
+                {% if required %}
+                    <span title="Required field" style="color: var(--main-accent-color);">*</span>
+                {% endif %}
             </label>
             {% if subtext %}
                 <p class="subtext">{{ subtext }}</p>
@@ -142,6 +148,9 @@ options is a list of strings.
         <div>
             <label for="{{ name }}" class="field-label">
                 {{ label }}
+                {% if required %}
+                    <span title="Required field" style="color: var(--main-accent-color);">*</span>
+                {% endif %}
             </label>
             {% if subtext %}
                 <p class="subtext">{{ subtext }}</p>
@@ -164,6 +173,9 @@ options is a list of strings.
         <div>
             <label for="{{ name }}" class="field-label">
                 {{ label }}
+                {% if required %}
+                    <span title="Required field" style="color: var(--main-accent-color);">*</span>
+                {% endif %}
             </label>
             {% if subtext %}
                 <p class="subtext">{{ subtext }}</p>

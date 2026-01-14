@@ -76,34 +76,56 @@ WPGU_OFFICE_RESOURCE_GCAL_ID = (
 )
 WPGU_ONAIR_GCAL_ID = "c_b888554deb36a74a61aea32bac28ab500ade0003cd2ae61085354e07c2fa0fa0@group.calendar.google.com"
 
-# Employee Management System
-IMC_BRANDS = ["imc", "di", "wpgu", "illio", "chambana-eats", "ics"]
-PAY_TYPES = ["unpaid", "hourly", "salary", "stipend"]
-DEPART_CATEGORIES = ["voluntary", "involuntary", "administrative"]
+################################################################################
+### EMPLOYEE MANAGEMENT SYSTEM #################################################
+################################################################################
+
+# Google Groups with admin access to EMS
+EMS_ADMIN_ACCESS_GROUPS = [
+    "webdev",
+    "imc-staff-webdev",
+    "helpdesk",
+    "student-managers",
+    "professional-staff",
+]
+
+IMC_BRANDS = [
+    "IMC",
+    "The Daily Illini",
+    "WPGU",
+    "Illio",
+    "Chambana Eats",
+    "Illini Content Studio",
+]
+PAY_TYPES = ["Unpaid", "Hourly", "Salary", "Stipend"]
+EMPLOYEE_STATUS_OPTIONS = ["Active", "Inactive", "Onboarding", "Offboarding"]
+DEPART_CATEGORIES = ["Voluntary", "Involuntary", "Administrative"]
 DEPART_REASON_VOL = [
-    "resigned",
-    "dissatisfaction",
-    "did not return",
-    "higher pay elsewhere",
-    "personal reasons",
+    "Resigned",
+    "Dissatisfaction",
+    "Did Not Return",
+    "Higher Pay Elsewhere",
+    "Personal Reasons",
 ]
 DEPART_REASON_INVOL = [
-    "terminated for performance",
-    "terminated for misconduct",
-    "attendance issue",
-    "position eliminated",
-    "insubordination",
+    "Terminated for Performance",
+    "Terminated for Misconduct",
+    "Attendance Issue",
+    "Position Eliminated",
+    "Insubordination",
 ]
 DEPART_REASON_ADMIN = [
-    "promoted",
-    "completed term",
-    "graduated",
-    "no longer student",
-    "duplicate record",
-    "administrative error",
-    "reorganization",
-    "other/unknown",
+    "Promoted",
+    "Completed Term",
+    "Graduated",
+    "No Longer Student",
+    "Duplicate Record",
+    "Administrative Error",
+    "Reorganization",
+    "Other/Unknown",
 ]
+
+################################################################################
 
 # Lists of Google Groups that control access to APIs
 TOOLS_ADMIN_ACCESS_GROUPS = [
