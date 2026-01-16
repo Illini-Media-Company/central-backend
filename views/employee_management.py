@@ -22,6 +22,7 @@ from db.employee_management import (
 from constants import (
     EMPLOYEE_STATUS_OPTIONS,
     EMPLOYEE_GRAD_YEARS,
+    EMPLOYEE_PRONOUNS,
 )
 
 ems_routes = Blueprint("ems_routes", __name__, url_prefix="/ems")
@@ -69,6 +70,7 @@ def ems_employee_add():
         selection="employees",
         employee_statuses=EMPLOYEE_STATUS_OPTIONS,
         employee_grad_years=EMPLOYEE_GRAD_YEARS,
+        employee_pronouns=EMPLOYEE_PRONOUNS,
     )
 
 
@@ -136,6 +138,7 @@ def ems_employee_view(emp_id):
         employee=employee,
         employee_statuses=EMPLOYEE_STATUS_OPTIONS,
         employee_grad_years=EMPLOYEE_GRAD_YEARS,
+        employee_pronouns=EMPLOYEE_PRONOUNS,
     )
 
 

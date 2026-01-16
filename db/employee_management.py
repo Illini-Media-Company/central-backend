@@ -23,6 +23,7 @@ from constants import (
     DEPART_REASON_INVOL,
     DEPART_REASON_ADMIN,
     EMPLOYEE_GRAD_YEARS,
+    EMPLOYEE_PRONOUNS,
 )
 
 from . import client
@@ -41,6 +42,7 @@ class EmployeeCard(ndb.Model):
         `last_name` (`str`): The employee's last name
         `first_name` (`str`): The employee's first name
         `full_name` (`str`): The employee's full name (automatically computed)
+        `pronouns` (`str`): The employee's pronouns
         `imc_email` (`str`): The employee's IMC email address
         `personal_email` (`str`): The employee's personal (non-IMC) email address
         `phone_number` (`str`): The employee's personal phone number
@@ -74,6 +76,7 @@ class EmployeeCard(ndb.Model):
     full_name = ndb.ComputedProperty(
         lambda self: f"{self.first_name} {self.last_name}".strip()
     )
+    pronouns = ndb.StringProperty(choices=EMPLOYEE_PRONOUNS)
 
     imc_email = ndb.StringProperty()
     personal_email = ndb.StringProperty()
@@ -207,6 +210,7 @@ def create_employee_card(**kwargs: dict) -> dict | int | None:
         `user_key` (`ndb.KeyProperty`): The key of the User associated with this employee
         `last_name` (`str`): The employee's last name
         `first_name` (`str`): The employee's first name
+        `pronouns` (`str`): The employee's pronouns
         `imc_email` (`str`): The employee's IMC email address
         `personal_email` (`str`): The employee's personal (non-IMC) email address
         `phone_number` (`str`): The employee's personal phone number
@@ -261,6 +265,7 @@ def modify_employee_card(uid: int, **kwargs: dict) -> dict | None:
         `user_key` (`ndb.KeyProperty`): The key of the User associated with this employee
         `last_name` (`str`): The employee's last name
         `first_name` (`str`): The employee's first name
+        `pronouns` (`str`): The employee's pronouns
         `imc_email` (`str`): The employee's IMC email address
         `personal_email` (`str`): The employee's personal (non-IMC) email address
         `phone_number` (`str`): The employee's personal phone number

@@ -14,6 +14,10 @@
             flex: 1 1 10rem;
         }
 
+        .form-row-shrink {
+            flex: 0 1 auto;
+        }
+
         .narrow-row {
             flex: 1 1 4rem;
         }
@@ -79,6 +83,13 @@
                                 label="First Name",
                                 required=true,
                                 class="employee-add-form-row"
+                            ) }}
+                            {{ form.select_input( 
+                                name="pronouns",
+                                label="Pronouns",
+                                options=employee_pronouns,
+                                required=false,
+                                class="employee-add-form-row form-row-shrink"
                             ) }}
                         </div>
 

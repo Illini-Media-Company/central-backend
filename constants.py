@@ -89,6 +89,13 @@ EMS_ADMIN_ACCESS_GROUPS = [
     "professional-staff",
 ]
 
+EMPLOYEE_PRONOUNS = [
+    "He/Him",
+    "She/Her",
+    "They/Them",
+    "Other",
+]
+
 IMC_BRANDS = [
     "IMC",
     "The Daily Illini",

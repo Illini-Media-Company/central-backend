@@ -50,6 +50,10 @@
             gap: 0.25rem;
         }
 
+        .form-row-shrink {
+            flex: 0 1 auto;
+        }
+
         .form-initial-show {
             display: block;
         }
@@ -103,6 +107,7 @@
         <div class="inner-container" style="padding: 0.75rem;">
             <div class="form-initial-show">
                 <h2 style="margin-bottom: 0;">{{ employee.last_name }}, {{ employee.first_name }}</h2>
+                <P style="margin-bottom: 0;">{{ employee.pronouns or "Unknown" }}</P>
             </div>
             <div class="form-initial-hide">
                 <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
@@ -117,6 +122,13 @@
                         label="First Name",
                         required=true,
                         class="employee-modify-form-row"
+                    ) }}
+                    {{ form.select_input( 
+                        name="pronouns",
+                        label="Pronouns",
+                        options=employee_pronouns,
+                        required=false,
+                        class="employee-modify-form-row form-row-shrink"
                     ) }}
                 </div>
             </div>
