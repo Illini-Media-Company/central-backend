@@ -2,11 +2,80 @@
 
 {% block ems_extra_head %}
     <link rel="stylesheet" href="/static/macros/form.css">
+
+    <style>
+        table {
+            border-collapse: separate;
+            border-spacing: 0 0.5rem;
+            width: 100%;
+            background-color: var(--main-bg-color);
+            border-radius: var(--main-border-radius);
+        }
+
+        tr {
+            border-radius: var(--main-border-radius);
+        }
+
+        tr:hover td {
+            background-color: var(--main-extralight-color);
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            background-color: var(--main-bg-color);
+        }
+
+        td:first-child {
+            border-top-left-radius: var(--main-border-radius);
+            border-bottom-left-radius: var(--main-border-radius);
+        }
+
+        td:last-child {
+            border-top-right-radius: var(--main-border-radius);
+            border-bottom-right-radius: var(--main-border-radius);
+        }
+
+        th {
+            padding: 0.75rem 1rem;
+            white-space: nowrap;
+            border-bottom: 1px solid var(--main-lt-gray-color);
+            align-items: center;
+        }
+
+        .user-profile-photo {
+            height: 2.5rem;
+            width: 2.5rem;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 0.1rem solid var(--main-lt-gray-color);
+        }
+
+        .row-small-text {
+            font-size: 0.75rem;
+        }
+
+        .pagination-container {
+            display: flex; 
+            flex-direction: row; 
+            justify-content: space-between; 
+            align-items: baseline;
+        }
+
+        .pagination-button {
+            width: 10%;
+        }
+    </style>
+
+    {# Variables passed into Jinja #}
+    <meta id="employee-selection-data" data-employees='{{ selected_employees | tojson }}'>
 {% endblock %}
 
 {% import "macros/form.html" as form %}
 
 {% block ems_content %}
+
+{% include "partials/loading.html" %}
+
 <h2>Employees</h2>
 
 <hr>
@@ -15,11 +84,14 @@
     <div class="section-header">
         <h2 style="margin-bottom: 0">All Employees</h2>
 
-        <button class="button-primary" onclick="window.location.href=`/ems/employee/add`">
-            Add Employee
-        </button>
+        <a href="/ems/employee/add">
+            <button class="button-primary">
+                Add Employee
+            </button>
+        </a>
     </div>
 
+    {# Search Bar #}
     <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
         <div style="display: flex; flex-direction: row; align-items: center;" id="querySearchBar">
             <i class="bi bi-search"></i>
@@ -29,7 +101,308 @@
                 class=""
             ) }}
         </div>
+
+        {{ form.select_input( 
+            name="num_results",
+            label="Results per Page",
+            options=[25, 50, 100],
+            required=false,
+            class=""
+        ) }}
     </div>
 
+    {# Table #}
+    <div style="overflow-x: auto; max-width: 100%; border-radius: var(--main-border-radius);">
+        <table id="employeeTable">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th onclick="handleSort(this, 'name')">
+                        <span><i class="bi bi-caret-up"></i></span> 
+                        Full Name
+                    </th>
+                    <th onclick="handleSort(this, 'imc_email')">
+                        <span><i class="bi bi-caret-up"></i></span>
+                        IMC Email
+                    </th>
+                    <th>
+                        Personal Contact
+                    </th>
+                    <th>
+                        Major(s)
+                    </th>
+                    <th>
+                        Minor(s)
+                    </th>
+                    <th onclick="handleSort(this, 'graduation')">
+                        <span><i class="bi bi-caret-up"></i></span>
+                        Grad. Term
+                    </th>
+                    <th>
+                        Permanent Address
+                    </th>
+                    <th onclick="handleSort(this, 'birth_date')">
+                        <span><i class="bi bi-caret-up"></i></span>
+                        Birth Date
+                    </th>
+                    <th onclick="handleSort(this, 'payroll_number')">
+                        <span><i class="bi bi-caret-up"></i></span>
+                        Payroll Number
+                    </th>
+                    <th onclick="handleSort(this, 'initial_hire_date')">
+                        <span><i class="bi bi-caret-up"></i></span>
+                        Initial Hire
+                    </th>
+                    <th onclick="handleSort(this, 'status')">
+                        <span><i class="bi bi-caret-up"></i></span>
+                        Status
+                    </th>
+                    <th onclick="handleSort(this, 'user_key')">
+                        <span><i class="bi bi-caret-up"></i></span> 
+                        User?
+                    </th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+
+            <tbody id="employeeTableBody">
+                {# Initially empty, loaded client-side #}
+            </tbody>
+        </table>
+    </div>
+    <div id="pagination-container" class="pagination-container">
+    </div>
 </section>
+
+<script src="../static/js_libraries/ap_style.js"></script>
+<script>
+    const metaElement = document.querySelector('#employee-selection-data');
+    const rawData = metaElement.dataset.employees;
+    const allEmployees = JSON.parse(rawData);
+
+    // Pagination global state
+    let currentPage = 1;
+    var rowsPerPage = 1;
+
+    let filteredEmployees = [...allEmployees];
+    let searchTimeout;
+    const SEARCH_TIMEOUT_VAL = 300;
+
+    // Sorting global state
+    let currentSortCol = '';
+    let isAsc = true;
+
+    // Render the table rows
+    function renderTable(page) {
+        showLoading("Loading...");
+
+        const tbody = document.getElementById("employeeTableBody");
+        const paginationContainer = document.getElementById("pagination-container");
+        tbody.innerHTML = "";
+
+        const start = (currentPage - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+        const pageData = filteredEmployees.slice(start, end);
+
+        pageData.forEach(emp => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td></td>
+                <td>${emp.last_name}, ${emp.first_name}</td>
+                <td>${emp.imc_email}</td>
+                <td class="row-small-text">
+                    ${emp.personal_email || '—'}
+                    <br>
+                    ${emp.phone_number || '—'}
+                </td>
+                <td class="row-small-text">
+                    ${[emp.major, emp.major_2, emp.major_3].filter(Boolean).join('<br>') || '—'}
+                </td>
+                <td class="row-small-text">
+                    ${[emp.minor, emp.minor_2, emp.minor_3].filter(Boolean).join('<br>') || '—'}
+                </td>
+                <td>
+                    ${emp.graduation || '—'}
+                </td>
+                <td class="row-small-text">
+                    ${emp.permanent_address_1 || '—'} ${emp.permanent_address_2 || ''}
+                    <br>
+                    ${emp.permanent_city || '—'}, ${emp.permanent_state || '—'} ${emp.permanent_zip || '—'}
+                </td>
+                <td>
+                    ${simplifyDate(emp.birth_date) || '—'}
+                </td>
+                <td>
+                    ${emp.payroll_number || '—'}
+                </td>
+                <td>
+                    ${simplifyDate(emp.initial_hire_date) || '—'}
+                </td>
+                <td>
+                    ${emp.status || '—'}
+                </td>
+                <td style="text-align: center;">
+                    ${emp.user_key ? 
+                        '<i class="bi bi-check-circle" style="color: var(--green-500);"></i>' : 
+                        '<i class="bi bi-x-circle" style="color: var(--red-500);"></i>' 
+                    }
+                </td>
+                <td>
+                    <a href="/ems/employee/view/${emp.uid}">
+                        <button class="button-primary" title="View/Edit Employee"><i class="bi bi-person-badge"></i></button>
+                    </a>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        const totalPages = Math.ceil(filteredEmployees.length / rowsPerPage);
+
+        paginationContainer.innerHTML = `
+            <div class="pagination-button">
+                ${currentPage > 1 ? `
+                    <button class="button-bg-color" onclick="changePage(${currentPage - 1})" style="padding-left: 0.75rem;">
+                        <i class="bi bi-arrow-left-short"></i>&nbsp;Prev.
+                    </button>
+                ` : ''}
+            </div>
+
+            <p style="margin-bottom: 0;">
+                Page ${currentPage} of ${totalPages}
+            </p>
+
+            <div class="pagination-button" style="text-align: right;">
+                ${currentPage < totalPages ? `
+                    <button class="button-bg-color" onclick="changePage(${currentPage + 1})" style="padding-right: 0.75rem;">
+                        Next&nbsp;<i class="bi bi-arrow-right-short"></i>
+                    </button>
+                ` : ''}
+            </div>
+        `
+        
+        hideLoading();
+    }
+
+    function changePage(newPage) {
+        currentPage = newPage;
+        renderTable();
+        document.getElementById("employeeTable").scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Sort by a specific column
+    function sortData(columnKey, asc) {
+        filteredEmployees.sort((a, b) => {
+            let valA = a[columnKey] || "";
+            let valB = b[columnKey] || "";
+
+            if (columnKey === 'name') {
+                valA = (a.first_name + a.last_name).toLowerCase();
+                valB = (b.first_name + b.last_name).toLowerCase();
+            }
+
+            if (columnKey === 'birth_date' || columnKey === 'initial_hire_date') {
+                valA = valA ? new Date(valA).getTime() : 0;
+                valB = valB ? new Date(valB).getTime() : 0;
+            }
+
+            if (columnKey === 'user_key') {
+                valA = valA ? true : false;
+                valB = valB ? true : false;
+            }
+
+            let cmp = 0;
+            if (valA < valB) cmp = -1;
+            if (valA > valB) cmp = 1;
+
+            return asc ? cmp : -cmp;
+        });
+
+        renderTable();
+    }
+
+    // Handle sorting
+    function handleSort(headerElement, columnKey) {
+        // Toggle direction
+        if (currentSortCol === columnKey) {
+            isAsc = !isAsc;
+        } else {
+            currentSortCol = columnKey;
+            isAsc = true;
+        }
+
+        // Update icons
+        document.querySelectorAll('th i').forEach(i => i.className = "bi bi-caret-up");
+        const icon = headerElement.querySelector('i');
+        icon.className = isAsc ? "bi bi-caret-up-fill" : "bi bi-caret-down-fill";
+
+        sortData(columnKey, isAsc);
+    }
+
+    // Initial render on load
+    window.addEventListener('load', () => {
+        showLoading("Loading...");
+
+        // Remove the "Select..." option created by macro, set first option as selected
+        const resultsSelect = document.getElementById("num_results");
+        if (resultsSelect) {
+            resultsSelect.remove(0);
+            resultsSelect.selectedIndex = 0;
+            rowsPerPage = parseInt(resultsSelect.value);
+        }
+        
+        // Event listener to update the rows per page
+        resultsSelect.addEventListener("change", () => {
+            rowsPerPage = parseInt(resultsSelect.value);
+            currentPage = 1;
+            renderTable();
+        });
+
+        // Handle searching
+        const searchInput = document.getElementById("searchQuery");
+        searchInput.addEventListener("input", () => {
+            clearTimeout(searchTimeout);
+
+            searchTimeout = setTimeout(() => {
+                showLoading("Searching...");
+                const query = searchInput.value.toLowerCase().trim();
+
+                // Filter the master list
+                filteredEmployees = allEmployees.filter(emp => {
+                    const fullName = `${emp.first_name} ${emp.last_name}`.toLowerCase();
+                    const fullAddress = `${emp.permanent_address_1 || ""} ${emp.permanent_address_2 || ""}`.toLowerCase();
+                    const allMajors = `${emp.major || ""} ${emp.major_2 || ""} ${emp.major_3 || ""}`.toLowerCase();
+                    const allMinors = `${emp.minor || ""} ${emp.minor_2 || ""} ${emp.minor_3 || ""}`.toLowerCase();
+                    return (
+                        (fullName.includes(query)) || 
+                        (emp.imc_email && emp.imc_email.toLowerCase().includes(query)) ||
+                        (emp.payroll_number && emp.payroll_number.toString().toLowerCase().includes(query)) ||
+                        (fullAddress.includes(query)) ||
+                        (emp.permanent_city && emp.permanent_city.toLowerCase().includes(query)) ||
+                        (allMajors.includes(query)) || 
+                        (allMinors.includes(query))
+                    );
+                });
+
+                currentPage = 1; // Always reset to page 1 on search
+                renderTable();
+
+                hideLoading();
+            }, SEARCH_TIMEOUT_VAL);
+        });
+
+        renderTable();
+
+        hideLoading();
+    });
+
+    // Change a date to the form YYYY/MM/DD
+    function simplifyDate(input) {
+        if (!input) {
+            return null;
+        }
+        const date = new Date(input);
+        return date.toISOString().split('T')[0].replace(/-/g, '/');
+    }
+
+</script>
 {% endblock %}

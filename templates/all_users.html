@@ -34,7 +34,7 @@ All Users
             border-bottom-left-radius: var(--main-border-radius);
         }
 
-            td:last-child {
+        td:last-child {
             border-top-right-radius: var(--main-border-radius);
             border-bottom-right-radius: var(--main-border-radius);
         }
@@ -78,58 +78,58 @@ All Users
 
     <div style="overflow-x: auto; max-width: 100%; border-radius: var(--main-border-radius);">
         <table>
+            <tr>
+                <th style="padding-right: 0;"></th>
+                <th style="padding-right: 3rem;">
+                    <span><i class="bi bi-caret-up"></i></span> 
+                    Full Name
+                </th>
+                <th>
+                    <span><i class="bi bi-caret-up"></i></span>
+                    Login Email
+                </th>
+                <th>
+                    <span><i class="bi bi-caret-up"></i></span>
+                    Last Login
+                </th>
+                <th>
+                    <span><i class="bi bi-caret-up"></i></span>
+                    Google Groups
+                </th>
+                <th>
+                    <span><i class="bi bi-caret-up"></i></span>
+                    Last Copy Edited
+                </th>
+            </tr>
+            {% for user in users %}
                 <tr>
-                    <th style="padding-right: 0;"></th>
-                    <th style="padding-right: 3rem;">
-                        <span><i class="bi bi-caret-up"></i></span> 
-                        Full Name
-                    </th>
-                    <th>
-                        <span><i class="bi bi-caret-up"></i></span>
-                        Login Email
-                    </th>
-                    <th>
-                        <span><i class="bi bi-caret-up"></i></span>
-                        Last Login
-                    </th>
-                    <th>
-                        <span><i class="bi bi-caret-up"></i></span>
-                        Google Groups
-                    </th>
-                    <th>
-                        <span><i class="bi bi-caret-up"></i></span>
-                        Last Copy Edited
-                    </th>
+                    <td> 
+                        <img src="{{ current_user.picture }}" 
+                            alt="{{ current_user.name }}'s profile photo" 
+                            class="user-profile-photo" 
+                        />
+                    </td>
+                    <td> 
+                        {{ user.name }} 
+                    </td>
+                    <td>
+                        {{ user.email }}
+                    </td>
+                    <td>
+                        {{ user.last_login|ap_datetime }}
+                    </td>
+                    <td>
+                        {{ user.groups|format_restricted_groups }}
+                    </td>
+                    <td>
+                        {% if not user.last_edited %}
+                            Never
+                        {% else %}
+                            {{ user.last_edited|ap_datetime }}
+                        {% endif %}
+                    </td>
                 </tr>
-                {% for user in users %}
-                    <tr>
-                        <td> 
-                            <img src="{{ current_user.picture }}" 
-                                alt="{{ current_user.name }}'s profile photo" 
-                                class="user-profile-photo" 
-                            />
-                        </td>
-                        <td> 
-                            {{ user.name }} 
-                        </td>
-                        <td>
-                            {{ user.email }}
-                        </td>
-                        <td>
-                            {{ user.last_login|ap_datetime }}
-                        </td>
-                        <td>
-                            {{ user.groups|format_restricted_groups }}
-                        </td>
-                        <td>
-                            {% if not user.last_edited %}
-                                Never
-                            {% else %}
-                                {{ user.last_edited|ap_datetime }}
-                            {% endif %}
-                        </td>
-                    </tr>
-                {% endfor %}
+            {% endfor %}
         </table>
     </div>
 

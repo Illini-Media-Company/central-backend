@@ -59,29 +59,6 @@
         <div style="display: flex; flex-direction: row; gap: 0.5rem; flex-wrap: wrap; align-items: flex-start;">
             {# Left column #}
             <div class="column-container">
-                {# Name #}
-                <div class="inner-container" style="padding: 0.75rem;">
-                    <div class="section-header">
-                        <h3 style="margin-bottom: 0">Name</h3>
-                    </div>
-                    <hr style="margin-top: 1rem;">
-                    
-                    <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
-                        {{ form.text_input( 
-                            name="last_name",
-                            label="Last Name",
-                            required=true,
-                            class="employee-add-form-row"
-                        ) }}
-                        {{ form.text_input( 
-                            name="first_name",
-                            label="First Name",
-                            required=true,
-                            class="employee-add-form-row"
-                        ) }}
-                    </div>
-                </div>
-
                 {# Contact Information #}
                 <div class="inner-container" style="padding: 0.75rem;">
                     <div class="section-header">
@@ -90,6 +67,21 @@
                     <hr style="margin-top: 1rem;">
 
                     <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
+                            {{ form.text_input( 
+                                name="last_name",
+                                label="Last Name",
+                                required=true,
+                                class="employee-add-form-row"
+                            ) }}
+                            {{ form.text_input( 
+                                name="first_name",
+                                label="First Name",
+                                required=true,
+                                class="employee-add-form-row"
+                            ) }}
+                        </div>
+
                         <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
                             {{ form.text_input( 
                                 name="imc_email",
@@ -122,10 +114,7 @@
                         ) }}
                     </div>
                 </div>
-            </div>
 
-            {# Right column #}
-            <div class="column-container">
                 {# Address #}
                 <div class="inner-container" style="padding: 0.75rem;">
                     <div class="section-header">
@@ -163,6 +152,7 @@
                             {{ form.text_input( 
                                 name="permanent_state",
                                 label="State",
+                                maxlength=2,
                                 required=true,
                                 class="employee-add-form-row"
                             ) }}
@@ -171,7 +161,73 @@
                                 name="permanent_zip",
                                 label="ZIP Code",
                                 pattern="[0-9]{5}",
+                                maxlength=5,
                                 required=true,
+                                class="employee-add-form-row"
+                            ) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# Right column #}
+            <div class="column-container">
+                {# Academics #}
+                <div class="inner-container" style="padding: 0.75rem;">
+                    <div class="section-header">
+                        <h3 style="margin-bottom: 0">Academics</h3>
+                    </div>
+                    <hr style="margin-top: 1rem;">
+                    
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
+                            {{ form.text_input( 
+                                name="major",
+                                label="Major",
+                                required=false,
+                                class="employee-add-form-row"
+                            ) }}
+                            {{ form.text_input( 
+                                name="major_2",
+                                label="Major 2 (Optional)",
+                                required=false,
+                                class="employee-add-form-row"
+                            ) }}
+                            {{ form.text_input( 
+                                name="major_3",
+                                label="Major 3 (Optional)",
+                                required=false,
+                                class="employee-add-form-row"
+                            ) }}
+                        </div>
+
+                        <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
+                            {{ form.text_input( 
+                                name="minor",
+                                label="Minor",
+                                required=false,
+                                class="employee-add-form-row"
+                            ) }}
+                            {{ form.text_input( 
+                                name="minor_2",
+                                label="Minor 2 (Optional)",
+                                required=false,
+                                class="employee-add-form-row"
+                            ) }}
+                            {{ form.text_input( 
+                                name="minor_3",
+                                label="Minor 3 (Optional)",
+                                required=false,
+                                class="employee-add-form-row"
+                            ) }}
+                        </div>
+
+                        <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
+                            {{ form.select_input( 
+                                name="graduation",
+                                label="Graduation Term",
+                                options=employee_grad_years,
+                                required=false,
                                 class="employee-add-form-row"
                             ) }}
                         </div>

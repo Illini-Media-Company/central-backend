@@ -19,11 +19,15 @@ from db.employee_management import (
     get_employee_card_by_id,
 )
 
-from constants import EMPLOYEE_STATUS_OPTIONS
+from constants import (
+    EMPLOYEE_STATUS_OPTIONS,
+    EMPLOYEE_GRAD_YEARS,
+)
 
 ems_routes = Blueprint("ems_routes", __name__, url_prefix="/ems")
 
 
+# TEMPLATE
 @ems_routes.route("/", methods=["GET"])
 @login_required
 def ems_dashboard():
@@ -38,6 +42,7 @@ def ems_dashboard():
 ################################################################################
 
 
+# TEMPLATE
 @ems_routes.route("/employees", methods=["GET"])
 @login_required
 def ems_employees():
@@ -52,6 +57,7 @@ def ems_employees():
     )
 
 
+# TEMPLATE
 @ems_routes.route("/employee/add", methods=["GET"])
 @login_required
 def ems_employee_add():
@@ -62,6 +68,7 @@ def ems_employee_add():
         "employee_management/ems_employee_add.html",
         selection="employees",
         employee_statuses=EMPLOYEE_STATUS_OPTIONS,
+        employee_grad_years=EMPLOYEE_GRAD_YEARS,
     )
 
 
@@ -88,6 +95,9 @@ def ems_api_employee_create():
             # Converts "YYYY-MM-DD" string to a Python date object
             data[field] = datetime.strptime(data[field], "%Y-%m-%d").date()
 
+    if data.get("payroll_number"):
+        data["payroll_number"] = int(data["payroll_number"])
+
     if data:
         created = create_employee_card(**data)
         if not created:
@@ -112,6 +122,23 @@ def ems_api_employee_create():
     )
 
 
+# TEMPLATE
+@ems_routes.route("/employee/view/<int:emp_id>", methods=["GET"])
+@login_required
+def ems_employee_view(emp_id):
+    """
+    Renders the view employee page.
+    """
+    employee = get_employee_card_by_id(emp_id)
+    return render_template(
+        "employee_management/ems_employee_view.html",
+        selection="employees",
+        employee=employee,
+        employee_statuses=EMPLOYEE_STATUS_OPTIONS,
+        employee_grad_years=EMPLOYEE_GRAD_YEARS,
+    )
+
+
 @ems_routes.route("/api/employee/modify", methods=["POST"])
 @ems_routes.route("/api/employee/get/all", methods=["GET"])
 @login_required
@@ -130,6 +157,7 @@ def ems_api_employee_get_all():
 ################################################################################
 
 
+# TEMPLATE
 @ems_routes.route("/positions", methods=["GET"])
 @login_required
 def ems_positions():

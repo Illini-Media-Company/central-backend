@@ -18,6 +18,8 @@
     --main-dk-gray-color: #212121;
     --main-accent-color: #F99F20;
     --main-accent-color-darkened: #E68805;
+    --green-500: #4CAF50;
+    --red-500: #F44336;
 
     /* Define global corner radius */
     --main-border-radius: 1rem;
@@ -99,6 +101,25 @@ h4 {
 }
 
 .button-secondary:disabled {
+    background-color: var(--main-md-gray-color);
+    color: var(--main-text-color);
+    cursor: not-allowed;
+}
+
+.button-bg-color {
+    border: none;
+    border-radius: calc(var(--main-border-radius) + 0.25rem);
+    background-color: var(--main-bg-color);
+    color: var(--main-text-color);
+    padding: 0.25rem 1rem;
+    transition: background-color .15s ease-in-out;
+}
+
+.button-bg-color:hover {
+    background-color: var(--main-md-gray-color);
+}
+
+.button-bg-color:disabled {
     background-color: var(--main-md-gray-color);
     color: var(--main-text-color);
     cursor: not-allowed;

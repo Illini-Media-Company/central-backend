@@ -96,6 +96,10 @@ from util.helpers.ap_datetime import (
     ap_time,
     ap_daydate,
     ap_daydatetime,
+    days_since,
+    months_since,
+    years_since,
+    time_since,
 )
 from util.helpers.email_to_slackid import email_to_slackid
 
@@ -153,6 +157,10 @@ app.jinja_env.filters["ap_daydatetime"] = ap_daydatetime
 app.jinja_env.filters["email_to_slackid"] = email_to_slackid
 app.jinja_env.filters["format_restricted_groups"] = format_restricted_groups
 app.jinja_env.filters["to_user_name"] = get_user_name
+app.jinja_env.filters["days_since"] = days_since
+app.jinja_env.filters["months_since"] = months_since
+app.jinja_env.filters["years_since"] = years_since
+app.jinja_env.filters["time_since"] = time_since
 print("[main] Done registering Jinja filters.")
 
 

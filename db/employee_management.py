@@ -22,6 +22,7 @@ from constants import (
     DEPART_REASON_VOL,
     DEPART_REASON_INVOL,
     DEPART_REASON_ADMIN,
+    EMPLOYEE_GRAD_YEARS,
 )
 
 from . import client
@@ -52,6 +53,13 @@ class EmployeeCard(ndb.Model):
         `payroll_number` (`int`): The employee's payroll number (if applicable)
         `initial_hire_date` (`date`): The date that the employee was first hired
         `status` (`str`): The employee's current status
+        `major` (`str`): The employee's major
+        `major_2` (`str`): The employee's (optional) second major
+        `major_3` (`str`): The employee's (optional) third major
+        `minor` (`str`): The employee's minor
+        `minor_2` (`str`): The employee's (optional) second minor
+        `minor_3` (`str`): The employee's (optional) third minor
+        `graduation` (`str`): The employee's expected graduation term
         `created_at` (`datetime`): When this employee was created
         `updated_at` (`datetime`): When this employee was last edited
         `updated_by` (`str`): User who last updated the employee
@@ -83,6 +91,14 @@ class EmployeeCard(ndb.Model):
 
     initial_hire_date = ndb.DateProperty()
     status = ndb.StringProperty(choices=EMPLOYEE_STATUS_OPTIONS, default="active")
+
+    major = ndb.StringProperty()
+    major_2 = ndb.StringProperty()
+    major_3 = ndb.StringProperty()
+    minor = ndb.StringProperty()
+    minor_2 = ndb.StringProperty()
+    minor_3 = ndb.StringProperty()
+    graduation = ndb.StringProperty(choices=EMPLOYEE_GRAD_YEARS)
 
     created_at = ndb.DateTimeProperty(
         auto_now_add=True, tzinfo=ZoneInfo("America/Chicago")
@@ -203,6 +219,13 @@ def create_employee_card(**kwargs: dict) -> dict | int | None:
         `payroll_number` (`int`): The employee's payroll number (if applicable)
         `initial_hire_date` (`date`): The date that the employee was first hired
         `status` (`str`): The employee's current status
+        `major` (`str`): The employee's major
+        `major_2` (`str`): The employee's (optional) second major
+        `major_3` (`str`): The employee's (optional) third major
+        `minor` (`str`): The employee's minor
+        `minor_2` (`str`): The employee's (optional) second minor
+        `minor_3` (`str`): The employee's (optional) third minor
+        `graduation` (`str`): The employee's expected graduation term
 
     Returns:
         `dict`: The created `EmployeeCard` as a dictionary, `None` if an employee already
@@ -250,6 +273,13 @@ def modify_employee_card(uid: int, **kwargs: dict) -> dict | None:
         `payroll_number` (`int`): The employee's payroll number (if applicable)
         `initial_hire_date` (`date`): The date that the employee was first hired
         `status` (`str`): The employee's current status
+        `major` (`str`): The employee's major
+        `major_2` (`str`): The employee's (optional) second major
+        `major_3` (`str`): The employee's (optional) third major
+        `minor` (`str`): The employee's minor
+        `minor_2` (`str`): The employee's (optional) second minor
+        `minor_3` (`str`): The employee's (optional) third minor
+        `graduation` (`str`): The employee's expected graduation term
 
     Returns:
         `dict`: The modified `EmployeeCard` as a dictionary, or `None` if not found
