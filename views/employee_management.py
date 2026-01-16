@@ -55,6 +55,8 @@ def ems_employees():
         "employee_management/ems_employees.html",
         selection="employees",
         selected_employees=all_employees,
+        employee_statuses=EMPLOYEE_STATUS_OPTIONS,
+        employee_grad_years=EMPLOYEE_GRAD_YEARS,
     )
 
 

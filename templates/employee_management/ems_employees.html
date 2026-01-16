@@ -1,5 +1,37 @@
 {% extends 'employee_management/ems_base.html' %}
 
+{% macro filter_text_input(name, label, class, placeholder, alt_type, maxlength, pattern) %}
+    <div class="form-row {{ class }}" id="formfield-{{ name }}" title="{{ label }}">
+        <div>
+            <label for="{{ name }}" class="field-label">
+                {{ label }}
+            </label>
+        </div>
+        <input 
+            {% if alt_type %}
+                type    = "{{ alt_type }}"
+            {% else %}
+                type    = "text"
+            {% endif %}
+            id      = "{{ name }}" 
+            class   = "text-input" 
+            name    = "{{ name }}"
+
+            {% if maxlength %}
+                maxlength = "{{ maxlength }}"
+            {% endif %}
+
+            {% if pattern %}
+                pattern = "{{ pattern }}"
+            {% endif %}
+
+            {% if placeholder %}
+                placeholder = "{{ placeholder }}"
+            {% endif %}
+        >
+    </div>
+{% endmacro %}
+
 {% block ems_extra_head %}
     <link rel="stylesheet" href="/static/macros/form.css">
 
@@ -40,6 +72,91 @@
             white-space: nowrap;
             border-bottom: 1px solid var(--main-lt-gray-color);
             align-items: center;
+        }
+
+        .controls-container {
+            display: flex; 
+            flex-direction: row; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 0.25rem; 
+            gap: 0.5rem;
+            position: relative;
+        }
+
+        .text-input {
+            border-radius: calc(var(--main-border-radius) + 0.5rem);
+        }
+
+        .filter-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .filter-dropdown {
+            background-color: var(--main-bg-color);
+            border-radius: calc(var(--main-border-radius) + 0.5rem);
+            border: 1px solid var(--main-md-gray-color);
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+
+            position: absolute;
+            top: 0;
+            left: 100%;
+            z-index: 100;
+        }
+
+        .filter-dropdown.expanded {
+            box-shadow: var(--main-box-shadow);
+            padding: 0.5rem;
+        }
+
+        .filter-button {
+            border: none;
+            background-color: inherit;
+            padding: 0.25rem 1rem 0.25rem 0.5rem;
+            border-radius: var(--main-border-radius);
+
+            display: flex;
+            width: fit-content;
+            gap: 0.5rem;
+        }
+
+        .filter-button:hover {
+            background-color: var(--main-md-gray-color);
+        }
+
+        .filter-button.expanded {
+            padding: 0.1rem 0.35rem 0 0.35rem;
+        }
+
+        .filter-options-container {
+            display: none;
+        }
+
+        .filter-options-container.expanded {
+            display: block;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            grid-column-gap: 0.5rem;
+            grid-row-gap: 0.5rem;
+        }
+
+        .filter-item {
+            flex-direction: column;
+            align-items: flex-start;
+            flex: 1 1 10rem;
+            gap: 0.25rem;
+        }
+
+        .field-label {
+            font-size: 0.75rem;
         }
 
         .user-profile-photo {
@@ -91,15 +208,88 @@
         </a>
     </div>
 
-    {# Search Bar #}
-    <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
-        <div style="display: flex; flex-direction: row; align-items: center;" id="querySearchBar">
-            <i class="bi bi-search"></i>
-            {{ form.text_input( 
-                name="searchQuery",
-                placeholder="Search...",
-                class=""
-            ) }}
+    {# Controls (Search, Filter) #}
+    <div class="controls-container">
+        <div style="display: flex; flex-direction: row; gap: 0.5rem;">
+            <div style="display: flex; flex-direction: row; align-items: center;" id="querySearchBar">
+                <i class="bi bi-search"></i>
+                {{ form.text_input( 
+                    name="searchQuery",
+                    placeholder="Search...",
+                    class=""
+                ) }}
+            </div>
+            <div class="filter-container">
+                <div class="filter-dropdown" id="filterDropdown">
+                    <div>
+                        <button class="filter-button" title="Filter" id="filterButton">
+                            <i class="bi bi-filter-circle"></i>Filters
+                        </button>
+                    </div>
+                    <div class="filter-options-container" id="filterOptions">
+                        <hr style="margin-bottom: 0.25rem; margin-top: 0;">
+                        {# Filter Options #}
+                        <div class="filter-grid">
+                            {# Hired After #}
+                            {{ filter_text_input( 
+                                name="filter_hire_after",
+                                label="Hire Date After",
+                                alt_type="date",
+                                class="filter-item"
+                            ) }}
+
+                            {# Hired Before #}
+                            {{ filter_text_input( 
+                                name="filter_hire_before",
+                                label="Hire Date Before",
+                                alt_type="date",
+                                class="filter-item"
+                            ) }}
+
+                            {# Born After #}
+                            {{ filter_text_input( 
+                                name="filter_born_after",
+                                label="Birth Date After",
+                                alt_type="date",
+                                class="filter-item"
+                            ) }}
+
+                            {# Born Before #}
+                            {{ filter_text_input( 
+                                name="filter_born_before",
+                                label="Birth Date Before",
+                                alt_type="date",
+                                class="filter-item"
+                            ) }}
+
+                            {# Status #}
+                            {{ form.select_input( 
+                                name="filter_status",
+                                label="Employment Status",
+                                options=employee_statuses,
+                                class="filter-item"
+                            ) }}
+
+                            {# Graduation Term #}
+                            {{ form.select_input( 
+                                name="filter_graduation",
+                                label="Graduation Term",
+                                options=employee_grad_years,
+                                class="filter-item"
+                            ) }}
+                        </div>
+                        <hr>
+                        <div style="text-align: center;">
+                            <button class="button-secondary" onclick="clearAllFilters()">
+                                Clear Filters
+                            </button>
+                            <button class="button-primary" onclick="applyFilters()">
+                                Apply Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         {{ form.select_input( 
@@ -191,6 +381,9 @@
     // Sorting global state
     let currentSortCol = '';
     let isAsc = true;
+
+    // Filter panel expanded
+    let filterExpanded = false;
 
     // Render the table rows
     function renderTable(page) {
@@ -342,6 +535,19 @@
     window.addEventListener('load', () => {
         showLoading("Loading...");
 
+        // Event listener to expand the filter panel
+        const filterButton = document.getElementById("filterButton");
+        filterButton.addEventListener("click", () => {
+            filterExpanded = !filterExpanded;
+
+            const filterDropdown = document.getElementById("filterDropdown");
+            const filterOptions = document.getElementById("filterOptions");
+
+            filterDropdown.classList.toggle('expanded');
+            filterOptions.classList.toggle('expanded');
+            filterButton.classList.toggle('expanded');
+        });
+
         // Remove the "Select..." option created by macro, set first option as selected
         const resultsSelect = document.getElementById("num_results");
         if (resultsSelect) {
@@ -395,6 +601,26 @@
         hideLoading();
     });
 
+    // Button to clear all filters
+    function clearAllFilters() {
+        const container = document.getElementById("filterOptions");
+        
+        // Clear text inputs
+        const inputs = container.querySelectorAll("input");
+        inputs.forEach(input => input.value = "");
+
+        // Reset select dropdowns
+        const selects = container.querySelectorAll("select");
+        selects.forEach(select => {
+            select.selectedIndex = 0;
+        });
+
+        filteredEmployees = [...allEmployees];
+        
+        currentPage = 1;
+        renderTable();
+    }
+
     // Change a date to the form YYYY/MM/DD
     function simplifyDate(input) {
         if (!input) {
@@ -402,6 +628,43 @@
         }
         const date = new Date(input);
         return date.toISOString().split('T')[0].replace(/-/g, '/');
+    }
+
+    // Apply filters
+    function applyFilters() {
+        const hireAfter = document.getElementById("filter_hire_after").value;
+        const hireBefore = document.getElementById("filter_hire_before").value;
+        const bornAfter = document.getElementById("filter_born_after").value;
+        const bornBefore = document.getElementById("filter_born_before").value;
+        const status = document.getElementById("filter_status").value;
+        const graduation = document.getElementById("filter_graduation").value;
+
+        filteredEmployees = allEmployees.filter(emp => {
+            // Convert times
+            const empHireDate = emp.initial_hire_date ? new Date(emp.initial_hire_date).getTime() : null;
+            const limitAfterHire = hireAfter ? new Date(hireAfter).getTime() : null;
+            const limitBeforeHire = hireBefore ? new Date(hireBefore).getTime() : null;
+            const empBirthDate = emp.birth_date ? new Date(emp.birth_date).getTime() : null;
+            const limitAfterBorn = bornAfter ? new Date(bornAfter).getTime() : null;
+            const limitBeforeBorn = bornBefore ? new Date(bornBefore).getTime() : null;
+
+            // Check date ranges
+            if (limitAfterHire && empHireDate < limitAfterHire) return false;
+            if (limitBeforeHire && empHireDate > limitBeforeHire) return false;
+            if (limitAfterBorn && empBirthDate < limitAfterBorn) return false;
+            if (limitBeforeBorn && empBirthDate > limitBeforeBorn) return false;
+
+            // Check Status
+            if (!emp.status) return false;
+            if (!emp.graduation) return false;
+            if (status && emp.status.toLowerCase() !== status.toLowerCase()) return false;
+            if (graduation && emp.graduation.toLowerCase() !== graduation.toLowerCase()) return false;
+
+            return true;
+        });
+
+        currentPage = 1;
+        renderTable();
     }
 
 </script>
