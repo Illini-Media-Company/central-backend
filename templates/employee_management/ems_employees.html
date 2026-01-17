@@ -113,6 +113,10 @@
             padding: 0.5rem;
         }
 
+        .filter-dropdown.filtering {
+            border: 1px solid var(--main-accent-color);
+        }
+
         .filter-button {
             border: none;
             background-color: inherit;
@@ -199,7 +203,10 @@
 
 <section class="section-container" id="employees-container">
     <div class="section-header">
-        <h2 style="margin-bottom: 0">All Employees</h2>
+        <div style="display: flex; flex-direction: row; gap: 1rem; align-items: center;">
+            <h2 style="margin-bottom: 0">All Employees</h2>
+            <h3 style="margin-bottom: 0" id="numEmployees"></h3>
+        </div>
 
         <a href="/ems/employee/add">
             <button class="button-primary">
@@ -381,6 +388,7 @@
     // Sorting global state
     let currentSortCol = '';
     let isAsc = true;
+    let filtersApplied = false;
 
     // Filter panel expanded
     let filterExpanded = false;
@@ -473,6 +481,9 @@
             </div>
         `
         
+        const numEmployees = document.getElementById("numEmployees");
+        numEmployees.innerHTML = `(${filteredEmployees.length} of ${allEmployees.length})`
+
         hideLoading();
     }
 
@@ -568,38 +579,25 @@
         searchInput.addEventListener("input", () => {
             clearTimeout(searchTimeout);
 
-            searchTimeout = setTimeout(() => {
-                showLoading("Searching...");
-                const query = searchInput.value.toLowerCase().trim();
-
-                // Filter the master list
-                filteredEmployees = allEmployees.filter(emp => {
-                    const fullName = `${emp.first_name} ${emp.last_name}`.toLowerCase();
-                    const fullAddress = `${emp.permanent_address_1 || ""} ${emp.permanent_address_2 || ""}`.toLowerCase();
-                    const allMajors = `${emp.major || ""} ${emp.major_2 || ""} ${emp.major_3 || ""}`.toLowerCase();
-                    const allMinors = `${emp.minor || ""} ${emp.minor_2 || ""} ${emp.minor_3 || ""}`.toLowerCase();
-                    return (
-                        (fullName.includes(query)) || 
-                        (emp.imc_email && emp.imc_email.toLowerCase().includes(query)) ||
-                        (emp.payroll_number && emp.payroll_number.toString().toLowerCase().includes(query)) ||
-                        (fullAddress.includes(query)) ||
-                        (emp.permanent_city && emp.permanent_city.toLowerCase().includes(query)) ||
-                        (allMajors.includes(query)) || 
-                        (allMinors.includes(query))
-                    );
-                });
-
-                currentPage = 1; // Always reset to page 1 on search
-                renderTable();
-
-                hideLoading();
-            }, SEARCH_TIMEOUT_VAL);
+            searchTimeout = setTimeout(updateData, SEARCH_TIMEOUT_VAL);
         });
 
         renderTable();
-
         hideLoading();
     });
+
+    function closeFilterPanel() {
+        if (!filterExpanded) return;
+
+        filterExpanded = !filterExpanded;
+
+        const filterDropdown = document.getElementById("filterDropdown");
+        const filterOptions = document.getElementById("filterOptions");
+
+        filterDropdown.classList.remove('expanded');
+        filterOptions.classList.remove('expanded');
+        filterButton.classList.remove('expanded');
+    }
 
     // Button to clear all filters
     function clearAllFilters() {
@@ -617,8 +615,8 @@
 
         filteredEmployees = [...allEmployees];
         
-        currentPage = 1;
-        renderTable();
+        updateData();
+        closeFilterPanel();
     }
 
     // Change a date to the form YYYY/MM/DD
@@ -630,8 +628,11 @@
         return date.toISOString().split('T')[0].replace(/-/g, '/');
     }
 
-    // Apply filters
-    function applyFilters() {
+    // Handles search and filter
+    function updateData() {
+        showLoading("Searching...");
+        const searchInput = document.getElementById("searchQuery");
+        const query = searchInput.value.toLowerCase().trim();
         const hireAfter = document.getElementById("filter_hire_after").value;
         const hireBefore = document.getElementById("filter_hire_before").value;
         const bornAfter = document.getElementById("filter_born_after").value;
@@ -639,33 +640,67 @@
         const status = document.getElementById("filter_status").value;
         const graduation = document.getElementById("filter_graduation").value;
 
+        const filterDropdown = document.getElementById("filterDropdown");
+        if (!hireAfter && !hireBefore && !bornAfter && !bornBefore && !status && !graduation) {
+            filtersApplied = false;
+            filterDropdown.classList.remove("filtering");
+        } else {
+            filtersApplied = true;
+            filterDropdown.classList.add("filtering");
+        }
+
         filteredEmployees = allEmployees.filter(emp => {
-            // Convert times
-            const empHireDate = emp.initial_hire_date ? new Date(emp.initial_hire_date).getTime() : null;
-            const limitAfterHire = hireAfter ? new Date(hireAfter).getTime() : null;
-            const limitBeforeHire = hireBefore ? new Date(hireBefore).getTime() : null;
-            const empBirthDate = emp.birth_date ? new Date(emp.birth_date).getTime() : null;
-            const limitAfterBorn = bornAfter ? new Date(bornAfter).getTime() : null;
-            const limitBeforeBorn = bornBefore ? new Date(bornBefore).getTime() : null;
+            // SEARCHING
+            if (query) {
+                const fullName = `${emp.first_name} ${emp.last_name}`.toLowerCase();
+                const fullAddress = `${emp.permanent_address_1 || ""} ${emp.permanent_address_2 || ""}`.toLowerCase();
+                const allMajors = `${emp.major || ""} ${emp.major_2 || ""} ${emp.major_3 || ""}`.toLowerCase();
+                const allMinors = `${emp.minor || ""} ${emp.minor_2 || ""} ${emp.minor_3 || ""}`.toLowerCase();
+                const matchesSearch = (
+                    (fullName.includes(query)) || 
+                    (emp.imc_email && emp.imc_email.toLowerCase().includes(query)) ||
+                    (emp.payroll_number && emp.payroll_number.toString().toLowerCase().includes(query)) ||
+                    (fullAddress.includes(query)) ||
+                    (emp.permanent_city && emp.permanent_city.toLowerCase().includes(query)) ||
+                    (allMajors.includes(query)) || 
+                    (allMinors.includes(query))
+                );
 
-            // Check date ranges
-            if (limitAfterHire && empHireDate < limitAfterHire) return false;
-            if (limitBeforeHire && empHireDate > limitBeforeHire) return false;
-            if (limitAfterBorn && empBirthDate < limitAfterBorn) return false;
-            if (limitBeforeBorn && empBirthDate > limitBeforeBorn) return false;
+                if (!matchesSearch) return false;
+            }
 
-            // Check Status
-            if (!emp.status) return false;
-            if (!emp.graduation) return false;
-            if (status && emp.status.toLowerCase() !== status.toLowerCase()) return false;
-            if (graduation && emp.graduation.toLowerCase() !== graduation.toLowerCase()) return false;
+            // FILTERING
+            if (filtersApplied) {
+                // Convert times
+                const empHireDate = emp.initial_hire_date ? new Date(emp.initial_hire_date).getTime() : null;
+                const limitAfterHire = hireAfter ? new Date(hireAfter).getTime() : null;
+                const limitBeforeHire = hireBefore ? new Date(hireBefore).getTime() : null;
+                const empBirthDate = emp.birth_date ? new Date(emp.birth_date).getTime() : null;
+                const limitAfterBorn = bornAfter ? new Date(bornAfter).getTime() : null;
+                const limitBeforeBorn = bornBefore ? new Date(bornBefore).getTime() : null;
+
+                // Check date ranges
+                if (limitAfterHire && empHireDate < limitAfterHire) return false;
+                if (limitBeforeHire && empHireDate > limitBeforeHire) return false;
+                if (limitAfterBorn && empBirthDate < limitAfterBorn) return false;
+                if (limitBeforeBorn && empBirthDate > limitBeforeBorn) return false;
+
+                // Check Status
+                if (status && (!emp.status || emp.status.toLowerCase() !== status.toLowerCase())) return false;
+                if (graduation && (!emp.graduation || emp.graduation.toLowerCase() !== graduation.toLowerCase())) return false;
+            }
 
             return true;
         });
-
         currentPage = 1;
         renderTable();
+        hideLoading();
     }
 
+    // Executed when "Apply Filters" button clicked 
+    function applyFilters() {
+        updateData();
+        closeFilterPanel();
+    }
 </script>
 {% endblock %}
