@@ -38,7 +38,7 @@ class EmployeeCard(ndb.Model):
 
     Attributes:
         `uid` (`int`): The unique ID for this employee
-        `user_key` (`ndb.KeyProperty`): The User class object for the employee
+        `user_uid` (`int`): The UID of the User class object for the employee
         `last_name` (`str`): The employee's last name
         `first_name` (`str`): The employee's first name
         `full_name` (`str`): The employee's full name (automatically computed)
@@ -70,7 +70,7 @@ class EmployeeCard(ndb.Model):
     uid = ndb.ComputedProperty(
         lambda self: self.key.id() if self.key else None, indexed=False
     )
-    user_key = ndb.KeyProperty(kind="User")
+    user_uid = ndb.IntegerProperty()
     last_name = ndb.StringProperty()
     first_name = ndb.StringProperty()
     full_name = ndb.ComputedProperty(
@@ -123,8 +123,8 @@ class PositionCard(ndb.Model):
         `brand` (`str`): What brand this position falls under
         `pay_status` (`str`): How this position is paid
         `pay_rate` (`float`): The amount this position is paid per hour/stipend/year
-        `supervisors` (`list`): What position(s) this position directly reports to
-        `direct_reports` (`list`): What position(s) directly report to this position
+        `supervisors` (`list[int]`): UIDs of position(s) this position directly reports to
+        `direct_reports` (`list[int]`): UIDs of position(s) directly report to this position
         `created_at` (`datetime`): When this position was created
         `updated_at` (`datetime`): When this position was last edited
         `updated_by` (`str`): User who last updated the employee
@@ -141,11 +141,13 @@ class PositionCard(ndb.Model):
     pay_status = ndb.StringProperty(choices=PAY_TYPES, default="unpaid")
     pay_rate = ndb.FloatProperty(default=0.0)
 
-    supervisors = ndb.KeyProperty(kind="PositionCard", repeated=True)
-    direct_reports = ndb.KeyProperty(kind="PositionCard", repeated=True)
+    supervisors = ndb.IntegerProperty(repeated=True)
+    direct_reports = ndb.IntegerProperty(repeated=True)
 
-    created_at = ndb.DateTimeProperty(auto_now_add=True)
-    updated_at = ndb.DateTimeProperty(auto_now=True)
+    created_at = ndb.DateTimeProperty(
+        auto_now_add=True, tzinfo=ZoneInfo("America/Chicago")
+    )
+    updated_at = ndb.DateTimeProperty(auto_now=True, tzinfo=ZoneInfo("America/Chicago"))
     updated_by = ndb.StringProperty()
 
 
@@ -207,7 +209,7 @@ def create_employee_card(**kwargs: dict) -> dict | int | None:
     Creates a new EmployeeCard object. All fields are optional.
 
     Arguments:
-        `user_key` (`ndb.KeyProperty`): The key of the User associated with this employee
+        `user_uid` (`int`): The UID of the User associated with this employee
         `last_name` (`str`): The employee's last name
         `first_name` (`str`): The employee's first name
         `pronouns` (`str`): The employee's pronouns
@@ -233,7 +235,7 @@ def create_employee_card(**kwargs: dict) -> dict | int | None:
 
     Returns:
         `dict`: The created `EmployeeCard` as a dictionary, `None` if an employee already
-                exists, or `-1` on other error
+                exists with the given `imc_email`, or `-1` on other error
     """
     with client.context():
         if "imc_email" in kwargs:
@@ -244,6 +246,11 @@ def create_employee_card(**kwargs: dict) -> dict | int | None:
                 return None  # Employee with this IMC email already exists
 
         try:
+            if "user_uid" in kwargs:
+                user = User.get_by_id(kwargs["user_uid"])
+                if not user:
+                    return -1  # User with this UID does not exist
+
             employee = EmployeeCard(**kwargs)
             employee.created_at = datetime.now(tz=ZoneInfo("America/Chicago"))
             employee.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
@@ -262,7 +269,7 @@ def modify_employee_card(uid: int, **kwargs: dict) -> dict | None:
 
     Arguments:
         `uid` (`int`): The unique ID of the EmployeeCard to modify
-        `user_key` (`ndb.KeyProperty`): The key of the User associated with this employee
+        `user_uid` (`int`): The UID of the User associated with this employee
         `last_name` (`str`): The employee's last name
         `first_name` (`str`): The employee's first name
         `pronouns` (`str`): The employee's pronouns
@@ -293,6 +300,11 @@ def modify_employee_card(uid: int, **kwargs: dict) -> dict | None:
         employee = EmployeeCard.get_by_id(uid)
         if not employee:
             return None
+
+        if "user_uid" in kwargs:
+            user = User.get_by_id(kwargs["user_uid"])
+            if not user:
+                return -1  # User with this UID does not exist
 
         for key, value in kwargs.items():
             if hasattr(employee, key):
@@ -328,6 +340,124 @@ def get_all_employee_cards() -> list:
     with client.context():
         employees = EmployeeCard.query().fetch()
         return [employee.to_dict() for employee in employees]
+
+
+################################################################################
+
+
+################################################################################
+### POSITION CARD FUNCTIONS ####################################################
+################################################################################
+
+
+def create_position_card(**kwargs: dict) -> dict | int | None:
+    """
+    Creates a new PositionCard object. All fields are optional.
+
+    Arguments:
+        `title` (`str`): The title of the position
+        `job_description` (`str`): A link to the description for this position
+        `brand` (`str`): What brand this position falls under
+        `pay_status` (`str`): How this position is paid
+        `pay_rate` (`float`): The amount this position is paid per hour/stipend/year
+        `supervisors` (`list[int]`): UIDs of the position(s) this position directly reports to
+
+    Returns:
+        `dict`: The created `PositionCard` as a dictionary, `None` if a position already
+                exists with the given `brand` and `title`, or `-1` on other error
+    """
+    with client.context():
+        if "brand" in kwargs and "title" in kwargs:
+            existing = PositionCard.query(
+                ndb.AND(
+                    PositionCard.brand == kwargs["brand"],
+                    PositionCard.title == kwargs["title"],
+                )
+            ).get()
+            if existing:
+                return None  # Position with this brand and title already exists
+
+        try:
+            # Convert supervisor and direct report UIDs to keys
+            if "supervisors" in kwargs:
+                kwargs["supervisors"] = [int(uid) for uid in kwargs["supervisors"]]
+
+            position = PositionCard(**kwargs)
+            position.created_at = datetime.now(tz=ZoneInfo("America/Chicago"))
+            position.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
+            position.updated_by = current_user.email if current_user else "system"
+            position.put()
+
+            # Add this position to direct reports of its supervisors
+            for supervisor_uid in position.supervisors:
+                supervisor = PositionCard.get_by_id(supervisor_uid)
+                if supervisor:
+                    if position.uid not in supervisor.direct_reports:
+                        supervisor.direct_reports = supervisor.direct_reports or []
+                        supervisor.direct_reports.append(position.uid)
+                        supervisor.updated_at = datetime.now(
+                            tz=ZoneInfo("America/Chicago")
+                        )
+                        supervisor.updated_by = "system"
+                        supervisor.put()
+
+            return position.to_dict()
+        except Exception as e:
+            print(f"Error creating PositionCard: {e}")
+            return -1  # Return -1 if position creation fails
+
+
+def get_all_position_cards() -> list:
+    """
+    Retrieves all PositionCard entries in the database.
+
+    Returns:
+        `list`: A list of all `PositionCard` entries as dictionaries
+    """
+    with client.context():
+        positions = PositionCard.query().fetch()
+        return [position.to_dict() for position in positions]
+
+
+def delete_position_card(uid: int) -> bool | None:
+    """
+    Deletes a PositionCard by its unique ID.
+
+    Arguments:
+        `uid` (`int`): The unique ID of the PositionCard to delete
+
+    Returns:
+        `bool`: True if deletion was successful, False if not found, None on error
+    """
+    with client.context():
+        position = PositionCard.get_by_id(uid)
+        if not position:
+            return False  # Position not found
+
+        try:
+            # Remove this position from supervisors' direct reports
+            for supervisor_uid in position.supervisors:
+                supervisor = PositionCard.get_by_id(supervisor_uid)
+                if supervisor and position.uid in supervisor.direct_reports:
+                    supervisor.direct_reports.remove(position.uid)
+                    supervisor.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
+                    supervisor.updated_by = "system"
+                    supervisor.put()
+
+            # Remove this position from direct reports' supervisors
+            for report_uid in position.direct_reports:
+                report = PositionCard.get_by_id(report_uid)
+                if report and position.uid in report.supervisors:
+                    report.supervisors.remove(position.uid)
+                    report.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
+                    report.updated_by = "system"
+                    report.put()
+
+            position.key.delete()
+            return True
+        except Exception as e:
+            print(f"Error deleting PositionCard: {e}")
+            return None  # Return None if deletion fails
 
 
 ################################################################################

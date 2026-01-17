@@ -141,9 +141,11 @@ Macro to create a select input inside of a form (Jinja)
 name and label are strings, required is boolean.
 class is optional and is the name of a class.
 Subtext is optional.
-options is a list of strings. 
+options is a list of strings. It can also be a list of dicts
+    containing `value` and `name` keys
+no_default is a boolean. When true, will not display "Select..."
 #}
-{% macro select_input(name, label, required, class, subtext, options) %}
+{% macro select_input(name, label, required, class, subtext, options, no_default) %}
     <div class="form-row {{ class }}" id="formfield-{{ name }}">
         <div>
             <label for="{{ name }}" class="field-label">
@@ -158,9 +160,17 @@ options is a list of strings.
         </div>
         <div class="select-input">
             <select name="{{ name }}" id="{{ name }}">
-                <option value="" disabled selected>Select...</option>
+                {% if no_default %}
+                    <option value="" selected></option>
+                {% else %}
+                    <option value="" disabled selected>Select...</option>
+                {% endif %}
                 {% for option in options %}
-                    <option value="{{ option }}">{{ option }}</option>
+                    {% if option is mapping %}
+                        <option value="{{ option.value }}">{{ option.name }}</option>
+                    {% else %}
+                        <option value="{{ option }}">{{ option }}</option>
+                    {% endif %}
                 {% endfor %}
             </select>
             <i class="bi bi-caret-down-fill select-dropdown-icon"></i>

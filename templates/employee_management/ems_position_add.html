@@ -1,0 +1,210 @@
+{% extends 'employee_management/ems_base.html' %}
+
+{% block ems_extra_head %}
+    <link rel="stylesheet" href="/static/macros/form.css">
+
+    <style>
+        .position-add-form {
+            gap: 0.5rem;
+        }
+
+        .position-add-form-row {
+            flex-direction: column;
+            align-items: flex-start;
+            flex: 1 1 10rem;
+        }
+
+        .form-row-shrink {
+            flex: 0 1 auto;
+        }
+
+        .column-container {
+            display: flex; 
+            flex-direction: column;
+            gap: 0.5rem; 
+            flex-wrap: wrap;
+            flex: 1 1 20rem;
+        }
+    </style>
+{% endblock %}
+
+{% import "macros/form.html" as form %}
+{% include "partials/loading.html" %}
+{% include "partials/text_alert.html" %}
+{% include "partials/info_bar.html" %}
+
+{% block ems_content %}
+<div style="display: flex; flex-direction: row; gap: 2rem; align-items: center;">
+    <a href="/ems/positions" style="color: inherit; font-size: 2rem;">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <h2>Add a Position</h2>
+</div>
+<p>Note: Multiple employees can be tied to a single position. Even if multiple employee's hold the same
+    position, only one position should be created.
+</p>
+
+<hr>
+
+<section class="section-container">
+    {% call form.form(id="positionAddForm", class="position-add-form", enctype="application/x-www-form-urlencoded", on_submit="return submitPosition(event)") %}
+        <div style="display: flex; flex-direction: row; gap: 0.5rem; flex-wrap: wrap; align-items: flex-start;">
+            {# Left Column #}
+            <div class="column-container">
+                {# Basic Information #}
+                <div class="inner-container" style="padding: 0.75rem;">
+                    <div class="section-header">
+                        <h3 style="margin-bottom: 0">Basic Information</h3>
+                    </div>
+                    <hr style="margin-top: 1rem;">
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
+                            {{ form.text_input( 
+                                name="title",
+                                label="Title",
+                                required=true,
+                                class="position-add-form-row"
+                            ) }}
+                            {{ form.select_input( 
+                                name="brand",
+                                label="Brand",
+                                options=imc_brands_choices,
+                                required=true,
+                                class="position-add-form-row form-row-shrink"
+                            ) }}
+                        </div>
+                        {{ form.textarea_input( 
+                            name="job_description",
+                            label="Job Description",
+                            required=false,
+                            class="position-add-form-row"
+                        ) }}
+                    </div>
+                </div>
+            </div>
+
+            {# Right Column #}
+            <div class="column-container">
+                {# Financial Information #}
+                <div class="inner-container" style="padding: 0.75rem;">
+                    <div class="section-header">
+                        <h3 style="margin-bottom: 0">Financial Information</h3>
+                    </div>
+                    <hr style="margin-top: 1rem;">
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
+                            {{ form.text_input( 
+                                name="pay_rate",
+                                label="Pay Rate",
+                                alt_type="number",
+                                required=true,
+                                class="position-add-form-row"
+                            ) }}
+                            {{ form.select_input( 
+                                name="pay_status",
+                                label="Pay Status",
+                                options=pay_types_choices,
+                                required=true,
+                                class="position-add-form-row form-row-shrink"
+                            ) }}
+                        </div>
+                    </div>
+                </div>
+
+                {# Supervisor(s) #}
+                <div class="inner-container" style="padding: 0.75rem;">
+                    <div class="section-header">
+                        <h3 style="margin-bottom: 0">Position Relationships</h3>
+                    </div>
+                    <hr style="margin-top: 1rem;">
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
+                            {{ form.select_input( 
+                                name="supervisor_1",
+                                label="Supervisor",
+                                options=position_options,
+                                no_default=true,
+                                required=false,
+                                class="position-add-form-row"
+                            ) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div style="text-align: center;">
+            {{ form.submit_button(text="Create Position", label="submit_button") }}
+        </div>
+    {% endcall %}
+</section>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const msg = sessionStorage.getItem("infoBarMessage");
+        if (msg) {
+            showInfoBar(msg);
+            sessionStorage.removeItem("infoBarMessage"); // Clear it after showing
+        }
+    });
+
+    async function submitPosition(event) {
+        event.preventDefault();
+        console.log("Submitting...");
+
+        showLoading("Creating Employee...");
+
+        const formData = new FormData(event.target);
+
+        const s1 = formData.get('supervisor_1');
+        const s2 = formData.get('supervisor_2');
+        const supervisors = [s1, s2].filter(Boolean);
+
+        const formEntries = Object.fromEntries(
+            Array.from(formData.entries()).filter(([key, value]) => value !== "")
+        );
+
+        delete formEntries.supervisor_1;
+        delete formEntries.supervisor_2;
+
+        // Send the data to the backend endpoint
+        let endpoint = "/ems/api/position/create";
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+            ...formEntries,
+            supervisors: supervisors
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        // Check if it was successful
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", "Position successfully created."); // Safe so we can display after reload
+            window.location.reload();
+        } else {
+            // Alert of the error
+            console.log("Creating the position failed!");
+
+            try {
+                const data = await response.json();
+                const message = data.error || "An unknown error occurred.";
+
+                console.error(message);
+                hideLoading();
+                await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            } catch (err) {
+                const fallback = await response.text();
+                hideLoading();
+                await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+            }
+        }
+    }
+</script>
+
+{% endblock %}
