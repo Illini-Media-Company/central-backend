@@ -1,5 +1,6 @@
+import uuid
 from google.cloud import ndb
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from . import client
@@ -32,6 +33,7 @@ class foodTruckLocTime(ndb.Model):
     start_time = ndb.DateTimeProperty()
     end_time = ndb.DateTimeProperty()
     reported_by = ndb.StringProperty()
+    recurrence_id = ndb.StringProperty()
 
 
 # Register a new food truck with the database. Must be done before add
@@ -113,6 +115,7 @@ def add_truck_loctime(
     start_time,
     end_time,
     reported_by,
+    recurrence_id=None,
 ):
     cur_time = datetime.now(ZoneInfo("America/Chicago")).replace(tzinfo=None)
 
@@ -135,11 +138,56 @@ def add_truck_loctime(
         start_time=start_time,
         end_time=end_time,
         reported_by=reported_by,
+        recurrence_id=recurrence_id,
     )
     loctime.put()
 
     print("Done.")
     return loctime.to_dict()
+
+
+# add loctime objects that repeat til end_date
+def add_truck_loctime_repeat(
+    truck_uid,
+    lat,
+    lon,
+    nearest_address,
+    location_desc,
+    start_time,
+    end_time,
+    reported_by,
+    end_date,
+):
+    # check if any objects will overlap
+    start_check = start_time
+    end_check = end_time
+    while start_check <= end_date:
+        if not check_existing_loctime(truck_uid, start_check, end_check):
+            print(f"\tThere is a loctime overlap at {start_check}")
+            return False
+
+        start_check += timedelta(weeks=1)
+        end_check += timedelta(weeks=1)
+
+    # add times
+    reccurrence_id = uuid.uuid4().hex
+    while start_time <= end_date:
+        add_truck_loctime(
+            truck_uid,
+            lat,
+            lon,
+            nearest_address,
+            location_desc,
+            start_time,
+            end_time,
+            reported_by,
+            end_date,
+            reccurrence_id,
+        )
+
+        start_time += timedelta(weeks=1)
+        end_time += timedelta(weeks=1)
+    return True
 
 
 # Remove a locTime by the locTime's UID (and clear all expired times)
@@ -223,7 +271,11 @@ def check_existing_loctime(truck_uid, start_time, end_time):
         exst_start = loctime["start_time"]
         exst_end = loctime["end_time"]
 
-        if exst_start < start_time < exst_end or exst_start < end_time < exst_end:
+        if (
+            exst_start < start_time < exst_end
+            or exst_start < end_time < exst_end
+            or (start_time < exst_start and exst_end < end_time)
+        ):
             print("\t\tFound loctime with overlapping times.")
             return True
 
