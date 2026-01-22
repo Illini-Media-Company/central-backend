@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required
 from flask_cors import cross_origin
 from db.food_truck import (
+    add_truck_loctime_repeat,
     register_food_truck,
     deregister_food_truck,
     modify_food_truck,
@@ -171,6 +172,7 @@ def get_registration(uid):
 
 
 # Add a new locTime for a truck (ACCESSED WITHOUT LOGIN)
+# Will add a repeating time if "repeat" is checked
 @food_truck_routes.route("/loctime", methods=["POST"])
 # @login_required
 # @restrict_to(["student-managers", "editors", "imc-staff-webdev"])
@@ -184,22 +186,41 @@ def add_loctime():
         start_time = datetime.strptime(request.form["start_time"], "%Y-%m-%dT%H:%M")
         end_time = datetime.strptime(request.form["end_time"], "%Y-%m-%dT%H:%M")
         reported_by = request.form["reported_by"]
+        repeat = request.form.get("repeat") is not None
+        repeat_end_raw = request.form.get("repeat_end", "").strip()
 
         if check_existing_loctime(truck_uid, start_time, end_time):
             return "Invalid: An existing time overlaps with the requested time.", 422
 
-        add_truck_loctime(
-            truck_uid=truck_uid,
-            lat=latitude,
-            lon=longitude,
-            nearest_address=nearest_address,
-            location_desc=location_desc,
-            start_time=start_time,
-            end_time=end_time,
-            reported_by=reported_by,
-        )
+        if not repeat:
+            add_truck_loctime(
+                truck_uid=truck_uid,
+                lat=latitude,
+                lon=longitude,
+                nearest_address=nearest_address,
+                location_desc=location_desc,
+                start_time=start_time,
+                end_time=end_time,
+                reported_by=reported_by,
+            )
 
-    return "locTime created", 200
+            return "locTime created", 200
+        else:
+            end_date = datetime.strptime(repeat_end_raw, "%Y-%m-%d").date()
+
+            add_truck_loctime_repeat(
+                truck_uid=truck_uid,
+                lat=latitude,
+                lon=longitude,
+                nearest_address=nearest_address,
+                location_desc=location_desc,
+                start_time=start_time,
+                end_time=end_time,
+                reported_by=reported_by,
+                end_date=end_date,
+            )
+
+            return "repeating locTime created", 200
 
 
 # Remove a locTime for a truck (given the locTime's UID) (ACCESSED WITHOUT LOGIN)

@@ -161,8 +161,8 @@ def add_truck_loctime_repeat(
     # check if any objects will overlap
     start_check = start_time
     end_check = end_time
-    while start_check <= end_date:
-        if not check_existing_loctime(truck_uid, start_check, end_check):
+    while start_check.date() <= end_date:
+        if check_existing_loctime(truck_uid, start_check, end_check):
             print(f"\tThere is a loctime overlap at {start_check}")
             return False
 
@@ -170,8 +170,8 @@ def add_truck_loctime_repeat(
         end_check += timedelta(weeks=1)
 
     # add times
-    reccurrence_id = uuid.uuid4().hex
-    while start_time <= end_date:
+    recurrence_id = uuid.uuid4().hex
+    while start_time.date() <= end_date:
         add_truck_loctime(
             truck_uid,
             lat,
@@ -182,7 +182,7 @@ def add_truck_loctime_repeat(
             end_time,
             reported_by,
             end_date,
-            reccurrence_id,
+            recurrence_id,
         )
 
         start_time += timedelta(weeks=1)
