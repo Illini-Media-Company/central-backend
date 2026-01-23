@@ -5,7 +5,7 @@ to the EMS must be located inside of this file. Classes should not be accessed
 anywhere else in the codebase without the use of helper functions.
 
 Created by Jacob Slabosz on Jan. 4, 2026
-Last modified Jan. 13, 2026
+Last modified Jan. 23, 2026
 """
 
 from google.cloud import ndb
@@ -256,6 +256,11 @@ def create_employee_card(**kwargs: dict) -> dict | int | None:
             employee.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
             employee.updated_by = current_user.email if current_user else "system"
             employee.put()
+
+            temp = employee.uid
+            tie_employee_to_user(temp)
+            employee = EmployeeCard.get_by_id(temp)
+
             return employee.to_dict()
         except Exception as e:
             print(f"Error creating EmployeeCard: {e}")
@@ -325,6 +330,12 @@ def modify_employee_card(uid: int, **kwargs: dict) -> dict | None | int:
         employee.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
         employee.updated_by = current_user.email if current_user else "System"
         employee.put()
+
+        # Re-tie the employee to the user in case the email changed
+        temp = employee.uid
+        tie_employee_to_user(temp)
+        employee = EmployeeCard.get_by_id(temp)
+
         return employee.to_dict()
 
 
@@ -352,6 +363,58 @@ def get_all_employee_cards() -> list:
     with client.context():
         employees = EmployeeCard.query().fetch()
         return [employee.to_dict() for employee in employees]
+
+
+def delete_employee_card(uid: int) -> bool | None:
+    """
+    Deletes an EmployeeCard by its unique ID.
+
+    Arguments:
+        `uid` (`int`): The unique ID of the EmployeeCard to delete
+
+    Returns:
+        `bool`: `True` if deletion was successful, `False` if not found, `None` on error
+    """
+    with client.context():
+        employee = EmployeeCard.get_by_id(uid)
+        if not employee:
+            return False  # Employee not found
+
+        try:
+            employee.key.delete()
+            return True
+        except Exception as e:
+            print(f"Error deleting EmployeeCard: {e}")
+            return None  # Return None if deletion fails
+
+
+def tie_employee_to_user(uid: int) -> bool | None:
+    """
+    Links an EmployeeCard to a User by their UIDs. Must be called within a
+    client context.
+
+    Arguments:
+        `uid` (`int`): The UID of the EmployeeCard
+
+    Returns:
+        `bool`: `True` if linking was successful, `False` if either entity not found,
+                `None` on error
+    """
+    employee = EmployeeCard.get_by_id(uid)
+    user = User.query(User.email == employee.imc_email).get() if employee else None
+
+    if not employee or not user:
+        return False  # Either Employee or User not found
+
+    try:
+        employee.user_uid = user.key.id()
+        employee.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
+        employee.updated_by = current_user.email if current_user else "system"
+        employee.put()
+        return True
+    except Exception as e:
+        print(f"Error linking EmployeeCard to User: {e}")
+        return None  # Return None if linking fails
 
 
 ################################################################################
@@ -500,7 +563,7 @@ def delete_position_card(uid: int) -> bool | None:
         `uid` (`int`): The unique ID of the PositionCard to delete
 
     Returns:
-        `bool`: True if deletion was successful, False if not found, None on error
+        `bool`: `True` if deletion was successful, `False` if not found, `None` on error
     """
     with client.context():
         position = PositionCard.get_by_id(uid)

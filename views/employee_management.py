@@ -2,7 +2,7 @@
 This file defines the API for the Employee Management System.
 
 Created by Jacob Slabosz on Jan. 12, 2026
-Last modified Jan. 12, 2026
+Last modified Jan. 23, 2026
 """
 
 from flask import Blueprint, render_template, request, jsonify
@@ -17,6 +17,7 @@ from db.employee_management import (
     modify_employee_card,
     get_all_employee_cards,
     get_employee_card_by_id,
+    delete_employee_card,
     create_position_card,
     modify_position_card,
     get_all_position_cards,
@@ -248,6 +249,24 @@ def ems_api_employee_get_all():
 
 # API
 @ems_routes.route("/api/employee/<int:uid>/delete", methods=["POST"])
+@login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+def ems_api_employee_delete(uid):
+    """
+    API endpoint to delete an employee.
+
+    Args:
+        uid (int): The unique ID of the employee to delete.
+
+    Returns:
+        (json, int): A tuple containing a JSON response and HTTP status code.
+    """
+    deleted = delete_employee_card(uid)
+    if deleted == None:
+        return jsonify({"error": "An error occurred while deleting the employee."}), 500
+    if not deleted:
+        return jsonify({"error": "Employee not found."}), 400
+    return jsonify({"message": "Employee deleted successfully."}), 200
 
 
 ################################################################################

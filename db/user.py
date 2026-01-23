@@ -13,6 +13,10 @@ from . import client
 
 class User(ndb.Model):
     #
+    uid = ndb.ComputedProperty(
+        lambda self: self.key.id() if self.key else None, indexed=False
+    )
+    #
     sub = ndb.StringProperty()
     # Full name
     name = ndb.StringProperty()
