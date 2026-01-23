@@ -262,7 +262,7 @@ def create_employee_card(**kwargs: dict) -> dict | int | None:
             return -1  # Return -1 if employee creation fails
 
 
-def modify_employee_card(uid: int, **kwargs: dict) -> dict | None:
+def modify_employee_card(uid: int, **kwargs: dict) -> dict | None | int:
     """
     Modifies an existing EmployeeCard object. `uid` is required, all other
     fields are optional.
@@ -294,7 +294,9 @@ def modify_employee_card(uid: int, **kwargs: dict) -> dict | None:
         `graduation` (`str`): The employee's expected graduation term
 
     Returns:
-        `dict`: The modified `EmployeeCard` as a dictionary, or `None` if not found
+        `dict`: The modified `EmployeeCard` as a dictionary, `None` if not found,
+                `-1` if the provided `user_uid` does not correspond to an existing User,
+                or `-2` if another employee already exists with the given `imc_email`
     """
     with client.context():
         employee = EmployeeCard.get_by_id(uid)
@@ -306,12 +308,22 @@ def modify_employee_card(uid: int, **kwargs: dict) -> dict | None:
             if not user:
                 return -1  # User with this UID does not exist
 
+        if "imc_email" in kwargs:
+            existing = EmployeeCard.query(
+                EmployeeCard.imc_email == kwargs["imc_email"]
+            ).get()
+
+            is_duplicate = any(item.key != employee.key for item in [existing] if item)
+
+            if is_duplicate:
+                return -2  # Employee with this IMC email already exists
+
         for key, value in kwargs.items():
             if hasattr(employee, key):
                 setattr(employee, key, value)
 
         employee.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
-        employee.updated_by = current_user.email if current_user else "system"
+        employee.updated_by = current_user.email if current_user else "System"
         employee.put()
         return employee.to_dict()
 
@@ -407,6 +419,53 @@ def create_position_card(**kwargs: dict) -> dict | int | None:
             return -1  # Return -1 if position creation fails
 
 
+def modify_position_card(uid: int, **kwargs: dict) -> dict | None:
+    """
+    Modifies an existing PositionCard object. `uid` is required, all other
+    fields are optional.
+
+    Arguments:
+        `uid` (`int`): The unique ID of the PositionCard to modify
+        `title` (`str`): The title of the position
+        `job_description` (`str`): A link to the description for this position
+        `brand` (`str`): What brand this position falls under
+        `pay_status` (`str`): How this position is paid
+        `pay_rate` (`float`): The amount this position is paid per hour/stipend/year
+        `supervisors` (`list[int]`): UIDs of the position(s) this position directly reports to
+
+    Returns:
+        `dict`: The modified `PositionCard` as a dictionary, `None` if not found, or
+                `-1` if there exists another position with the same `brand` and `title`
+    """
+    with client.context():
+        position = PositionCard.get_by_id(uid)
+        if not position:
+            return None
+
+        # Check if a position already exists with the given brand and title
+        if "brand" in kwargs and "title" in kwargs:
+            existing = PositionCard.query(
+                ndb.AND(
+                    PositionCard.brand == kwargs["brand"],
+                    PositionCard.title == kwargs["title"],
+                )
+            ).get()
+
+            is_duplicate = any(item.key != position.key for item in [existing] if item)
+
+            if is_duplicate:
+                return -1  # Position with this brand and title already exists
+
+        for key, value in kwargs.items():
+            if hasattr(position, key):
+                setattr(position, key, value)
+
+        position.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
+        position.updated_by = current_user.email if current_user else "System"
+        position.put()
+        return position.to_dict()
+
+
 def get_all_position_cards() -> list:
     """
     Retrieves all PositionCard entries in the database.
@@ -417,6 +476,20 @@ def get_all_position_cards() -> list:
     with client.context():
         positions = PositionCard.query().fetch()
         return [position.to_dict() for position in positions]
+
+
+def get_position_card_by_id(uid: int) -> dict | None:
+    """
+    Retrieves a PositionCard by its unique ID.
+
+    Arguments:
+        `uid` (`int`): The unique ID of the PositionCard to retrieve
+    Returns:
+        `dict`: The `PositionCard` as a dictionary, or `None` if not found
+    """
+    with client.context():
+        position = PositionCard.get_by_id(uid)
+        return position.to_dict() if position else None
 
 
 def delete_position_card(uid: int) -> bool | None:

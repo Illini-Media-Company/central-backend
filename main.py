@@ -105,6 +105,8 @@ from util.helpers.email_to_slackid import email_to_slackid
 
 from util.all_tools import format_restricted_groups
 
+from views.employee_management import get_ems_brand_image_url
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 
@@ -161,6 +163,7 @@ app.jinja_env.filters["days_since"] = days_since
 app.jinja_env.filters["months_since"] = months_since
 app.jinja_env.filters["years_since"] = years_since
 app.jinja_env.filters["time_since"] = time_since
+app.jinja_env.filters["get_ems_brand_image_url"] = get_ems_brand_image_url
 print("[main] Done registering Jinja filters.")
 
 

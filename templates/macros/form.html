@@ -48,7 +48,7 @@ alt_type optionally lets you choose other HTML input
     types based on text (like 'url', 'date', 'datetime-local')
 maxlength is the maximum length of the input in characters
 #}
-{% macro text_input(name, label, required, class, placeholder, subtext, alt_type, maxlength, pattern) %}
+{% macro text_input(name, label, required, class, placeholder, subtext, alt_type, maxlength, pattern, initial_val) %}
     <div class="form-row {{ class }}" id="formfield-{{ name }}">
         <div>
             <label for="{{ name }}" class="field-label">
@@ -85,6 +85,10 @@ maxlength is the maximum length of the input in characters
 
             {% if required %}
                 required
+            {% endif %}
+
+            {% if initial_val %}
+                value = "{{ initial_val }}"
             {% endif %}
         >
     </div>
@@ -145,7 +149,7 @@ options is a list of strings. It can also be a list of dicts
     containing `value` and `name` keys
 no_default is a boolean. When true, will not display "Select..."
 #}
-{% macro select_input(name, label, required, class, subtext, options, no_default) %}
+{% macro select_input(name, label, required, class, subtext, options, no_default, initial_val) %}
     <div class="form-row {{ class }}" id="formfield-{{ name }}">
         <div>
             <label for="{{ name }}" class="field-label">
@@ -159,7 +163,7 @@ no_default is a boolean. When true, will not display "Select..."
             {% endif %}
         </div>
         <div class="select-input">
-            <select name="{{ name }}" id="{{ name }}">
+            <select name="{{ name }}" id="{{ name }}" {% if multiple %}multiple{% endif %}>
                 {% if no_default %}
                     <option value="" selected></option>
                 {% else %}
@@ -167,9 +171,9 @@ no_default is a boolean. When true, will not display "Select..."
                 {% endif %}
                 {% for option in options %}
                     {% if option is mapping %}
-                        <option value="{{ option.value }}">{{ option.name }}</option>
+                        <option value="{{ option.value }}" {% if option.value == initial_val %}selected{% endif %}>{{ option.name }}</option>
                     {% else %}
-                        <option value="{{ option }}">{{ option }}</option>
+                        <option value="{{ option }}" {% if option == initial_val %}selected{% endif %}>{{ option }}</option>
                     {% endif %}
                 {% endfor %}
             </select>
@@ -178,7 +182,47 @@ no_default is a boolean. When true, will not display "Select..."
     </div>
 {% endmacro %}
 
-{% macro textarea_input(name, label, required, class, placeholder, subtext, maxlength) %}
+{# NOT COMPLETE #}
+{% macro multiple_select_input(name, label, required, class, subtext, options, no_default, initial_vals) %}
+    {% set selected_list = initial_vals if initial_vals is iterable and initial_vals is not string else [] %}
+    <div class="form-row {{ class }}" id="formfield-{{ name }}">
+        <div>
+            <label for="{{ name }}" class="field-label">
+                {{ label }}
+                {% if required %}
+                    <span title="Required field" style="color: var(--main-accent-color);">*</span>
+                {% endif %}
+            </label>
+            {% if subtext %}
+                <p class="subtext">{{ subtext }}</p>
+            {% endif %}
+        </div>
+        <div class="select-input">
+            <select name="{{ name }}" id="{{ name }}" multiple>
+                {% if no_default %}
+                    <option value="" {% if not selected_list %}selected{% endif %}></option>
+                {% else %}
+                    <option value="" disabled {% if not selected_list %}selected{% endif %}>Select...</option>
+                {% endif %}
+                {% for option in options %}
+                    {% if option is mapping %}
+                        <option value="{{ option.value }}" 
+                        {% if option.value|string in selected_list|map('string') %}selected{% endif %}>
+                            {{ option.name }}
+                        </option>
+                    {% else %}
+                        <option value="{{ option }}" 
+                        {% if option|string in selected_list|map('string') %}selected{% endif %}>
+                            {{ option }}
+                        </option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+{% endmacro %}
+
+{% macro textarea_input(name, label, required, class, placeholder, subtext, maxlength, initial_val) %}
     <div class="form-row {{ class }}" id="formfield-{{ name }}">
         <div>
             <label for="{{ name }}" class="field-label">
@@ -207,7 +251,7 @@ no_default is a boolean. When true, will not display "Select..."
             {% if required %}
                 required
             {% endif %}
-        ></textarea>
+        >{% if initial_val %}{{ initial_val }}{% endif %}</textarea>
     </div>
 {% endmacro %}
 

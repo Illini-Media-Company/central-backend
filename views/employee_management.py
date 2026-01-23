@@ -18,7 +18,9 @@ from db.employee_management import (
     get_all_employee_cards,
     get_employee_card_by_id,
     create_position_card,
+    modify_position_card,
     get_all_position_cards,
+    get_position_card_by_id,
     delete_position_card,
 )
 
@@ -154,7 +156,79 @@ def ems_api_employee_create():
 
 
 # API
-@ems_routes.route("/api/employee/modify", methods=["POST"])
+@ems_routes.route("/api/employee/<int:uid>/modify", methods=["POST"])
+@login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+def ems_api_employee_modify(uid):
+    """
+    API endpoint to modify an existing employee.
+
+    Args:
+        uid (int): The unique ID of the employee to modify.
+
+    Returns:
+        (json, int): A tuple containing a JSON response and HTTP status code.
+    """
+    # Extract data from request
+    data = request.get_json() or {}
+
+    # Remove the CSRF token from the JSON to pass to the function
+    del data["_csrf_token"]
+
+    date_fields = ["birth_date", "initial_hire_date"]
+
+    try:
+        for field in date_fields:
+            if data.get(field):
+                # Converts "YYYY-MM-DD" string to a Python date object
+                data[field] = datetime.strptime(data[field], "%Y-%m-%d").date()
+    except Exception as e:
+        return (
+            jsonify({"error": "Invalid birth date or initial hire date format."}),
+            400,
+        )
+
+    try:
+        if data.get("payroll_number"):
+            data["payroll_number"] = int(data["payroll_number"])
+    except Exception as e:
+        return jsonify({"error": "Invalid payroll number format."}), 400
+
+    try:
+        if data.get("user_uid"):
+            data["user_uid"] = int(data["user_uid"])
+    except Exception as e:
+        return jsonify({"error": "Invalid user ID format."}), 400
+
+    if data:
+        modified = modify_employee_card(uid, **data)
+        if modified == None:
+            return (
+                jsonify({"error": "An error occurred while modifying the employee."}),
+                500,
+            )
+        if modified == -1:
+            return jsonify({"error": "A user does not exist with that ID."}), 400
+        if modified == -2:
+            return (
+                jsonify({"error": "An employee already exists with that IMC email."}),
+                400,
+            )
+        return (
+            jsonify(
+                {"message": "Employee modified successfully.", "request": modified}
+            ),
+            200,
+        )
+
+    return (
+        jsonify(
+            {
+                "error": "No data was entered. Cannot modify employee with no information."
+            }
+        ),
+        400,
+    )
 
 
 # API
@@ -170,6 +244,10 @@ def ems_api_employee_get_all():
     """
     employees = get_all_employee_cards()
     return jsonify({"employees": employees}), 200
+
+
+# API
+@ems_routes.route("/api/employee/<int:uid>/delete", methods=["POST"])
 
 
 ################################################################################
@@ -212,6 +290,59 @@ def ems_position_add():
     )
 
 
+# TEMPLATE
+@ems_routes.route("/position/view/<int:pos_id>", methods=["GET"])
+@login_required
+def ems_position_view(pos_id):
+    """
+    Renders the view position page.
+    """
+    position = get_position_card_by_id(pos_id)
+
+    all_positions = get_all_position_cards()
+
+    position_options = [
+        {"value": pos["uid"], "name": f"{pos['brand']} — {pos['title']}"}
+        for pos in all_positions
+        if pos["uid"] != position["uid"]
+    ]
+
+    new_supervisors = []
+    for pos in position["supervisors"]:
+        supervisor = get_position_card_by_id(pos)
+        if supervisor:
+            new_supervisors.append(
+                {
+                    "uid": supervisor["uid"],
+                    "title": supervisor["title"],
+                    "brand": supervisor["brand"],
+                }
+            )
+    position["supervisors"] = new_supervisors
+
+    new_direct_reports = []
+    for pos in position["direct_reports"]:
+        direct_report = get_position_card_by_id(pos)
+        if direct_report:
+            new_direct_reports.append(
+                {
+                    "uid": direct_report["uid"],
+                    "title": direct_report["title"],
+                    "brand": direct_report["brand"],
+                }
+            )
+    position["direct_reports"] = new_direct_reports
+
+    return render_template(
+        "employee_management/ems_position_view.html",
+        selection="positions",
+        position=position,
+        imc_brands_choices=IMC_BRANDS,
+        pay_types_choices=PAY_TYPES,
+        position_options=position_options,
+    )
+
+
 # API
 @ems_routes.route("/api/position/create", methods=["POST"])
 @login_required
@@ -245,7 +376,7 @@ def ems_api_position_create():
 
     if data:
         created = create_position_card(**data)
-        if not created:
+        if created == None:
             return (
                 jsonify(
                     {"error": "A position already exists with that brand and title"}
@@ -263,6 +394,66 @@ def ems_api_position_create():
         jsonify(
             {
                 "error": "No data was entered. Cannot create position with no information."
+            }
+        ),
+        400,
+    )
+
+
+# API
+@ems_routes.route("/api/position/<int:uid>/modify", methods=["POST"])
+@login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+def ems_api_position_modify(uid):
+    """
+    API endpoint to modify an existing employee.
+
+    Args:
+        uid (int): The unique ID of the employee to modify.
+
+    Returns:
+        (json, int): A tuple containing a JSON response and HTTP status code.
+    """
+    # Extract data from request
+    data = request.get_json() or {}
+
+    # Remove the CSRF token from the JSON to pass to the function
+    del data["_csrf_token"]
+
+    # Convert pay rate to float
+    try:
+        if data.get("pay_rate"):
+            data["pay_rate"] = float(data["pay_rate"])
+    except Exception as e:
+        return jsonify({"error": "Invalid pay rate format."}), 400
+
+    # Convert supervisors to list of ints
+    try:
+        if data.get("supervisors"):
+            data["supervisors"] = [int(uid) for uid in data["supervisors"]]
+    except Exception as e:
+        return jsonify({"error": "Invalid supervisors format."}), 400
+
+    if data:
+        modified = modify_position_card(uid, **data)
+        if modified == None:
+            return (
+                jsonify({"error": "An error occurred while modifying the position."}),
+                500,
+            )
+        if modified == -1:
+            return (
+                jsonify(
+                    {"error": "A position already exists with that brand and title."}
+                ),
+                400,
+            )
+        return jsonify({"message": "Position modified.", "request": modified}), 200
+
+    return (
+        jsonify(
+            {
+                "error": "No data was entered. Cannot modify position with no information."
             }
         ),
         400,
@@ -304,6 +495,37 @@ def ems_api_position_delete(uid):
     if not deleted:
         return jsonify({"error": "Position not found."}), 400
     return jsonify({"message": "Position deleted successfully."}), 200
+
+
+################################################################################
+
+################################################################################
+### HELPER FUNCTIONS ###########################################################
+################################################################################
+
+
+# Get correct image URL
+def get_ems_brand_image_url(brand: str) -> str:
+    """
+    Returns the image URL for a given brand.
+
+    Args:
+        brand (str): The brand name.
+
+    Returns:
+        str: The image URL for the brand.
+    """
+    brand_images = {
+        "Chambana Eats": "/static/brandmarks/background/96x96/CE_SquareIcon.png",
+        "The Daily Illini": "/static/brandmarks/background/96x96/DI_SquareIcon.png",
+        "Illini Content Studio": "/static/brandmarks/background/96x96/ICS_SquareIcon.png",
+        "Illio": "/static/brandmarks//background/96x96/Illio_SquareIcon.png",
+        "IMC": "/static/brandmarks//background/96x96/IMC_SquareIcon.png",
+        "WPGU": "/static/brandmarks//background/96x96/WPGU_SquareIcon.png",
+    }
+    return brand_images.get(
+        brand, "/static/brandmarks//background/96x96/IMC_SquareIcon.png"
+    )
 
 
 ################################################################################

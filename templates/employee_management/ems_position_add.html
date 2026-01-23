@@ -1,5 +1,40 @@
 {% extends 'employee_management/ems_base.html' %}
 
+{% macro money_input(name, label, required, class, placeholder, alt_type, pattern) %}
+    <div class="form-row {{ class }}" id="formfield-{{ name }}">
+        <div>
+            <label for="{{ name }}" class="field-label">
+                {{ label }}
+                {% if required %}
+                    <span title="Required field" style="color: var(--main-accent-color);">*</span>
+                {% endif %}
+            </label>
+        </div>
+        <div style="display: flex; flex-direction: row; align-items: center; gap: 0.25rem;">
+            $
+            <input 
+                type    = "number"
+                id      = "{{ name }}" 
+                class   = "text-input" 
+                name    = "{{ name }}"
+
+                {% if pattern %}
+                    pattern = "{{ pattern }}"
+                {% endif %}
+
+                {% if placeholder %}
+                    placeholder = "{{ placeholder }}"
+                {% endif %}
+
+                {% if required %}
+                    required
+                {% endif %}
+            >
+            <span id="{{ name }}_after-text" style="text-wrap: nowrap;"></span>
+        </div>
+    </div>
+{% endmacro %}
+
 {% block ems_extra_head %}
     <link rel="stylesheet" href="/static/macros/form.css">
 
@@ -93,13 +128,6 @@
                     <hr style="margin-top: 1rem;">
                     <div style="display: flex; flex-direction: column; gap: 1rem;">
                         <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
-                            {{ form.text_input( 
-                                name="pay_rate",
-                                label="Pay Rate",
-                                alt_type="number",
-                                required=true,
-                                class="position-add-form-row"
-                            ) }}
                             {{ form.select_input( 
                                 name="pay_status",
                                 label="Pay Status",
@@ -107,6 +135,14 @@
                                 required=true,
                                 class="position-add-form-row form-row-shrink"
                             ) }}
+                            <span>
+                            {{ money_input( 
+                                name="pay_rate",
+                                label="Pay Rate",
+                                required=true,
+                                class="position-add-form-row"
+                            ) }}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -119,9 +155,9 @@
                     <hr style="margin-top: 1rem;">
                     <div style="display: flex; flex-direction: column; gap: 1rem;">
                         <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
-                            {{ form.select_input( 
-                                name="supervisor_1",
-                                label="Supervisor",
+                            {{ form.multiple_select_input( 
+                                name="supervisors",
+                                label="Supervisor(s)",
                                 options=position_options,
                                 no_default=true,
                                 required=false,
@@ -145,6 +181,29 @@
             showInfoBar(msg);
             sessionStorage.removeItem("infoBarMessage"); // Clear it after showing
         }
+
+        const statusSelect = document.getElementById("pay_status");
+        statusSelect.addEventListener("input", () => {
+            const afterText = document.getElementById("pay_rate_after-text");
+            const payRate = document.getElementById("pay_rate");
+
+            if (statusSelect.value == 'Unpaid') {
+                payRate.value = 0;
+                payRate.disabled = true;
+                afterText.innerHTML = ``;
+            } else if (statusSelect.value == 'Hourly') {
+                afterText.innerHTML = `/ Hour`;
+                payRate.disabled = false;
+            } else if (statusSelect.value == 'Stipend') {
+                afterText.innerHTML = `/ Pay Period`;
+                payRate.disabled = false;
+            } else if (statusSelect.value == 'Salary') {
+                afterText.innerHTML = `/ Year`;
+                payRate.disabled = false;
+            }
+
+
+        });
     });
 
     async function submitPosition(event) {
@@ -155,23 +214,22 @@
 
         const formData = new FormData(event.target);
 
-        const s1 = formData.get('supervisor_1');
-        const s2 = formData.get('supervisor_2');
-        const supervisors = [s1, s2].filter(Boolean);
+        const supInput = document.getElementById('supervisors');
+        const newSups = Array.from(supInput.selectedOptions).map(opt => opt.value);
 
         const formEntries = Object.fromEntries(
             Array.from(formData.entries()).filter(([key, value]) => value !== "")
         );
 
-        delete formEntries.supervisor_1;
-        delete formEntries.supervisor_2;
+        // Delete the incorrectly formatted version
+        delete formEntries.supervisors;
 
         // Send the data to the backend endpoint
         let endpoint = "/ems/api/position/create";
         const payload = {
             _csrf_token: "{{ csrf_token() }}",
             ...formEntries,
-            supervisors: supervisors
+            supervisors: newSups,
         }
 
         const response = await fetch(endpoint, {

@@ -85,6 +85,9 @@
 {% endblock %}
 
 {% import "macros/form.html" as form %}
+{% include "partials/loading.html" %}
+{% include "partials/text_alert.html" %}
+{% include "partials/info_bar.html" %}
 
 {% block ems_content %}
 <div style="display: flex; flex-direction: row; gap: 2rem; align-items: center;">
@@ -96,9 +99,8 @@
 
 <hr>
 
-<script src="../static/js_libraries/ap_style.js"></script>
 <section class="section-container">
-    {% call form.form(id="employeeModifyForm", class="employee-modify-form", enctype="application/x-www-form-urlencoded", on_submit="return modifyEmployee(event)") %}
+    {% call form.form(id="employeeModifyForm", enctype="application/x-www-form-urlencoded", on_submit="return modifyEmployee(event)") %}
     {# Upper Banner #}
     <div class="employee-header-container">
         <img src="https://lh3.googleusercontent.com/a/ACg8ocIFWxfBHZU5Y3qDnjJRqgXQ0FjSX9ifeepF6wQfFBAY45riEExX=s96-c"
@@ -115,12 +117,14 @@
                         name="last_name",
                         label="Last Name",
                         required=true,
+                        initial_val=employee.last_name,
                         class="employee-modify-form-row"
                     ) }}
                     {{ form.text_input( 
                         name="first_name",
                         label="First Name",
                         required=true,
+                        initial_val=employee.first_name,
                         class="employee-modify-form-row"
                     ) }}
                     {{ form.select_input( 
@@ -128,6 +132,7 @@
                         label="Pronouns",
                         options=employee_pronouns,
                         required=false,
+                        initial_val=employee.pronouns,
                         class="employee-modify-form-row form-row-shrink"
                     ) }}
                 </div>
@@ -137,6 +142,7 @@
 
     {# Row 2 #}
     <div class="row-container">
+        {# Left Column #}
         <div class="column-container" style="flex: 0 auto;">
             {# Contact Information #}
             <div class="inner-container" style="padding: 0.75rem;">
@@ -158,6 +164,7 @@
                                 name="imc_email",
                                 label="IMC Email Address",
                                 required=true,
+                                initial_val=employee.imc_email,
                                 placeholder="NetID@illinimedia.com",
                                 pattern=".*@illinimedia\.com$",
                                 class="employee-modify-form-row"
@@ -176,6 +183,7 @@
                                 name="personal_email",
                                 label="Personal Email Address",
                                 required=true,
+                                initial_val=employee.personal_email,
                                 alt_type="email",
                                 class="employee-modify-form-row"
                             ) }}
@@ -194,6 +202,7 @@
                                 label="Personal Phone Number",
                                 placeholder="+# (###) ### - ####",
                                 required=true,
+                                initial_val=employee.phone_number,
                                 alt_type="tel",
                                 pattern="^(\+\d{1,3}\s)?\(\d{3}\)\s\d{3}\s-\s\d{4}$",
                                 class="employee-modify-form-row"
@@ -228,6 +237,7 @@
                                     name="permanent_address_1",
                                     label="Address Line 1",
                                     required=true,
+                                    initial_val=employee.permanent_address_1,
                                     class="employee-modify-form-row"
                                 ) }}
 
@@ -235,6 +245,7 @@
                                     name="permanent_address_2",
                                     label="Address Line 2",
                                     required=false,
+                                    initial_val=employee.permanent_address_2,
                                     class="employee-modify-form-row"
                                 ) }}
                             </div>
@@ -243,6 +254,7 @@
                                     name="permanent_city",
                                     label="City",
                                     required=true,
+                                    initial_val=employee.permanent_city,
                                     class="employee-modify-form-row"
                                 ) }}
 
@@ -251,6 +263,7 @@
                                     label="State",
                                     maxlength=2,
                                     required=true,
+                                    initial_val=employee.permanent_state,
                                     class="employee-modify-form-row"
                                 ) }}
 
@@ -260,6 +273,7 @@
                                     pattern="[0-9]{5}",
                                     maxlength=5,
                                     required=true,
+                                    initial_val=employee.permanent_zip,
                                     class="employee-modify-form-row"
                                 ) }}
                             </div>
@@ -280,6 +294,7 @@
                                 label="Date of Birth",
                                 alt_type="date",
                                 required=false,
+                                initial_val=employee.birth_date,
                                 class="employee-modify-form-row"
                             ) }}
                         </div>
@@ -318,18 +333,21 @@
                                     name="major",
                                     label="Major",
                                     required=false,
+                                    initial_val=employee.major,
                                     class="employee-modify-form-row"
                                 ) }}
                                 {{ form.text_input( 
                                     name="major_2",
                                     label="Major 2 (Optional)",
                                     required=false,
+                                    initial_val=employee.major_2,
                                     class="employee-modify-form-row"
                                 ) }}
                                 {{ form.text_input( 
                                     name="major_3",
                                     label="Major 3 (Optional)",
                                     required=false,
+                                    initial_val=employee.major_3,
                                     class="employee-modify-form-row"
                                 ) }}
                             </div>
@@ -358,18 +376,21 @@
                                     name="minor",
                                     label="Minor",
                                     required=false,
+                                    initial_val=employee.minor,
                                     class="employee-modify-form-row"
                                 ) }}
                                 {{ form.text_input( 
                                     name="minor_2",
                                     label="Minor 2 (Optional)",
                                     required=false,
+                                    initial_val=employee.minor_2,
                                     class="employee-modify-form-row"
                                 ) }}
                                 {{ form.text_input( 
                                     name="minor_3",
                                     label="Minor 3 (Optional)",
                                     required=false,
+                                    initial_val=employee.minor_3,
                                     class="employee-modify-form-row"
                                 ) }}
                             </div>
@@ -390,6 +411,7 @@
                                 label="Graduation Term",
                                 options=employee_grad_years,
                                 required=false,
+                                initial_val=employee.graduation,
                                 class="employee-modify-form-row"
                             ) }}
                         </div>
@@ -423,6 +445,7 @@
                             label="Initial Hire Date",
                             alt_type="date",
                             required=false,
+                            initial_val=employee.initial_hire_date,
                             class="employee-modify-form-row"
                         ) }}
                     </div>
@@ -451,6 +474,7 @@
                                 name="payroll_number",
                                 label="Payroll Number",
                                 required=false,
+                                initial_val=employee.payroll_number,
                                 class="employee-modify-form-row"
                             ) }}
                         </div>
@@ -470,6 +494,7 @@
                                 label="Employment Status",
                                 options=employee_statuses,
                                 required=true,
+                                initial_val=employee.status,
                                 class="employee-modify-form-row"
                             ) }}
                         </div>
@@ -501,7 +526,7 @@
                 </div>
             </div>
 
-            {# #}
+            {# Buttons #}
             <div style="text-align: center;">
                 <button id="modify-button" onclick="showModify()" type="button" class="button-primary">
                     <i class="bi bi-pen"></i>&nbsp;&nbsp;Modify
@@ -514,8 +539,11 @@
 
         </div>
 
-        <div class="inner-container" style="padding: 0.75rem;">
+        {# Right Column #}
+        <div class="column-container" style="flex: 1 auto;">
+            <div class="inner-container">
 
+            </div>
         </div>
     </div>
     {% endcall %}
@@ -569,6 +597,57 @@
         initial_hide.forEach(elem => {
             elem.style.display = "none";
         });
+    }
+
+    async function modifyEmployee(event) {
+        event.preventDefault();
+        console.log("Saving...");
+
+        showLoading("Modifying Employee...");
+
+        const formData = new FormData(event.target);
+
+        const formEntries = Object.fromEntries(
+            Array.from(formData.entries()).filter(([key, value]) => value !== "")
+        );
+
+        // Send the data to the backend endpoint
+        let endpoint = "/ems/api/employee/{{ employee.uid }}/modify";
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+            ...formEntries,
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        // Check if it was successful
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", "Employee successfully modified."); // Safe so we can display after reload
+            window.location.reload();
+        } else {
+            // Alert of the error
+            console.log("Modifying the employee failed!");
+
+            try {
+                const data = await response.json();
+                const message = data.error || "An unknown error occurred.";
+
+                console.error(message);
+                hideLoading();
+                await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            } catch (err) {
+                const fallback = await response.text();
+                hideLoading();
+                await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+            }
+        }
     }
 </script>
 
