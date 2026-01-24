@@ -39,6 +39,21 @@
     font-style: normal;
     width: 100%;
 }
+
+input[type="date"].text-input {
+    -webkit-appearance: none;
+    appearance: none;
+
+    background-color: var(--main-bg-color);
+    color: inherit;
+
+    padding: 0.25rem 0.5rem;
+    min-height: 1.5rem;
+
+    font-family: inherit;
+    font-size: 1rem;
+}
+
 /* ——————————————————————————————————————————————— */
 
 /* Radio input field */
