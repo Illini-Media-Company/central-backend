@@ -55,6 +55,7 @@
         td {
             padding: 0.75rem 1rem;
             background-color: var(--main-bg-color);
+            font-weight: 300;
         }
 
         td:first-child {
@@ -139,14 +140,20 @@
             display: flex;
             width: fit-content;
             gap: 0.5rem;
+            align-items: center;
         }
 
         .filter-button:hover {
             background-color: var(--main-md-gray-color);
         }
 
+        #filter-button-icon {
+            height: 1rem;
+            width: 1rem;
+        }
+
         .filter-button.expanded {
-            padding: 0.1rem 0.35rem 0 0.35rem;
+            padding: 0 0.35rem;
         }
 
         .filter-options-container {
@@ -228,11 +235,10 @@
 {% endblock %}
 
 {% import "macros/form.html" as form %}
-
-{% block ems_content %}
-
 {% include "partials/loading.html" %}
 {% include "partials/info_bar.html" %}
+
+{% block ems_content %}
 
 <h2>Employees</h2>
 
@@ -269,7 +275,7 @@
                 <div class="filter-dropdown" id="filterDropdown">
                     <div>
                         <button class="filter-button" title="Filter" id="filterButton">
-                            <i class="bi bi-filter-circle"></i>Filters
+                            <i class="bi bi-filter-circle" id="filter-button-icon"></i>Filters
                         </button>
                     </div>
                     <div class="filter-options-container" id="filterOptions">
@@ -419,7 +425,7 @@
 
     // Pagination global state
     let currentPage = 1;
-    var rowsPerPage = 1;
+    var rowsPerPage = 25;
 
     let filteredEmployees = [...allEmployees];
     let searchTimeout;
@@ -488,7 +494,7 @@
                         '<i class="bi bi-x-circle" style="color: var(--red-500);"></i>' 
                     }
                 </td>
-                <td>
+                <td style="text-align: center;">
                     <a href="/ems/employee/view/${emp.uid}">
                         <button class="button-primary" title="View/Edit Employee"><i class="bi bi-person-badge"></i></button>
                     </a>

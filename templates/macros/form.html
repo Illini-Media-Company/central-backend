@@ -29,7 +29,7 @@ ID. To access a field within a form, access the form, then append:
 where xyz should be replaced with the name of the field.
 
 Created by Jacob Slabosz on Oct. 2, 2025
-Last modified Oct. 2, 2025 
+Last modified Jan. 23, 2026
 #}
 
 {# Macro to make a form (Jinja) #}
@@ -37,6 +37,30 @@ Last modified Oct. 2, 2025
     <form class="form {{ class }}" id="{{ id }}" enctype="{{ enctype }}" onsubmit="{{ on_submit }}">
         {{ caller() }}
     </form>
+{% endmacro %}
+
+{#
+
+#}
+{% macro switch_input(name, label, class, subtext) %}
+    <div class="form-row {{ class }}" id="formfield-{{ name }}">
+        <div>
+            <label for="{{ name }}" class="field-label">
+                {{ label }}
+            </label>
+            {% if subtext %}
+                <p class="subtext">{{ subtext }}</p>
+            {% endif %}
+        </div>
+        <div class="form-switch">
+            <input 
+                id="{{ name }}"
+                name="{{ name }}"
+                type="checkbox"
+            >
+            <span class="form-slider form-round"></span>
+        </div>
+    </div>
 {% endmacro %}
 
 {# 
@@ -182,7 +206,9 @@ no_default is a boolean. When true, will not display "Select..."
     </div>
 {% endmacro %}
 
-{# NOT COMPLETE #}
+{# 
+NOT COMPLETE 
+#}
 {% macro multiple_select_input(name, label, required, class, subtext, options, no_default, initial_vals) %}
     {% set selected_list = initial_vals if initial_vals is iterable and initial_vals is not string else [] %}
     <div class="form-row {{ class }}" id="formfield-{{ name }}">
@@ -222,6 +248,9 @@ no_default is a boolean. When true, will not display "Select..."
     </div>
 {% endmacro %}
 
+{#
+
+#}
 {% macro textarea_input(name, label, required, class, placeholder, subtext, maxlength, initial_val) %}
     <div class="form-row {{ class }}" id="formfield-{{ name }}">
         <div>

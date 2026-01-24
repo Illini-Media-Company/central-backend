@@ -285,8 +285,16 @@ def ems_positions():
     """
     Renders the Employee Management System positions page.
     """
+    all_positions = get_all_position_cards()
+    for pos in all_positions:
+        pos["brand_image_url"] = get_ems_brand_image_url(pos["brand"])
+
     return render_template(
-        "employee_management/ems_positions.html", selection="positions"
+        "employee_management/ems_positions.html",
+        selection="positions",
+        selected_positions=all_positions,
+        imc_brands_choices=IMC_BRANDS,
+        pay_types_choices=PAY_TYPES,
     )
 
 

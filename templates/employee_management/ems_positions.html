@@ -1,29 +1,688 @@
 {% extends 'employee_management/ems_base.html' %}
 
-{% block ems_extra_head %}
+{% macro filter_text_input(name, label, class, placeholder, alt_type, maxlength, pattern) %}
+    <div class="form-row {{ class }}" id="formfield-{{ name }}" title="{{ label }}">
+        <div>
+            <label for="{{ name }}" class="field-label">
+                {{ label }}
+            </label>
+        </div>
+        <input 
+            {% if alt_type %}
+                type    = "{{ alt_type }}"
+            {% else %}
+                type    = "text"
+            {% endif %}
+            id      = "{{ name }}" 
+            class   = "text-input" 
+            name    = "{{ name }}"
 
+            {% if maxlength %}
+                maxlength = "{{ maxlength }}"
+            {% endif %}
+
+            {% if pattern %}
+                pattern = "{{ pattern }}"
+            {% endif %}
+
+            {% if placeholder %}
+                placeholder = "{{ placeholder }}"
+            {% endif %}
+        >
+    </div>
+{% endmacro %}
+
+{% block ems_extra_head %}
+    <link rel="stylesheet" href="/static/macros/form.css">
+
+    <style>
+        table {
+            border-collapse: separate;
+            border-spacing: 0 0.5rem;
+            width: 100%;
+            background-color: var(--main-bg-color);
+            border-radius: var(--main-border-radius);
+        }
+
+        tr {
+            border-radius: var(--main-border-radius);
+        }
+
+        tr:hover td {
+            background-color: var(--main-extralight-color);
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            background-color: var(--main-bg-color);
+            font-weight: 300;
+        }
+
+        td:first-child {
+            border-top-left-radius: var(--main-border-radius);
+            border-bottom-left-radius: var(--main-border-radius);
+        }
+
+        td:last-child {
+            border-top-right-radius: var(--main-border-radius);
+            border-bottom-right-radius: var(--main-border-radius);
+        }
+
+        th {
+            padding: 0.75rem 1rem;
+            white-space: nowrap;
+            border-bottom: 1px solid var(--main-lt-gray-color);
+            align-items: center;
+        }
+
+        .controls-container {
+            display: flex; 
+            flex-direction: row; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 0.25rem; 
+            gap: 0.5rem;
+            position: relative;
+        }
+
+        .controls-inner-container {
+            display: flex; 
+            flex-direction: row; 
+            gap: 0.5rem;
+        }
+
+        .search-bar-container {
+            display: flex; 
+            flex-direction: row; 
+            align-items: center;
+        }
+
+        .text-input {
+            border-radius: calc(var(--main-border-radius) + 0.5rem);
+        }
+
+        .filter-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .filter-dropdown {
+            background-color: var(--main-bg-color);
+            border-radius: calc(var(--main-border-radius) + 0.5rem);
+            border: 1px solid var(--main-md-gray-color);
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+
+            position: absolute;
+            top: 0;
+            left: 100%;
+            z-index: 100;
+        }
+
+        .filter-dropdown.expanded {
+            box-shadow: var(--main-box-shadow);
+            padding: 0.5rem;
+        }
+
+        .filter-dropdown.filtering {
+            border: 1px solid var(--main-accent-color);
+        }
+
+        .filter-button {
+            border: none;
+            background-color: inherit;
+            color: inherit;
+            padding: 0.25rem 1rem 0.25rem 0.5rem;
+            border-radius: var(--main-border-radius);
+
+            display: flex;
+            width: fit-content;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .filter-button:hover {
+            background-color: var(--main-md-gray-color);
+        }
+
+        #filter-button-icon {
+            height: 1rem;
+            width: 1rem;
+        }
+
+        .filter-button.expanded {
+            padding: 0 0.35rem;
+        }
+
+        .filter-options-container {
+            display: none;
+        }
+
+        .filter-options-container.expanded {
+            display: block;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            grid-column-gap: 0.5rem;
+            grid-row-gap: 0.5rem;
+        }
+
+        .filter-item {
+            flex-direction: column;
+            align-items: flex-start;
+            flex: 1 1 10rem;
+            gap: 0.25rem;
+        }
+
+        .field-label {
+            font-size: 0.75rem;
+        }
+
+        .brand-photo {
+            height: 2.5rem;
+            width: 2.5rem;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 0.1rem solid var(--main-lt-gray-color);
+        }
+
+        .row-small-text {
+            font-size: 0.75rem;
+        }
+
+        .pagination-container {
+            display: flex; 
+            flex-direction: row; 
+            justify-content: space-between; 
+            align-items: baseline;
+        }
+
+        .pagination-button {
+            width: 10%;
+        }
+
+        @media (max-width: 480px) {
+            .controls-container {
+                flex-direction: column;
+                align-items: baseline;
+            }
+            
+            .controls-inner-container {
+                flex-direction: row;
+            }
+
+            #table-title-header {
+                flex-direction: column;
+                gap: 0.5rem;
+                align-items: baseline;
+
+            }
+
+            .filter-grid {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto;
+            }
+        }
+    </style>
+
+    {# Variables passed into Jinja #}
+    <meta id="position-selection-data" data-positions='{{ selected_positions | tojson }}'>
 {% endblock %}
 
 {% import "macros/form.html" as form %}
-
-{% block ems_content %}
-
 {% include "partials/loading.html" %}
 {% include "partials/info_bar.html" %}
+
+{% block ems_content %}
 
 <h2>Positions</h2>
 
 <hr>
 
+<section class="section-container" id="positions-container">
+    <div class="section-header" id="table-title-header">
+        <div style="display: flex; flex-direction: row; gap: 1rem; align-items: center;">
+            <h2 style="margin-bottom: 0">All Employees</h2>
+            <h4 style="margin-bottom: 0" id="numPositions"></h4>
+        </div>
+
+        <a href="/ems/position/add">
+            <button class="button-primary">
+                Add Position
+            </button>
+        </a>
+    </div>
+
+    {# Controls (Search, Filter) #}
+    <div class="controls-container">
+        <div class="controls-inner-container">
+            {# Search Bar #}
+            <div class="search-bar-container" id="querySearchBar">
+                <i class="bi bi-search"></i>
+                {{ form.text_input( 
+                    name="searchQuery",
+                    placeholder="Search...",
+                    class=""
+                ) }}
+            </div>
+            {# Filter #}
+            <div class="filter-container">
+                <div class="filter-dropdown" id="filterDropdown">
+                    <div>
+                        <button class="filter-button" title="Filter" id="filterButton">
+                            <i class="bi bi-filter-circle" id="filter-button-icon"></i>Filters
+                        </button>
+                    </div>
+                    <div class="filter-options-container" id="filterOptions">
+                        <hr style="margin-bottom: 0.25rem; margin-top: 0;">
+                        {# Filter Options #}
+                        <div class="filter-grid">
+                            {# Pay Rate Above #}
+                            {{ filter_text_input( 
+                                name="filter_pay_rate_above",
+                                label="Pay Rate Above",
+                                alt_type="number",
+                                class="filter-item"
+                            ) }}
+
+                            {# Pay Rate Below #}
+                            {{ filter_text_input( 
+                                name="filter_pay_rate_below",
+                                label="Pay Rate Below",
+                                alt_type="number",
+                                class="filter-item"
+                            ) }}
+
+                            {# Pay Status #}
+                            {{ form.select_input( 
+                                name="filter_pay_status",
+                                label="Pay Status",
+                                options=pay_types_choices,
+                                class="filter-item"
+                            ) }}
+
+                            {# Brand #}
+                            {{ form.select_input( 
+                                name="filter_brand",
+                                label="Brand",
+                                options=imc_brands_choices,
+                                class="filter-item"
+                            ) }}
+
+                            {# Show Archived #}
+                            {{ form.switch_input(
+                                name="filter_archived",
+                                label="Show Archived",
+                                class="filter-item"
+                            ) }}
+                        </div>
+                        <hr>
+                        <div style="text-align: center;">
+                            <button class="button-secondary" onclick="clearAllFilters()">
+                                Clear Filters
+                            </button>
+                            <button class="button-primary" onclick="applyFilters()">
+                                Apply Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Results per Page #}
+        {{ form.select_input( 
+            name="num_results",
+            label="Results per Page",
+            options=[25, 50, 100],
+            required=false,
+            class=""
+        ) }}
+    </div>
+
+    {# Table #}
+    <div style="overflow-x: auto; max-width: 100%; border-radius: var(--main-border-radius);">
+        <table id="positionTable">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th onclick="handleSort(this, 'title')">
+                        <span><i class="bi bi-caret-up"></i></span> 
+                        Title
+                    </th>
+                    <th onclick="handleSort(this, 'pay_status')">
+                        <span><i class="bi bi-caret-up"></i></span>
+                        Pay Status
+                    </th>
+                    <th onclick="handleSort(this, 'pay_rate')">
+                        <span><i class="bi bi-caret-up"></i></span>
+                        Pay Rate
+                    </th>
+                    <th onclick="handleSort(this, 'archived')">
+                        <span><i class="bi bi-caret-up"></i></span> 
+                        Active?
+                    </th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+
+            <tbody id="positionTableBody">
+                {# Initially empty, loaded client-side #}
+            </tbody>
+        </table>
+    </div>
+    <div id="pagination-container" class="pagination-container">
+    </div>
+</section>
+
 <script src="../static/js_libraries/ap_style.js"></script>
 <script>
+    const metaElement = document.querySelector('#position-selection-data');
+    const rawData = metaElement.dataset.positions;
+    const allPositions = JSON.parse(rawData);
+
+    // Pagination global state
+    let currentPage = 1;
+    var rowsPerPage = 25;
+
+    let filteredPositions = [...allPositions];
+    let searchTimeout;
+    const SEARCH_TIMEOUT_VAL = 300;
+
+    // Sorting global state
+    let currentSortCol = '';
+    let isAsc = true;
+    let filtersApplied = false;
+
+    // Filter panel expanded
+    let filterExpanded = false;
+
+    // Render the table rows
+    function renderTable(page) {
+        showLoading("Loading...");
+
+        const tbody = document.getElementById("positionTableBody");
+        const paginationContainer = document.getElementById("pagination-container");
+        tbody.innerHTML = "";
+
+        const start = (currentPage - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+        const pageData = filteredPositions.slice(start, end);
+
+        pageData.forEach(pos => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>
+                    <img 
+                        src="${pos.brand_image_url}"
+                        class="brand-photo"
+                    >
+                </td>
+                <td>
+                    ${pos.title}
+                    <br>
+                    (${pos.brand})
+                </td>
+                <td>
+                    ${pos.pay_status}
+                </td>
+                <td>
+                    $${(pos.pay_rate).toFixed(2)}
+                </td>
+                <td>
+                    ${pos.archived ? 
+                        '<i class="bi bi-x-circle" style="color: var(--red-500);" title="Archived"></i>' :
+                        '<i class="bi bi-check-circle" style="color: var(--green-500);" title="Active"></i>'
+                         
+                    }
+                </td>
+                <td>
+                    <a href="/ems/position/view/${pos.uid}">
+                        <button class="button-primary" title="View/Edit Position"><i class="bi bi-briefcase"></i></button>
+                    </a>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        const totalPages = Math.ceil(filteredPositions.length / rowsPerPage);
+
+        paginationContainer.innerHTML = `
+            <div class="pagination-button">
+                ${currentPage > 1 ? `
+                    <button class="button-bg-color" onclick="changePage(${currentPage - 1})" style="padding-left: 0.75rem;">
+                        <i class="bi bi-arrow-left-short"></i>&nbsp;Prev.
+                    </button>
+                ` : ''}
+            </div>
+
+            <p style="margin-bottom: 0;">
+                Page ${currentPage} of ${totalPages}
+            </p>
+
+            <div class="pagination-button" style="text-align: right;">
+                ${currentPage < totalPages ? `
+                    <button class="button-bg-color" onclick="changePage(${currentPage + 1})" style="padding-right: 0.75rem;">
+                        Next&nbsp;<i class="bi bi-arrow-right-short"></i>
+                    </button>
+                ` : ''}
+            </div>
+        `
+        
+        const numPositions = document.getElementById("numPositions");
+        numPositions.innerHTML = `(${filteredPositions.length} of ${allPositions.length})`
+
+        hideLoading();
+    }
+
+    function changePage(newPage) {
+        currentPage = newPage;
+        renderTable();
+        document.getElementById("positionTable").scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Sort by a specific column
+    function sortData(columnKey, asc) {
+        filteredPositions.sort((a, b) => {
+            let valA = a[columnKey] || "";
+            let valB = b[columnKey] || "";
+
+            if (columnKey === 'title') {
+                valA = (a.brand + a.title).toLowerCase();
+                valB = (b.brand + b.title).toLowerCase();
+            }
+
+            if (columnKey === 'archived') {
+                valA = valA ? true : false;
+                valB = valB ? true : false;
+            }
+
+            let cmp = 0;
+            if (valA < valB) cmp = -1;
+            if (valA > valB) cmp = 1;
+
+            return asc ? cmp : -cmp;
+        });
+
+        renderTable();
+    }
+
+    // Handle sorting
+    function handleSort(headerElement, columnKey) {
+        // Toggle direction
+        if (currentSortCol === columnKey) {
+            isAsc = !isAsc;
+        } else {
+            currentSortCol = columnKey;
+            isAsc = true;
+        }
+
+        // Update icons
+        document.querySelectorAll('th i').forEach(i => i.className = "bi bi-caret-up");
+        const icon = headerElement.querySelector('i');
+        icon.className = isAsc ? "bi bi-caret-up-fill" : "bi bi-caret-down-fill";
+
+        sortData(columnKey, isAsc);
+    }
+
+    // Initial render on load
     window.addEventListener('load', () => {
+        showLoading("Loading...");
+
         const msg = sessionStorage.getItem("infoBarMessage");
         if (msg) {
             showInfoBar(msg);
             sessionStorage.removeItem("infoBarMessage"); // Clear it after showing
         }
+        
+        // Event listener to expand the filter panel
+        const filterButton = document.getElementById("filterButton");
+        filterButton.addEventListener("click", () => {
+            filterExpanded = !filterExpanded;
+
+            const filterDropdown = document.getElementById("filterDropdown");
+            const filterOptions = document.getElementById("filterOptions");
+
+            filterDropdown.classList.toggle('expanded');
+            filterOptions.classList.toggle('expanded');
+            filterButton.classList.toggle('expanded');
+        });
+
+        // Remove the "Select..." option created by macro, set first option as selected
+        const resultsSelect = document.getElementById("num_results");
+        if (resultsSelect) {
+            resultsSelect.remove(0);
+            resultsSelect.selectedIndex = 0;
+            rowsPerPage = parseInt(resultsSelect.value);
+        }
+        
+        // Event listener to update the rows per page
+        resultsSelect.addEventListener("change", () => {
+            rowsPerPage = parseInt(resultsSelect.value);
+            currentPage = 1;
+            renderTable();
+        });
+
+        // Handle searching
+        const searchInput = document.getElementById("searchQuery");
+        searchInput.addEventListener("input", () => {
+            clearTimeout(searchTimeout);
+
+            searchTimeout = setTimeout(updateData, SEARCH_TIMEOUT_VAL);
+        });
+
+        renderTable();
+        hideLoading();
     });
+
+    function closeFilterPanel() {
+        if (!filterExpanded) return;
+
+        filterExpanded = !filterExpanded;
+
+        const filterDropdown = document.getElementById("filterDropdown");
+        const filterOptions = document.getElementById("filterOptions");
+
+        filterDropdown.classList.remove('expanded');
+        filterOptions.classList.remove('expanded');
+        filterButton.classList.remove('expanded');
+    }
+
+    // Button to clear all filters
+    function clearAllFilters() {
+        const container = document.getElementById("filterOptions");
+        
+        // Clear text inputs
+        const inputs = container.querySelectorAll("input");
+        inputs.forEach(input => input.value = "");
+
+        // Reset select dropdowns
+        const selects = container.querySelectorAll("select");
+        selects.forEach(select => {
+            select.selectedIndex = 0;
+        });
+
+        filteredPositions = [...allPositions];
+        
+        updateData();
+        closeFilterPanel();
+    }
+
+    // Change a date to the form YYYY/MM/DD
+    //function simplifyDate(input) {
+    //    if (!input) {
+    //        return null;
+    //    }
+    //    const date = new Date(input);
+    //    return date.toISOString().split('T')[0].replace(/-/g, '/');
+    //}
+
+    // Handles search and filter
+    function updateData() {
+        showLoading("Searching...");
+        const searchInput = document.getElementById("searchQuery");
+        const query = searchInput.value.toLowerCase().trim();
+        const payAbove = document.getElementById("filter_pay_rate_above").value;
+        const payBelow = document.getElementById("filter_pay_rate_below").value;
+        const payStatus = document.getElementById("filter_pay_status").value;
+        const brand = document.getElementById("filter_brand").value;
+        const archived = document.getElementById("filter_archived").checked;
+
+        const filterDropdown = document.getElementById("filterDropdown");
+        if (!payAbove && !payBelow && !payStatus && !brand && !archived) {
+            filtersApplied = false;
+            filterDropdown.classList.remove("filtering");
+        } else {
+            filtersApplied = true;
+            filterDropdown.classList.add("filtering");
+        }
+
+        filteredPositions = allPositions.filter(pos => {
+            // SEARCHING
+            if (query) {
+                const matchesSearch = (
+                    (pos.title && pos.title.toLowerCase().includes(query)) ||
+                    (pos.brand && pos.brand.toLowerCase().includes(query)) ||
+                    (pos.pay_status && pos.pay_status.toLowerCase().includes(query)) ||
+                    (pos.pay_rate && pos.pay_rate.toString().toLowerCase().includes(query))
+                );
+
+                if (!matchesSearch) return false;
+            }
+
+            // FILTERING
+            if (filtersApplied) {
+                // Convert numbers
+                const posPayRate = pos.pay_rate ? parseFloat(pos.pay_rate) : null;
+                const limitPayAbove = payAbove ? parseFloat(pos.payAbove) : null;
+                const limitPayBelow = payBelow ? parseFloat(pos.payBelow) : null;
+
+                // Check numbers
+                if (limitPayBelow && posPayRate < limitPayBelow) return false;
+                if (limitPayAbove && posPayRate > limitPayAbove) return false;
+
+                // Check Status
+                if (payStatus && (!pos.pay_status || pos.pay_status.toLowerCase() !== payStatus.toLowerCase())) return false;
+                if (brand && (!pos.brand || pos.brand.toLowerCase() !== brand.toLowerCase())) return false;
+            }
+
+            return true;
+        });
+        currentPage = 1;
+        renderTable();
+        hideLoading();
+    }
+
+    // Executed when "Apply Filters" button clicked 
+    function applyFilters() {
+        updateData();
+        closeFilterPanel();
+    }
 </script>
 
 {% endblock %}
