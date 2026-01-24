@@ -23,6 +23,8 @@ from db.employee_management import (
     get_all_position_cards,
     get_position_card_by_id,
     delete_position_card,
+    archive_position_card,
+    restore_position_card,
 )
 
 from constants import (
@@ -283,7 +285,9 @@ def ems_positions():
     """
     Renders the Employee Management System positions page.
     """
-    return render_template("employee_management/ems_base.html", selection="positions")
+    return render_template(
+        "employee_management/ems_positions.html", selection="positions"
+    )
 
 
 # TEMPLATE
@@ -514,6 +518,56 @@ def ems_api_position_delete(uid):
     if not deleted:
         return jsonify({"error": "Position not found."}), 400
     return jsonify({"message": "Position deleted successfully."}), 200
+
+
+# API
+@ems_routes.route("/api/position/<int:uid>/archive", methods=["POST"])
+@login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+def ems_api_position_archive(uid):
+    """
+    API endpoint to archive a position.
+
+    Args:
+        uid (int): The unique ID of the position to archive.
+
+    Returns:
+        (json, int): A tuple containing a JSON response and HTTP status code.
+    """
+    archived = archive_position_card(uid)
+    if archived == None:
+        return (
+            jsonify({"error": "An error occurred while archiving the position."}),
+            500,
+        )
+    if not archived:
+        return jsonify({"error": "Position not found."}), 400
+    return jsonify({"message": "Position archived successfully."}), 200
+
+
+# API
+@ems_routes.route("/api/position/<int:uid>/restore", methods=["POST"])
+@login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+def ems_api_position_restore(uid):
+    """
+    API endpoint to restore an archived position.
+
+    Args:
+        uid (int): The unique ID of the position to restore.
+
+    Returns:
+        (json, int): A tuple containing a JSON response and HTTP status code.
+    """
+    restored = restore_position_card(uid)
+    if restored == None:
+        return (
+            jsonify({"error": "An error occurred while restoring the position."}),
+            500,
+        )
+    if not restored:
+        return jsonify({"error": "Position not found."}), 400
+    return jsonify({"message": "Position restored successfully."}), 200
 
 
 ################################################################################

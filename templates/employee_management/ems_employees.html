@@ -84,6 +84,18 @@
             position: relative;
         }
 
+        .controls-inner-container {
+            display: flex; 
+            flex-direction: row; 
+            gap: 0.5rem;
+        }
+
+        .search-bar-container {
+            display: flex; 
+            flex-direction: row; 
+            align-items: center;
+        }
+
         .text-input {
             border-radius: calc(var(--main-border-radius) + 0.5rem);
         }
@@ -120,6 +132,7 @@
         .filter-button {
             border: none;
             background-color: inherit;
+            color: inherit;
             padding: 0.25rem 1rem 0.25rem 0.5rem;
             border-radius: var(--main-border-radius);
 
@@ -185,6 +198,29 @@
         .pagination-button {
             width: 10%;
         }
+
+        @media (max-width: 480px) {
+            .controls-container {
+                flex-direction: column;
+                align-items: baseline;
+            }
+            
+            .controls-inner-container {
+                flex-direction: row;
+            }
+
+            #table-title-header {
+                flex-direction: column;
+                gap: 0.5rem;
+                align-items: baseline;
+
+            }
+
+            .filter-grid {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto;
+            }
+        }
     </style>
 
     {# Variables passed into Jinja #}
@@ -196,13 +232,14 @@
 {% block ems_content %}
 
 {% include "partials/loading.html" %}
+{% include "partials/info_bar.html" %}
 
 <h2>Employees</h2>
 
 <hr>
 
 <section class="section-container" id="employees-container">
-    <div class="section-header">
+    <div class="section-header" id="table-title-header">
         <div style="display: flex; flex-direction: row; gap: 1rem; align-items: center;">
             <h2 style="margin-bottom: 0">All Employees</h2>
             <h3 style="margin-bottom: 0" id="numEmployees"></h3>
@@ -217,8 +254,9 @@
 
     {# Controls (Search, Filter) #}
     <div class="controls-container">
-        <div style="display: flex; flex-direction: row; gap: 0.5rem;">
-            <div style="display: flex; flex-direction: row; align-items: center;" id="querySearchBar">
+        <div class="controls-inner-container">
+            {# Search Bar #}
+            <div class="search-bar-container" id="querySearchBar">
                 <i class="bi bi-search"></i>
                 {{ form.text_input( 
                     name="searchQuery",
@@ -226,6 +264,7 @@
                     class=""
                 ) }}
             </div>
+            {# Filter #}
             <div class="filter-container">
                 <div class="filter-dropdown" id="filterDropdown">
                     <div>
@@ -299,6 +338,7 @@
             </div>
         </div>
 
+        {# Results per Page #}
         {{ form.select_input( 
             name="num_results",
             label="Results per Page",
@@ -546,6 +586,12 @@
     window.addEventListener('load', () => {
         showLoading("Loading...");
 
+        const msg = sessionStorage.getItem("infoBarMessage");
+        if (msg) {
+            showInfoBar(msg);
+            sessionStorage.removeItem("infoBarMessage"); // Clear it after showing
+        }
+        
         // Event listener to expand the filter panel
         const filterButton = document.getElementById("filterButton");
         filterButton.addEventListener("click", () => {

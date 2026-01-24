@@ -51,8 +51,7 @@
 
         .position-photo {
             border-radius: var(--main-border-radius); 
-            max-width: 25%; 
-            max-height: 25%;
+            aspect-ratio: 1 / 1;
         }
 
         .form-initial-show {
@@ -137,6 +136,7 @@
             padding: 0;
             border: none;
             background-color: inherit;
+            color: inherit;
         }
 
         .supervisor-input-container {
@@ -147,6 +147,18 @@
             margin-top: 0.5rem;
         }
 
+        .delete-button-container {
+            width: fit-content;
+            align-content: center;
+            align-items: center;
+            text-align: center;
+
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            height: 100%;
+        }
+
         @media (max-width: 480px) {
             .position-header-container {
                 flex-direction: column;
@@ -154,6 +166,12 @@
 
             .sup-report-container {
                 grid-template-columns: 1fr;
+            }
+
+            .delete-button-container {
+                width: auto;
+                flex-direction: row;
+                justify-content: center;
             }
         }
 
@@ -168,9 +186,11 @@
 {% import "macros/form.html" as form %}
 {% include "partials/loading.html" %}
 {% include "partials/text_alert.html" %}
+{% include "partials/button_alert.html" %}
 {% include "partials/info_bar.html" %}
 
 {% block ems_content %}
+{# Header #}
 <div style="display: flex; flex-direction: row; gap: 2rem; align-items: center;">
     <a href="/ems/positions" style="color: inherit; font-size: 2rem;">
         <i class="bi bi-arrow-left"></i>
@@ -184,12 +204,38 @@
     {% call form.form(id="positionModifyForm", enctype="application/x-www-form-urlencoded", on_submit="return modifyPosition(event)") %}
         {# Upper Banner #}
         <div class="position-header-container">
-            <img src="{{ position.brand | get_ems_brand_image_url }}"
-                class="position-photo"
-            >
+            {# Image #}
+            <div class="form-initial-show">
+                <img src="{{ position.brand | get_ems_brand_image_url }}"
+                    class="position-photo"
+                >
+            </div>
+            {# Archive/Delete Buttons #}
+            <div class="form-initial-hide">
+                <div class="inner-container delete-button-container">
+                    {% if position.archived %}
+                        <button class="button-primary" type="button" onclick="restorePosition()" style="width: fit-content;">
+                            <i class="bi bi-folder-plus"></i>&nbsp; Restore
+                        </button>
+                    {% else %}
+                        <button class="button-primary" type="button" onclick="archivePosition()" style="width: fit-content;">
+                            <i class="bi bi-archive"></i>&nbsp; Archive
+                        </button>
+                    {% endif %}
+                    <button class="button-secondary" type="button" onclick="deletePosition()" style="text-wrap: nowrap; width: fit-content;">
+                        <i class="bi bi-exclamation-triangle"></i>&nbsp; Permanently Delete
+                    </button>
+                </div>
+            </div>
+            {# Title & Brand #}
             <div class="inner-container" style="padding: 0.75rem;">
                 <div class="form-initial-show">
-                    <h2 style="margin-bottom: 0;">{{ position.title }}</h2>
+                    <h2 style="margin-bottom: 0;">
+                        {{ position.title }}
+                        {% if position.archived %}
+                            <span style="color: var(--main-accent-color); font-size: 1rem;">(Archived)</span>
+                        {% endif %}
+                    </h2>
                     <P style="margin-bottom: 0;">{{ position.brand }}</P>
                 </div>
                 <div class="form-initial-hide">
@@ -354,6 +400,8 @@
                             {% endfor %}
                         </div>
                         <div class="form-initial-hide">
+                            <hr>
+                            {% if not position.archived %}
                             <div class="supervisor-input-container">
                                 {{ form.select_input( 
                                     name="supervisor",
@@ -364,11 +412,17 @@
                                     class="position-modify-form-row"
                                 ) }}
                                 <div>
-                                    <button class="button-primary" type="button" onclick="addSupervisor()">
-                                        Add
+                                    <button class="button-primary" type="button" onclick="addSupervisor()" style="padding: 0.25rem; margin-bottom: 0.313rem;">
+                                        <i class="bi bi-plus"></i>
                                     </button>
                                 </div>
                             </div>
+                            {% else %}
+                                <p style="margin: 0;">
+                                    You cannot add a new supervisor to an archived position. 
+                                    Restore the position to add a new supervisor.
+                                </p>
+                            {% endif %}
                         </div>
                     </div>
 
@@ -436,6 +490,12 @@
         if (msg) {
             showInfoBar(msg);
             sessionStorage.removeItem("infoBarMessage"); // Clear it after showing
+        }
+
+        // Fix weird styling issue
+        let sup = document.getElementById("formfield-supervisor");
+        if (sup) {
+            sup.style.flex = "0 1 auto";
         }
 
         let submit_button = document.getElementById("submit_button");
@@ -632,6 +692,161 @@
         } else {
             // Alert of the error
             console.log("Modifying the position failed!");
+
+            try {
+                const data = await response.json();
+                const message = data.error || "An unknown error occurred.";
+
+                console.error(message);
+                hideLoading();
+                await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            } catch (err) {
+                const fallback = await response.text();
+                hideLoading();
+                await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+            }
+        }
+    }
+
+    async function archivePosition() {
+        console.log("Archiving...");
+
+        result = await showButtonAlert(
+            header="Archive Position?", 
+            body="Are you sure you want to archive this position? This action is reversible if you make a mistake.", 
+            alertButtonText="Yes, archive", 
+            cancelButtonText="Cancel"
+        )
+
+        if (!result) {
+            hideLoading();
+            return;
+        }
+
+        showLoading("Modifying Position...");
+
+        // Send the data to the backend endpoint
+        let endpoint = "/ems/api/position/{{ position.uid }}/archive";
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        // Check if it was successful
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", `"{{ position.title }} ({{ position.brand }})" successfully archived.`); // Safe so we can display after reload
+            window.location.reload();
+        } else {
+            // Alert of the error
+            console.log("Archiving the position failed!");
+
+            try {
+                const data = await response.json();
+                const message = data.error || "An unknown error occurred.";
+
+                console.error(message);
+                hideLoading();
+                await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            } catch (err) {
+                const fallback = await response.text();
+                hideLoading();
+                await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+            }
+        }
+    }
+
+    async function deletePosition() {
+        console.log("Deleting...");
+
+        result = await showButtonAlert(
+            header="WARNING: Delete Position?", 
+            body="Are you sure you want to permanently delete this position? \
+            This action cannot be undone.\n\nIf the position no longer exists, \
+            archive it instead.", 
+            alertButtonText="Yes, permanently delete", 
+            cancelButtonText="Cancel"
+        )
+
+        if (!result) {
+            hideLoading();
+            return;
+        }
+
+        showLoading("Deleting Position...");
+
+        // Send the data to the backend endpoint
+        let endpoint = "/ems/api/position/{{ position.uid }}/delete";
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        // Check if it was successful
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", `"{{ position.title }} ({{ position.brand }})" successfully deleted.`); // Save so we can display after reload
+            window.location.assign("/ems/positions");
+        } else {
+            // Alert of the error
+            console.log("Archiving the position failed!");
+
+            try {
+                const data = await response.json();
+                const message = data.error || "An unknown error occurred.";
+
+                console.error(message);
+                hideLoading();
+                await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            } catch (err) {
+                const fallback = await response.text();
+                hideLoading();
+                await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+            }
+        }
+    }
+
+    async function restorePosition() {
+        console.log("Restoring...");
+
+        showLoading("Restoring Position...");
+
+        // Send the data to the backend endpoint
+        let endpoint = "/ems/api/position/{{ position.uid }}/restore";
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        // Check if it was successful
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", `"{{ position.title }} ({{ position.brand }})" successfully restored.`); // Save so we can display after reload
+            window.location.reload();
+        } else {
+            // Alert of the error
+            console.log("Restoring the position failed!");
 
             try {
                 const data = await response.json();

@@ -1,0 +1,29 @@
+{% extends 'employee_management/ems_base.html' %}
+
+{% block ems_extra_head %}
+
+{% endblock %}
+
+{% import "macros/form.html" as form %}
+
+{% block ems_content %}
+
+{% include "partials/loading.html" %}
+{% include "partials/info_bar.html" %}
+
+<h2>Positions</h2>
+
+<hr>
+
+<script src="../static/js_libraries/ap_style.js"></script>
+<script>
+    window.addEventListener('load', () => {
+        const msg = sessionStorage.getItem("infoBarMessage");
+        if (msg) {
+            showInfoBar(msg);
+            sessionStorage.removeItem("infoBarMessage"); // Clear it after showing
+        }
+    });
+</script>
+
+{% endblock %}

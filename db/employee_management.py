@@ -125,6 +125,7 @@ class PositionCard(ndb.Model):
         `pay_rate` (`float`): The amount this position is paid per hour/stipend/year
         `supervisors` (`list[int]`): UIDs of position(s) this position directly reports to
         `direct_reports` (`list[int]`): UIDs of position(s) directly report to this position
+        `archived` (`bool`): Whether this position is archived (no longer in use)
         `created_at` (`datetime`): When this position was created
         `updated_at` (`datetime`): When this position was last edited
         `updated_by` (`str`): User who last updated the employee
@@ -143,6 +144,8 @@ class PositionCard(ndb.Model):
 
     supervisors = ndb.IntegerProperty(repeated=True)
     direct_reports = ndb.IntegerProperty(repeated=True)
+
+    archived = ndb.BooleanProperty(default=False)
 
     created_at = ndb.DateTimeProperty(
         auto_now_add=True, tzinfo=ZoneInfo("America/Chicago")
@@ -361,7 +364,11 @@ def get_all_employee_cards() -> list:
         `list`: A list of all `EmployeeCard` entries as dictionaries
     """
     with client.context():
-        employees = EmployeeCard.query().fetch()
+        employees = (
+            EmployeeCard.query()
+            .order(EmployeeCard.last_name, EmployeeCard.first_name)
+            .fetch()
+        )
         return [employee.to_dict() for employee in employees]
 
 
@@ -537,7 +544,9 @@ def get_all_position_cards() -> list:
         `list`: A list of all `PositionCard` entries as dictionaries
     """
     with client.context():
-        positions = PositionCard.query().fetch()
+        positions = (
+            PositionCard.query().order(PositionCard.brand, PositionCard.title).fetch()
+        )
         return [position.to_dict() for position in positions]
 
 
@@ -594,6 +603,58 @@ def delete_position_card(uid: int) -> bool | None:
         except Exception as e:
             print(f"Error deleting PositionCard: {e}")
             return None  # Return None if deletion fails
+
+
+def archive_position_card(uid: int) -> bool | None:
+    """
+    Archives a PositionCard by its unique ID.
+
+    Arguments:
+        `uid` (`int`): The unique ID of the PositionCard to archive
+
+    Returns:
+        `bool`: `True` if archiving was successful, `False` if not found, `None` on error
+    """
+    with client.context():
+        position = PositionCard.get_by_id(uid)
+        if not position:
+            return False  # Position not found
+
+        try:
+            position.archived = True
+            position.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
+            position.updated_by = current_user.email if current_user else "system"
+            position.put()
+            return True
+        except Exception as e:
+            print(f"Error archiving PositionCard: {e}")
+            return None  # Return None if archiving fails
+
+
+def restore_position_card(uid: int) -> bool | None:
+    """
+    Restores an archived PositionCard by its unique ID.
+
+    Arguments:
+        `uid` (`int`): The unique ID of the PositionCard to restore
+
+    Returns:
+        `bool`: `True` if restoring was successful, `False` if not found, `None` on error
+    """
+    with client.context():
+        position = PositionCard.get_by_id(uid)
+        if not position:
+            return False  # Position not found
+
+        try:
+            position.archived = False
+            position.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
+            position.updated_by = current_user.email if current_user else "system"
+            position.put()
+            return True
+        except Exception as e:
+            print(f"Error restoring PositionCard: {e}")
+            return None  # Return None if restoring fails
 
 
 ################################################################################

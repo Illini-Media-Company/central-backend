@@ -15,6 +15,7 @@ Employee Management System (EMS)
         flex-direction: row;
         gap: 1.5rem;
         align-items: flex-start;
+        width: 100%;
     }
 
     .expanded .section-header {
@@ -94,6 +95,10 @@ Employee Management System (EMS)
         .ems-navbar-hide-mobile {
             display: none;
         }
+
+        #ems-content-block {
+            width: 100%
+        }
     }
 
 </style>
@@ -143,7 +148,7 @@ Employee Management System (EMS)
         </a>
     </section>
 
-    <section style="flex: 2; min-width: 0;">
+    <section style="flex: 2; min-width: 0;" id="ems-content-block">
         {% block ems_content %}
         {% endblock %}
     </section>
