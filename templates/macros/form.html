@@ -40,7 +40,11 @@ Last modified Jan. 23, 2026
 {% endmacro %}
 
 {#
-
+Macro to create a switch input inside of a form (Jinja)
+Functions as a checkbox.
+name and label are strings.
+class is optional and is the name of a class.
+Subtext is optional.
 #}
 {% macro switch_input(name, label, class, subtext) %}
     <div class="form-row {{ class }}" id="formfield-{{ name }}">
@@ -52,14 +56,14 @@ Last modified Jan. 23, 2026
                 <p class="subtext">{{ subtext }}</p>
             {% endif %}
         </div>
-        <div class="form-switch">
+        <label class="form-switch">
             <input 
                 id="{{ name }}"
                 name="{{ name }}"
                 type="checkbox"
             >
             <span class="form-slider form-round"></span>
-        </div>
+        </label>
     </div>
 {% endmacro %}
 

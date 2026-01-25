@@ -33,8 +33,8 @@
 .form-switch {
   position: relative;
   display: inline-block;
-  width: 60px;
-  height: 34px;
+  width: 4rem;
+  height: 2rem;
 }
 
 .form-switch input {
@@ -50,7 +50,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #ccc;
+  background-color: var(--main-lt-gray-color);
   -webkit-transition: .4s;
   transition: .4s;
 }
@@ -58,31 +58,31 @@
 .form-slider:before {
   position: absolute;
   content: "";
-  height: 26px;
-  width: 26px;
-  left: 4px;
-  bottom: 4px;
-  background-color: white;
+  height: 1.5rem;
+  width: 1.5rem;
+  left: 0.25rem;
+  bottom: 0.25rem;
+  background-color: var(--main-bg-color);
   -webkit-transition: .4s;
   transition: .4s;
 }
 
 input:checked + .form-slider {
-  background-color: #2196F3;
+  background-color: var(--main-accent-color);
 }
 
 input:focus + .form-slider {
-  box-shadow: 0 0 1px #2196F3;
+  box-shadow: 0 0 1px var(--main-accent-color);
 }
 
 input:checked + .form-slider:before {
-  -webkit-transform: translateX(26px);
-  -ms-transform: translateX(26px);
-  transform: translateX(26px);
+  -webkit-transform: translateX(2rem);
+  -ms-transform: translateX(2rem);
+  transform: translateX(2rem);
 }
 
 .form-slider.form-round {
-  border-radius: 34px;
+  border-radius: 2rem;
 }
 
 .form-slider.form-round:before {
