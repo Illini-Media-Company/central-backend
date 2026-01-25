@@ -257,7 +257,7 @@ def create_employee_card(**kwargs: dict) -> dict | int | None:
             employee = EmployeeCard(**kwargs)
             employee.created_at = datetime.now(tz=ZoneInfo("America/Chicago"))
             employee.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
-            employee.updated_by = current_user.email if current_user else "system"
+            employee.updated_by = current_user.email if current_user else "System"
             employee.put()
 
             temp = employee.uid
@@ -416,7 +416,7 @@ def tie_employee_to_user(uid: int) -> bool | None:
     try:
         employee.user_uid = user.key.id()
         employee.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
-        employee.updated_by = current_user.email if current_user else "system"
+        employee.updated_by = current_user.email if current_user else "System"
         employee.put()
         return True
     except Exception as e:
@@ -467,7 +467,7 @@ def create_position_card(**kwargs: dict) -> dict | int | None:
             position = PositionCard(**kwargs)
             position.created_at = datetime.now(tz=ZoneInfo("America/Chicago"))
             position.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
-            position.updated_by = current_user.email if current_user else "system"
+            position.updated_by = current_user.email if current_user else "System"
             position.put()
 
             # Add this position to direct reports of its supervisors
@@ -480,7 +480,7 @@ def create_position_card(**kwargs: dict) -> dict | int | None:
                         supervisor.updated_at = datetime.now(
                             tz=ZoneInfo("America/Chicago")
                         )
-                        supervisor.updated_by = "system"
+                        supervisor.updated_by = "System"
                         supervisor.put()
 
             return position.to_dict()
@@ -504,8 +504,9 @@ def modify_position_card(uid: int, **kwargs: dict) -> dict | None:
         `supervisors` (`list[int]`): UIDs of the position(s) this position directly reports to
 
     Returns:
-        `dict`: The modified `PositionCard` as a dictionary, `None` if not found, or
-                `-1` if there exists another position with the same `brand` and `title`
+        `dict`: The modified `PositionCard` as a dictionary, `None` if not found,
+                `-1` if there exists another position with the same `brand` and `title`,
+                or `-2` if updating supervisors fails
     """
     with client.context():
         position = PositionCard.get_by_id(uid)
@@ -525,6 +526,40 @@ def modify_position_card(uid: int, **kwargs: dict) -> dict | None:
 
             if is_duplicate:
                 return -1  # Position with this brand and title already exists
+
+        try:
+            # Update the supervisor(s)
+            if "supervisors" in kwargs:
+                old_sups = set(position.supervisors or [])
+                new_sups = set(int(uid) for uid in kwargs["supervisors"] or [])
+
+                removed = old_sups - new_sups
+                added = new_sups - old_sups
+
+                for sup_uid in removed:
+                    supervisor = PositionCard.get_by_id(sup_uid)
+                    if supervisor and position.uid in supervisor.direct_reports:
+                        supervisor.direct_reports.remove(position.uid)
+                        supervisor.updated_at = datetime.now(
+                            tz=ZoneInfo("America/Chicago")
+                        )
+                        supervisor.updated_by = "System"
+                        supervisor.put()
+
+                for sup_uid in added:
+                    supervisor = PositionCard.get_by_id(sup_uid)
+                    if supervisor:
+                        if position.uid not in supervisor.direct_reports:
+                            supervisor.direct_reports = supervisor.direct_reports or []
+                            supervisor.direct_reports.append(position.uid)
+                            supervisor.updated_at = datetime.now(
+                                tz=ZoneInfo("America/Chicago")
+                            )
+                            supervisor.updated_by = "System"
+                            supervisor.put()
+        except Exception as e:
+            print(f"Error updating supervisors for PositionCard: {e}")
+            return -2  # Return -2 if updating supervisors fails
 
         for key, value in kwargs.items():
             if hasattr(position, key):
@@ -586,7 +621,7 @@ def delete_position_card(uid: int) -> bool | None:
                 if supervisor and position.uid in supervisor.direct_reports:
                     supervisor.direct_reports.remove(position.uid)
                     supervisor.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
-                    supervisor.updated_by = "system"
+                    supervisor.updated_by = "System"
                     supervisor.put()
 
             # Remove this position from direct reports' supervisors
@@ -595,7 +630,7 @@ def delete_position_card(uid: int) -> bool | None:
                 if report and position.uid in report.supervisors:
                     report.supervisors.remove(position.uid)
                     report.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
-                    report.updated_by = "system"
+                    report.updated_by = "System"
                     report.put()
 
             position.key.delete()
@@ -623,7 +658,7 @@ def archive_position_card(uid: int) -> bool | None:
         try:
             position.archived = True
             position.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
-            position.updated_by = current_user.email if current_user else "system"
+            position.updated_by = current_user.email if current_user else "System"
             position.put()
             return True
         except Exception as e:
@@ -649,7 +684,7 @@ def restore_position_card(uid: int) -> bool | None:
         try:
             position.archived = False
             position.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
-            position.updated_by = current_user.email if current_user else "system"
+            position.updated_by = current_user.email if current_user else "System"
             position.put()
             return True
         except Exception as e:
