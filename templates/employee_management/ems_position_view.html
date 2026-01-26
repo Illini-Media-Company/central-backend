@@ -39,6 +39,10 @@
     </div>
 {% endmacro %}
 
+{% block ems_title %}
+    {{ position.title }} ({{ position.brand }})
+{% endblock %}
+
 {% block ems_extra_head %}
     <link rel="stylesheet" href="/static/macros/form.css">
 

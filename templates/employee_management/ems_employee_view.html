@@ -1,5 +1,9 @@
 {% extends 'employee_management/ems_base.html' %}
 
+{% block ems_title %}
+    {{ employee.last_name }}, {{ employee.first_name }}
+{% endblock %}
+
 {% block ems_extra_head %}
     <link rel="stylesheet" href="/static/macros/form.css">
 
