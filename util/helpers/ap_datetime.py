@@ -1,3 +1,8 @@
+#
+#
+# Created by Jacob Slabosz on Sept. 30, 2025
+# Last modified Jan. 16, 2026
+
 from datetime import datetime, date, time
 import calendar
 
@@ -244,5 +249,59 @@ def time_since(date_in: date) -> str | None:
         anniversary_date = date(new_year, new_month, last_day)
 
     days = (today - anniversary_date).days
+
+    return f"{years}y, {months}m, {days}d"
+
+
+def time_between(date_start: date, date_end: date = None) -> str | None:
+    if not date_start:
+        return None
+
+    if date_end is None:
+        date_end = date.today()
+
+    # Convert strings to date objects if necessary
+    def to_date(d):
+        if isinstance(d, str):
+            return datetime.fromisoformat(d).date()
+        return d
+
+    date_start = to_date(date_start)
+    date_end = to_date(date_end)
+
+    if not isinstance(date_start, date) or not isinstance(date_end, date):
+        return None
+
+    if date_start > date_end:
+        return "0y, 0m, 0d"
+
+    # Calculate years
+    years = date_end.year - date_start.year
+    if (date_end.month, date_end.day) < (date_start.month, date_start.day):
+        years -= 1
+
+    # Calculate months
+    if date_end.month >= date_start.month:
+        months = date_end.month - date_start.month
+    else:
+        months = 12 + (date_end.month - date_start.month)
+
+    if date_end.day < date_start.day:
+        months -= 1
+        if months < 0:
+            months = 11
+
+    # Calculate days using an anniversary date
+    new_month = (date_start.month + months - 1) % 12 + 1
+    new_year = date_start.year + years + (date_start.month + months - 1) // 12
+
+    # Handle end-of-month edge cases (e.g., Jan 31 -> Feb 28)
+    try:
+        anniversary_date = date(new_year, new_month, date_start.day)
+    except ValueError:
+        _, last_day = calendar.monthrange(new_year, new_month)
+        anniversary_date = date(new_year, new_month, last_day)
+
+    days = (date_end - anniversary_date).days
 
     return f"{years}y, {months}m, {days}d"

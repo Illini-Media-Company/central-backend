@@ -100,6 +100,7 @@ from util.helpers.ap_datetime import (
     months_since,
     years_since,
     time_since,
+    time_between,
 )
 from util.helpers.email_to_slackid import email_to_slackid
 
@@ -163,6 +164,7 @@ app.jinja_env.filters["days_since"] = days_since
 app.jinja_env.filters["months_since"] = months_since
 app.jinja_env.filters["years_since"] = years_since
 app.jinja_env.filters["time_since"] = time_since
+app.jinja_env.filters["time_between"] = time_between
 app.jinja_env.filters["get_ems_brand_image_url"] = get_ems_brand_image_url
 print("[main] Done registering Jinja filters.")
 
