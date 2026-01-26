@@ -1,0 +1,170 @@
+from typing import Dict, List, Optional, Tuple
+
+import requests
+
+from constants import (
+    DISCOVERY_ENGINE_PROJECT_ID,
+    DISCOVERY_ENGINE_LOCATION,
+    DISCOVERY_ENGINE_COLLECTION,
+    DISCOVERY_ENGINE_DATASTORE_ID,
+    DISCOVERY_ENGINE_SERVING_CONFIG,
+)
+
+
+def _serving_config() -> str:
+    missing = []
+    if not DISCOVERY_ENGINE_PROJECT_ID:
+        missing.append("DISCOVERY_ENGINE_PROJECT_ID")
+    if not DISCOVERY_ENGINE_LOCATION:
+        missing.append("DISCOVERY_ENGINE_LOCATION")
+    if not DISCOVERY_ENGINE_COLLECTION:
+        missing.append("DISCOVERY_ENGINE_COLLECTION")
+    if not DISCOVERY_ENGINE_DATASTORE_ID:
+        missing.append("DISCOVERY_ENGINE_DATASTORE_ID")
+    if not DISCOVERY_ENGINE_SERVING_CONFIG:
+        missing.append("DISCOVERY_ENGINE_SERVING_CONFIG")
+
+    if missing:
+        raise ValueError(f"Missing Discovery Engine env vars: {', '.join(missing)}")
+
+    return (
+        "projects/"
+        f"{DISCOVERY_ENGINE_PROJECT_ID}/"
+        "locations/"
+        f"{DISCOVERY_ENGINE_LOCATION}/"
+        "collections/"
+        f"{DISCOVERY_ENGINE_COLLECTION}/"
+        "dataStores/"
+        f"{DISCOVERY_ENGINE_DATASTORE_ID}/"
+        "servingConfigs/"
+        f"{DISCOVERY_ENGINE_SERVING_CONFIG}"
+    )
+
+
+def answer_query(
+    query: str,
+    access_token: str,
+    user_pseudo_id: Optional[str] = None,
+) -> dict:
+    serving_config = _serving_config()
+    url = f"https://discoveryengine.googleapis.com/v1/{serving_config}:answer"
+    body = {
+        "query": {"text": query},
+        "answerGenerationSpec": {
+            "includeCitations": True,
+            "answerLanguageCode": "en",
+        },
+    }
+    if user_pseudo_id:
+        body["userPseudoId"] = user_pseudo_id
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    if DISCOVERY_ENGINE_PROJECT_ID:
+        headers["x-goog-user-project"] = DISCOVERY_ENGINE_PROJECT_ID
+
+    resp = requests.post(url, json=body, headers=headers, timeout=30)
+    if resp.status_code >= 400:
+        raise RuntimeError(
+            f"Discovery Engine error {resp.status_code}: {resp.text[:500]}"
+        )
+    return resp.json()
+
+
+def _get_ref_id(ref: dict, index: int) -> str:
+    return (
+        ref.get("referenceId")
+        or ref.get("reference_id")
+        or ref.get("name")
+        or str(index)
+    )
+
+
+def _get_doc_metadata(ref: dict) -> dict:
+    chunk_info = ref.get("chunkInfo") or ref.get("chunk_info") or {}
+    doc_meta = (
+        chunk_info.get("documentMetadata") or chunk_info.get("document_metadata") or {}
+    )
+    if doc_meta:
+        return doc_meta
+
+    unstructured = (
+        ref.get("unstructuredDocumentInfo")
+        or ref.get("unstructured_document_info")
+        or {}
+    )
+    doc_meta = (
+        unstructured.get("documentMetadata")
+        or unstructured.get("document_metadata")
+        or {}
+    )
+    if doc_meta:
+        return doc_meta
+
+    structured = (
+        ref.get("structuredDocumentInfo") or ref.get("structured_document_info") or {}
+    )
+    doc_meta = (
+        structured.get("documentMetadata") or structured.get("document_metadata") or {}
+    )
+    return doc_meta or {}
+
+
+def _extract_title_uri(ref: dict) -> Tuple[Optional[str], Optional[str]]:
+    doc_meta = _get_doc_metadata(ref)
+    title = doc_meta.get("title")
+    uri = doc_meta.get("uri") or doc_meta.get("document")
+    if not title:
+        title = uri
+    return title, uri
+
+
+def extract_answer_and_citations(
+    response: dict,
+) -> Tuple[Optional[str], List[Dict], List]:
+    answer = response.get("answer") or {}
+    answer_text = (
+        answer.get("answerText")
+        or answer.get("answer_text")
+        or answer.get("text")
+        or answer.get("answer")
+    )
+    skipped_reasons = (
+        answer.get("answerSkippedReasons") or answer.get("answer_skipped_reasons") or []
+    )
+
+    references = answer.get("references") or []
+    ref_map = {}
+    for idx, ref in enumerate(references):
+        ref_id = _get_ref_id(ref, idx)
+        title, uri = _extract_title_uri(ref)
+        ref_map[ref_id] = {"title": title, "uri": uri}
+
+    citation_refs: List[str] = []
+    citations = answer.get("citations") or []
+    for citation in citations:
+        sources = citation.get("sources") or []
+        for source in sources:
+            ref_id = source.get("referenceId") or source.get("reference_id")
+            if ref_id:
+                citation_refs.append(ref_id)
+
+    seen = set()
+    sources_out: List[Dict] = []
+    for ref_id in citation_refs:
+        if ref_id in seen:
+            continue
+        seen.add(ref_id)
+        ref = ref_map.get(ref_id)
+        if ref:
+            sources_out.append(ref)
+
+    if not sources_out and ref_map:
+        for _, ref in ref_map.items():
+            sources_out.append(ref)
+            if len(sources_out) >= 5:
+                break
+
+    return answer_text, sources_out, skipped_reasons

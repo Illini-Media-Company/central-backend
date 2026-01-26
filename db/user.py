@@ -18,6 +18,9 @@ class User(ndb.Model):
     groups = ndb.JsonProperty()
     last_edited = ndb.DateTimeProperty()
     fav_tools = ndb.IntegerProperty(repeated=True)
+    ask_oauth_access_token = ndb.TextProperty()
+    ask_oauth_refresh_token = ndb.TextProperty()
+    ask_oauth_expiry = ndb.DateTimeProperty()
 
 
 class LoginUser(UserMixin):
@@ -81,10 +84,43 @@ def get_user(email):
     return LoginUser(user)
 
 
+def get_user_entity(email):
+    if email is None:
+        return None
+    with client.context():
+        user = User.query().filter(User.email == email).get()
+    return user
+
+
 def get_all_users():
     with client.context():
-        users = [user.to_dict() for user in User.query().fetch()]
+        users = []
+        for user in User.query().fetch():
+            user_dict = user.to_dict()
+            user_dict.pop("ask_oauth_access_token", None)
+            user_dict.pop("ask_oauth_refresh_token", None)
+            user_dict.pop("ask_oauth_expiry", None)
+            users.append(user_dict)
     return users
+
+
+def set_user_ask_oauth_tokens(
+    email, access_token=None, refresh_token=None, expiry=None
+):
+    if email is None:
+        return None
+    with client.context():
+        user = User.query().filter(User.email == email).get()
+        if user is None:
+            return None
+        if access_token is not None:
+            user.ask_oauth_access_token = access_token
+        if refresh_token is not None:
+            user.ask_oauth_refresh_token = refresh_token
+        if expiry is not None:
+            user.ask_oauth_expiry = expiry
+        user.put()
+    return user
 
 
 def get_user_name(email: str):

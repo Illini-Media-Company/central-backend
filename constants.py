@@ -7,6 +7,7 @@ load_dotenv()
 
 
 ENV = os.environ.get("ENV", "dev")
+PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "https://app.dailyillini.com")
 
 # Google API keys and secrets
 ADMIN_EMAIL = "di_admin@illinimedia.com"
@@ -15,6 +16,19 @@ GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", None)
 GOOGLE_PROJECT_ID = os.environ.get("DATASTORE_PROJECT_ID", None)
 GOOGLE_MAP_API = os.environ.get("GOOGLE_MAP_API", None)
 FOOD_TRUCK_MAPS_ID = os.environ.get("FOOD_TRUCK_MAPS_ID", None)
+
+# Discovery Engine (Vertex AI Search) configuration
+DISCOVERY_ENGINE_PROJECT_ID = os.environ.get(
+    "DISCOVERY_ENGINE_PROJECT_ID", GOOGLE_PROJECT_ID
+)
+DISCOVERY_ENGINE_LOCATION = os.environ.get("DISCOVERY_ENGINE_LOCATION", "global")
+DISCOVERY_ENGINE_COLLECTION = os.environ.get(
+    "DISCOVERY_ENGINE_COLLECTION", "default_collection"
+)
+DISCOVERY_ENGINE_DATASTORE_ID = os.environ.get("DISCOVERY_ENGINE_DATASTORE_ID", None)
+DISCOVERY_ENGINE_SERVING_CONFIG = os.environ.get(
+    "DISCOVERY_ENGINE_SERVING_CONFIG", "default_search"
+)
 
 APPS_SCRIPT_RUNNER_EMAIL = "apps-script-runner@illinimedia.com"
 CONTEND_DOC_AUD = (
