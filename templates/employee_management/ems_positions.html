@@ -172,11 +172,22 @@
             grid-row-gap: 0.5rem;
         }
 
+        .filter-grid .select-input {
+            width: 7rem;
+        }
+
         .filter-item {
             flex-direction: column;
             align-items: flex-start;
             flex: 1 1 10rem;
             gap: 0.25rem;
+        }
+
+        .filter-button-container {
+            display: flex;
+            flex-direction: row;
+            gap: 0.5rem;
+            justify-content: center;
         }
 
         .field-label {
@@ -227,6 +238,10 @@
                 grid-template-columns: 1fr;
                 grid-template-rows: auto;
             }
+
+            .filter-button-container {
+                flex-direction: column;
+            }
         }
     </style>
 
@@ -245,13 +260,14 @@
 <hr>
 
 <section class="section-container" id="positions-container">
+    {# Header Text #}
     <div class="section-header" id="table-title-header">
         <div style="display: flex; flex-direction: row; gap: 1rem; align-items: center;">
-            <h2 style="margin-bottom: 0">All Employees</h2>
+            <h2 style="margin-bottom: 0">All Positions</h2>
             <h4 style="margin-bottom: 0" id="numPositions"></h4>
         </div>
 
-        <a href="/ems/position/add">
+        <a href="/ems/position/add" target="_blank">
             <button class="button-primary">
                 Add Position
             </button>
@@ -322,7 +338,7 @@
                             ) }}
                         </div>
                         <hr>
-                        <div style="text-align: center;">
+                        <div class="filter-button-container">
                             <button class="button-secondary" onclick="clearAllFilters()">
                                 Clear Filters
                             </button>
@@ -390,7 +406,7 @@
     let currentPage = 1;
     var rowsPerPage = 25;
 
-    let filteredPositions = [...allPositions];
+    let filteredPositions = allPositions.filter(position => position.archived === false);
     let searchTimeout;
     const SEARCH_TIMEOUT_VAL = 300;
 
@@ -401,6 +417,22 @@
 
     // Filter panel expanded
     let filterExpanded = false;
+
+    function textAfterRate(status) {
+        switch(status) {
+            case "Stipend":
+                return "Pay Period";
+                break;
+            case "Salary":
+                return "Year";
+                break;
+            case "Hourly":
+                return "Hour";
+                break;
+            default:
+                return "";
+        }
+    }
 
     // Render the table rows
     function renderTable(page) {
@@ -432,7 +464,7 @@
                     ${pos.pay_status}
                 </td>
                 <td>
-                    $${(pos.pay_rate).toFixed(2)}
+                    $${(pos.pay_rate).toFixed(2)} / ${textAfterRate(pos.pay_status)}
                 </td>
                 <td>
                     ${pos.archived ? 
@@ -607,6 +639,9 @@
             select.selectedIndex = 0;
         });
 
+        // Clear toggle input
+        document.getElementById("filter_archived").checked = false;
+
         filteredPositions = [...allPositions];
         
         updateData();
@@ -659,16 +694,20 @@
             if (filtersApplied) {
                 // Convert numbers
                 const posPayRate = pos.pay_rate ? parseFloat(pos.pay_rate) : null;
-                const limitPayAbove = payAbove ? parseFloat(pos.payAbove) : null;
-                const limitPayBelow = payBelow ? parseFloat(pos.payBelow) : null;
+                const limitPayAbove = payAbove ? parseFloat(payAbove) : null;
+                const limitPayBelow = payBelow ? parseFloat(payBelow) : null;
 
                 // Check numbers
-                if (limitPayBelow && posPayRate < limitPayBelow) return false;
-                if (limitPayAbove && posPayRate > limitPayAbove) return false;
+                if (limitPayBelow && posPayRate > limitPayBelow) return false;
+                if (limitPayAbove && posPayRate < limitPayAbove) return false;
 
                 // Check Status
                 if (payStatus && (!pos.pay_status || pos.pay_status.toLowerCase() !== payStatus.toLowerCase())) return false;
                 if (brand && (!pos.brand || pos.brand.toLowerCase() !== brand.toLowerCase())) return false;
+            }
+
+            if (!archived) {
+                if (pos.archived) return false;
             }
 
             return true;

@@ -172,11 +172,22 @@
             grid-row-gap: 0.5rem;
         }
 
+        .filter-grid .select-input {
+            width: 7rem;
+        }
+
         .filter-item {
             flex-direction: column;
             align-items: flex-start;
             flex: 1 1 10rem;
             gap: 0.25rem;
+        }
+
+        .filter-button-container {
+            display: flex;
+            flex-direction: row;
+            gap: 0.5rem;
+            justify-content: center;
         }
 
         .field-label {
@@ -227,6 +238,10 @@
                 grid-template-columns: 1fr;
                 grid-template-rows: auto;
             }
+
+            .filter-button-container {
+                flex-direction: column;
+            }
         }
     </style>
 
@@ -251,7 +266,7 @@
             <h4 style="margin-bottom: 0" id="numEmployees"></h4>
         </div>
 
-        <a href="/ems/employee/add">
+        <a href="/ems/employee/add" target="_blank">
             <button class="button-primary">
                 Add Employee
             </button>
@@ -331,7 +346,7 @@
                             ) }}
                         </div>
                         <hr>
-                        <div style="text-align: center;">
+                        <div class="filter-button-container">
                             <button class="button-secondary" onclick="clearAllFilters()">
                                 Clear Filters
                             </button>
