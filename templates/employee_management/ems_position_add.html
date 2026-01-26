@@ -215,7 +215,7 @@
         const formData = new FormData(event.target);
 
         const supInput = document.getElementById('supervisors');
-        const newSups = Array.from(supInput.selectedOptions).map(opt => opt.value);
+        const newSups = Array.from(supInput.selectedOptions).map(opt => opt.value).filter(value => value !== "");        
 
         const formEntries = Object.fromEntries(
             Array.from(formData.entries()).filter(([key, value]) => value !== "")
