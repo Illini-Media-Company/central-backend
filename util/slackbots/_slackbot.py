@@ -5,10 +5,16 @@ from slack_bolt import App
 from slack_bolt.adapter.flask import SlackRequestHandler
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-from constants import ENV, SLACK_BOT_TOKEN, SLACK_APP_TOKEN, SLACK_SIGNING_SECRET
+from constants import (
+    ENV,
+    PUBLIC_BASE_URL,
+    SLACK_BOT_TOKEN,
+    SLACK_APP_TOKEN,
+    SLACK_SIGNING_SECRET,
+)
 from util.security import csrf
 from db.user import add_user, get_user_entity
-from util.ask_oauth import build_oauth_start_link, get_valid_access_token
+from util.ask_oauth import get_valid_access_token
 from util.discovery_engine import answer_query, extract_answer_and_citations
 
 from constants import (
@@ -426,9 +432,13 @@ def ask_command(ack, body, respond):
 
     access_token = get_valid_access_token(email)
     if not access_token:
-        auth_link = build_oauth_start_link(user_id)
+        base = PUBLIC_BASE_URL.rstrip("/") if PUBLIC_BASE_URL else ""
+        auth_link = f"{base}/login" if base else "/login"
         respond(
-            text=("To use /ask, please connect your Google account:\n" f"{auth_link}"),
+            text=(
+                "To use /ask, please connect your Illini Media Google account):\n"
+                f"{auth_link}"
+            ),
             response_type="ephemeral",
         )
         return

@@ -4,7 +4,7 @@ import os
 from threading import Thread
 import urllib
 import atexit
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from db import client as dbclient
 
@@ -40,6 +40,7 @@ from db.user import (
     get_user,
     get_user_favorite_tools,
     get_user_name,
+    set_user_ask_oauth_tokens,
 )
 from util.security import (
     csrf,
@@ -86,7 +87,6 @@ from views.food_truck import food_truck_routes
 from views.employee_agreement import employee_agreement_routes
 from views.rotate_tv import rotate_tv_routes
 from views.photo_request import photo_request_routes
-from views.ask_oauth import ask_oauth_routes
 
 from util.helpers.ap_datetime import (
     ap_datetime,
@@ -127,7 +127,6 @@ app.register_blueprint(food_truck_routes)
 app.register_blueprint(employee_agreement_routes)
 app.register_blueprint(rotate_tv_routes)
 app.register_blueprint(photo_request_routes)
-app.register_blueprint(ask_oauth_routes)
 print("[main] Done registering blueprints.")
 
 print("[main] Initializing login manager...")
@@ -285,8 +284,15 @@ def login():
     request_uri = client.prepare_request_uri(
         authorization_endpoint,
         redirect_uri=request.base_url + "/callback",
-        scope=["openid", "email", "profile"],
+        scope=[
+            "openid",
+            "email",
+            "profile",
+            "https://www.googleapis.com/auth/cloud-platform",
+        ],
         state=state,
+        access_type="offline",
+        include_granted_scopes="true",
     )
     return redirect(request_uri)
 
@@ -317,7 +323,8 @@ def callback():
     )
 
     # Parse the tokens!
-    client.parse_request_body_response(json.dumps(token_response.json()))
+    token_payload = token_response.json()
+    client.parse_request_body_response(json.dumps(token_payload))
 
     # Now that you have tokens (yay) let's find and hit the URL
     # from Google that gives you the user's profile information,
@@ -335,6 +342,14 @@ def callback():
         user_name = userinfo_response["name"]
         user_picture = userinfo_response["picture"]
         user_domain = userinfo_response.get("hd", "")
+        access_token = token_payload.get("access_token")
+        refresh_token = token_payload.get("refresh_token")
+        expires_in = token_payload.get("expires_in")
+        expiry = (
+            datetime.utcnow() + timedelta(seconds=int(expires_in))
+            if expires_in is not None
+            else None
+        )
 
         # Create or update user in db
         user = get_user(user_email)
@@ -368,6 +383,14 @@ def callback():
                 name=user_name,
                 email=user_email,
                 picture=user_picture,
+            )
+
+        if access_token:
+            set_user_ask_oauth_tokens(
+                email=user_email,
+                access_token=access_token,
+                refresh_token=refresh_token,
+                expiry=expiry,
             )
 
         # Create new thread to sync user's group memberships

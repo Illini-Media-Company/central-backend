@@ -1,59 +1,11 @@
 from datetime import datetime, timedelta
 from typing import Optional
-import urllib.parse
 
 import requests
 
-from constants import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, PUBLIC_BASE_URL
+from constants import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 from util.security import get_google_provider_cfg
 from db.user import get_user_entity, set_user_ask_oauth_tokens
-
-
-ASK_OAUTH_SCOPES = [
-    "openid",
-    "email",
-    "profile",
-    "https://www.googleapis.com/auth/cloud-platform",
-]
-
-
-def build_oauth_start_link(slack_user_id: str) -> str:
-    base = PUBLIC_BASE_URL.rstrip("/")
-    return f"{base}/ask/oauth/start?slack_user_id={urllib.parse.quote(slack_user_id)}"
-
-
-def build_authorization_url(state: str, redirect_uri: str) -> str:
-    if not GOOGLE_CLIENT_ID:
-        raise ValueError("GOOGLE_CLIENT_ID is not set.")
-    google_provider_cfg = get_google_provider_cfg()
-    authorization_endpoint = google_provider_cfg["authorization_endpoint"]
-    params = {
-        "client_id": GOOGLE_CLIENT_ID,
-        "redirect_uri": redirect_uri,
-        "scope": " ".join(ASK_OAUTH_SCOPES),
-        "response_type": "code",
-        "access_type": "offline",
-        "prompt": "consent",
-        "state": state,
-        "include_granted_scopes": "true",
-    }
-    return authorization_endpoint + "?" + urllib.parse.urlencode(params)
-
-
-def exchange_code_for_tokens(code: str, redirect_uri: str) -> dict:
-    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
-        raise ValueError("GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET is not set.")
-    google_provider_cfg = get_google_provider_cfg()
-    token_endpoint = google_provider_cfg["token_endpoint"]
-    data = {
-        "code": code,
-        "client_id": GOOGLE_CLIENT_ID,
-        "client_secret": GOOGLE_CLIENT_SECRET,
-        "redirect_uri": redirect_uri,
-        "grant_type": "authorization_code",
-    }
-    resp = requests.post(token_endpoint, data=data, timeout=15)
-    return resp.json()
 
 
 def refresh_access_token(refresh_token: str) -> dict:
@@ -68,17 +20,6 @@ def refresh_access_token(refresh_token: str) -> dict:
         "grant_type": "refresh_token",
     }
     resp = requests.post(token_endpoint, data=data, timeout=15)
-    return resp.json()
-
-
-def get_userinfo(access_token: str) -> dict:
-    google_provider_cfg = get_google_provider_cfg()
-    userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]
-    resp = requests.get(
-        userinfo_endpoint,
-        headers={"Authorization": f"Bearer {access_token}"},
-        timeout=15,
-    )
     return resp.json()
 
 
