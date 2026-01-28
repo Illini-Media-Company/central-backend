@@ -5,7 +5,7 @@ to the EMS must be located inside of this file. Classes should not be accessed
 anywhere else in the codebase without the use of helper functions.
 
 Created by Jacob Slabosz on Jan. 4, 2026
-Last modified Jan. 23, 2026
+Last modified Jan. 28, 2026
 """
 
 from google.cloud import ndb
@@ -93,7 +93,7 @@ class EmployeeCard(ndb.Model):
     payroll_number = ndb.IntegerProperty()
 
     initial_hire_date = ndb.DateProperty()
-    status = ndb.StringProperty(choices=EMPLOYEE_STATUS_OPTIONS, default="active")
+    status = ndb.StringProperty(choices=EMPLOYEE_STATUS_OPTIONS, default="Onboarding")
 
     major = ndb.StringProperty()
     major_2 = ndb.StringProperty()
@@ -137,9 +137,9 @@ class PositionCard(ndb.Model):
 
     title = ndb.StringProperty()
     job_description = ndb.StringProperty()
-    brand = ndb.StringProperty(choices=IMC_BRANDS, default="imc")
+    brand = ndb.StringProperty(choices=IMC_BRANDS, default="IMC")
 
-    pay_status = ndb.StringProperty(choices=PAY_TYPES, default="unpaid")
+    pay_status = ndb.StringProperty(choices=PAY_TYPES, default="Unpaid")
     pay_rate = ndb.FloatProperty(default=0.0)
 
     supervisors = ndb.IntegerProperty(repeated=True)
@@ -166,8 +166,8 @@ class EmployeePositionRelation(ndb.Model):
 
     Attributes:
         `uid` (`int`): The unique ID for this position relationship
-        `position` (`ndb.KeyProperty`): The position that is held by the employee
-        `employee` (`ndb.KeyProperty`): The employee that holds the position
+        `position_id` (`int`): The UID of the position that is held by the employee
+        `employee_id` (`int`): The UID of the employee that holds the position
         `start_date` (`date`): The date that the employee started in the position
         `end_date` (`date`): The date that the employee finished in the position
         `departure_category` (`str`): General category for why the employee is no longer in this position
@@ -182,23 +182,22 @@ class EmployeePositionRelation(ndb.Model):
         lambda self: self.key.id() if self.key else None, indexed=False
     )
 
-    position = ndb.KeyProperty(kind="PositionCard", required=True)
-    employee = ndb.KeyProperty(kind="EmployeeCard", required=True)
+    position_id = ndb.IntegerProperty()
+    employee_id = ndb.IntegerProperty()
 
     start_date = ndb.DateProperty()
     end_date = ndb.DateProperty()
 
-    departure_category = ndb.StringProperty(
-        choices=DEPART_CATEGORIES, default="administrative"
-    )
+    departure_category = ndb.StringProperty(choices=DEPART_CATEGORIES)
     departure_reason = ndb.StringProperty(
-        choices=DEPART_REASON_VOL + DEPART_REASON_INVOL + DEPART_REASON_ADMIN,
-        default="other/unknown",
+        choices=DEPART_REASON_VOL + DEPART_REASON_INVOL + DEPART_REASON_ADMIN
     )
     departure_notes = ndb.StringProperty()
 
-    created_at = ndb.DateTimeProperty(auto_now_add=True)
-    updated_at = ndb.DateTimeProperty(auto_now=True)
+    created_at = ndb.DateTimeProperty(
+        auto_now_add=True, tzinfo=ZoneInfo("America/Chicago")
+    )
+    updated_at = ndb.DateTimeProperty(auto_now=True, tzinfo=ZoneInfo("America/Chicago"))
     updated_by = ndb.StringProperty()
 
 
@@ -388,6 +387,13 @@ def delete_employee_card(uid: int) -> bool | None:
             return False  # Employee not found
 
         try:
+            # Delete all relations involving this employee
+            relations = get_relations_by_employee(employee.uid)
+            for relation in relations:
+                relation_entity = EmployeePositionRelation.get_by_id(relation["uid"])
+                if relation_entity:
+                    relation_entity.key.delete()
+
             employee.key.delete()
             return True
         except Exception as e:
@@ -460,7 +466,7 @@ def create_position_card(**kwargs: dict) -> dict | int | None:
                 return None  # Position with this brand and title already exists
 
         try:
-            # Convert supervisor and direct report UIDs to keys
+            # Convert supervisor and direct report UIDs to ints
             if "supervisors" in kwargs:
                 kwargs["supervisors"] = [int(uid) for uid in kwargs["supervisors"]]
 
@@ -585,6 +591,22 @@ def get_all_position_cards() -> list:
         return [position.to_dict() for position in positions]
 
 
+def get_all_active_position_cards() -> list:
+    """
+    Retrieves all active (non-archived) PositionCard entries in the database.
+
+    Returns:
+        `list`: A list of all active `PositionCard` entries as dictionaries
+    """
+    with client.context():
+        positions = (
+            PositionCard.query(PositionCard.archived == False)
+            .order(PositionCard.brand, PositionCard.title)
+            .fetch()
+        )
+        return [position.to_dict() for position in positions]
+
+
 def get_position_card_by_id(uid: int) -> dict | None:
     """
     Retrieves a PositionCard by its unique ID.
@@ -632,6 +654,13 @@ def delete_position_card(uid: int) -> bool | None:
                     report.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
                     report.updated_by = "System"
                     report.put()
+
+            # Delete all relations involving this position
+            relations = get_relations_by_position(position.uid)
+            for relation in relations:
+                relation_entity = EmployeePositionRelation.get_by_id(relation["uid"])
+                if relation_entity:
+                    relation_entity.key.delete()
 
             position.key.delete()
             return True
@@ -695,23 +724,241 @@ def restore_position_card(uid: int) -> bool | None:
 ################################################################################
 
 
-# NEED TO COMPLETE
-def link_employee_to_user(employee_key, user_key):
+def create_relation(**kwargs: dict) -> dict | int | None:
     """
-    Docstring for link_employee_to_user
+    Creates a new EmployeePositionRelation object. `position_id` and `employee_id` are required.
+        All other fields are optional.
 
-    :param employee_key: Description
-    :param user_key: Description
-    :returns: Description
+    Arguments:
+        `position_id` (`int`): The UID of the position that is held by the employee
+        `employee_id` (`int`): The UID of the employee that holds the position
+        `start_date` (`date`): The date that the employee started in the position
+        `end_date` (`date`): The date that the employee finished in the position
+        `departure_category` (`str`): General category for why the employee is no longer in this position
+        `departure_reason` (`str`): Specific reason for why the employee is no longer in this position
+        `departure_notes` (`str`): Notes for why the employee is no longer in this position
+        `created_at` (`datetime`): When this relation was created
+        `updated_at` (`datetime`): When this relation was last edited
+        `updated_by` (`str`): User who last updated the relation
+
+    Returns:
+        `dict`: The created `EmployeePositionRelation` as a dictionary, `None` if a relation
+                already exists with the given `position_id` and `employee_id`, `-1` on
+                missing required fields, or `-2` on other error
     """
     with client.context():
-        # Link the User to the EmployeeCard
-        employee = employee_key.get()
-        if employee:
-            employee.user_key = user_key
-            employee.put()
+        if not ("position_id" in kwargs and "employee_id" in kwargs):
+            return -1  # Position_id and employee_id are required
 
-            # Link the EmployeeCard to the User
+        # Validate position and employee existence
+        try:
+            position = PositionCard.get_by_id(kwargs["position_id"])
+            if not position:
+                return -2  # Position with this UID does not exist
 
+            employee = EmployeeCard.get_by_id(kwargs["employee_id"])
+            if not employee:
+                return -2  # Employee with this UID does not exist
+        except Exception as e:
+            print(f"Error validating position or employee: {e}")
+            return -2  # Return -2 if validation fails
+
+        # Check for existing relation
+        try:
+            existing = EmployeePositionRelation.query(
+                ndb.AND(
+                    EmployeePositionRelation.position_id == kwargs["position_id"],
+                    EmployeePositionRelation.employee_id == kwargs["employee_id"],
+                )
+            ).get()
+            if existing:
+                return None  # Position with this brand and title already exists
+        except Exception as e:
+            print(f"Error checking existing EmployeePositionRelation: {e}")
+            return -2  # Return -2 if checking existing relation fails
+
+        try:
+            relation = EmployeePositionRelation(**kwargs)
+            relation.created_at = datetime.now(tz=ZoneInfo("America/Chicago"))
+            relation.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
+            relation.updated_by = current_user.email if current_user else "System"
+            relation.put()
+
+            return relation.to_dict()
+        except Exception as e:
+            print(f"Error creating EmployeePositionRelation: {e}")
+            return -2  # Return -2 if relation creation fails
+
+
+def modify_relation(uid: int, **kwargs: dict) -> dict | None:
+    """
+    Modifies an existing EmployeePositionRelation object. `uid` is required, all other
+    fields are optional.
+
+    Arguments:
+        `uid` (`int`): The unique ID of the EmployeePositionRelation to modify
+        `position_id` (`int`): The UID of the position that is held by the employee
+        `employee_id` (`int`): The UID of the employee that holds the position
+        `start_date` (`date`): The date that the employee started in the position
+        `end_date` (`date`): The date that the employee finished in the position
+        `departure_category` (`str`): General category for why the employee is no longer in this position
+        `departure_reason` (`str`): Specific reason for why the employee is no longer in this position
+        `departure_notes` (`str`): Notes for why the employee is no longer in this position
+    Returns:
+        `dict`: The modified `EmployeePositionRelation` as a dictionary, `None` if not found
+    """
+    with client.context():
+        relation = EmployeePositionRelation.get_by_id(uid)
+        if not relation:
+            return None
+
+        for key, value in kwargs.items():
+            if hasattr(relation, key):
+                setattr(relation, key, value)
+
+        relation.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
+        relation.updated_by = current_user.email if current_user else "System"
+        relation.put()
+        return relation.to_dict()
+
+
+def get_all_relations() -> list:
+    """
+    Retrieves all EmployeePositionRelation entries in the database.
+
+    Returns:
+        `list`: A list of all `EmployeePositionRelation` entries as dictionaries
+    """
+    with client.context():
+        relations = (
+            EmployeePositionRelation.query()
+            .order(-EmployeePositionRelation.start_date)
+            .fetch()
+        )
+        return [relation.to_dict() for relation in relations]
+
+
+def get_relation_by_id(uid: int) -> dict | None:
+    """
+    Retrieves an EmployeePositionRelation by its unique ID.
+
+    Arguments:
+        `uid` (`int`): The unique ID of the EmployeePositionRelation to retrieve
+    Returns:
+        `dict`: The `EmployeePositionRelation` as a dictionary, or `None` if not found
+    """
+    with client.context():
+        relation = EmployeePositionRelation.get_by_id(uid)
+        return relation.to_dict() if relation else None
+
+
+def get_relations_by_employee(employee_id: int) -> list:
+    """
+    Retrieves all EmployeePositionRelation entries for a given employee.
+
+    Arguments:
+        `employee_id` (`int`): The UID of the employee
+
+    Returns:
+        `list`: A list of all `EmployeePositionRelation` entries as dictionaries
+    """
+    with client.context():
+        relations = (
+            EmployeePositionRelation.query(
+                EmployeePositionRelation.employee_id == employee_id
+            )
+            .order(-EmployeePositionRelation.start_date)
+            .fetch()
+        )
+        return [relation.to_dict() for relation in relations]
+
+
+def get_relations_by_employee_current(employee_id: int) -> list:
+    """
+    Retrieves all current EmployeePositionRelation entries for a given position.
+
+    Arguments:
+        `employee_id` (`int`): The UID of the employee
+
+    Returns:
+        `list`: A list of all current `EmployeePositionRelation` entries as dictionaries
+    """
+    with client.context():
+        relations = (
+            EmployeePositionRelation.query(
+                EmployeePositionRelation.employee_id == employee_id,
+                EmployeePositionRelation.end_date == None,
+            )
+            .order(-EmployeePositionRelation.start_date)
+            .fetch()
+        )
+        return [relation.to_dict() for relation in relations]
+
+
+def get_relations_by_employee_past(employee_id: int) -> list:
+    """
+    Retrieves all past EmployeePositionRelation entries for a given position.
+
+    Arguments:
+        `employee_id` (`int`): The UID of the employee
+
+    Returns:
+        `list`: A list of all past `EmployeePositionRelation` entries as dictionaries
+    """
+    with client.context():
+        relations = (
+            EmployeePositionRelation.query(
+                EmployeePositionRelation.employee_id == employee_id
+            )
+            .order(-EmployeePositionRelation.start_date)
+            .fetch()
+        )
+        return [
+            relation.to_dict()
+            for relation in relations
+            if relation.end_date is not None
+        ]
+
+
+def get_relations_by_position(position_id: int) -> list:
+    """
+    Retrieves all EmployeePositionRelation entries for a given position.
+
+    Arguments:
+        `position_id` (`int`): The UID of the position
+
+    Returns:
+        `list`: A list of all `EmployeePositionRelation` entries as dictionaries
+    """
+    with client.context():
+        relations = (
+            EmployeePositionRelation.query(
+                EmployeePositionRelation.position_id == position_id
+            )
+            .order(-EmployeePositionRelation.start_date)
+            .fetch()
+        )
+        return [relation.to_dict() for relation in relations]
+
+
+def delete_relation(uid: int) -> bool | None:
+    """
+    Deletes an EmployeePositionRelation by its unique ID.
+
+    Arguments:
+        `uid` (`int`): The unique ID of the EmployeePositionRelation to delete
+
+    Returns:
+        `bool`: `True` if deletion was successful, `False` if not found, `None` on error
+    """
+    with client.context():
+        relation = EmployeePositionRelation.get_by_id(uid)
+        if not relation:
+            return False  # Relation not found
+
+        try:
+            relation.key.delete()
             return True
-        return False
+        except Exception as e:
+            print(f"Error deleting EmployeePositionRelation: {e}")
+            return None  # Return None if deletion fails

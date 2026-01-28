@@ -2,7 +2,7 @@
 This file defines the API for the Employee Management System.
 
 Created by Jacob Slabosz on Jan. 12, 2026
-Last modified Jan. 23, 2026
+Last modified Jan. 28, 2026
 """
 
 from flask import Blueprint, render_template, request, jsonify
@@ -21,10 +21,20 @@ from db.employee_management import (
     create_position_card,
     modify_position_card,
     get_all_position_cards,
+    get_all_active_position_cards,
     get_position_card_by_id,
     delete_position_card,
     archive_position_card,
     restore_position_card,
+    create_relation,
+    modify_relation,
+    get_all_relations,
+    get_relation_by_id,
+    get_relations_by_employee,
+    get_relations_by_employee_current,
+    get_relations_by_employee_past,
+    get_relations_by_position,
+    delete_relation,
 )
 
 from constants import (
@@ -33,6 +43,10 @@ from constants import (
     EMPLOYEE_PRONOUNS,
     IMC_BRANDS,
     PAY_TYPES,
+    DEPART_CATEGORIES,
+    DEPART_REASON_VOL,
+    DEPART_REASON_INVOL,
+    DEPART_REASON_ADMIN,
 )
 
 ems_routes = Blueprint("ems_routes", __name__, url_prefix="/ems")
@@ -93,7 +107,53 @@ def ems_employee_view(emp_id):
     """
     Renders the view employee page.
     """
+    # Get the employee
     employee = get_employee_card_by_id(emp_id)
+    employee["current_positions"] = []
+    employee["past_positions"] = []
+
+    # Get the employee's current positions
+    cur_relations = get_relations_by_employee_current(emp_id)
+    print(cur_relations)
+    for rel in cur_relations:
+        position = get_position_card_by_id(rel["position_id"])
+        if position:
+            employee["current_positions"].append(
+                {
+                    "relation_uid": rel["uid"],
+                    "position_uid": position["uid"],
+                    "brand": position["brand"],
+                    "title": position["title"],
+                    "start_date": rel["start_date"],
+                }
+            )
+
+    # Get the employee's past positions
+    past_relations = get_relations_by_employee_past(emp_id)
+    for rel in past_relations:
+        position = get_position_card_by_id(rel["position_id"])
+        if position:
+            employee["past_positions"].append(
+                {
+                    "relation_uid": rel["uid"],
+                    "position_uid": position["uid"],
+                    "brand": position["brand"],
+                    "title": position["title"],
+                    "start_date": rel["start_date"],
+                    "end_date": rel["end_date"],
+                    "departure_category": rel["departure_category"],
+                    "departure_reason": rel["departure_reason"],
+                    "departure_notes": rel["departure_notes"],
+                }
+            )
+
+    # Get all possible position options for dropdown
+    all_positions = get_all_active_position_cards()
+    position_options = [
+        {"value": pos["uid"], "name": f"{pos['brand']} — {pos['title']}"}
+        for pos in all_positions
+    ]
+
     return render_template(
         "employee_management/ems_employee_view.html",
         selection="employees",
@@ -101,6 +161,11 @@ def ems_employee_view(emp_id):
         employee_statuses=EMPLOYEE_STATUS_OPTIONS,
         employee_grad_years=EMPLOYEE_GRAD_YEARS,
         employee_pronouns=EMPLOYEE_PRONOUNS,
+        position_options=position_options,
+        departure_categories=DEPART_CATEGORIES,
+        depart_reasons_vol=DEPART_REASON_VOL,
+        depart_reasons_invol=DEPART_REASON_INVOL,
+        depart_reasons_admin=DEPART_REASON_ADMIN,
     )
 
 
@@ -576,6 +641,184 @@ def ems_api_position_restore(uid):
     if not restored:
         return jsonify({"error": "Position not found."}), 400
     return jsonify({"message": "Position restored successfully."}), 200
+
+
+################################################################################
+
+################################################################################
+### RELATION FUNCTIONS #########################################################
+################################################################################
+
+
+# API
+@ems_routes.route("/api/relation/create", methods=["POST"])
+@login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+def ems_api_relation_create():
+    """
+    API endpoint to create a new employee-position relation.
+
+    Returns:
+        (json, int): A tuple containing a JSON response and HTTP status code.
+    """
+    # Extract data from request
+    data = request.get_json() or {}
+
+    # Remove the CSRF token from the JSON to pass to the function
+    del data["_csrf_token"]
+
+    date_fields = ["start_date", "end_date"]
+
+    for field in date_fields:
+        if data.get(field):
+            # Converts "YYYY-MM-DD" string to a Python date object
+            data[field] = datetime.strptime(data[field], "%Y-%m-%d").date()
+
+    if data.get("position_id"):
+        data["position_id"] = int(data["position_id"])
+
+    if data.get("employee_id"):
+        data["employee_id"] = int(data["employee_id"])
+
+    if data:
+        created = create_relation(**data)
+        if created == None:
+            return (
+                jsonify(
+                    {
+                        "error": "A relation already exists with that position and employee."
+                    }
+                ),
+                400,
+            )
+        if created == -1:
+            return (
+                jsonify({"error": "Missing required fields to create relation."}),
+                400,
+            )
+        if created == -2:
+            return (
+                jsonify({"error": "An error occurred while creating the relation."}),
+                500,
+            )
+        return jsonify({"message": "Relation created", "request": created}), 200
+
+    return (
+        jsonify(
+            {
+                "error": "No data was entered. Cannot create relation with no information."
+            }
+        ),
+        400,
+    )
+
+
+# API
+@ems_routes.route("/api/relation/<int:uid>/modify", methods=["POST"])
+@login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+def ems_api_relation_modify(uid):
+    """
+    API endpoint to modify an existing employee-position relation.
+
+    Args:
+        uid (int): The unique ID of the relation to modify.
+
+    Returns:
+        (json, int): A tuple containing a JSON response and HTTP status code.
+    """
+    # Extract data from request
+    data = request.get_json() or {}
+
+    # Remove the CSRF token from the JSON to pass to the function
+    del data["_csrf_token"]
+
+    date_fields = ["start_date", "end_date"]
+
+    for field in date_fields:
+        if data.get(field):
+            # Converts "YYYY-MM-DD" string to a Python date object
+            data[field] = datetime.strptime(data[field], "%Y-%m-%d").date()
+
+    if data.get("position_id"):
+        data["position_id"] = int(data["position_id"])
+
+    if data.get("employee_id"):
+        data["employee_id"] = int(data["employee_id"])
+
+    if data:
+        modified = modify_relation(uid, **data)
+        if modified == None:
+            return (
+                jsonify({"error": "An error occurred while modifying the relation."}),
+                500,
+            )
+        return jsonify({"message": "Relation modified.", "request": modified}), 200
+
+    return (
+        jsonify(
+            {
+                "error": "No data was entered. Cannot modify relation with no information."
+            }
+        ),
+        400,
+    )
+
+
+# API
+@ems_routes.route("/api/relation/get/all", methods=["GET"])
+@login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+def ems_api_relation_get_all():
+    """
+    API endpoint to get all employee-position relations.
+
+    Returns:
+        (json, int): A tuple containing a JSON response and HTTP status code.
+    """
+    relations = get_all_relations()
+    return jsonify(relations), 200
+
+
+# API
+@ems_routes.route("/api/relation/<int:uid>/get", methods=["GET"])
+@login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+def ems_api_relation_get_by_id(uid):
+    """
+    API endpoint to get an employee-position relation by its unique ID.
+
+    Args:
+        uid (int): The unique ID of the relation.
+    Returns:
+        (json, int): A tuple containing a JSON response and HTTP status code.
+    """
+    relation = get_relation_by_id(uid)
+    if not relation:
+        return jsonify({"error": "Relation not found."}), 400
+    return jsonify(relation), 200
+
+
+# API
+@ems_routes.route("api/relation/<int:uid>/delete", methods=["POST"])
+@login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+def ems_api_relation_delete(uid):
+    """
+    API endpoint to delete an employee-position relation.
+
+    Args:
+        uid (int): The unique ID of the relation to delete.
+
+    Returns:
+        (json, int): A tuple containing a JSON response and HTTP status code.
+    """
+    deleted = delete_relation(uid)
+    if deleted == None:
+        return jsonify({"error": "An error occurred while deleting the relation."}), 500
+    if not deleted:
+        return jsonify({"error": "Relation not found."}), 400
+    return jsonify({"message": "Relation deleted successfully."}), 200
 
 
 ################################################################################
