@@ -101,6 +101,16 @@ def ems_employee_add():
 
 
 # TEMPLATE
+@ems_routes.route("/employee/file_upload", methods=["GET"])
+@login_required
+def ems_employee_file_upload():
+    """
+    Renders the file upload page to upload multiple employees.
+    """
+    return render_template("employee_management/ems_employee_file_upload.html")
+
+
+# TEMPLATE
 @ems_routes.route("/employee/view/<int:emp_id>", methods=["GET"])
 @login_required
 def ems_employee_view(emp_id):
