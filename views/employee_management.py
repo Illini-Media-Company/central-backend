@@ -9,6 +9,7 @@ from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required
 from util.security import restrict_to
 from datetime import datetime
+import pandas as pd
 
 from constants import EMS_ADMIN_ACCESS_GROUPS
 
@@ -860,6 +861,37 @@ def get_ems_brand_image_url(brand: str) -> str:
     return brand_images.get(
         brand, "/static/brandmarks//background/96x96/IMC_SquareIcon.png"
     )
+
+
+def validate_csv(csv):
+    """
+    Validates CSV uploaded to create multiple employees at once
+
+    :param csv: pandas dataframe
+    """
+    required_columns = []
+    invalid_columns = []
+    missing_columns = []
+    for req_col in required_columns:
+        if req_col not in csv.columns:
+            missing_columns.append(req_col)
+    for col in csv.columns:
+        if col not in required_columns:
+            invalid_columns.append(col)
+    if len(missing_columns) > 0:
+        return (
+            jsonify({"error": "CSV missing columns", "missing": missing_columns}),
+            400,
+        )
+    if len(invalid_columns) > 0:
+        return (
+            jsonify(
+                {"error": "CSV contains invalid columns", "invalid": invalid_columns}
+            ),
+            400,
+        )
+    # use create API to validate each row
+    return
 
 
 ################################################################################
