@@ -295,3 +295,11 @@ text and label are strings, class is the name of a class
 {% macro submit_button(text, label, class) %}
     <button class="button-primary submit-button {{ class }}" type="submit" id="{{ label }}">{{ text }}</button>
 {% endmacro %}
+
+{#
+Macro to create a file upload feature for a form (Jinja)
+name is the name of an id, type is the filetype that the form is restricted to
+#}
+{% macro file_input(name, type) %}
+    <input type="file" id="{{ name }}" accept="{{ type }}">
+{% endmacro %}
