@@ -60,7 +60,7 @@
 <hr>
 
 <section class="section-container">
-    <form>
+    {% call form.form(id="employeeFileAddForm", class="employee-file=add-form", enctype="application/x-www-form-urlencoded", on_submit="return submitEmployees(event)") %}
         <div style="display: flex; flex-direction: row; gap: 2rem; align-items: center;">
             <div class="column-container">
                 <div class="inner-container" style="padding: 0.75rem;">
@@ -71,7 +71,7 @@
             <div class="column-container">
                 <div class="inner-container" style="padding: 0.75rem;">
                     <div class="inner-container" style="padding: 0.75rem;">
-                        <input type="file" accept=".csv">
+                        {{ form.file_input("file-input", ".csv") }}
                     </div>
                 </div>
             </div>
@@ -81,9 +81,18 @@
                 {{ form.submit_button(text="Create Employees", label="submit_button") }}
             </div>
         </div>
-    </form>
+    {% endcall %}
 </section>
 <script>
+    async function submitEmployees(event) {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+        let endpoint = "/ems/api/relation/create_all";
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            body: formData,
+        })
+    }
 </script>
 
 {% endblock %}

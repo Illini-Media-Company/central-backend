@@ -9,6 +9,7 @@ from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required
 from util.security import restrict_to
 from datetime import datetime
+import os
 import pandas as pd
 
 from constants import EMS_ADMIN_ACCESS_GROUPS
@@ -830,6 +831,25 @@ def ems_api_relation_delete(uid):
     if not deleted:
         return jsonify({"error": "Relation not found."}), 400
     return jsonify({"message": "Relation deleted successfully."}), 200
+
+
+@ems_routes.route("api/relation/create_all", methods=["POST"])
+@login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+def ems_api_relation_create_all():
+    file = request.files["file"]
+    file.save("uploaded_employees.csv")
+    uploaded_df = pd.read_csv("uploaded_employees.csv", encoding="unicode_escape")
+    return (
+        jsonify(
+            {
+                "message": "Employees created successfully.",
+                "filetype": file.filename,
+                "data": uploaded_df.to_string(),
+            }
+        ),
+        200,
+    )
 
 
 ################################################################################
