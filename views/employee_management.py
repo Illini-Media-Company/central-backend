@@ -891,14 +891,15 @@ def ems_api_relation_delete(uid):
 @restrict_to(EMS_ADMIN_ACCESS_GROUPS)
 def ems_api_relation_create_all():
     file = request.files["file"]
-    file.save("uploaded_employees.csv")
-    uploaded_df = pd.read_csv("uploaded_employees.csv", encoding="unicode_escape")
+    # file.save("uploaded_employees.csv")
+    # uploaded_df = pd.read_csv("uploaded_employees.csv", encoding="unicode_escape")
+    # print(file)
     return (
         jsonify(
             {
                 "message": "Employees created successfully.",
-                "filetype": file.filename,
-                "data": uploaded_df.to_string(),
+                # "filetype": "file",
+                # "data": uploaded_df.to_string(),
             }
         ),
         200,
