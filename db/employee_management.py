@@ -125,6 +125,7 @@ class PositionCard(ndb.Model):
         `pay_rate` (`float`): The amount this position is paid per hour/stipend/year
         `supervisors` (`list[int]`): UIDs of position(s) this position directly reports to
         `direct_reports` (`list[int]`): UIDs of position(s) directly report to this position
+        `google_group` (`str`): The email for the Google Group that all employees will be added to
         `archived` (`bool`): Whether this position is archived (no longer in use)
         `created_at` (`datetime`): When this position was created
         `updated_at` (`datetime`): When this position was last edited
@@ -144,6 +145,8 @@ class PositionCard(ndb.Model):
 
     supervisors = ndb.IntegerProperty(repeated=True)
     direct_reports = ndb.IntegerProperty(repeated=True)
+
+    google_group = ndb.StringProperty()
 
     archived = ndb.BooleanProperty(default=False)
 
@@ -449,6 +452,7 @@ def create_position_card(**kwargs: dict) -> dict | int | None:
         `pay_status` (`str`): How this position is paid
         `pay_rate` (`float`): The amount this position is paid per hour/stipend/year
         `supervisors` (`list[int]`): UIDs of the position(s) this position directly reports to
+        `google_group` (`str`): The email for the Google Group that all employees will be added to
 
     Returns:
         `dict`: The created `PositionCard` as a dictionary, `None` if a position already
@@ -508,6 +512,7 @@ def modify_position_card(uid: int, **kwargs: dict) -> dict | None:
         `pay_status` (`str`): How this position is paid
         `pay_rate` (`float`): The amount this position is paid per hour/stipend/year
         `supervisors` (`list[int]`): UIDs of the position(s) this position directly reports to
+        `google_group` (`str`): The email for the Google Group that all employees will be added to
 
     Returns:
         `dict`: The modified `PositionCard` as a dictionary, `None` if not found,
@@ -875,7 +880,7 @@ def get_relations_by_employee(employee_id: int) -> list:
 
 def get_relations_by_employee_current(employee_id: int) -> list:
     """
-    Retrieves all current EmployeePositionRelation entries for a given position.
+    Retrieves all current EmployeePositionRelation entries for a given employee.
 
     Arguments:
         `employee_id` (`int`): The UID of the employee
@@ -897,7 +902,7 @@ def get_relations_by_employee_current(employee_id: int) -> list:
 
 def get_relations_by_employee_past(employee_id: int) -> list:
     """
-    Retrieves all past EmployeePositionRelation entries for a given position.
+    Retrieves all past EmployeePositionRelation entries for a given employee.
 
     Arguments:
         `employee_id` (`int`): The UID of the employee
@@ -939,6 +944,52 @@ def get_relations_by_position(position_id: int) -> list:
             .fetch()
         )
         return [relation.to_dict() for relation in relations]
+
+
+def get_relations_by_position_current(position_id: int) -> list:
+    """
+    Retrieves all current EmployeePositionRelation entries for a given position.
+
+    Arguments:
+        `position_id` (`int`): The UID of the position
+    Returns:
+        `list`: A list of all current `EmployeePositionRelation` entries as dictionaries
+    """
+    with client.context():
+        relations = (
+            EmployeePositionRelation.query(
+                EmployeePositionRelation.position_id == position_id,
+                EmployeePositionRelation.end_date == None,
+            )
+            .order(-EmployeePositionRelation.start_date)
+            .fetch()
+        )
+        return [relation.to_dict() for relation in relations]
+
+
+def get_relations_by_position_past(position_id: int) -> list:
+    """
+    Retrieves all past EmployeePositionRelation entries for a given position.
+
+    Arguments:
+        `position_id` (`int`): The UID of the position
+
+    Returns:
+        `list`: A list of all past `EmployeePositionRelation` entries as dictionaries
+    """
+    with client.context():
+        relations = (
+            EmployeePositionRelation.query(
+                EmployeePositionRelation.position_id == position_id
+            )
+            .order(-EmployeePositionRelation.start_date)
+            .fetch()
+        )
+        return [
+            relation.to_dict()
+            for relation in relations
+            if relation.end_date is not None
+        ]
 
 
 def delete_relation(uid: int) -> bool | None:

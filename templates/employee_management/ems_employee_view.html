@@ -658,7 +658,7 @@
                                     </p>
                                 </div>
                                 <div class="position-item-button-container">
-                                    <button class="position-item-action-button form-initial-hide" type="button" title="Remove Position" onclick="emsRelationModifyShowForm('{{ pos.relation_uid }}')">
+                                    <button class="position-item-action-button form-initial-hide" type="button" title="Modify Assignment" onclick="emsRelationModifyShowForm('{{ pos.relation_uid }}')">
                                         <i class="bi bi-pencil-square"></i>
                                     </button>
                                     <a href="/ems/position/view/{{ pos.position_uid }}" target="_blank">
@@ -703,7 +703,7 @@
                                     {% endif %}
                                 </div>
                                 <div class="position-item-button-container">
-                                    <button class="position-item-action-button form-initial-hide" type="button" title="Remove Position" onclick="emsRelationModifyShowForm('{{ pos.relation_uid }}')">
+                                    <button class="position-item-action-button form-initial-hide" type="button" title="Modify Assignment" onclick="emsRelationModifyShowForm('{{ pos.relation_uid }}')">
                                         <i class="bi bi-pencil-square"></i>
                                     </button>
                                     <a href="/ems/position/view/{{ pos.position_uid }}" target="_blank">
@@ -775,6 +775,65 @@
         initial_hide.forEach(elem => {
             elem.style.display = "none";
         });
+    }
+
+    // Delete the employee
+    async function deleteEmployee() {
+        console.log("Deleting...");
+
+        result = await showButtonAlert(
+            header="WARNING: Delete Employee?", 
+            body="Are you sure you want to permanently delete this employee? \
+            This action cannot be undone.\n\nIf the employee no longer works \
+            for IMC, start the offboarding process or mark them as inactive \
+            instead.", 
+            alertButtonText="Yes, permanently delete", 
+            cancelButtonText="Cancel"
+        )
+
+        if (!result) {
+            hideLoading();
+            return;
+        }
+
+        showLoading("Deleting Employee...");
+
+        // Send the data to the backend endpoint
+        let endpoint = "/ems/api/employee/{{ employee.uid }}/delete";
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        // Check if it was successful
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", `{{ employee.full_name }} successfully deleted.`); // Save so we can display after reload
+            window.location.assign("/ems/employees");
+        } else {
+            // Alert of the error
+            console.log("Deleting the employee failed!");
+
+            try {
+                const data = await response.json();
+                const message = data.error || "An unknown error occurred.";
+
+                console.error(message);
+                hideLoading();
+                await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            } catch (err) {
+                const fallback = await response.text();
+                hideLoading();
+                await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+            }
+        }
     }
 
     async function modifyEmployee(event) {

@@ -171,6 +171,37 @@
             height: 100%;
         }
 
+        .employees-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr;
+            column-gap: 0.5rem;
+            row-gap: 0.5rem;
+        }
+
+        .employee-item-container {
+            border: 2px solid var(--main-md-gray-color); 
+            display: flex;
+            flex-direction: row;
+            gap: 0.75rem;
+            justify-content: space-between;
+        }
+
+        .employee-item-button-container {
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between; 
+            height: 100%; 
+            gap: 0.25rem;
+        }
+
+        .employee-item-action-button {
+            padding: 0;
+            border: none;
+            background-color: inherit;
+            color: inherit;
+        }
+
         @media (max-width: 480px) {
             .position-header-container {
                 flex-direction: column;
@@ -196,12 +227,35 @@
 {% endblock %}
 
 {% import "macros/form.html" as form %}
+{% import "employee_management/ems_macros.html" as ems_macros %}
 {% include "partials/loading.html" %}
 {% include "partials/text_alert.html" %}
 {% include "partials/button_alert.html" %}
 {% include "partials/info_bar.html" %}
 
 {% block ems_content %}
+
+{{ ems_macros.ems_relation_add(
+    employee_id=none, 
+    position_id=position.uid,
+    employee_choices=employee_options,
+    position_choices=[{"value": position.uid, "name": position.brand ~ " — " ~ position.title}],
+    departure_categories=departure_categories,
+    depart_reasons_vol=depart_reasons_vol,
+    depart_reasons_invol=depart_reasons_invol,
+    depart_reasons_admin=depart_reasons_admin,
+) }}
+{{ ems_macros.ems_relation_modify(
+    employee_id=none, 
+    position_id=position.uid,
+    employee_choices=employee_options,
+    position_choices=[{"value": position.uid, "name": position.brand ~ " — " ~ position.title}],
+    departure_categories=departure_categories,
+    depart_reasons_vol=depart_reasons_vol,
+    depart_reasons_invol=depart_reasons_invol,
+    depart_reasons_admin=depart_reasons_admin,
+) }}
+
 {# Header #}
 <div style="display: flex; flex-direction: row; gap: 2rem; align-items: center;">
     <a href="/ems/positions" style="color: inherit; font-size: 2rem;">
@@ -276,6 +330,17 @@
         <div class="row-container">
             {# Left Column #}
             <div class="column-container" style="flex: 0 auto;">
+                {# Buttons #}
+                <div style="text-align: center;">
+                    <button id="modify-button" onclick="showModify()" type="button" class="button-primary">
+                        <i class="bi bi-pen"></i>&nbsp;&nbsp;Modify
+                    </button>
+                    <button id="cancel-button" onclick="hideModify()" type="button" class="button-bg-color" style="display: none;">
+                        <i class="bi bi-x-circle"></i>&nbsp;&nbsp;Cancel
+                    </button>
+                    {{ form.submit_button(text="Save", label="submit_button") }}
+                </div>
+
                 {# Financial #}
                 <div class="inner-container" style="padding: 0.75rem;">
                     <div class="section-header" style="padding: 0;">
@@ -322,6 +387,36 @@
                     </div>
                 </div>
 
+                {# Google Admin #}
+                <div class="inner-container" style="padding: 0.75rem;">
+                    <div class="section-header" style="padding: 0;">
+                        <h4 style="margin-bottom: 0">Google Admin</h4>
+                    </div>
+
+                    <hr style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+
+                    <div class="position-info-column-container">
+                        {# Google Group #}
+                        <div class="position-info-row" title="Google Group">
+                            <i class="bi bi-people-fill"></i>
+                            <div class="form-initial-show">
+                                <p style="margin-bottom: 0;">{{ position.google_group or "—"}}</p>
+                            </div>
+                            <div class="form-initial-hide">
+                                {{ form.text_input( 
+                                    name="google_group",
+                                    label="Google Group",
+                                    required=false,
+                                    initial_val=position.google_group,
+                                    placeholder="xxxxx@illinimedia.com",
+                                    pattern=".*@(illinimedia\.com|illioyearbook\.com)$",
+                                    class="position-modify-form-row form-row-shrink"
+                                ) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {# Administrative #}
                 <div class="inner-container" style="padding: 0.75rem;">
                     <div class="section-header" style="padding: 0;">
@@ -360,28 +455,93 @@
 
             {# Right Column #}
             <div class="column-container" style="flex: 1 auto;">
-                {# Job Description #}
-                <div class="inner-container" style="padding: 0.75rem;">
-                    <div class="section-header" style="padding: 0;">
-                        <h3 style="margin-bottom: 0">Job Description</h3>
+                {# Inner Row 1 #}
+                <div class="row-container">
+                    {# Currently Held #}
+                    <div class="inner-container" style="padding: 0.75rem;">
+                        {# Header #}
+                        <div class="section-header" style="padding: 0;">
+                            <div class="sup-rep-header">
+                                <h3 style="margin-bottom: 0">Currently Held By</h3>
+                                <h4 style="margin-bottom: 0">({{ position.current_employees | length }})</h4>
+                            </div>
+                            <button class="button-primary" type="button" onclick="emsRelationAddShowForm()">
+                                Assign Employee
+                            </button>
+                        </div>
+
+                        <hr style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+
+                        <div class="employees-container" id="current-employees-container">
+                            {% for emp in position.current_employees %}
+                                <div class="inner-container employee-item-container" 
+                                    id="position-relation-{{ emp.relation_uid }}"
+                                    {% if loop.index0 > 2 %}style="display: none;"{% endif %}
+                                >
+                                    <div>
+                                        <h4>
+                                            {{ emp.first_name }} {{ emp.last_name }}
+                                        </h4>
+                                        <p style="margin-bottom: 0;">
+                                            Since {{ emp.start_date | ap_date }}
+                                            <span style="font-size: 0.75rem;">({{ emp.start_date | time_since }})</span>
+                                        </p>
+                                    </div>
+                                    {# Buttons #}
+                                    <div class="employee-item-button-container">
+                                        <button class="employee-item-action-button form-initial-hide" type="button" title="Modify Assignment" onclick="emsRelationModifyShowForm('{{ emp.relation_uid }}')">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                        <a href="/ems/employee/view/{{ emp.employee_uid }}" target="_blank">
+                                            <button class="employee-item-action-button" type="button" title="View/Edit Employee" style="color: var(--main-accent-color);">
+                                                <i class="bi bi-person-badge"></i>
+                                            </button>
+                                        </a>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        {# Only display "see more" button when >3 employees #}
+                        {% if position.current_employees | length > 3 %}
+                            <hr style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+                            
+                            {# See more & less buttons #}
+                            <div style="text-align: center;">
+                                <button id ="btn-show-more" class="button-secondary" type="button" onclick="toggleEmployees('more')">
+                                    <i class="bi bi-plus-lg"></i> Show More
+                                </button>
+                                <button id ="btn-show-less" class="button-secondary" type="button" onclick="toggleEmployees('less')" style="display: none;">
+                                    <i class="bi bi-dash-lg"></i> Show Less
+                                </button>
+                            </div>
+                        {% endif %}
                     </div>
 
-                    <hr style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+                    {# Job Description #}
+                    <div class="inner-container" style="padding: 0.75rem;">
+                        <div class="section-header" style="padding: 0;">
+                            <h3 style="margin-bottom: 0">Job Description</h3>
+                        </div>
 
-                    <div class="form-initial-show">
-                        <p>{{ position.job_description }}</p>
-                    </div>
-                    <div class="form-initial-hide">
-                        {{ form.textarea_input( 
-                            name="job_description",
-                            label="Job Description",
-                            required=false,
-                            initial_val=position.job_description,
-                            class="position-modify-form-row"
-                        ) }}
+                        <hr style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+
+                        <div class="form-initial-show">
+                            <p>{{ position.job_description }}</p>
+                        </div>
+                        <div class="form-initial-hide">
+                            {{ form.textarea_input( 
+                                name="job_description",
+                                label="Job Description",
+                                required=false,
+                                initial_val=position.job_description,
+                                class="position-modify-form-row"
+                            ) }}
+                        </div>
                     </div>
                 </div>
 
+                {# Direct Reports & Supervisors #}
                 <div class="row-container">
                     {# Supervisor(s) #}
                     <div class="inner-container" style="padding: 0.75rem; height: fit-content;">
@@ -482,22 +642,14 @@
                 </div>
             </div>
         </div>
-
-        {# Buttons #}
-        <div style="text-align: center;">
-            <button id="modify-button" onclick="showModify()" type="button" class="button-primary">
-                <i class="bi bi-pen"></i>&nbsp;&nbsp;Modify
-            </button>
-            <button id="cancel-button" onclick="hideModify()" type="button" class="button-bg-color" style="display: none;">
-                <i class="bi bi-x-circle"></i>&nbsp;&nbsp;Cancel
-            </button>
-            {{ form.submit_button(text="Save", label="submit_button") }}
-        </div>
     {% endcall %}
 </section>
 
 <script>
     let SUPS = []
+
+    // Number of current employees to show
+    let currentVisibleLimit = 3;
 
     window.addEventListener('load', () => {
         const msg = sessionStorage.getItem("infoBarMessage");
@@ -663,6 +815,44 @@
         supItem.remove();
         SUPS = SUPS.filter(item => item != uid);
     } 
+
+    // Show more employees
+    function toggleEmployees(action) {
+        const rows = document.querySelectorAll('.employee-item-container');
+        const btnMore = document.getElementById('btn-show-more');
+        const btnLess = document.getElementById('btn-show-less');
+        const total = rows.length;
+
+        if (action === 'more') {
+            currentVisibleLimit += 3;
+        } else {
+            currentVisibleLimit = 3;
+        }
+
+        // Loop through all rows and decide visibility
+        rows.forEach((row, index) => {
+            if (index < currentVisibleLimit) {
+                row.style.display = "flex";
+            } else {
+                row.style.display = "none";
+            }
+        });
+
+        // Handle Button Visibility
+        if (currentVisibleLimit >= total) {
+            btnMore.style.display = "none";
+            btnLess.style.display = "inline-block";
+        } else {
+            btnMore.style.display = "inline-block";
+            btnLess.style.display = "none";
+        }
+
+        // Reset limit if they clicked 'less'
+        if (action === 'less') {
+            btnMore.style.display = "inline-block";
+            btnLess.style.display = "none";
+        }
+    }
 
     // Submit to API
     async function modifyPosition(event) {

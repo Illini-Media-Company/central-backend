@@ -2,7 +2,7 @@
 This file defines the API for the Employee Management System.
 
 Created by Jacob Slabosz on Jan. 12, 2026
-Last modified Jan. 28, 2026
+Last modified Feb. 2, 2026
 """
 
 from flask import Blueprint, render_template, request, jsonify
@@ -36,6 +36,8 @@ from db.employee_management import (
     get_relations_by_employee_current,
     get_relations_by_employee_past,
     get_relations_by_position,
+    get_relations_by_position_current,
+    get_relations_by_position_past,
     delete_relation,
 )
 
@@ -126,7 +128,6 @@ def ems_employee_view(emp_id):
 
     # Get the employee's current positions
     cur_relations = get_relations_by_employee_current(emp_id)
-    print(cur_relations)
     for rel in cur_relations:
         position = get_position_card_by_id(rel["position_id"])
         if position:
@@ -406,15 +407,61 @@ def ems_position_view(pos_id):
     Renders the view position page.
     """
     position = get_position_card_by_id(pos_id)
+    position["current_employees"] = []
+    position["past_employees"] = []
 
+    # Get the position's current employees
+    cur_relations = get_relations_by_position_current(pos_id)
+    for rel in cur_relations:
+        employee = get_employee_card_by_id(rel["employee_id"])
+        if employee:
+            position["current_employees"].append(
+                {
+                    "relation_uid": rel["uid"],
+                    "employee_uid": employee["uid"],
+                    "first_name": employee["first_name"],
+                    "last_name": employee["last_name"],
+                    "start_date": rel["start_date"],
+                }
+            )
+
+    # # Get the position's past employees
+    # past_relations = get_relations_by_position_past(pos_id)
+    # for rel in past_relations:
+    #     employee = get_employee_card_by_id(rel["employee_id"])
+    #     if employee:
+    #         position["past_employees"].append(
+    #             {
+    #                 "relation_uid": rel["uid"],
+    #                 "employee_uid": employee["uid"],
+    #                 "first_name": employee["first_name"],
+    #                 "last_name": employee["last_name"],
+    #                 "start_date": rel["start_date"],
+    #                 "end_date": rel["end_date"],
+    #                 "departure_category": rel["departure_category"],
+    #                 "departure_reason": rel["departure_reason"],
+    #                 "departure_notes": rel["departure_notes"],
+    #             }
+    #         )
+
+    # Get all possible employee options for dropdown
+    all_employees = get_all_employee_cards()
+    employee_options = [
+        {"value": emp["uid"], "name": f"{emp['last_name']}, {emp['first_name']}"}
+        for emp in all_employees
+    ]
+
+    # All positions (used for adding supervisors)
     all_positions = get_all_position_cards()
 
+    # Format the position options for the dropdown
     position_options = [
         {"value": pos["uid"], "name": f"{pos['brand']} — {pos['title']}"}
         for pos in all_positions
         if pos["uid"] != position["uid"]
     ]
 
+    # Get this position's supervisors
     new_supervisors = []
     for pos in position["supervisors"]:
         supervisor = get_position_card_by_id(pos)
@@ -428,6 +475,7 @@ def ems_position_view(pos_id):
             )
     position["supervisors"] = new_supervisors
 
+    # Get this position's direct reports
     new_direct_reports = []
     for pos in position["direct_reports"]:
         direct_report = get_position_card_by_id(pos)
@@ -448,6 +496,11 @@ def ems_position_view(pos_id):
         imc_brands_choices=IMC_BRANDS,
         pay_types_choices=PAY_TYPES,
         position_options=position_options,
+        employee_options=employee_options,
+        departure_categories=DEPART_CATEGORIES,
+        depart_reasons_vol=DEPART_REASON_VOL,
+        depart_reasons_invol=DEPART_REASON_INVOL,
+        depart_reasons_admin=DEPART_REASON_ADMIN,
     )
 
 

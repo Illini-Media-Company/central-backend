@@ -115,8 +115,9 @@ button trigger the emsRelationAddShowForm() function.
             {# Form #}
             {% call form.form(id="relationAddForm", enctype="application/x-www-form-urlencoded", on_submit="return emsRelationAddSubmit(event)") %}
                 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                    {# Position Selection #}
+                    {# Position/Employee Selection #}
                     <div style="display: flex; flex-direction: row; gap: 0.5rem;">
+                        {# Position Selection #}
                         {% if employee_id %}
                             {# Disabled input with the employee's ID #}
                             {{ form.select_input( 
@@ -140,6 +141,7 @@ button trigger the emsRelationAddShowForm() function.
 
                         {# Employee Selection #}
                         {% if position_id %}
+                            {# Employee #}
                             {{ form.select_input( 
                                 name="ems-relation-add_employee_id",
                                 label="Employee",
@@ -154,6 +156,7 @@ button trigger the emsRelationAddShowForm() function.
                                 label="Position",
                                 options=position_choices,
                                 required=false,
+                                initial_val=position_id,
                                 class="ems-relation-add-form-row grow input-readonly"
                             ) }}
                         {% endif %}
