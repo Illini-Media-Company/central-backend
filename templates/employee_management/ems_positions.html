@@ -370,6 +370,7 @@
         <table id="positionTable">
             <thead>
                 <tr>
+                    <th>View</th>
                     <th></th>
                     <th onclick="handleSort(this, 'title')">
                         <span><i class="bi bi-caret-up"></i></span> 
@@ -387,7 +388,6 @@
                         <span><i class="bi bi-caret-up"></i></span> 
                         Active?
                     </th>
-                    <th>Actions</th>
                 </tr>
             </thead>
 
@@ -454,6 +454,11 @@
             const row = document.createElement("tr");
             row.innerHTML = `
                 <td>
+                    <a href="/ems/position/view/${pos.uid}">
+                        <button class="button-primary" title="View/Edit Position" style="padding: 0.25rem 0.5rem;"><i class="bi bi-briefcase"></i></button>
+                    </a>
+                </td>
+                <td>
                     <img 
                         src="${pos.brand_image_url}"
                         class="brand-photo"
@@ -476,11 +481,6 @@
                         '<i class="bi bi-check-circle" style="color: var(--green-500);" title="Active"></i>'
                          
                     }
-                </td>
-                <td>
-                    <a href="/ems/position/view/${pos.uid}">
-                        <button class="button-primary" title="View/Edit Position"><i class="bi bi-briefcase"></i></button>
-                    </a>
                 </td>
             `;
             tbody.appendChild(row);
