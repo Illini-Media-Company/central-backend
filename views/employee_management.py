@@ -114,6 +114,32 @@ def ems_employee_file_upload():
     return render_template("employee_management/ems_employee_file_upload.html")
 
 
+@ems_routes.route("/api/employee/create/bulk", methods=["POST"])
+@login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+def ems_api_employee_create_all():
+    if "file" not in request.files:
+        return jsonify({"error": "No file part in the request"}), 400
+
+    file = request.files["file"]
+
+    if file.filename == "":
+        return jsonify({"error": "No selected file"}), 400
+
+    # 2. You can read the file directly into Pandas without saving it to disk
+    try:
+        # Move pointer to start of file just in case
+        file.seek(0)
+        uploaded_df = pd.read_csv(file, encoding="unicode_escape")
+
+        # Do your processing here...
+        print(uploaded_df.head())
+
+        return jsonify({"message": f"Processed {len(uploaded_df)} rows"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # TEMPLATE
 @ems_routes.route("/employee/view/<int:emp_id>", methods=["GET"])
 @login_required
@@ -884,26 +910,6 @@ def ems_api_relation_delete(uid):
     if not deleted:
         return jsonify({"error": "Relation not found."}), 400
     return jsonify({"message": "Relation deleted successfully."}), 200
-
-
-@ems_routes.route("api/relation/create_all", methods=["POST"])
-@login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
-def ems_api_relation_create_all():
-    file = request.files["file"]
-    # file.save("uploaded_employees.csv")
-    # uploaded_df = pd.read_csv("uploaded_employees.csv", encoding="unicode_escape")
-    # print(file)
-    return (
-        jsonify(
-            {
-                "message": "Employees created successfully.",
-                # "filetype": "file",
-                # "data": uploaded_df.to_string(),
-            }
-        ),
-        200,
-    )
 
 
 ################################################################################

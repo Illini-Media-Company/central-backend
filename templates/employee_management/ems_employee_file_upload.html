@@ -91,31 +91,21 @@
         showLoading("Modifying Employee...");
 
         const formData = new FormData(event.target);
-
-        const formEntries = Object.fromEntries(
-            Array.from(formData.entries()).filter(([key, value]) => value !== "")
-        );
+        formData.append("_csrf_token", "{{ csrf_token() }}");
 
         // Send the data to the backend endpoint
-        let endpoint = "/ems/api/relation/create_all";
-        const payload = {
-            _csrf_token: "{{ csrf_token() }}",
-            ...formEntries,
-        }
+        let endpoint = "/ems/api/employee/create/bulk";
 
         const response = await fetch(endpoint, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
+            body: formData,
         });
 
         // Check if it was successful
         if (response.status === 200) {
             // Trigger a reload of the window
             sessionStorage.setItem("infoBarMessage", "Employee successfully modified."); // Safe so we can display after reload
-            // window.location.reload();
+            window.location.reload();
         } else {
             // Alert of the error
             console.log("Modifying the employee failed!");
