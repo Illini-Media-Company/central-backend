@@ -125,11 +125,21 @@
         <link rel="stylesheet" href="https://use.typekit.net/tid3tgd.css">
         <link rel="stylesheet" href="/static/globals.css">
         <link rel="stylesheet" href="/static/styles/styles_base.css">
+
+        {# Google Analytics tag (gtag.js) #}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-6V6FSKGBDZ"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-6V6FSKGBDZ');
+        </script>
     </head>
 
     <body>
         <div class="rotator" id="rotator" data-interval-ms="{{ rotate_ms | default(30000) | int }}">
-            <!-- Clock panel -->
+            {# Clock panel #}
             {% if show_datetime %}
                 <section class="panel" style="align-items: center; justify-content: center;">
 

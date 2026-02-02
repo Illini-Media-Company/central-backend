@@ -16,6 +16,9 @@ from datetime import date as _date
 from db.mini_crossword_object import add_crossword
 from flask_login import current_user
 
+from util.google_analytics import send_ga4_event
+from constants import IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID
+
 
 mini_routes = Blueprint("mini_routes", __name__, url_prefix="/mini")
 
@@ -35,6 +38,16 @@ def today():
     """
     Return today's crossword data
     """
+
+    # Log in Google Analytics
+    utm_source = request.args.get("utm_source", "none")
+    utm_medium = request.args.get("utm_medium", "none")
+    send_ga4_event(
+        "mini_crossword_fetch",
+        IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID,
+        {"utm_source": utm_source, "utm_medium": utm_medium},
+    )
+
     today = datetime.today()
     days_since_monday = today.weekday()
 
