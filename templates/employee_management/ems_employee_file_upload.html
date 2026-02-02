@@ -60,7 +60,7 @@
 <hr>
 
 <section class="section-container">
-    {% call form.form(id="employeeFileAddForm", class="employee-file=add-form", enctype="application/x-www-form-urlencoded", on_submit="return submitEmployees(event)") %}
+    {% call form.form(id="employeeFileAddForm", class="employee-file=add-form", enctype="multipart/form-data", on_submit="return submitEmployees(event)") %}
         <div style="display: flex; flex-direction: row; gap: 2rem; align-items: center;">
             <div class="column-container">
                 <div class="inner-container" style="padding: 0.75rem;">
@@ -71,7 +71,7 @@
             <div class="column-container">
                 <div class="inner-container" style="padding: 0.75rem;">
                     <div class="inner-container" style="padding: 0.75rem;">
-                        {{ form.file_input("file-input", ".csv") }}
+                        {{ form.file_input("file_input", ".csv") }}
                     </div>
                 </div>
             </div>

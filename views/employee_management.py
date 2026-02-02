@@ -118,10 +118,10 @@ def ems_employee_file_upload():
 @login_required
 @restrict_to(EMS_ADMIN_ACCESS_GROUPS)
 def ems_api_employee_create_all():
-    if "file" not in request.files:
+    if "file_input" not in request.files:
         return jsonify({"error": "No file part in the request"}), 400
 
-    file = request.files["file"]
+    file = request.files["file_input"]
 
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400

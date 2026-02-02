@@ -301,5 +301,5 @@ Macro to create a file upload feature for a form (Jinja)
 name is the name of an id, type is the filetype that the form is restricted to
 #}
 {% macro file_input(name, type) %}
-    <input type="file" id="{{ name }}" accept="{{ type }}">
-{% endmacro %}
+    <input type="file" id="{{ name }}" name="{{ name }}" accept="{{ type }}">
+{% endmacro %} 
