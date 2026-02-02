@@ -86,13 +86,70 @@
 <script>
     async function submitEmployees(event) {
         event.preventDefault();
+        console.log("Saving...");
+
+        showLoading("Modifying Employee...");
+
         const formData = new FormData(event.target);
+
+        const formEntries = Object.fromEntries(
+            Array.from(formData.entries()).filter(([key, value]) => value !== "")
+        );
+
+        // Send the data to the backend endpoint
         let endpoint = "/ems/api/relation/create_all";
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+            ...formEntries,
+        }
+
         const response = await fetch(endpoint, {
             method: 'POST',
-            body: formData,
-        })
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        // Check if it was successful
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", "Employee successfully modified."); // Safe so we can display after reload
+            // window.location.reload();
+        } else {
+            // Alert of the error
+            console.log("Modifying the employee failed!");
+
+            try {
+                const data = await response.json();
+                const message = data.error || "An unknown error occurred.";
+
+                console.error(message);
+                hideLoading();
+                await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            } catch (err) {
+                const fallback = await response.text();
+                hideLoading();
+                await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+            }
+        }
     }
+    // async function submitEmployees(event) {
+    //     event.preventDefault();
+    //     const formData = new FormData(event.target);
+    //     const payload = {
+    //         _csrf_token: "{{ csrf_token() }}",
+    //         // ...Object.fromEntries(
+    //         //     Array.from(formData.entries()).filter(([key, value]) => value !== "")
+    //         // ),
+    //     }
+    //     console.log(payload)
+    //     let endpoint = "/ems/api/relation/create_all";
+    //     const response = await fetch(endpoint, {
+    //         method: 'POST',
+    //         body: JSON.stringify(payload),
+    //     })
+    // }
 </script>
 
 {% endblock %}
