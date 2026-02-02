@@ -425,13 +425,13 @@
     function textAfterRate(status) {
         switch(status) {
             case "Stipend":
-                return "Pay Period";
+                return "/ Pay Period";
                 break;
             case "Salary":
-                return "Year";
+                return "/ Year";
                 break;
             case "Hourly":
-                return "Hour";
+                return "/ Hour";
                 break;
             default:
                 return "";
@@ -468,7 +468,7 @@
                     ${pos.pay_status}
                 </td>
                 <td>
-                    $${(pos.pay_rate).toFixed(2)} / ${textAfterRate(pos.pay_status)}
+                    $${(pos.pay_rate).toFixed(2)} ${textAfterRate(pos.pay_status)}
                 </td>
                 <td>
                     ${pos.archived ? 

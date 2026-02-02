@@ -696,9 +696,11 @@
                                         Departure Reason:
                                         <span style="font-weight: 300;">{{ pos.departure_reason }} ({{ pos.departure_category }})</span>
                                     </h4>
-                                    <p style="margin-bottom: 0;">
-                                        "{{ pos.departure_notes }}"
-                                    </p>
+                                    {% if pos.departure_notes %}
+                                        <p style="margin-bottom: 0;">
+                                            "{{ pos.departure_notes }}"
+                                        </p>
+                                    {% endif %}
                                 </div>
                                 <div class="position-item-button-container">
                                     <button class="position-item-action-button form-initial-hide" type="button" title="Remove Position" onclick="emsRelationModifyShowForm('{{ pos.relation_uid }}')">
