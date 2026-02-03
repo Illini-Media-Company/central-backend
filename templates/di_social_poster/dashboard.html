@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    DI Socials Poster
+{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="/static/styles/styles_index.css">
+    <link rel="stylesheet" href="/static/macros/form.css">
+    <style>
+        table {
+            border-collapse: separate;
+            border-spacing: 0 0.5rem;
+            width: 100%;
+            background-color: var(--main-bg-color);
+            border-radius: var(--main-border-radius);
+        }
+
+        tr {
+            border-radius: var(--main-border-radius);
+        }
+
+        tr:hover td {
+            background-color: var(--main-extralight-color);
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            background-color: var(--main-bg-color);
+        }
+
+        td:first-child {
+            border-top-left-radius: var(--main-border-radius);
+            border-bottom-left-radius: var(--main-border-radius);
+        }
+
+        td:last-child {
+            border-top-right-radius: var(--main-border-radius);
+            border-bottom-right-radius: var(--main-border-radius);
+        }
+
+        th {
+            padding: 0.75rem 1rem;
+            white-space: nowrap;
+            border-bottom: 1px solid var(--main-lt-gray-color);
+            align-items: center;
+        }
+    </style>
+{% endblock %}
+
+{% import "macros/form.html" as form %}
+{% import "macros/pagination.html" as pagination %}
+
+{% block content %}
+<h1>DI Socials Poster</h1>
+
+<hr style="margin-bottom: 2rem;">
+
+<section class="section-container" id="stories-container">
+    <div class="section-header">
+        <h2 style="margin-bottom: 0">Social Media Posting Status</h2>
+    </div>
+
+    <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+        <div style="display: flex; flex-direction: row; align-items: center;" id="querySearchBar">
+            <i class="bi bi-search"></i>
+            {{ form.text_input( 
+                name="searchQuery",
+                placeholder="Search...",
+                class=""
+            ) }}
+        </div>
+    </div>
+
+    {% if not stories %}
+    <div class="inner-container" style="align-items: center; text-align: center;" id="no-stories-message">
+        <p style="margin-bottom: 0;">There are no social stories to display.</p>
+    </div>
+    {% else %}
+    <div style="overflow-x: auto; max-width: 100%; border-radius: var(--main-border-radius);">
+        <table>
+            <thead>
+                <tr>
+                    <th style="padding-right: 3rem;">Story Title</th>
+                    <th style="padding-right: 3rem;">Story URL</th>
+                    <th style="padding-right: 2rem;">Date Posted</th>
+                    <th style="padding-right: 2rem;">Instagram</th>
+                    <th style="padding-right: 2rem;">Facebook</th>
+                    <th style="padding-right: 2rem;">Reddit</th>
+                    <th style="padding-right: 2rem;">X</th>
+                    <th style="padding-right: 2rem;">Threads</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for story in stories %}
+                <tr>
+                    <td>{{ story.story_name }}</td>
+                    <td>
+                        <a href="{{ story.story_url }}" target="_blank">{{ story.story_url }}</a>
+                    </td>
+                    <td>
+                        {% if story.story_posted_timestamp %}
+                            {{ story.story_posted_timestamp|ap_date }}
+                        {% else %}
+                            Not available
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if story.instagram_timestamp %}
+                            {{ story.instagram_timestamp|ap_datetime }}
+                        {% else %}
+                            Not posted
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if story.facebook_timestamp %}
+                            {{ story.facebook_timestamp|ap_datetime }}
+                        {% else %}
+                            Not posted
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if story.reddit_timestamp %}
+                            {{ story.reddit_timestamp|ap_datetime }}
+                        {% else %}
+                            Not posted
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if story.x_timestamp %}
+                            {{ story.x_timestamp|ap_datetime }}
+                        {% else %}
+                            Not posted
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if story.threads_timestamp %}
+                            {{ story.threads_timestamp|ap_datetime }}
+                        {% else %}
+                            Not posted
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div style="margin-top: 1.5rem;">
+        {{ pagination.pagination(page, total_stories, per_page, "page") }}
+    </div>
+    {% endif %}
+</section>
+
+<script>
+    window.addEventListener('load', () => {
+        // Event listener to handle search query input
+        const searchInput = document.getElementById("searchQuery");
+        const table = document.querySelector("table");
+        
+        if (searchInput && table) {
+            const tbody = table.querySelector("tbody");
+            
+            searchInput.addEventListener("input", () => {
+                const query = searchInput.value.toLowerCase().trim();
+
+                Array.from(tbody.querySelectorAll("tr")).forEach(row => {
+                    const text = row.innerText.toLowerCase();
+                    row.style.display = text.includes(query) ? "" : "none";
+                });
+            });
+        }
+    });
+</script>
+
+{% endblock %}
+
