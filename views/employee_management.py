@@ -14,6 +14,8 @@ import pandas as pd
 
 from constants import EMS_ADMIN_ACCESS_GROUPS
 
+from db.user import get_user_profile_photo
+
 from db.employee_management import (
     create_employee_card,
     modify_employee_card,
@@ -79,6 +81,14 @@ def ems_employees():
     Renders the Employee Management System employees page.
     """
     all_employees = get_all_employee_cards()
+
+    # Get the corresponding user's profile photo
+    for emp in all_employees:
+        if emp["user_uid"]:
+            emp["user_profile"] = get_user_profile_photo(emp["user_uid"])
+        else:
+            emp["user_profile"] = "/static/defaults/employee_profile.png"
+
     return render_template(
         "employee_management/ems_employees.html",
         selection="employees",
@@ -192,6 +202,12 @@ def ems_employee_view(emp_id):
         {"value": pos["uid"], "name": f"{pos['brand']} — {pos['title']}"}
         for pos in all_positions
     ]
+
+    # Get the corresponding user's profile photo
+    if employee["user_uid"]:
+        employee["user_profile"] = get_user_profile_photo(employee["user_uid"])
+    else:
+        employee["user_profile"] = "/static/defaults/employee_profile.png"
 
     return render_template(
         "employee_management/ems_employee_view.html",
@@ -934,12 +950,12 @@ def get_ems_brand_image_url(brand: str) -> str:
         "Chambana Eats": "/static/brandmarks/background/96x96/CE_SquareIcon.png",
         "The Daily Illini": "/static/brandmarks/background/96x96/DI_SquareIcon.png",
         "Illini Content Studio": "/static/brandmarks/background/96x96/ICS_SquareIcon.png",
-        "Illio": "/static/brandmarks//background/96x96/Illio_SquareIcon.png",
-        "IMC": "/static/brandmarks//background/96x96/IMC_SquareIcon.png",
-        "WPGU": "/static/brandmarks//background/96x96/WPGU_SquareIcon.png",
+        "Illio": "/static/brandmarks/background/96x96/Illio_SquareIcon.png",
+        "IMC": "/static/brandmarks/background/96x96/IMC_SquareIcon.png",
+        "WPGU": "/static/brandmarks/background/96x96/WPGU_SquareIcon.png",
     }
     return brand_images.get(
-        brand, "/static/brandmarks//background/96x96/IMC_SquareIcon.png"
+        brand, "/static/brandmarks/background/96x96/IMC_SquareIcon.png"
     )
 
 
