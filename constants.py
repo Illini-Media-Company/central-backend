@@ -9,7 +9,7 @@ load_dotenv()
 ENV = os.environ.get("ENV", "dev")
 
 # Google API keys and secrets
-ADMIN_EMAIL = "di_admin@illinimedia.com"
+ADMIN_EMAIL = "imc_admin@illinimedia.com"
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", None)
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", None)
 GOOGLE_PROJECT_ID = os.environ.get("DATASTORE_PROJECT_ID", None)
