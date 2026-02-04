@@ -135,6 +135,8 @@ def ems_api_employee_create_all():
         # Do your processing here...
         print(uploaded_df.head())
 
+        validate_csv(uploaded_df)
+
         return jsonify({"message": f"Processed {len(uploaded_df)} rows"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -949,29 +951,78 @@ def validate_csv(csv):
 
     :param csv: pandas dataframe
     """
-    required_columns = []
+    print("csv")
+    required_columns = [
+        "last_name",
+        "first_name",
+        "imc_email",
+        "personal_email",
+        "phone_number",
+        "permanent_address_1",
+        "permanent_city",
+        "permanent_state",
+        "permanent_zip",
+        "status",
+    ]
+    not_req_columns = [
+        "user_uid",
+        "pronouns",
+        "permanent_address_2",
+        "major",
+        "major_2",
+        "major_3",
+        "minor",
+        "minor_2",
+        "minor_3",
+        "birth_date",
+        "payroll_number",
+        "initial_hire_date",
+        "graduation",
+    ]
     invalid_columns = []
     missing_columns = []
     for req_col in required_columns:
         if req_col not in csv.columns:
             missing_columns.append(req_col)
     for col in csv.columns:
-        if col not in required_columns:
+        if col not in not_req_columns and col not in required_columns:
             invalid_columns.append(col)
     if len(missing_columns) > 0:
-        return (
-            jsonify({"error": "CSV missing columns", "missing": missing_columns}),
-            400,
-        )
+        raise Exception(f"CSV missing columns: {missing_columns}")
     if len(invalid_columns) > 0:
-        return (
-            jsonify(
-                {"error": "CSV contains invalid columns", "invalid": invalid_columns}
-            ),
-            400,
-        )
+        raise Exception(f"CSV contains invalid columns: {invalid_columns}")
     # use create API to validate each row
-    return
+    for i, row in csv.iterrows():
+        print(i)
+        try:
+            print(create_employee(row.to_dict()))
+        except Exception as e:
+            raise Exception(f"Successfully uploaded until rows {i+1}; {e}")
+
+
+def create_employee(data):
+    date_fields = ["birth_date", "initial_hire_date"]
+
+    for field in date_fields:
+        if data.get(field):
+            # Converts "YYYY-MM-DD" string to a Python date object
+            data[field] = datetime.strptime(data[field], "%Y-%m-%d").date()
+
+    if data.get("payroll_number"):
+        data["payroll_number"] = int(data["payroll_number"])
+
+    if data.get("user_uid"):
+        data["user_uid"] = int(data["user_uid"])
+
+    if data:
+        created = create_employee_card(**data)
+        if not created:
+            raise Exception("An employee already exists with that IMC email")
+        if created == -1:
+            raise Exception("An error occurred while creating the employee.")
+        return "Success!"
+
+    raise Exception("No data was entered. Cannot create employee with no information.")
 
 
 ################################################################################
