@@ -177,3 +177,23 @@ def get_user_favorite_tools(email):
             return user.fav_tools
         else:
             return False
+
+
+def get_user_profile_photo(uid):
+    """
+    Returns the profile photo URL of the user with the given UID.
+
+    Arguments:
+        `uid` (`int`): The UID of the user.
+
+    Returns:
+        `str | None`: The profile photo URL of the user, or `None` if the user is not found.
+
+    """
+    with client.context():
+        user = User.get_by_id(uid)
+
+        if user is not None:
+            return user.picture
+        else:
+            return None

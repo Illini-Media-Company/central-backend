@@ -864,7 +864,8 @@
         const formData = new FormData(event.target);
 
         const formEntries = Object.fromEntries(
-            Array.from(formData.entries()).filter(([key, value]) => value !== "")
+            // Array.from(formData.entries()).filter(([key, value]) => value !== "")
+            Array.from(formData.entries())
         );
 
         // Load in the supervisors from the variable

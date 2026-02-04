@@ -79,6 +79,14 @@
             align-items: center;
         }
 
+        .user-photo {
+            height: 2.5rem;
+            width: 2.5rem;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 0.1rem solid var(--main-lt-gray-color);
+        }
+
         .controls-container {
             display: flex; 
             flex-direction: row; 
@@ -484,10 +492,17 @@
             row.innerHTML = `
                 <td style="text-align: center;">
                     <a href="/ems/employee/view/${emp.uid}">
-                        <button class="button-primary" title="View/Edit Employee"><i class="bi bi-person-badge"></i></button>
+                        <button class="button-primary" title="View/Edit Employee" style="padding: 0.25rem 0.5rem;">
+                            <i class="bi bi-person-badge"></i>
+                        </button>
                     </a>
                 </td>
-                <td></td>
+                <td>
+                    <img 
+                        src="${emp.user_profile}"
+                        class="user-photo"
+                    >
+                </td>
                 <td>${emp.last_name}, ${emp.first_name}</td>
                 <td>${emp.imc_email}</td>
                 <td class="row-small-text">

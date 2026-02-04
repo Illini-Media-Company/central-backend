@@ -2,7 +2,7 @@
 This file defines the API for the Employee Management System.
 
 Created by Jacob Slabosz on Jan. 12, 2026
-Last modified Feb. 2, 2026
+Last modified Feb. 3, 2026
 """
 
 from flask import Blueprint, render_template, request, jsonify
@@ -13,6 +13,10 @@ import os
 import pandas as pd
 
 from constants import EMS_ADMIN_ACCESS_GROUPS
+
+from db.user import get_user_profile_photo
+
+from util.employee_management import *
 
 from db.employee_management import (
     create_employee_card,
@@ -39,6 +43,7 @@ from db.employee_management import (
     get_relations_by_position_current,
     get_relations_by_position_past,
     delete_relation,
+    get_groups_for_employee,
 )
 
 from constants import (
@@ -79,6 +84,14 @@ def ems_employees():
     Renders the Employee Management System employees page.
     """
     all_employees = get_all_employee_cards()
+
+    # Get the corresponding user's profile photo
+    for emp in all_employees:
+        if emp["user_uid"]:
+            emp["user_profile"] = get_user_profile_photo(emp["user_uid"])
+        else:
+            emp["user_profile"] = "/static/defaults/employee_profile.png"
+
     return render_template(
         "employee_management/ems_employees.html",
         selection="employees",
@@ -151,6 +164,14 @@ def ems_employee_view(emp_id):
     """
     # Get the employee
     employee = get_employee_card_by_id(emp_id)
+
+    if employee == EEMPDNE:
+        return render_template(
+            "employee_management/ems_error.html",
+            selection="dash",
+            error="Employee not found.",
+        )
+
     employee["current_positions"] = []
     employee["past_positions"] = []
 
@@ -194,6 +215,12 @@ def ems_employee_view(emp_id):
         {"value": pos["uid"], "name": f"{pos['brand']} — {pos['title']}"}
         for pos in all_positions
     ]
+
+    # Get the corresponding user's profile photo
+    if employee["user_uid"]:
+        employee["user_profile"] = get_user_profile_photo(employee["user_uid"])
+    else:
+        employee["user_profile"] = "/static/defaults/employee_profile.png"
 
     return render_template(
         "employee_management/ems_employee_view.html",
@@ -242,18 +269,41 @@ def ems_api_employee_create():
 
     if data:
         created = create_employee_card(**data)
+
+        # Fatal error
         if not created:
             return (
-                jsonify({"error": "An employee already exists with that IMC email"}),
-                400,
+                jsonify({"error": "A fatal error occurred."}),
+                500,
             )
-        if created == -1:
+
+        # Unknown exception
+        if created == EEXCEPT:
             return (
                 jsonify({"error": "An error occurred while creating the employee."}),
                 500,
             )
+
+        # User does not exist
+        if created == EUSERDNE:
+            return (
+                jsonify({"error": "The chosen user does not exist."}),
+                400,
+            )
+
+        # Employee already exists
+        if created == EEXISTS:
+            return (
+                jsonify(
+                    {"error": "An employee already exists with the given IMC email."}
+                ),
+                400,
+            )
+
+        # No errors
         return jsonify({"message": "Employee created", "request": created}), 200
 
+    # No data entered
     return (
         jsonify(
             {
@@ -311,18 +361,42 @@ def ems_api_employee_modify(uid):
 
     if data:
         modified = modify_employee_card(uid, **data)
-        if modified == None:
+
+        # Fatal error
+        if not modified:
+            return (
+                jsonify({"error": "A fatal error occurred."}),
+                500,
+            )
+
+        # Unknown exception
+        if modified == EEXCEPT:
             return (
                 jsonify({"error": "An error occurred while modifying the employee."}),
                 500,
             )
-        if modified == -1:
-            return jsonify({"error": "A user does not exist with that ID."}), 400
-        if modified == -2:
+
+        # Employee does not exist
+        if modified == EEMPDNE:
+            return jsonify({"error": "Employee not found."}), 400
+
+        # User does not exist
+        if modified == EUSERDNE:
             return (
-                jsonify({"error": "An employee already exists with that IMC email."}),
+                jsonify({"error": "The chosen user does not exist."}),
                 400,
             )
+
+        # Employee already exists
+        if modified == EEXISTS:
+            return (
+                jsonify(
+                    {"error": "An employee already exists with the given IMC email."}
+                ),
+                400,
+            )
+
+        # No errors
         return (
             jsonify(
                 {"message": "Employee modified successfully.", "request": modified}
@@ -330,6 +404,7 @@ def ems_api_employee_modify(uid):
             200,
         )
 
+    # No data entered
     return (
         jsonify(
             {
@@ -370,10 +445,23 @@ def ems_api_employee_delete(uid):
         (json, int): A tuple containing a JSON response and HTTP status code.
     """
     deleted = delete_employee_card(uid)
-    if deleted == None:
-        return jsonify({"error": "An error occurred while deleting the employee."}), 500
+
+    # Fatal error
     if not deleted:
+        return (
+            jsonify({"error": "A fatal error occurred while deleting the employee."}),
+            500,
+        )
+
+    # Employee not found
+    if deleted == EEMPDNE:
         return jsonify({"error": "Employee not found."}), 400
+
+    # Unknown exception
+    if deleted == EEXCEPT:
+        return jsonify({"error": "An error occurred while deleting the employee."}), 500
+
+    # No errors
     return jsonify({"message": "Employee deleted successfully."}), 200
 
 
@@ -435,6 +523,14 @@ def ems_position_view(pos_id):
     Renders the view position page.
     """
     position = get_position_card_by_id(pos_id)
+
+    if position == EPOSDNE:
+        return render_template(
+            "employee_management/ems_error.html",
+            selection="dash",
+            error="Position not found.",
+        )
+
     position["current_employees"] = []
     position["past_employees"] = []
 
@@ -565,20 +661,47 @@ def ems_api_position_create():
 
     if data:
         created = create_position_card(**data)
-        if created == None:
+
+        # Fatal error
+        if not created:
             return (
                 jsonify(
-                    {"error": "A position already exists with that brand and title"}
+                    {"error": "A fatal error occurred while creating the position."}
                 ),
                 400,
             )
-        if created == -1:
+
+        # Unknown exception
+        if created == EEXCEPT:
             return (
                 jsonify({"error": "An error occurred while creating the position."}),
                 500,
             )
+
+        # Google Group does not exist
+        if created == EGROUPDNE:
+            return (
+                jsonify(
+                    {
+                        "error": "That Google Group does not exist. Check the spelling and make sure it exists in the Admin console."
+                    }
+                ),
+                400,
+            )
+
+        # Position already exists
+        if created == EEXISTS:
+            return (
+                jsonify(
+                    {"error": "A position with that brand and title already exists."}
+                ),
+                400,
+            )
+
+        # No errors
         return jsonify({"message": "Position created", "request": created}), 200
 
+    # No data entered
     return (
         jsonify(
             {
@@ -625,20 +748,72 @@ def ems_api_position_modify(uid):
 
     if data:
         modified = modify_position_card(uid, **data)
-        if modified == None:
+
+        # Fatal error
+        if not modified:
+            return (
+                jsonify(
+                    {"error": "A fatal error occurred while modifying the position."}
+                ),
+                500,
+            )
+
+        # Unknown exception
+        if modified == EEXCEPT:
             return (
                 jsonify({"error": "An error occurred while modifying the position."}),
                 500,
             )
-        if modified == -1:
+
+        # Position not found
+        if modified == EPOSDNE:
+            return (
+                jsonify({"error": "Position not found."}),
+                400,
+            )
+
+        # Position already exists
+        if modified == EEXISTS:
             return (
                 jsonify(
-                    {"error": "A position already exists with that brand and title."}
+                    {"error": "A position with that brand and title already exists."}
                 ),
                 400,
             )
+
+        # Position already exists
+        if modified == EGROUPDNE:
+            return (
+                jsonify(
+                    {
+                        "error": "That Google Group does not exist. Check the spelling and make sure it exists in the Admin console."
+                    }
+                ),
+                400,
+            )
+
+        # Error setting supervisors or direct reports
+        if modified == ESUPREP:
+            return (
+                jsonify({"error": "Error updating supervisors or direct reports."}),
+                400,
+            )
+
+        # Groups error
+        if modified == EGROUP:
+            return (
+                jsonify(
+                    {
+                        "error": "The position was updated, but there was an error updating the Google Groups for at least one employee. Check that the group email is correct."
+                    }
+                ),
+                500,
+            )
+
+        # No errors
         return jsonify({"message": "Position modified.", "request": modified}), 200
 
+    # No data entered
     return (
         jsonify(
             {
@@ -679,10 +854,23 @@ def ems_api_position_delete(uid):
         (json, int): A tuple containing a JSON response and HTTP status code.
     """
     deleted = delete_position_card(uid)
-    if deleted == None:
-        return jsonify({"error": "An error occurred while deleting the position."}), 500
+
+    # Fatal error
     if not deleted:
+        return (
+            jsonify({"error": "A fatal error occurred while deleting the position."}),
+            500,
+        )
+
+    # Position not found
+    if deleted == EPOSDNE:
         return jsonify({"error": "Position not found."}), 400
+
+    # Unknown exception
+    if deleted == EEXCEPT:
+        return jsonify({"error": "An error occurred while deleting the position."}), 500
+
+    # No errors
     return jsonify({"message": "Position deleted successfully."}), 200
 
 
@@ -701,13 +889,38 @@ def ems_api_position_archive(uid):
         (json, int): A tuple containing a JSON response and HTTP status code.
     """
     archived = archive_position_card(uid)
-    if archived == None:
+
+    # Fatal error
+    if not archived:
+        return (
+            jsonify({"error": "A fatal error occurred while archiving the position."}),
+            500,
+        )
+
+    # Position not found
+    if archived == EPOSDNE:
+        return (
+            jsonify({"error": "Position not found."}),
+            400,
+        )
+
+    # Position has active relations
+    if archived == EEXISTS:
+        return (
+            jsonify(
+                {"error": "Position has active employee relations, cannot archive."}
+            ),
+            400,
+        )
+
+    # Unknown exception
+    if archived == EEXCEPT:
         return (
             jsonify({"error": "An error occurred while archiving the position."}),
             500,
         )
-    if not archived:
-        return jsonify({"error": "Position not found."}), 400
+
+    # No errors
     return jsonify({"message": "Position archived successfully."}), 200
 
 
@@ -726,13 +939,29 @@ def ems_api_position_restore(uid):
         (json, int): A tuple containing a JSON response and HTTP status code.
     """
     restored = restore_position_card(uid)
-    if restored == None:
+
+    # Fatal error
+    if not restored:
+        return (
+            jsonify({"error": "A fatal error occurred while restoring the position."}),
+            500,
+        )
+
+    # Unknown exception
+    if restored == EEXCEPT:
         return (
             jsonify({"error": "An error occurred while restoring the position."}),
             500,
         )
-    if not restored:
-        return jsonify({"error": "Position not found."}), 400
+
+    # Position not found
+    if restored == EPOSDNE:
+        return (
+            jsonify({"error": "Position not found."}),
+            400,
+        )
+
+    # No errors
     return jsonify({"message": "Position restored successfully."}), 200
 
 
@@ -775,7 +1004,18 @@ def ems_api_relation_create():
 
     if data:
         created = create_relation(**data)
-        if created == None:
+
+        # Fatal error
+        if not created:
+            return (
+                jsonify(
+                    {"error": "A fatal error occurred while creating the relation."}
+                ),
+                500,
+            )
+
+        # Already exists
+        if created == EEXISTS:
             return (
                 jsonify(
                     {
@@ -784,18 +1024,50 @@ def ems_api_relation_create():
                 ),
                 400,
             )
-        if created == -1:
+
+        # Position not found
+        if created == EPOSDNE:
+            return (
+                jsonify({"error": "Position not found."}),
+                400,
+            )
+
+        # Employee not found
+        if created == EEMPDNE:
+            return (
+                jsonify({"error": "Employee not found."}),
+                400,
+            )
+
+        # Missing required fields
+        if created == EMISSING:
             return (
                 jsonify({"error": "Missing required fields to create relation."}),
                 400,
             )
-        if created == -2:
+
+        # Unknown exception
+        if created == EEXCEPT:
             return (
                 jsonify({"error": "An error occurred while creating the relation."}),
                 500,
             )
+
+        # Groups error
+        if created == EGROUP:
+            return (
+                jsonify(
+                    {
+                        "error": "The relation was created, but there was an error updating the employee's Google Groups. Check that the group email is correct."
+                    }
+                ),
+                400,
+            )
+
+        # No errors
         return jsonify({"message": "Relation created", "request": created}), 200
 
+    # No data entered
     return (
         jsonify(
             {
@@ -841,13 +1113,52 @@ def ems_api_relation_modify(uid):
 
     if data:
         modified = modify_relation(uid, **data)
-        if modified == None:
+
+        # Fatal error
+        if not modified:
+            return (
+                jsonify(
+                    {"error": "A fatal error occurred while modifying the relation."}
+                ),
+                500,
+            )
+
+        # Unknown exception
+        if modified == EEXCEPT:
             return (
                 jsonify({"error": "An error occurred while modifying the relation."}),
                 500,
             )
+
+        # Relation not found
+        if modified == ERELDNE:
+            return (
+                jsonify({"error": "Relation not found."}),
+                400,
+            )
+
+        # Employee not found
+        if modified == EEMPDNE:
+            return (
+                jsonify({"error": "Associated employee not found."}),
+                400,
+            )
+
+        # Groups error
+        if modified == EGROUP:
+            return (
+                jsonify(
+                    {
+                        "error": "The relation was modified, but there was an error updating the employee's Google Groups. Check that the group email is correct."
+                    }
+                ),
+                400,
+            )
+
+        # No errors
         return jsonify({"message": "Relation modified.", "request": modified}), 200
 
+    # No data entered
     return (
         jsonify(
             {
@@ -887,8 +1198,19 @@ def ems_api_relation_get_by_id(uid):
         (json, int): A tuple containing a JSON response and HTTP status code.
     """
     relation = get_relation_by_id(uid)
+
+    # Fatal error
     if not relation:
+        return (
+            jsonify({"error": "A fatal error occurred while retrieving the relation."}),
+            500,
+        )
+
+    # Relation not found
+    if relation == ERELDNE:
         return jsonify({"error": "Relation not found."}), 400
+
+    # No errors
     return jsonify(relation), 200
 
 
@@ -907,10 +1229,35 @@ def ems_api_relation_delete(uid):
         (json, int): A tuple containing a JSON response and HTTP status code.
     """
     deleted = delete_relation(uid)
-    if deleted == None:
-        return jsonify({"error": "An error occurred while deleting the relation."}), 500
+
+    # Fatal error
     if not deleted:
+        return jsonify({"error": "Relation not found."}), 500
+
+    # Unknown exception
+    if deleted == EEXCEPT:
+        return jsonify({"error": "An error occurred while deleting the relation."}), 500
+
+    # Relation not found
+    if deleted == ERELDNE:
         return jsonify({"error": "Relation not found."}), 400
+
+    # Employee not found
+    if deleted == EEMPDNE:
+        return jsonify({"error": "Associated employee not found."}), 400
+
+    # Groups error
+    if deleted == EGROUP:
+        return (
+            jsonify(
+                {
+                    "error": "The relation was deleted, but there was an error updating the employee's Google Groups. Check that the group email is correct."
+                }
+            ),
+            400,
+        )
+
+    # No errors
     return jsonify({"message": "Relation deleted successfully."}), 200
 
 
@@ -919,30 +1266,6 @@ def ems_api_relation_delete(uid):
 ################################################################################
 ### HELPER FUNCTIONS ###########################################################
 ################################################################################
-
-
-# Get correct image URL
-def get_ems_brand_image_url(brand: str) -> str:
-    """
-    Returns the image URL for a given brand.
-
-    Args:
-        brand (str): The brand name.
-
-    Returns:
-        str: The image URL for the brand.
-    """
-    brand_images = {
-        "Chambana Eats": "/static/brandmarks/background/96x96/CE_SquareIcon.png",
-        "The Daily Illini": "/static/brandmarks/background/96x96/DI_SquareIcon.png",
-        "Illini Content Studio": "/static/brandmarks/background/96x96/ICS_SquareIcon.png",
-        "Illio": "/static/brandmarks//background/96x96/Illio_SquareIcon.png",
-        "IMC": "/static/brandmarks//background/96x96/IMC_SquareIcon.png",
-        "WPGU": "/static/brandmarks//background/96x96/WPGU_SquareIcon.png",
-    }
-    return brand_images.get(
-        brand, "/static/brandmarks//background/96x96/IMC_SquareIcon.png"
-    )
 
 
 def validate_csv(csv):
