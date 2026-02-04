@@ -10,6 +10,7 @@ from googleapiclient.discovery import build
 from util.security import get_admin_creds
 
 MEMBER_SCOPE = ["https://www.googleapis.com/auth/admin.directory.group.member"]
+GROUP_SCOPE = ["https://www.googleapis.com/auth/admin.directory.group"]
 
 
 def manage_group_membership(
@@ -44,9 +45,21 @@ def manage_group_membership(
                 print(f"Successfully removed {user_email} from {group_email}")
 
         except Exception as e:
-            # Handle the case where user is already in group (409) or not found (404)
-            if "already exists" in str(e).lower() or "not found" in str(e).lower():
+            error_msg = str(e).lower()
+
+            # User in group when trying to add (409 Conflict)
+            if action == "add" and "alreadyexists" in error_msg.replace(" ", ""):
+                print(f"User {user_email} is already in {group_email}. Skipping.")
                 return True, None
+
+            # User not in group when trying to remove (404 Not Found)
+            if action == "remove" and "memberkey" in error_msg:
+                print(
+                    f"User {user_email} not found in {group_email}. Skipping removal."
+                )
+                return True, None
+
+            # All other errors
             print(f"Google Directory API Error: {e}")
             return False, str(e)
 
@@ -101,3 +114,29 @@ def update_group_membership(
                 print("\tDone.")
 
     return True, None
+
+
+def check_group_exists(group_email: str) -> bool:
+    """
+    Checks if a Google Group exists.
+
+    Arguments:
+        `group_email` (`str`): The email of the Google Group
+    Returns:
+        `bool`: Whether the group exists
+    """
+    creds = get_admin_creds(GROUP_SCOPE)
+
+    with build("admin", "directory_v1", credentials=creds) as service:
+        try:
+            service.groups().get(groupKey=group_email).execute()
+            return True
+        except Exception as e:
+            # Check if it was not found or some other error
+            if "notfound" in str(e).lower().replace(" ", ""):
+                return False
+
+            # If it's a different error (like a 403 Permission error),
+            # you might want to log it or raise it.
+            print(f"Error checking group existence: {e}")
+            return False

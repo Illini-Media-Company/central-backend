@@ -676,6 +676,17 @@ def ems_api_position_create():
                 500,
             )
 
+        # Google Group does not exist
+        if created == EGROUPDNE:
+            return (
+                jsonify(
+                    {
+                        "error": "That Google Group does not exist. Check the spelling and make sure it exists in the Admin console."
+                    }
+                ),
+                400,
+            )
+
         # Position already exists
         if created == EEXISTS:
             return (
@@ -768,6 +779,17 @@ def ems_api_position_modify(uid):
                 400,
             )
 
+        # Position already exists
+        if modified == EGROUPDNE:
+            return (
+                jsonify(
+                    {
+                        "error": "That Google Group does not exist. Check the spelling and make sure it exists in the Admin console."
+                    }
+                ),
+                400,
+            )
+
         # Error setting supervisors or direct reports
         if modified == ESUPREP:
             return (
@@ -780,7 +802,7 @@ def ems_api_position_modify(uid):
             return (
                 jsonify(
                     {
-                        "error": "The position was updated, but there was an error updating the Google Groups for at least one employee. This can occur if the employee is already in the group."
+                        "error": "The position was updated, but there was an error updating the Google Groups for at least one employee. Check that the group email is correct."
                     }
                 ),
                 500,
@@ -1034,7 +1056,7 @@ def ems_api_relation_create():
             return (
                 jsonify(
                     {
-                        "error": "The relation was created, but there was an error updating the employee's Google Groups. This can occur if the employee is already in the group."
+                        "error": "The relation was created, but there was an error updating the employee's Google Groups. Check that the group email is correct."
                     }
                 ),
                 400,
@@ -1125,7 +1147,7 @@ def ems_api_relation_modify(uid):
             return (
                 jsonify(
                     {
-                        "error": "The relation was modified, but there was an error updating the employee's Google Groups. This can occur if the employee is already in the group."
+                        "error": "The relation was modified, but there was an error updating the employee's Google Groups. Check that the group email is correct."
                     }
                 ),
                 400,
@@ -1227,7 +1249,7 @@ def ems_api_relation_delete(uid):
         return (
             jsonify(
                 {
-                    "error": "The relation was deleted, but there was an error updating the employee's Google Groups. This can occur if the employee is already in the group."
+                    "error": "The relation was deleted, but there was an error updating the employee's Google Groups. Check that the group email is correct."
                 }
             ),
             400,

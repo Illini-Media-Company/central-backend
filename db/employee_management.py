@@ -15,7 +15,10 @@ from datetime import datetime, date
 from zoneinfo import ZoneInfo
 from flask_login import current_user
 
-from util.google_groups import update_group_membership
+from util.google_groups import (
+    update_group_membership,
+    check_group_exists,
+)
 from util.employee_management import *
 
 from constants import (
@@ -506,6 +509,7 @@ def create_position_card(**kwargs: dict) -> dict | int:
 
     Raises:
         `EEXISTS`: If a position already exists with the given `brand` and `title`
+        `EGROUPDNE`: If the Google Group is not valid
         `EEXCEPT`: Other fatal error
     """
     with client.context():
@@ -518,6 +522,12 @@ def create_position_card(**kwargs: dict) -> dict | int:
             ).get()
             if existing:
                 return EEXISTS  # Position with this brand and title already exists
+
+        # Check if this is a valid Google Group
+        if "google_group" in kwargs:
+            valid = check_group_exists(kwargs["google_group"])
+            if not valid:
+                return EGROUPDNE
 
         try:
             # Convert supervisor and direct report UIDs to ints
@@ -569,7 +579,8 @@ def modify_position_card(uid: int, **kwargs: dict) -> dict | int:
 
     Raises:
         `EPOSDNE`: Position not found
-        `EEXISTS`: If there exists another position with the same `brand` and `title`,
+        `EEXISTS`: If there exists another position with the same `brand` and `title`
+        `EGROUPDNE`: If the Google Group does not exist or is invalid
         `ESUPREP`: If updating supervisors fails
         `EGROUP`: If updating Google Groups fails
         `EEXCEPT`: Other fatal error
@@ -595,6 +606,12 @@ def modify_position_card(uid: int, **kwargs: dict) -> dict | int:
 
                 if is_duplicate:
                     return EEXISTS  # Position with this brand and title already exists
+
+            # Check if this is a valid Google Group
+            if "google_group" in kwargs:
+                valid = check_group_exists(kwargs["google_group"])
+                if not valid:
+                    return EGROUPDNE
 
             try:
                 # Update the supervisor(s)

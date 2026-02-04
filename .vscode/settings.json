@@ -21,6 +21,7 @@
         "EEXCEPT",
         "EEXISTS",
         "EGROUP",
+        "EGROUPDNE",
         "EMISSING",
         "endcall",
         "endmacro",
