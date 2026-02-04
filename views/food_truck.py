@@ -3,6 +3,7 @@ from flask_login import login_required
 from flask_cors import cross_origin
 from db.food_truck import (
     add_truck_loctime_repeat,
+    remove_truck_loctime_repeat,
     register_food_truck,
     deregister_food_truck,
     modify_food_truck,
@@ -233,6 +234,21 @@ def remove_loctime(uid):
             return "locTime removed.", 200
         else:
             return "locTime not found.", 404
+
+
+# Remove all locTime's with a specific recurrence_id for a truck
+@food_truck_routes.route("/loctime-remove-series/<uid>", methods=["POST"])
+def remove_loctime_series(uid, recurrence_id):
+    with client.context():
+        if not recurrence_id.isdigit():
+            return "Invalid UID", 400
+
+        if not recurrence_id:
+            # guard against user trying to delete non-recurring locTime
+            remove_truck_loctime(uid)
+
+        deleted = remove_truck_loctime_repeat(recurrence_id)
+        return f"Deleted {deleted} recurring locTime(s).", 200
 
 
 # Modify a locTime for a truck (given the locTime's UID) (ACCESSED WITHOUT LOGIN)

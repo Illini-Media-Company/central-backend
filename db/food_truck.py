@@ -206,6 +206,17 @@ def remove_truck_loctime(uid):
         return False
 
 
+# Removes all locTimes with the passed recurrence_id
+def remove_truck_loctime_repeat(recurrence_id):
+    keys = foodTruckLocTime.query(
+        foodTruckLocTime.recurrence_id == recurrence_id
+    ).fetch(keys_only=True)
+
+    ndb.delete_multi(keys)
+
+    return len(keys)
+
+
 # Modify a locTime by the locTime's UID
 def modify_truck_loctime(
     uid, lat, lon, nearest_address, location_desc, start_time, end_time, reported_by
