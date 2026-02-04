@@ -165,9 +165,11 @@ def ems_employee_view(emp_id):
 
     if employee == EEMPDNE:
         return render_template(
-            "employee_management/ems_error.html",
-            selection="dash",
-            error="Employee not found.",
+            "error.html",
+            code="404",
+            error="That employee doesn't seem to exist! \
+                Ensure this employee has not been deleted. \
+                If the issue persists, contact an administrator.",
         )
 
     employee["current_positions"] = []
@@ -524,9 +526,11 @@ def ems_position_view(pos_id):
 
     if position == EPOSDNE:
         return render_template(
-            "employee_management/ems_error.html",
-            selection="dash",
-            error="Position not found.",
+            "error.html",
+            code="404",
+            error="That position doesn't seem to exist! \
+                Ensure this position has not been deleted. \
+                If the issue persists, contact an administrator.",
         )
 
     position["current_employees"] = []
