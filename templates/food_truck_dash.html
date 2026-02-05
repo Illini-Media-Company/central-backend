@@ -573,8 +573,35 @@ Food Truck Tracker (Dashboard)
         const button = document.querySelector(`button[onclick="deleteLoctime('${uid}')"]`);
         button.disabled = true;
         button.innerText = 'Deleting...';
+    
+        //Fetch this loctime to check whether it is recurring.
+        const infoResponse = await fetch(`/food-truck/loctime/${uid}`);
+        if (!infoResponse.ok) {
+            alert("Failed to fetch loctime details.");
+            button.disabled = false;
+            button.innerText = 'Delete';
+        return;
+        }
+
+        const loctime = await infoResponse.json();
 
         let endpoint = '/food-truck/loctime-remove/' + uid; 
+       
+        // If this loctime has a recurrence_id, ask whether to delete just this one or the whole series.
+        if (loctime.recurrence_id) {
+            const deleteSeries = confirm(
+                "This event is part of a recurring schedule.\n\n" +
+                "OK = delete ALL recurring events\n" +
+                "Cancel = delete ONLY this event"
+            );
+
+            if (deleteSeries) {
+                // Delete the entire recurring series
+                endpoint = `/food-truck/loctime-remove-series/${loctime.recurrence_id}`;
+
+            }
+        }
+
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
