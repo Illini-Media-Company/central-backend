@@ -209,6 +209,29 @@ Food Truck Tracker (Dashboard)
                             name    = "lon"
                             required
                         >
+                        <div class="form-row">
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    id="repeat"
+                                    name="repeat"
+                                    onchange="toggleRepeatMain()"
+                                >
+                                Repeat weekly
+                            </label>
+                        </div>
+                        
+                        <div class="form-row" id="repeat-end-row" style="display: none;">
+                            <label for="repeat_end">
+                                Repeat until
+                            </label>
+                            <input
+                                type="date"
+                                id="repeat_end"
+                                name="repeat_end"
+                                class="form-control"
+                            >
+                        </div>                      
                     </div>
                         
                     <div>
@@ -347,6 +370,7 @@ Food Truck Tracker (Dashboard)
                                     name    = "lon"
                                     required
                                 >
+                                
                             </div>
                         </div>
                     </form>
@@ -465,6 +489,35 @@ Food Truck Tracker (Dashboard)
             },
             body: `_csrf_token={{ csrf_token() }}&uid=${truck_uid}&nearest_address=${nearest_address}&location_desc=${location_desc}&lat=${lat}&lon=${lon}&start_time=${start_time}&end_time=${end_time}&reported_by=${reported_by}`,
         });
+
+        // // Check if the user wants this location/time to repeat weekly
+        // const repeat = document.getElementById('repeat').checked;
+        // const repeatEnd = document.getElementById('repeat_end').value;
+
+        // // If repeat is enabled, we REQUIRE an end date to avoid infinite recurrence
+        // if (repeat && !repeatEnd) {
+        //     alert("Please select a repeat end date.");
+        //     submitButton.disabled = false;
+        //     submitButton.innerHTML = 'Submit';
+        //     return;
+        // }
+
+        // // Base payload sent for all loctimes (single or recurring)
+        // let body = `_csrf_token={{ csrf_token() }}&uid=${truck_uid}&nearest_address=${nearest_address}&location_desc=${location_desc}&lat=${lat}&lon=${lon}&start_time=${start_time}&end_time=${end_time}&reported_by=${reported_by}`;
+        
+        // // If repeat is checked, send extra fields expected by backend
+        // if (repeat) {
+        //     body += `&repeat=on&repeat_end=${repeatEnd}`;
+        // }
+
+        // // Submit the loctime (single or recurring)
+        // const response = await fetch(endpoint, {
+        //     method: 'POST',
+        //     headers: {
+        //         'Content-Type': 'application/x-www-form-urlencoded',
+        //     },
+        //     body: body,
+        // });
         
         if (response.status === 200) {
             // Trigger a reload of the window
@@ -865,7 +918,19 @@ Food Truck Tracker (Dashboard)
         });
         console.log("\t\tDone.");
     }
+    // Shows or hides the "Repeat until" date field
+    function toggleRepeatMain() {
+        const repeatCheckbox = document.getElementById('repeat');
+        const repeatEndRow = document.getElementById('repeat-end-row');
 
+        // Only show end-date picker when repeat is enabled
+        if (repeatCheckbox.checked) {
+            repeatEndRow.style.display = 'block';
+        } else {
+            repeatEndRow.style.display = 'none';
+            document.getElementById('repeat_end').value = "";
+        }
+    }     
 </script>
 
 {% endblock %}
