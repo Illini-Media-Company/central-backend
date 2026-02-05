@@ -102,7 +102,7 @@ def process_new_stories_to_slack():
     add the story and post to the social media Slack channel.
     Returns (number_new_posted, list of story links posted).
     """
-    from db.di_social_story import add_social_story, get_story_by_url
+    from db.socials_poster import add_social_story, get_story_by_url
     from util.slackbots.socials_slackbot import notify_new_story_from_rss
 
     entries = fetch_rss()
@@ -131,5 +131,5 @@ def process_new_stories_to_slack():
 
 
 if __name__ == "__main__":
-    count = check_rss_feed()
-    print(f"Processed {count} stories.")
+    count, links = process_new_stories_to_slack()
+    print(f"Posted {count} new stories to Slack: {links}")

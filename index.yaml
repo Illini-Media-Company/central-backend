@@ -33,5 +33,4 @@ indexes:
         direction: desc
   - kind: DiSocialStory
     properties:
-      - name: slack_channel_id
       - name: slack_message_ts

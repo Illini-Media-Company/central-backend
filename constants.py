@@ -131,3 +131,5 @@ SOCIAL_MEDIA_POSTS_CHANNEL_ID = (
 
 # Optional: Google Calendar ID for social media shift (to tag person on shift). Set when available.
 SOCIAL_MEDIA_GCAL_ID = os.environ.get("SOCIAL_MEDIA_GCAL_ID", None)
+# Fallback email when no one is on shift in the socials calendar (e.g. socials chief).
+SOCIALS_CHIEF_EMAIL = os.environ.get("SOCIALS_CHIEF_EMAIL", "")

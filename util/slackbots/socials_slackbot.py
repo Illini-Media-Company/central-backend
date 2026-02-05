@@ -11,19 +11,24 @@ record which platform it was posted to and we reply with the timestamp.
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
+
+from gcsa.google_calendar import GoogleCalendar
 
 from constants import (
     COURTESY_REQUESTS_CHANNEL_ID,
     SLACK_BOT_TOKEN,
+    SOCIAL_MEDIA_GCAL_ID,
     SOCIAL_MEDIA_POSTS_CHANNEL_ID,
+    SOCIALS_CHIEF_EMAIL,
 )
+from util.security import get_creds
 from util.slackbots._slackbot import app
-from db.di_social_story import client as db_client
-from db.di_social_story import DiSocialStory
-from db.di_social_story import update_social
+from db.socials_poster import client as db_client
+from db.socials_poster import DiSocialStory
+from db.socials_poster import update_social
 from util.helpers.ap_datetime import ap_datetime
 
 # Map Slack reaction names to our platform names (for update_social)
@@ -36,32 +41,70 @@ REACTION_TO_PLATFORM = {
     "threads": "Threads",
 }
 
+# Calendar scope for socials shift lookup (same as copy_editing)
+SOCIALS_GCAL_SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
 
-def update_slack_message_ref(url: str, channel_id: str, message_ts: str) -> Optional[Dict[str, Any]]:
-    """Save the Slack channel + message ts for this story so we can reply or match reactions later."""
+
+def get_socials_on_shift_email() -> Optional[str]:
+    """
+    Get the email of the person on shift today from the socials calendar.
+
+    Calendar has one all-day event per day with one person assigned (attendee).
+    Uses same pattern as copy_editing: get_creds, GoogleCalendar, get_events for
+    today in America/Chicago. Returns first attendee's email or None; caller
+    should use SOCIALS_CHIEF_EMAIL as fallback.
+    """
+    if not SOCIAL_MEDIA_GCAL_ID:
+        return None
+    try:
+        creds = get_creds(SOCIALS_GCAL_SCOPES)
+        gc = GoogleCalendar(SOCIAL_MEDIA_GCAL_ID, credentials=creds)
+    except Exception as e:
+        print(f"[socials_slackbot] get_creds/GoogleCalendar failed: {e}")
+        return None
+    current_time = datetime.now(tz=ZoneInfo("America/Chicago"))
+    today = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
+    tomorrow = today + timedelta(days=1)
+    try:
+        events = gc.get_events(
+            today, tomorrow, single_events=True, order_by="startTime"
+        )
+    except Exception as e:
+        print(f"[socials_slackbot] get_events failed: {e}")
+        return None
+    for event in events:
+        if not getattr(event, "attendees", None):
+            continue
+        for attendee in event.attendees:
+            email = getattr(attendee, "email", None)
+            if email and not str(email).endswith("resource.calendar.google.com"):
+                return email
+    return None
+
+
+def update_slack_message_ref(
+    url: str, channel_id: str, message_ts: str
+) -> Optional[Dict[str, Any]]:
+    """Save the Slack message ts for this story so we can match reactions later. Channel is global (SOCIAL_MEDIA_POSTS_CHANNEL_ID)."""
     with db_client.context():
         story = DiSocialStory.query().filter(DiSocialStory.story_url == url).get()
         if story:
-            story.slack_channel_id = channel_id
             story.slack_message_ts = message_ts
-            if story.slack_message_timestamp is None:
-                story.slack_message_timestamp = datetime.now()
             story.put()
             return story.to_dict()
     return None
 
 
-def get_story_by_slack_message(channel_id: str, message_ts: str) -> Optional[Dict[str, Any]]:
-    """Look up a story by the Slack message (channel + ts). Used when we get a reaction."""
-    if not channel_id or not message_ts:
+def get_story_by_slack_message(
+    channel_id: str, message_ts: str
+) -> Optional[Dict[str, Any]]:
+    """Look up a story by the Slack message ts. Channel must match SOCIAL_MEDIA_POSTS_CHANNEL_ID."""
+    if not message_ts or channel_id != SOCIAL_MEDIA_POSTS_CHANNEL_ID:
         return None
     with db_client.context():
         story = (
             DiSocialStory.query()
-            .filter(
-                DiSocialStory.slack_channel_id == channel_id,
-                DiSocialStory.slack_message_ts == message_ts,
-            )
+            .filter(DiSocialStory.slack_message_ts == message_ts)
             .get()
         )
         return story.to_dict() if story else None
@@ -91,26 +134,38 @@ def build_blocks_from_story(
     ]
 
     if image_url:
-        blocks.append({
-            "type": "image",
-            "image_url": image_url,
-            "alt_text": story_title[:100],
-        })
+        blocks.append(
+            {
+                "type": "image",
+                "image_url": image_url,
+                "alt_text": story_title[:100],
+            }
+        )
     elif include_needs_visual_button and story_url_for_button is not None:
-        value = json.dumps({
-            "story_url": story_url_for_button,
-            "social_channel_id": social_channel_id or "",
-            "social_message_ts": social_message_ts or "",
-        })
-        blocks.append({
-            "type": "actions",
-            "elements": [{
-                "type": "button",
-                "text": {"type": "plain_text", "text": "Needs Visual", "emoji": True},
-                "action_id": "social_needs_visual",
-                "value": value,
-            }],
-        })
+        value = json.dumps(
+            {
+                "story_url": story_url_for_button,
+                "social_channel_id": social_channel_id or "",
+                "social_message_ts": social_message_ts or "",
+            }
+        )
+        blocks.append(
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Needs Visual",
+                            "emoji": True,
+                        },
+                        "action_id": "social_needs_visual",
+                        "value": value,
+                    }
+                ],
+            }
+        )
 
     fallback = f"{story_title} — {story_url}"
     return blocks, fallback
@@ -126,13 +181,25 @@ def post_story_to_social_channel(
 ) -> Dict[str, Any]:
     """
     Post a new story to the social channel. We send a short parent message, then a thread
-    reply with the full details (and image if we have one, otherwise a "Needs Visual" button).
-    Also stores channel/ts on the story so reactions and follow-up replies work.
+    reply with the full details (and image if we have one; if no image, the message contains
+    no image). Also stores channel/ts on the story so reactions work.
     """
     if not SOCIAL_MEDIA_POSTS_CHANNEL_ID:
         return {"ok": False, "error": "SOCIAL_MEDIA_POSTS_CHANNEL_ID not set"}
 
-    short_text = f"New story: {story_title}"
+    # Tag the person on shift today (from socials calendar), or fall back to chief
+    email = get_socials_on_shift_email() or SOCIALS_CHIEF_EMAIL
+    slack_id = None
+    if email:
+        try:
+            slack_id = app.client.users_lookupByEmail(email=email)["user"]["id"]
+        except Exception as e:
+            print(f"[socials_slackbot] users_lookupByEmail({email}) failed: {e}")
+    short_text = (
+        f"<@{slack_id}> New story: {story_title}"
+        if slack_id
+        else f"New story: {story_title}"
+    )
     try:
         res = app.client.chat_postMessage(
             token=SLACK_BOT_TOKEN,
@@ -145,17 +212,17 @@ def post_story_to_social_channel(
         print(f"[socials_slackbot] chat_postMessage failed: {e}")
         return {"ok": False, "error": str(e)}
 
-    include_button = not bool(image_url)
+    # Do not show "Needs Visual" button; if no image, message just has no image.
     thread_blocks, fallback = build_blocks_from_story(
         story_url=story_url,
         story_title=story_title,
         writer_name=writer_name,
         photographer_name=photographer_name,
         image_url=image_url,
-        include_needs_visual_button=include_button,
-        story_url_for_button=story_url if include_button else None,
-        social_channel_id=channel_id if include_button else None,
-        social_message_ts=message_ts if include_button else None,
+        include_needs_visual_button=False,
+        story_url_for_button=None,
+        social_channel_id=None,
+        social_message_ts=None,
     )
     try:
         app.client.chat_postMessage(
@@ -195,13 +262,18 @@ def _reply_in_thread(
 
 # --- Needs Visual button: send to Photo Editors channel ---
 
+
 @app.action("social_needs_visual")
 def _handle_needs_visual(ack, body, logger):
     ack()
     logger.info(body)
     try:
-        channel_id = (body.get("channel") or {}).get("id") or (body.get("container") or {}).get("channel_id")
-        message_ts = (body.get("message") or {}).get("ts") or (body.get("container") or {}).get("message_ts")
+        channel_id = (body.get("channel") or {}).get("id") or (
+            body.get("container") or {}
+        ).get("channel_id")
+        message_ts = (body.get("message") or {}).get("ts") or (
+            body.get("container") or {}
+        ).get("message_ts")
         actions = body.get("actions") or [{}]
         raw_val = actions[0].get("value")
         if not raw_val:
@@ -221,16 +293,24 @@ def _handle_needs_visual(ack, body, logger):
             },
             {
                 "type": "actions",
-                "elements": [{
-                    "type": "button",
-                    "text": {"type": "plain_text", "text": "Visual added", "emoji": True},
-                    "action_id": "social_visual_added",
-                    "value": json.dumps({
-                        "story_url": story_url,
-                        "social_channel_id": channel_id,
-                        "social_message_ts": message_ts,
-                    }),
-                }],
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Visual added",
+                            "emoji": True,
+                        },
+                        "action_id": "social_visual_added",
+                        "value": json.dumps(
+                            {
+                                "story_url": story_url,
+                                "social_channel_id": channel_id,
+                                "social_message_ts": message_ts,
+                            }
+                        ),
+                    }
+                ],
             },
         ]
         if not COURTESY_REQUESTS_CHANNEL_ID:
@@ -266,11 +346,13 @@ def _handle_visual_added(ack, body, logger, client):
         if not all([story_url, social_channel_id, social_message_ts]):
             return
 
-        private_metadata = json.dumps({
-            "story_url": story_url,
-            "social_channel_id": social_channel_id,
-            "social_message_ts": social_message_ts,
-        })
+        private_metadata = json.dumps(
+            {
+                "story_url": story_url,
+                "social_channel_id": social_channel_id,
+                "social_message_ts": social_message_ts,
+            }
+        )
         client.views_open(
             trigger_id=body["trigger_id"],
             view={
@@ -286,9 +368,15 @@ def _handle_visual_added(ack, body, logger, client):
                         "element": {
                             "type": "plain_text_input",
                             "action_id": "image_url_input",
-                            "placeholder": {"type": "plain_text", "text": "https://example.com/image.jpg"},
+                            "placeholder": {
+                                "type": "plain_text",
+                                "text": "https://example.com/image.jpg",
+                            },
                         },
-                        "label": {"type": "plain_text", "text": "Image URL (new photo/media for the story)"},
+                        "label": {
+                            "type": "plain_text",
+                            "text": "Image URL (new photo/media for the story)",
+                        },
                     },
                 ],
             },
@@ -314,7 +402,10 @@ def _handle_visual_added_modal_submit(ack, body, logger, view):
 
         if image_url:
             blocks = [
-                {"type": "section", "text": {"type": "mrkdwn", "text": "Visual added by photo team:"}},
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": "Visual added by photo team:"},
+                },
                 {"type": "image", "image_url": image_url, "alt_text": "Story visual"},
             ]
             _reply_in_thread(
@@ -334,6 +425,7 @@ def _handle_visual_added_modal_submit(ack, body, logger, view):
 
 
 # --- Reaction added: if it's a platform emoji on our message, update DB and reply ---
+
 
 @app.event("reaction_added")
 def _on_reaction_added(event, logger):

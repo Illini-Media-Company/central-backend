@@ -3,7 +3,7 @@ Flask routes for DI social stories dashboard.
 
 Displays a read-only dashboard showing social media posting status for stories.
 
-Created on Dec. 2024
+Created on Jan. 2026
 """
 
 from datetime import datetime

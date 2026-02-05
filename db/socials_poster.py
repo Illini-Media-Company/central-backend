@@ -11,7 +11,9 @@ class DiSocialStory(ndb.Model):
     story_url = ndb.StringProperty()
     story_name = ndb.StringProperty()
     story_posted_timestamp = ndb.DateTimeProperty()
-    slack_message_timestamp = ndb.DateTimeProperty()
+    slack_message_ts = (
+        ndb.StringProperty()
+    )  # Slack message ts (Unix); used for reaction lookup and "when posted"
     instagram_timestamp = ndb.DateTimeProperty()
     facebook_timestamp = ndb.DateTimeProperty()
     reddit_timestamp = ndb.DateTimeProperty()
@@ -35,7 +37,6 @@ def add_social_story(url, name):
             story_url=url,
             story_name=name,
             story_posted_timestamp=datetime.now(),
-            slack_message_timestamp=None,
             instagram_timestamp=None,
             facebook_timestamp=None,
             reddit_timestamp=None,
@@ -46,13 +47,13 @@ def add_social_story(url, name):
     return story.to_dict()
 
 
-def update_slack_details(url, timestamp):
+def update_slack_details(url, message_ts):
     """
-    Update the Slack message timestamp for a story with the given URL.
+    Update the Slack message ts for a story with the given URL.
 
     Args:
         url: Story URL to update
-        timestamp: DateTime timestamp for Slack message
+        message_ts: Slack message ts string (e.g. from chat_postMessage response)
 
     Returns:
         dict: Updated story as dictionary, or None if not found
@@ -61,7 +62,7 @@ def update_slack_details(url, timestamp):
         query = DiSocialStory.query().filter(DiSocialStory.story_url == url)
         story = query.get()
         if story:
-            story.slack_message_timestamp = timestamp
+            story.slack_message_ts = message_ts
             story.put()
             return story.to_dict()
         else:
@@ -85,7 +86,8 @@ def update_social(url, social_media_name):
         if story:
             now = datetime.now()
             if social_media_name == "Slack":
-                story.slack_message_timestamp = now
+                # Slack "posted" time is set when the slackbot calls update_slack_message_ref with message_ts
+                pass
             elif social_media_name == "Instagram":
                 story.instagram_timestamp = now
             elif social_media_name == "Facebook":
@@ -169,6 +171,16 @@ def delete_all_stories():
     return "All social stories deleted"
 
 
+def _slack_ts_to_datetime(ts):
+    """Convert Slack message ts string to local datetime, or None if invalid."""
+    if not ts:
+        return None
+    try:
+        return datetime.fromtimestamp(float(ts))
+    except (ValueError, TypeError):
+        return None
+
+
 def check_limit(social_media_name, limit, days):
     """
     Check if a social media platform has reached its posting limit within a time window.
@@ -185,28 +197,34 @@ def check_limit(social_media_name, limit, days):
         current_datetime = datetime.now()
         start_datetime = current_datetime - timedelta(days=days)
 
-        # Determine which timestamp field to check based on social media name
         if social_media_name == "Slack":
-            timestamp_field = DiSocialStory.slack_message_timestamp
-        elif social_media_name == "Instagram":
-            timestamp_field = DiSocialStory.instagram_timestamp
-        elif social_media_name == "Facebook":
-            timestamp_field = DiSocialStory.facebook_timestamp
-        elif social_media_name == "Reddit":
-            timestamp_field = DiSocialStory.reddit_timestamp
-        elif social_media_name == "X":
-            timestamp_field = DiSocialStory.x_timestamp
-        elif social_media_name == "Threads":
-            timestamp_field = DiSocialStory.threads_timestamp
-        else:
-            raise ValueError(f"Invalid social media name: {social_media_name}")
-
-        recent_posts = (
-            DiSocialStory.query()
-            .filter(
-                timestamp_field >= start_datetime,
-                timestamp_field <= current_datetime,
+            # Slack uses slack_message_ts (string); derive datetime for window
+            stories = (
+                DiSocialStory.query()
+                .filter(DiSocialStory.slack_message_ts != None)
+                .fetch()
             )
-            .fetch()
-        )
-    return len(recent_posts) >= limit
+            recent_posts = []
+            for s in stories:
+                dt = _slack_ts_to_datetime(s.slack_message_ts)
+                if dt and start_datetime <= dt <= current_datetime:
+                    recent_posts.append(s)
+        else:
+            timestamp_field = {
+                "Instagram": DiSocialStory.instagram_timestamp,
+                "Facebook": DiSocialStory.facebook_timestamp,
+                "Reddit": DiSocialStory.reddit_timestamp,
+                "X": DiSocialStory.x_timestamp,
+                "Threads": DiSocialStory.threads_timestamp,
+            }.get(social_media_name)
+            if timestamp_field is None:
+                raise ValueError(f"Invalid social media name: {social_media_name}")
+            recent_posts = (
+                DiSocialStory.query()
+                .filter(
+                    timestamp_field >= start_datetime,
+                    timestamp_field <= current_datetime,
+                )
+                .fetch()
+            )
+        return len(recent_posts) >= limit
