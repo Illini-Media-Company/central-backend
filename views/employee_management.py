@@ -526,6 +526,8 @@ def ems_position_view(pos_id):
     """
     position = get_position_card_by_id(pos_id)
 
+    position["slack_channels"] = ", ".join(position["slack_channels"])
+
     if position == EPOSDNE:
         return render_template(
             "error.html",
@@ -693,6 +695,17 @@ def ems_api_position_create():
                 400,
             )
 
+        # Slack channel error
+        if created == ESLACKDNE:
+            return (
+                jsonify(
+                    {
+                        "error": "One or more of the Slack channels provided does not exist, or Scout does not have access to it."
+                    }
+                ),
+                400,
+            )
+
         # Position already exists
         if created == EEXISTS:
             return (
@@ -791,6 +804,17 @@ def ems_api_position_modify(uid):
                 jsonify(
                     {
                         "error": "That Google Group does not exist. Check the spelling and make sure it exists in the Admin console."
+                    }
+                ),
+                400,
+            )
+
+        # Slack channel error
+        if modified == ESLACKDNE:
+            return (
+                jsonify(
+                    {
+                        "error": "One or more of the Slack channels provided does not exist, or Scout does not have access to it."
                     }
                 ),
                 400,

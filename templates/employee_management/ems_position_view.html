@@ -417,6 +417,35 @@
                     </div>
                 </div>
 
+                {# Slack #}
+                <div class="inner-container" style="padding: 0.75rem;">
+                    <div class="section-header" style="padding: 0;">
+                        <h4 style="margin-bottom: 0">Slack</h4>
+                    </div>
+
+                    <hr style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+
+                    <div class="position-info-column-container">
+                        {# Slack channels #}
+                        <div class="position-info-row" title="Slack Channels">
+                            <i class="bi bi-slack"></i>
+                            <div class="form-initial-show">
+                                <p style="margin-bottom: 0;">{{ position.slack_channels or "—"}}</p>
+                            </div>
+                            <div class="form-initial-hide">
+                                {{ form.text_input( 
+                                    name="slack_channels",
+                                    label="Slack Channels",
+                                    required=false,
+                                    initial_val=position.slack_channels,
+                                    placeholder="Comma-separated list",
+                                    class="position-modify-form-row form-row-shrink"
+                                ) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {# Administrative #}
                 <div class="inner-container" style="padding: 0.75rem;">
                     <div class="section-header" style="padding: 0;">

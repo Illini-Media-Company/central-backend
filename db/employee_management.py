@@ -19,6 +19,7 @@ from util.google_groups import (
     update_group_membership,
     check_group_exists,
 )
+from util.slackbots.general import can_bot_access_channel
 from util.employee_management import *
 
 from constants import (
@@ -148,6 +149,7 @@ class PositionCard(ndb.Model):
         `supervisors` (`list[int]`): UIDs of position(s) this position directly reports to
         `direct_reports` (`list[int]`): UIDs of position(s) directly report to this position
         `google_group` (`str`): The email for the Google Group that all employees will be added to
+        `slack_channels` (`list[str]`): The IDs of the Slack channels that all employees will be added to
         `archived` (`bool`): Whether this position is archived (no longer in use)
         `created_at` (`datetime`): When this position was created
         `updated_at` (`datetime`): When this position was last edited
@@ -169,6 +171,7 @@ class PositionCard(ndb.Model):
     direct_reports = ndb.IntegerProperty(repeated=True)
 
     google_group = ndb.StringProperty()
+    slack_channels = ndb.StringProperty(repeated=True)
 
     archived = ndb.BooleanProperty(default=False)
 
@@ -503,6 +506,7 @@ def create_position_card(**kwargs: dict) -> dict | int:
         `pay_rate` (`float`): The amount this position is paid per hour/stipend/year
         `supervisors` (`list[int]`): UIDs of the position(s) this position directly reports to
         `google_group` (`str`): The email for the Google Group that all employees will be added to
+        `slack_channels` (`list[str]`): The IDs of the Slack channels that all employees will be added to
 
     Returns:
         `dict`: The created `PositionCard` as a dictionary
@@ -510,6 +514,7 @@ def create_position_card(**kwargs: dict) -> dict | int:
     Raises:
         `EEXISTS`: If a position already exists with the given `brand` and `title`
         `EGROUPDNE`: If the Google Group is not valid
+        `ESLACKDNE`: If one of the Slack channels does not exist or the bot cannot access
         `EEXCEPT`: Other fatal error
     """
     with client.context():
@@ -528,6 +533,14 @@ def create_position_card(**kwargs: dict) -> dict | int:
             valid = check_group_exists(kwargs["google_group"])
             if not valid:
                 return EGROUPDNE
+
+        # Check if the Slack channels are valid
+        if "slack_channels" in kwargs:
+            channels = kwargs["slack_channels"]
+            for channel in channels:
+                valid = can_bot_access_channel(channel)
+                if not valid:
+                    return ESLACKDNE
 
         try:
             # Convert supervisor and direct report UIDs to ints
@@ -573,6 +586,7 @@ def modify_position_card(uid: int, **kwargs: dict) -> dict | int:
         `pay_rate` (`float`): The amount this position is paid per hour/stipend/year
         `supervisors` (`list[int]`): UIDs of the position(s) this position directly reports to
         `google_group` (`str`): The email for the Google Group that all employees will be added to
+        `slack_channels` (`list[str]`): The IDs of the Slack channels that all employees will be added to
 
     Returns:
         `dict`: The modified `PositionCard` as a dictionary
@@ -581,6 +595,7 @@ def modify_position_card(uid: int, **kwargs: dict) -> dict | int:
         `EPOSDNE`: Position not found
         `EEXISTS`: If there exists another position with the same `brand` and `title`
         `EGROUPDNE`: If the Google Group does not exist or is invalid
+        `ESLACKDNE`: If one of the Slack channels does not exist or the bot cannot access
         `ESUPREP`: If updating supervisors fails
         `EGROUP`: If updating Google Groups fails
         `EEXCEPT`: Other fatal error
@@ -612,6 +627,23 @@ def modify_position_card(uid: int, **kwargs: dict) -> dict | int:
                 valid = check_group_exists(kwargs["google_group"])
                 if not valid:
                     return EGROUPDNE
+
+            # Check if the Slack channels are valid
+            if "slack_channels" in kwargs:
+                # Format into a list instead of comma-separated
+                slack_channels_raw = kwargs["slack_channels"].strip()
+                slack_channels = [
+                    item.strip()
+                    for item in slack_channels_raw.split(",")
+                    if item.strip()
+                ]
+
+                kwargs["slack_channels"] = slack_channels
+                channels = kwargs["slack_channels"]
+                for channel in channels:
+                    valid = can_bot_access_channel(channel)
+                    if not valid:
+                        return ESLACKDNE
 
             try:
                 # Update the supervisor(s)
@@ -671,8 +703,8 @@ def modify_position_card(uid: int, **kwargs: dict) -> dict | int:
 
             # Modify the position fields
             for key, value in kwargs.items():
-                if hasattr(position, key):
-                    setattr(position, key, value)
+                # if hasattr(position, key):
+                setattr(position, key, value)
 
             position.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
             position.updated_by = current_user.email if current_user else "System"

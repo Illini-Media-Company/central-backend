@@ -16,6 +16,7 @@ EEXISTS = -7  # EmployeeCard or EmployeePositionRelation already exists
 ESUPREP = -8  # Error setting supervisor(s) or direct report(s)
 EGROUP = -9  # Google Groups update failed
 EGROUPDNE = -10  # Google Group email does not exist or is invalid
+ESLACKDNE = -11  # Slack channel ID does not exist or is not accessible
 
 
 # Get correct image URL
