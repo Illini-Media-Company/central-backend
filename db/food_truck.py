@@ -181,7 +181,6 @@ def add_truck_loctime_repeat(
             start_time,
             end_time,
             reported_by,
-            end_date,
             recurrence_id,
         )
 
@@ -374,10 +373,10 @@ def get_loctime_by_id(uid):
     loctime = foodTruckLocTime.get_by_id(uid)
 
     if loctime is not None:
-        print("\tNot found.")
+        print("\tDone.")
         return loctime.to_dict()
     else:
-        print("\tDone.")
+        print("\tFound.")
         return None
 
 

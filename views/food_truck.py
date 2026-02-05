@@ -240,8 +240,12 @@ def remove_loctime(uid):
 @food_truck_routes.route("/loctime-remove-series/<uid>", methods=["POST"])
 def remove_loctime_series(uid):
     with client.context():
-        loctime = get_loctime_by_id(uid)
-        recurrence_id = loctime.recurrence_id
+        loctime = get_loctime_by_id(int(uid))
+
+        if loctime == None:
+            return "locTime not found!!!", 404
+
+        recurrence_id = loctime.get("recurrence_id")
 
         if not recurrence_id:
             # guard against user trying to delete non-recurring locTime

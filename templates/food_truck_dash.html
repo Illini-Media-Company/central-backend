@@ -463,6 +463,8 @@ Food Truck Tracker (Dashboard)
         const lon               = document.getElementById('lon').value;
         const start_time        = document.getElementById('start_time').value;
         const end_time          = document.getElementById('end_time').value;
+        const repeat            = document.getElementById('repeat').checked;
+        const repeatEnd         = document.getElementById('repeat_end').value;
         
         if (loginSource == "admin") {
             reported_by = "admin";
@@ -477,9 +479,19 @@ Food Truck Tracker (Dashboard)
             return;
         }
 
+        if (repeat && !repeatEnd) {
+            alert("Please select a repeat end date.");
+            return;
+        }
+
         if (end_time <= start_time){
             alert("Departure time must be after arrival time.");
             return;
+        }
+        
+        let body = `_csrf_token={{ csrf_token() }}&uid=${truck_uid}&nearest_address=${nearest_address}&location_desc=${location_desc}&lat=${lat}&lon=${lon}&start_time=${start_time}&end_time=${end_time}&reported_by=${reported_by}`;
+        if (repeat) {
+            body += `&repeat=${repeat}&repeat_end=${repeatEnd}`;
         }
 
         const response = await fetch(endpoint, {
@@ -487,28 +499,20 @@ Food Truck Tracker (Dashboard)
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: `_csrf_token={{ csrf_token() }}&uid=${truck_uid}&nearest_address=${nearest_address}&location_desc=${location_desc}&lat=${lat}&lon=${lon}&start_time=${start_time}&end_time=${end_time}&reported_by=${reported_by}`,
+            body: body,
         });
 
         // // Check if the user wants this location/time to repeat weekly
-        // const repeat = document.getElementById('repeat').checked;
-        // const repeatEnd = document.getElementById('repeat_end').value;
+        // 
 
         // // If repeat is enabled, we REQUIRE an end date to avoid infinite recurrence
-        // if (repeat && !repeatEnd) {
-        //     alert("Please select a repeat end date.");
-        //     submitButton.disabled = false;
-        //     submitButton.innerHTML = 'Submit';
-        //     return;
-        // }
+        // 
 
         // // Base payload sent for all loctimes (single or recurring)
         // let body = `_csrf_token={{ csrf_token() }}&uid=${truck_uid}&nearest_address=${nearest_address}&location_desc=${location_desc}&lat=${lat}&lon=${lon}&start_time=${start_time}&end_time=${end_time}&reported_by=${reported_by}`;
         
         // // If repeat is checked, send extra fields expected by backend
-        // if (repeat) {
-        //     body += `&repeat=on&repeat_end=${repeatEnd}`;
-        // }
+        // 
 
         // // Submit the loctime (single or recurring)
         // const response = await fetch(endpoint, {
@@ -597,7 +601,7 @@ Food Truck Tracker (Dashboard)
 
             if (deleteSeries) {
                 // Delete the entire recurring series
-                endpoint = `/food-truck/loctime-remove-series/${loctime.recurrence_id}`;
+                endpoint = `/food-truck/loctime-remove-series/${loctime.uid}`;
 
             }
         }
