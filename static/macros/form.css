@@ -173,6 +173,90 @@ select:disabled {
 }
 /* ——————————————————————————————————————————————— */
 
+/* Multi-select input field */
+.form-multiple-select {
+    border: 1px solid var(--main-md-gray-color);
+    border-radius: var(--main-border-radius);
+    background-color: var(--main-bg-color);
+    max-height: 220px; /* Adjust based on your design */
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Hide the actual checkbox but keep it functional */
+.hidden-checkbox {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+/* The clickable row */
+.select-option {
+    cursor: pointer;
+    border-bottom: 1px solid var(--main-lt-gray-color);
+    transition: background 0.15s ease;
+}
+
+.select-option:last-child {
+    border-bottom: none;
+}
+
+.option-content {
+    display: flex;
+    align-items: center;
+    padding: 0.6rem 0.75rem;
+    color: var(--main-text-color);
+    font-size: 0.95rem;
+}
+
+/* Hover effect */
+.select-option:hover {
+    background-color: var(--main-lt-gray-color);
+}
+
+/* Style when selected */
+.hidden-checkbox:checked + .option-content {
+    background-color: rgba(var(--main-accent-rgb), 0.1); /* Subtle tint */
+}
+
+.hidden-checkbox:checked + .option-content .option-text {
+    font-weight: 500;
+}
+
+/* Custom Checkbox visual */
+.checkbox-box {
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--main-md-gray-color);
+    border-radius: 3px;
+    margin-right: 12px;
+    display: inline-block;
+    position: relative;
+    background: white;
+}
+
+.hidden-checkbox:checked + .option-content .checkbox-box {
+    background-color: var(--main-accent-color);
+    border-color: var(--main-accent-color);
+}
+
+/* The Checkmark */
+.hidden-checkbox:checked + .option-content .checkbox-box::after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 2px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* ——————————————————————————————————————————————— */
 /* Text area input field */
 .textarea-input {
     padding: 0.25rem 0.5rem;

@@ -190,6 +190,7 @@ no_default is a boolean. When true, will not display "Select..."
                 <p class="subtext">{{ subtext }}</p>
             {% endif %}
         </div>
+
         <div class="select-input">
             <select name="{{ name }}" id="{{ name }}" {% if multiple %}multiple{% endif %} {% if disabled %}disabled{% endif %}>
                 {% if no_default %}
@@ -227,27 +228,22 @@ NOT COMPLETE
                 <p class="subtext">{{ subtext }}</p>
             {% endif %}
         </div>
-        <div class="select-input">
-            <select name="{{ name }}" id="{{ name }}" multiple>
-                {% if no_default %}
-                    <option value="" {% if not selected_list %}selected{% endif %}></option>
-                {% else %}
-                    <option value="" disabled {% if not selected_list %}selected{% endif %}>Select...</option>
-                {% endif %}
-                {% for option in options %}
-                    {% if option is mapping %}
-                        <option value="{{ option.value }}" 
-                        {% if option.value|string in selected_list|map('string') %}selected{% endif %}>
-                            {{ option.name }}
-                        </option>
-                    {% else %}
-                        <option value="{{ option }}" 
-                        {% if option|string in selected_list|map('string') %}selected{% endif %}>
-                            {{ option }}
-                        </option>
-                    {% endif %}
-                {% endfor %}
-            </select>
+
+        <div class="form-multiple-select">
+            {% for option in options %}
+                {% set val = option.value if option is mapping else option %}
+                {% set display = option.name if option is mapping else option %}
+                {% set is_selected = val|string in selected_list|map('string') %}
+                
+                <label class="select-option">
+                    <input type="checkbox" name="{{ name }}" value="{{ val }}" 
+                           {% if is_selected %}checked{% endif %} class="hidden-checkbox">
+                    <div class="option-content">
+                        <span class="checkbox-box"></span>
+                        <span class="option-text">{{ display }}</span>
+                    </div>
+                </label>
+            {% endfor %}
         </div>
     </div>
 {% endmacro %}
