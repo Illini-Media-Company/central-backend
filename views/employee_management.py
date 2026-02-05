@@ -9,6 +9,7 @@ from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required
 from util.security import restrict_to
 from datetime import datetime
+import numpy as np
 import os
 import pandas as pd
 
@@ -1274,7 +1275,6 @@ def validate_csv(csv):
 
     :param csv: pandas dataframe
     """
-    print("csv")
     required_columns = [
         "last_name",
         "first_name",
@@ -1315,6 +1315,10 @@ def validate_csv(csv):
     if len(invalid_columns) > 0:
         raise Exception(f"CSV contains invalid columns: {invalid_columns}")
     # use create API to validate each row
+
+    csv = csv.replace(np.nan, None)
+    csv["permanent_zip"] = csv["permanent_zip"].astype(str)
+
     for i, row in csv.iterrows():
         print(i)
         try:
