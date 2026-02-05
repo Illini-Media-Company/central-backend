@@ -31,3 +31,7 @@ indexes:
       - name: submitterEmail
       - name: submissionTimestamp
         direction: desc
+  - kind: DiSocialStory
+    properties:
+      - name: slack_channel_id
+      - name: slack_message_ts

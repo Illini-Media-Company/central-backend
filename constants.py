@@ -122,3 +122,12 @@ PHOTO_REQUESTS_CHANNEL_ID = (
 COURTESY_REQUESTS_CHANNEL_ID = (
     "C09R16GJZBP" if ENV == "dev" else "C09SG769Y6L"
 )  # #imc_courtesy-photos — Channel that all courtesy photo requests get sent to
+
+# Social media posts: channel where new DI stories are posted for social team.
+# Ensure the Slack app (Scout) is added to this channel or messages will not appear.
+SOCIAL_MEDIA_POSTS_CHANNEL_ID = (
+    "C09R16GJZBP" if ENV == "dev" else None
+)  # Set prod channel ID in env/constants when known
+
+# Optional: Google Calendar ID for social media shift (to tag person on shift). Set when available.
+SOCIAL_MEDIA_GCAL_ID = os.environ.get("SOCIAL_MEDIA_GCAL_ID", None)

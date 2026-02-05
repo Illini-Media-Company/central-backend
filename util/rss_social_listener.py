@@ -96,6 +96,40 @@ def check_rss_feed():
     return processed_count, processed_items
 
 
+def process_new_stories_to_slack():
+    """
+    Fetch RSS, filter sponsored, and for each story not already in DiSocialStory
+    add the story and post to the social media Slack channel.
+    Returns (number_new_posted, list of story links posted).
+    """
+    from db.di_social_story import add_social_story, get_story_by_url
+    from util.slackbots.socials_slackbot import notify_new_story_from_rss
+
+    entries = fetch_rss()
+    if not entries:
+        return 0, []
+
+    posted = []
+    for entry in entries:
+        if is_sponsored(entry):
+            continue
+        result = process_rss_item(entry)
+        if not result:
+            continue
+        link = result.get("link", "").strip()
+        title = result.get("title", "").strip()
+        if not link or not title:
+            continue
+        if get_story_by_url(link) is not None:
+            continue
+        add_social_story(link, title)
+        notify_new_story_from_rss(story_url=link, story_title=title)
+        posted.append(link)
+        logging.info(f"Posted new story to Slack: {title}")
+
+    return len(posted), posted
+
+
 if __name__ == "__main__":
     count = check_rss_feed()
     print(f"Processed {count} stories.")

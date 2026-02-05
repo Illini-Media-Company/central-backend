@@ -69,6 +69,7 @@ from apscheduler.triggers.date import DateTrigger
 from util.slackbots._slackbot import start_slack
 import util.slackbots.employee_agreement_slackbot
 import util.slackbots.photo_request
+import util.slackbots.socials_slackbot
 from views.all_tools import tools_routes
 from views.content_doc import content_doc_routes
 from views.constant_contact import constant_contact_routes
