@@ -238,14 +238,15 @@ def remove_loctime(uid):
 
 # Remove all locTime's with a specific recurrence_id for a truck
 @food_truck_routes.route("/loctime-remove-series/<uid>", methods=["POST"])
-def remove_loctime_series(uid, recurrence_id):
+def remove_loctime_series(uid):
     with client.context():
-        if not recurrence_id.isdigit():
-            return "Invalid UID", 400
+        loctime = get_loctime_by_id(uid)
+        recurrence_id = loctime.recurrence_id
 
         if not recurrence_id:
             # guard against user trying to delete non-recurring locTime
             remove_truck_loctime(uid)
+            return "Deleted 1 non-recurring locTime.", 200
 
         deleted = remove_truck_loctime_repeat(recurrence_id)
         return f"Deleted {deleted} recurring locTime(s).", 200
