@@ -278,19 +278,16 @@ def create_employee_card(**kwargs: dict) -> dict | int:
             ).get()
             if existing:
                 return EEXISTS  # Employee with this IMC email already exists
-
         try:
             if "user_uid" in kwargs:
                 user = User.get_by_id(kwargs["user_uid"])
                 if not user:
                     return EUSERDNE
-
             employee = EmployeeCard(**kwargs)
             employee.created_at = datetime.now(tz=ZoneInfo("America/Chicago"))
             employee.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
             employee.updated_by = current_user.email if current_user else "System"
             employee.put()
-
             temp = employee.uid
             tie_employee_to_user(temp)
             employee = EmployeeCard.get_by_id(temp)

@@ -64,7 +64,32 @@
         <div style="display: flex; flex-direction: row; gap: 2rem; align-items: center;">
             <div class="column-container">
                 <div class="inner-container" style="padding: 0.75rem;">
-                    This form accepts .csv files with the following columns: ...
+                    This form accepts .csv files with the following columns:  <br/> <br/>
+                    
+                    `last_name` (`str`): The employee's last name <br/>
+                    `first_name` (`str`): The employee's first name <br/>
+                    `pronouns` (`str`): The employee's pronouns <br/>
+                    `imc_email` (`str`): The employee's IMC email address <br/>
+                    `personal_email` (`str`): The employee's personal (non-IMC) email address <br/>
+                    `phone_number` (`str`): The employee's personal phone number <br/>
+                    `permanent_address_1` (`str`): The employee's permanent street address (number & street) <br/>
+                    `permanent_address_2` (`str`): The employee's permanent street address (suite, apartment, etc.) <br/>
+                    `permanent_city` (`str`): The employee's permanent city <br/>
+                    `permanent_state` (`str`): The employee's permanent state <br/>
+                    `permanent_zip` (`str`): The employee's permanent ZIP code <br/>
+                    `birth_date` (`date`): The employee's date of birth <br/>
+                    `payroll_number` (`int`): The employee's payroll number (if applicable) <br/>
+                    `initial_hire_date` (`date`): The date that the employee was first hired <br/>
+                    `status` (`str`): The employee's current status <br/>
+                    `major` (`str`): The employee's major <br/>
+                    `major_2` (`str`): The employee's (optional) second major <br/>
+                    `major_3` (`str`): The employee's (optional) third major <br/>
+                    `minor` (`str`): The employee's minor <br/>
+                    `minor_2` (`str`): The employee's (optional) second minor <br/>
+                    `minor_3` (`str`): The employee's (optional) third minor <br/>
+                    `graduation` (`str`): The employee's expected graduation term <br/> <br/>
+
+                    Make sure to follow this pattern exactly in your .csv file's heading to avoid errors.
                     <div id="csv-error"></div>
                 </div>
             </div>
