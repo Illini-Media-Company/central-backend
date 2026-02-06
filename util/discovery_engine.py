@@ -6,9 +6,12 @@ from constants import (
     DISCOVERY_ENGINE_PROJECT_ID,
     DISCOVERY_ENGINE_LOCATION,
     DISCOVERY_ENGINE_COLLECTION,
-    DISCOVERY_ENGINE_DATASTORE_ID,
     DISCOVERY_ENGINE_SERVING_CONFIG,
+    DISCOVERY_ENGINE_ENGINE_ID,
 )
+
+
+API_VERSION = "v1alpha"
 
 
 def _serving_config() -> str:
@@ -19,10 +22,10 @@ def _serving_config() -> str:
         missing.append("DISCOVERY_ENGINE_LOCATION")
     if not DISCOVERY_ENGINE_COLLECTION:
         missing.append("DISCOVERY_ENGINE_COLLECTION")
-    if not DISCOVERY_ENGINE_DATASTORE_ID:
-        missing.append("DISCOVERY_ENGINE_DATASTORE_ID")
     if not DISCOVERY_ENGINE_SERVING_CONFIG:
         missing.append("DISCOVERY_ENGINE_SERVING_CONFIG")
+    if not DISCOVERY_ENGINE_ENGINE_ID:
+        missing.append("DISCOVERY_ENGINE_ENGINE_ID")
 
     if missing:
         raise ValueError(f"Missing Discovery Engine env vars: {', '.join(missing)}")
@@ -34,10 +37,24 @@ def _serving_config() -> str:
         f"{DISCOVERY_ENGINE_LOCATION}/"
         "collections/"
         f"{DISCOVERY_ENGINE_COLLECTION}/"
-        "dataStores/"
-        f"{DISCOVERY_ENGINE_DATASTORE_ID}/"
+        "engines/"
+        f"{DISCOVERY_ENGINE_ENGINE_ID}/"
         "servingConfigs/"
         f"{DISCOVERY_ENGINE_SERVING_CONFIG}"
+    )
+
+
+def _session_path() -> str:
+    return (
+        "projects/"
+        f"{DISCOVERY_ENGINE_PROJECT_ID}/"
+        "locations/"
+        f"{DISCOVERY_ENGINE_LOCATION}/"
+        "collections/"
+        f"{DISCOVERY_ENGINE_COLLECTION}/"
+        "engines/"
+        f"{DISCOVERY_ENGINE_ENGINE_ID}/"
+        "sessions/-"
     )
 
 
@@ -47,12 +64,19 @@ def answer_query(
     user_pseudo_id: Optional[str] = None,
 ) -> dict:
     serving_config = _serving_config()
-    url = f"https://discoveryengine.googleapis.com/v1/{serving_config}:answer"
+    url = (
+        f"https://discoveryengine.googleapis.com/{API_VERSION}/{serving_config}:answer"
+    )
+    print(f"[discovery_engine] POST {url}")
     body = {
         "query": {"text": query},
+        "session": _session_path(),
         "answerGenerationSpec": {
             "includeCitations": True,
-            "answerLanguageCode": "en",
+            "ignoreAdversarialQuery": True,
+            "ignoreNonAnswerSeekingQuery": False,
+            "ignoreLowRelevantContent": True,
+            "modelSpec": {"modelVersion": "stable"},
         },
     }
     if user_pseudo_id:
@@ -66,11 +90,67 @@ def answer_query(
         headers["x-goog-user-project"] = DISCOVERY_ENGINE_PROJECT_ID
 
     resp = requests.post(url, json=body, headers=headers, timeout=30)
+    print("[discovery_engine] status=" f"{resp.status_code} body={resp.text[:2000]}")
     if resp.status_code >= 400:
         raise RuntimeError(
             f"Discovery Engine error {resp.status_code}: {resp.text[:500]}"
         )
     return resp.json()
+
+
+def search_query(
+    query: str,
+    access_token: str,
+    user_pseudo_id: Optional[str] = None,
+    page_size: int = 10,
+) -> dict:
+    serving_config = _serving_config()
+    url = (
+        f"https://discoveryengine.googleapis.com/{API_VERSION}/{serving_config}:search"
+    )
+    print(f"[discovery_engine] POST {url}")
+    body = {
+        "query": query,
+        "pageSize": page_size,
+        "queryExpansionSpec": {"condition": "AUTO"},
+        "spellCorrectionSpec": {"mode": "AUTO"},
+        "languageCode": "en-US",
+        "contentSearchSpec": {"extractiveContentSpec": {"maxExtractiveAnswerCount": 1}},
+        "userInfo": {"timeZone": "America/Chicago"},
+        "session": _session_path(),
+    }
+    if user_pseudo_id:
+        body["userPseudoId"] = user_pseudo_id
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    if DISCOVERY_ENGINE_PROJECT_ID:
+        headers["x-goog-user-project"] = DISCOVERY_ENGINE_PROJECT_ID
+
+    resp = requests.post(url, json=body, headers=headers, timeout=30)
+    print("[discovery_engine] status=" f"{resp.status_code} body={resp.text[:2000]}")
+    if resp.status_code >= 400:
+        raise RuntimeError(
+            f"Discovery Engine error {resp.status_code}: {resp.text[:500]}"
+        )
+    return resp.json()
+
+
+def extract_search_results(response: dict) -> List[Dict]:
+    results = response.get("results") or []
+    out: List[Dict] = []
+    for res in results:
+        doc = res.get("document") or {}
+        derived = doc.get("derivedStructData") or {}
+        title = derived.get("title")
+        uri = derived.get("link") or derived.get("uri") or derived.get("document")
+        if not title:
+            title = uri
+        if title or uri:
+            out.append({"title": title, "uri": uri})
+    return out
 
 
 def _get_ref_id(ref: dict, index: int) -> str:

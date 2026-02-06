@@ -15,7 +15,12 @@ from constants import (
 from util.security import csrf
 from db.user import add_user, get_user_entity
 from util.ask_oauth import get_valid_access_token
-from util.discovery_engine import answer_query, extract_answer_and_citations
+from util.discovery_engine import (
+    answer_query,
+    extract_answer_and_citations,
+    extract_search_results,
+    search_query,
+)
 
 from constants import (
     IMC_GENERAL_ID,
@@ -374,6 +379,19 @@ def _ask_and_respond(question, access_token, user_id, respond):
             user_pseudo_id=user_id,
         )
         answer_text, sources, skipped_reasons = extract_answer_and_citations(response)
+
+        if skipped_reasons:
+            try:
+                search_response = search_query(
+                    query=question,
+                    access_token=access_token,
+                    user_pseudo_id=user_id,
+                )
+                search_sources = extract_search_results(search_response)
+                if search_sources:
+                    sources = search_sources
+            except Exception as e:
+                print(f"[ask] search fallback error: {e}")
 
         if not answer_text:
             if skipped_reasons:

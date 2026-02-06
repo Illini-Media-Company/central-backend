@@ -26,11 +26,12 @@ DISCOVERY_ENGINE_COLLECTION = os.environ.get(
     "DISCOVERY_ENGINE_COLLECTION", "default_collection"
 )
 DISCOVERY_ENGINE_DATASTORE_ID = os.environ.get(
-    "DISCOVERY_ENGINE_DATASTORE_ID", "scout-knowledge_1769035765631"
+    "DISCOVERY_ENGINE_DATASTORE_ID", "knowledge_1769035765631_google_drive"
 )
 DISCOVERY_ENGINE_SERVING_CONFIG = os.environ.get(
     "DISCOVERY_ENGINE_SERVING_CONFIG", "default_search"
 )
+DISCOVERY_ENGINE_ENGINE_ID = os.environ.get("DISCOVERY_ENGINE_ENGINE_ID", None)
 
 APPS_SCRIPT_RUNNER_EMAIL = "apps-script-runner@illinimedia.com"
 CONTEND_DOC_AUD = (
