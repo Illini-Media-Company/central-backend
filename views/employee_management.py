@@ -149,13 +149,17 @@ def ems_employee_onboard():
 
 
 # TEMPLATE
-@ems_routes.route("/employee/file_upload", methods=["GET"])
+@ems_routes.route("/employee/file-upload", methods=["GET"])
 @login_required
 def ems_employee_file_upload():
     """
     Renders the file upload page to upload multiple employees.
     """
-    return render_template("employee_management/ems_employee_file_upload.html")
+    return render_template(
+        "employee_management/ems_employee_file_upload.html",
+        pronouns=", ".join(EMPLOYEE_PRONOUNS),
+        statuses=", ".join(EMPLOYEE_STATUS_OPTIONS),
+    )
 
 
 @ems_routes.route("/api/employee/create/bulk", methods=["POST"])
