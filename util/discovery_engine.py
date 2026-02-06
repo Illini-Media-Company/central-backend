@@ -163,6 +163,14 @@ def _get_ref_id(ref: dict, index: int) -> str:
 
 
 def _get_doc_metadata(ref: dict) -> dict:
+    # 1. Check for Structured Info (Priority for Google Drive results)
+    structured = ref.get("structuredDocumentInfo") or ref.get(
+        "structured_document_info"
+    )
+    if structured:
+        return structured
+
+    # 2. Check for Chunk Info (Standard for unstructured data)
     chunk_info = ref.get("chunkInfo") or ref.get("chunk_info") or {}
     doc_meta = (
         chunk_info.get("documentMetadata") or chunk_info.get("document_metadata") or {}
@@ -170,6 +178,7 @@ def _get_doc_metadata(ref: dict) -> dict:
     if doc_meta:
         return doc_meta
 
+    # 3. Check for Unstructured Info (General fallback)
     unstructured = (
         ref.get("unstructuredDocumentInfo")
         or ref.get("unstructured_document_info")
@@ -180,15 +189,17 @@ def _get_doc_metadata(ref: dict) -> dict:
         or unstructured.get("document_metadata")
         or {}
     )
-    if doc_meta:
-        return doc_meta
 
-    structured = (
-        ref.get("structuredDocumentInfo") or ref.get("structured_document_info") or {}
-    )
-    doc_meta = (
-        structured.get("documentMetadata") or structured.get("document_metadata") or {}
-    )
+    #    if doc_meta:
+    #         return doc_meta
+
+    #     structured = (
+    #         ref.get("structuredDocumentInfo") or ref.get("structured_document_info") or {}
+    #     )
+    #     doc_meta = (
+    #         structured.get("documentMetadata") or structured.get("document_metadata") or {}
+    #     )
+
     return doc_meta or {}
 
 

@@ -293,6 +293,7 @@ def login():
         state=state,
         access_type="offline",
         include_granted_scopes="true",
+        prompt="consent",
     )
     return redirect(request_uri)
 
