@@ -1,0 +1,232 @@
+{% extends 'employee_management/ems_base.html' %}
+
+{% block ems_title %}
+    Onboarding Form
+{% endblock %}
+
+{% block ems_extra_head %}
+    <link rel="stylesheet" href="/static/macros/form.css">
+
+    <style>
+        .onboarding-form {
+            gap: 0.5rem;
+        }
+
+        .onboarding-form-row {
+            flex-direction: column;
+            align-items: flex-start;
+            flex: 1 1 10rem;
+        }
+
+        .column-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            flex: 1 1 20rem;
+        }
+    </style>
+{% endblock %}
+
+{% import "macros/form.html" as form %}
+{% include "partials/loading.html" %}
+{% include "partials/text_alert.html" %}
+{% include "partials/info_bar.html" %}
+
+{% block ems_content %}
+<div style="display: flex; flex-direction: row; gap: 2rem; align-items: center;">
+    <a href="/ems/" style="color: inherit; font-size: 2rem;">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <h2>Complete Your Onboarding</h2>
+</div>
+
+<p>Please confirm your information below and submit once.</p>
+
+<hr>
+
+<section class="section-container">
+    {% call form.form(
+        id="employeeOnboardingForm",
+        class="onboarding-form",
+        enctype="application/x-www-form-urlencoded",
+        on_submit="submitOnboarding(event)"
+    ) %}
+    
+    <div style="display: flex; flex-direction: row; gap: 0.5rem; flex-wrap: wrap; align-items: flex-start;">
+        {# Left Column #}
+        <div class="column-container">
+            <div class="inner-container" style="padding: 0.75rem;">
+                <div class="section-header">
+                    <h3 style="margin-bottom: 0">Contact Information</h3>
+                </div>
+                <hr style="margin-top: 1rem;">
+    
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    {{ form.text_input(
+                        name="personal_email",
+                        label="Personal Email",
+                        required=true,
+                        class="onboarding-form-row"
+                    ) }}
+    
+                    {{ form.text_input(
+                        name="phone_number",
+                        label="Phone Number",
+                        required=true,
+                        class="onboarding-form-row"
+                    ) }}
+                </div>
+            </div>
+    
+            <div class="inner-container" style="padding: 0.75rem;">
+                <div class="section-header">
+                    <h3 style="margin-bottom: 0">School Information</h3>
+                </div>
+                <hr style="margin-top: 1rem;">
+    
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    {{ form.text_input(
+                        name="major",
+                        label="Major",
+                        required=false,
+                        class="onboarding-form-row"
+                    ) }}
+    
+                    {{ form.select_input(
+                        name="graduation",
+                        label="Expected Graduation",
+                        options=employee_grad_years,
+                        required=false,
+                        class="onboarding-form-row"
+                    ) }}
+                </div>
+            </div>
+        </div>
+    
+        {# Right Column #}
+        <div class="column-container">
+            <div class="inner-container" style="padding: 0.75rem;">
+                <div class="section-header">
+                    <h3 style="margin-bottom: 0">Permanent Address</h3>
+                </div>
+                <hr style="margin-top: 1rem;">
+    
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    {{ form.text_input(
+                        name="permanent_address_1",
+                        label="Address Line 1",
+                        required=true,
+                        class="onboarding-form-row"
+                    ) }}
+    
+                    {{ form.text_input(
+                        name="permanent_address_2",
+                        label="Address Line 2 (Apt, Suite, etc.)",
+                        required=false,
+                        class="onboarding-form-row"
+                    ) }}
+    
+                    <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
+                        {{ form.text_input(
+                            name="permanent_city",
+                            label="City",
+                            required=true,
+                            class="onboarding-form-row"
+                        ) }}
+    
+                        {{ form.text_input(
+                            name="permanent_state",
+                            label="State",
+                            required=true,
+                            class="onboarding-form-row"
+                        ) }}
+    
+                        {{ form.text_input(
+                            name="permanent_zip",
+                            label="ZIP Code",
+                            required=true,
+                            class="onboarding-form-row"
+                        ) }}
+
+                        {{ form.text_input(
+                            name="birth_date",
+                            label="Birth Date",
+                            required=true,
+                            class="onboarding-form-row",
+                            alt_type="date"
+                        ) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>    
+
+        <div style="text-align: center;">
+            {{ form.submit_button(text="Submit", label="submit_button") }}
+        </div>
+    {% endcall %}
+</section>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const msg = sessionStorage.getItem("infoBarMessage");
+        if (msg) {
+            showInfoBar(msg);
+            sessionStorage.removeItem("infoBarMessage");
+        }
+    });
+
+    async function submitOnboarding(event) {
+        event.preventDefault();
+        showLoading("Submitting...");
+
+        try {
+            const formData = new FormData(event.target);
+            const formEntries = Object.fromEntries(
+                Array.from(formData.entries()).filter(([_, value]) => value !== "")
+            );
+
+            // MUST match Flask route: /ems/onboarding/<emp_id>/submit
+            const endpoint = "/ems/onboarding/{{ employee.uid }}/submit";
+
+            const payload = {
+                _csrf_token: "{{ csrf_token() }}",
+                ...formEntries,
+            };
+
+            const response = await fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            if (response.ok) {
+                hideLoading();
+                sessionStorage.setItem("infoBarMessage", "Onboarding successfully submitted.");
+                window.location.reload();
+                return;
+            }
+
+            let message = "An unknown error occurred.";
+            try {
+                const data = await response.json();
+                message = data.error || message;
+            } catch (_) {
+                message = await response.text();
+            }
+
+            hideLoading();
+            await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+        } catch (err) {
+            hideLoading();
+            await showTextAlert(
+                header="Network Error",
+                body=err?.message || "Request failed. Please try again.",
+                buttonText="Dismiss"
+            );
+        }
+    }
+</script>
+
+{% endblock %}

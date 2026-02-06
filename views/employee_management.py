@@ -13,6 +13,12 @@ import numpy as np
 import os
 import pandas as pd
 
+from flask import request, jsonify, redirect, url_for
+from db.employee_management import create_employee_onboarding_card
+from util.employee_management import send_onboarding_email
+
+
+from flask import redirect, url_for
 from constants import EMS_ADMIN_ACCESS_GROUPS
 
 from db.user import get_user_profile_photo
@@ -115,6 +121,30 @@ def ems_employee_add():
         employee_statuses=EMPLOYEE_STATUS_OPTIONS,
         employee_grad_years=EMPLOYEE_GRAD_YEARS,
         employee_pronouns=EMPLOYEE_PRONOUNS,
+    )
+
+
+"""
+    Show the employee onboarding page.
+    Endpoint:
+        GET /employee/onboard
+    Auth:
+        User must be logged in.
+    Returns:
+        Renders `employee_management/ems_employee_onboard.html`
+        with `selection="employees"` for navbar highlighting.
+    """
+
+
+@ems_routes.route("/employee/onboard", methods=["GET"])
+@login_required
+def ems_employee_onboard():
+    """
+    Renders the employee onboarding (send invite) page.
+    """
+    return render_template(
+        "employee_management/ems_employee_onboard.html",
+        selection="employees",
     )
 
 
@@ -238,6 +268,57 @@ def ems_employee_view(emp_id):
         depart_reasons_invol=DEPART_REASON_INVOL,
         depart_reasons_admin=DEPART_REASON_ADMIN,
     )
+
+
+"""
+Public onboarding submit endpoint: validates required fields,
+ parses optional birth_date, marks link as used, and saves employee data.
+"""
+
+
+@ems_routes.route("/onboarding/<int:emp_id>/submit", methods=["POST"])
+def ems_api_onboarding_submit(emp_id):
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
+    data.pop("_csrf_token", None)
+
+    employee = get_employee_card_by_id(emp_id)
+    if not employee:
+        return jsonify({"ok": False, "error": "Invalid onboarding link."}), 404
+
+    if employee.get("onboarding_form_done"):
+        return (
+            jsonify(
+                {"ok": False, "error": "This onboarding link has already been used."}
+            ),
+            400,
+        )
+
+    required = ["personal_email", "phone_number"]
+    missing = [k for k in required if not (data.get(k) or "").strip()]
+    if missing:
+        return (
+            jsonify(
+                {"ok": False, "error": f"Missing required fields: {', '.join(missing)}"}
+            ),
+            400,
+        )
+    if data.get("birth_date"):
+        try:
+            data["birth_date"] = datetime.strptime(
+                data["birth_date"], "%Y-%m-%d"
+            ).date()
+        except ValueError:
+            return (
+                jsonify(
+                    {"ok": False, "error": "Invalid birth date format. Use YYYY-MM-DD."}
+                ),
+                400,
+            )
+    updated = modify_employee_card(emp_id, onboarding_form_done=True, **data)
+    if updated is None:
+        return jsonify({"ok": False, "error": "Failed to submit onboarding form."}), 500
+
+    return jsonify({"ok": True, "message": "Onboarding submitted successfully."}), 200
 
 
 # API
@@ -466,6 +547,62 @@ def ems_api_employee_delete(uid):
 
     # No errors
     return jsonify({"message": "Employee deleted successfully."}), 200
+
+
+"""
+Admin-only endpoint: validates invitee input, creates a provisional 
+onboarding employee record, and builds a public onboarding link.
+Sends the onboarding email and returns an error on failure; 
+otherwise redirects back to the EMS employees page.
+"""
+
+
+@ems_routes.route("/api/employee/onboard/send", methods=["POST"])
+@login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+def ems_api_employee_onboard_send():
+    data = (
+        request.form.to_dict()
+        if request.form
+        else (request.get_json(silent=True) or {})
+    )
+
+    first_name = (data.get("first_name") or "").strip()
+    last_name = (data.get("last_name") or "").strip()
+    email = (data.get("email") or "").strip()
+
+    if not first_name or not last_name or not email:
+        return jsonify({"error": "first_name, last_name, and email are required."}), 400
+    if "@" not in email:
+        return jsonify({"error": "Invalid email format."}), 400
+    created = create_employee_onboarding_card(
+        first_name=first_name, last_name=last_name
+    )
+    if created in (None, -1):
+        return jsonify({"error": "Failed to create onboarding employee."}), 500
+
+    emp_id = created["uid"]
+    onboarding_url = url_for(
+        "ems_routes.ems_employee_onboarding_form",
+        emp_id=emp_id,
+        _external=True,  #
+    )
+    rc = send_onboarding_email(
+        to_email=email,
+        first_name=first_name,
+        onboarding_url=onboarding_url,
+    )
+    if not isinstance(rc, dict) or not rc.get("ok"):
+        return (
+            jsonify(
+                {
+                    "error": "Failed to send onboarding email.",
+                    "details": rc.get("error") if isinstance(rc, dict) else str(rc),
+                }
+            ),
+            500,
+        )
+    return redirect(url_for("ems_routes.ems_employees"))
 
 
 ################################################################################
@@ -1107,6 +1244,22 @@ def ems_api_relation_create():
     )
 
 
+# BAVYA ADDED CODE
+@ems_routes.route("/onboarding/<int:emp_id>", methods=["GET"])
+def ems_employee_onboarding_form(emp_id):
+    employee = get_employee_card_by_id(emp_id)
+    if not employee:
+        return "Invalid onboarding link.", 404
+    if employee.get("onboarding_form_done"):
+        return "This onboarding link has already been used.", 400
+
+    return render_template(
+        "employee_management/ems_employee_onboard_form.html",
+        employee=employee,
+        employee_grad_years=EMPLOYEE_GRAD_YEARS,
+    )
+
+
 # API
 @ems_routes.route("/api/relation/<int:uid>/modify", methods=["POST"])
 @login_required
@@ -1254,7 +1407,7 @@ def ems_api_relation_delete(uid):
     Args:
         uid (int): The unique ID of the relation to delete.
 
-    Returns:
+    Returns:e
         (json, int): A tuple containing a JSON response and HTTP status code.
     """
     deleted = delete_relation(uid)

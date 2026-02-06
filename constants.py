@@ -278,3 +278,5 @@ PHOTO_REQUESTS_CHANNEL_ID = (
 COURTESY_REQUESTS_CHANNEL_ID = (
     "C09R16GJZBP" if ENV == "dev" else "C09SG769Y6L"
 )  # #imc_courtesy-photos — Channel that all courtesy photo requests get sent to
+
+ONBOARDING_EMAIL = "onboarding@illinimedia.com"

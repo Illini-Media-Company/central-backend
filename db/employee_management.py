@@ -126,6 +126,9 @@ class EmployeeCard(ndb.Model):
     minor_3 = ndb.StringProperty()
     graduation = ndb.StringProperty(choices=EMPLOYEE_GRAD_YEARS)
 
+    # To set the status of the onboarding form
+    onboarding_form_done = ndb.BooleanProperty(default=False)
+
     created_at = ndb.DateTimeProperty(
         auto_now_add=True, tzinfo=ZoneInfo("America/Chicago")
     )
@@ -232,6 +235,30 @@ class EmployeePositionRelation(ndb.Model):
 ################################################################################
 ### EMPLOYEE CARD FUNCTIONS ####################################################
 ################################################################################
+
+"""
+Creates a minimal EmployeeCard for the onboarding workflow.
+This inserts a new employee record with onboarding defaults
+(status="Onboarding", onboarding_form_done=False),
+returns the created record as a dict. If creation fails, returns -1.
+"""
+
+
+def create_employee_onboarding_card(first_name: str, last_name: str) -> dict | int:
+    with client.context():
+        try:
+            employee = EmployeeCard(
+                first_name=first_name,
+                last_name=last_name,
+                status="Onboarding",
+                onboarding_form_done=False,
+            )
+            employee.updated_by = current_user.email if current_user else "System"
+            employee.put()
+            return employee.to_dict()
+        except Exception as e:
+            print(f"Error creating onboarding EmployeeCard: {e}")
+            return -1
 
 
 def create_employee_card(**kwargs: dict) -> dict | int:
