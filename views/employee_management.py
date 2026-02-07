@@ -78,6 +78,18 @@ def ems_dashboard():
     return render_template("employee_management/ems_base.html", selection="dash")
 
 
+# TEMPLATE
+@ems_routes.route("/org-chart", methods=["GET"])
+@login_required
+def ems_org_chart():
+    """
+    Renders the Org Chart dashboard.
+    """
+    return render_template(
+        "employee_management/employee_org_chart.html", selection="dash"
+    )
+
+
 ################################################################################
 ### EMPLOYEE FUNCTIONS #########################################################
 ################################################################################
@@ -1538,3 +1550,291 @@ def create_employee(data):
 
 
 ################################################################################
+### ORG CHART FUNCTIONS ########################################################
+################################################################################
+
+
+@ems_routes.route("/api/org/tree", methods=["GET"])
+@login_required
+def get_org_tree():
+    """
+    Build org chart hierarchy for a specific company.
+    Company is at root with all positions branching from it.
+    Multiple employees in same position share children nodes.
+    """
+    try:
+        # Get company parameter from request
+        company_filter = request.args.get("company", "").strip()
+
+        if not company_filter:
+            return (
+                jsonify({"success": False, "error": "Company parameter is required"}),
+                400,
+            )
+
+        # Get database data
+        employees = get_all_employee_cards()
+        positions = get_all_position_cards()
+        relations = get_all_relations()
+
+        # Filter positions by company
+        positions = [
+            p for p in positions if p.get("brand", "").lower() == company_filter.lower()
+        ]
+
+        # Return empty structure if no positions found
+        if not positions:
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "data": {
+                            "name": company_filter.upper(),
+                            "title": company_filter,
+                            "brand": company_filter,
+                            "has_employee": False,
+                            "is_company_root": True,
+                            "children": [],
+                        },
+                        "company": company_filter,
+                    }
+                ),
+                200,
+            )
+
+        # Create lookup dictionaries
+        employee_dict = {emp["uid"]: emp for emp in employees}
+        position_dict = {pos["uid"]: pos for pos in positions}
+
+        # Map employees to their positions (active relations only)
+        position_employees_map = {}
+        for rel in relations:
+            if not rel.get("end_date"):
+                emp_id = rel["employee_id"]
+                pos_id = rel["position_id"]
+                if pos_id in position_dict:
+                    if pos_id not in position_employees_map:
+                        position_employees_map[pos_id] = []
+                    position_employees_map[pos_id].append(emp_id)
+
+        # Build position hierarchy structure
+        position_hierarchy = {}
+        position_parents = {}
+
+        # Initialize position nodes
+        for pos in positions:
+            pos_id = pos["uid"]
+            position_hierarchy[pos_id] = {
+                "position": pos,
+                "children": [],
+                "parent": None,
+                "employees": position_employees_map.get(pos_id, []),
+                "is_manager": bool(pos.get("direct_reports")),
+            }
+
+            # Track supervisor relationships
+            for sup_id in pos.get("supervisors", []):
+                if sup_id in position_dict:
+                    position_parents[pos_id] = sup_id
+
+        # Build parent-child relationships from direct reports
+        for pos_id, pos_data in position_hierarchy.items():
+            for report_id in pos_data["position"].get("direct_reports", []):
+                if report_id in position_hierarchy:
+                    if report_id not in pos_data["children"]:
+                        pos_data["children"].append(report_id)
+                    if position_hierarchy[report_id]["parent"] is None:
+                        position_hierarchy[report_id]["parent"] = pos_id
+
+            # Add supervisor relationships
+            if pos_data["parent"] is None and pos_id in position_parents:
+                parent_id = position_parents[pos_id]
+                if parent_id in position_hierarchy:
+                    pos_data["parent"] = parent_id
+                    if pos_id not in position_hierarchy[parent_id]["children"]:
+                        position_hierarchy[parent_id]["children"].append(pos_id)
+
+        # Find root positions (no parent)
+        root_positions = []
+        for pos_id, pos_data in position_hierarchy.items():
+            if pos_data["parent"] is None:
+                root_positions.append(pos_id)
+
+        # Cache for shared children nodes
+        node_cache = {}
+
+        # Recursive function to build tree nodes
+        def build_position_tree(pos_id, visited=None):
+            if visited is None:
+                visited = set()
+
+            if pos_id in visited:
+                return None
+            visited.add(pos_id)
+
+            if pos_id not in position_hierarchy:
+                return None
+
+            pos_data = position_hierarchy[pos_id]
+            pos = pos_data["position"]
+
+            # Get employees in this position
+            employees_in_pos = []
+            for emp_id in pos_data["employees"]:
+                if emp_id in employee_dict:
+                    employees_in_pos.append(employee_dict[emp_id])
+
+            position_nodes = []
+
+            # Create nodes for employees or vacant position
+            if employees_in_pos:
+                for emp in employees_in_pos:
+                    emp_node = {
+                        "name": f"{emp['first_name']} {emp['last_name']}",
+                        "title": pos["title"],
+                        "brand": pos["brand"],
+                        "has_employee": True,
+                        "employee_data": {
+                            "id": emp["uid"],
+                            "first_name": emp["first_name"],
+                            "last_name": emp["last_name"],
+                            "email": emp["imc_email"],
+                            "status": emp["status"],
+                        },
+                        "position_id": pos_id,
+                        "is_manager": pos_data["is_manager"],
+                        "is_position_node": True,
+                        "position_title": pos["title"],
+                    }
+
+                    # Add children (shared for all employees in same position)
+                    if pos_data["children"]:
+                        cache_key = f"children_{pos_id}"
+                        if cache_key not in node_cache:
+                            child_nodes = []
+                            for child_id in pos_data["children"]:
+                                child_node = build_position_tree(
+                                    child_id, visited.copy()
+                                )
+                                if child_node:
+                                    if isinstance(child_node, list):
+                                        child_nodes.extend(child_node)
+                                    else:
+                                        child_nodes.append(child_node)
+                            node_cache[cache_key] = child_nodes
+
+                        if node_cache[cache_key]:
+                            emp_node["children"] = node_cache[cache_key]
+
+                    position_nodes.append(emp_node)
+            else:
+                vacant_node = {
+                    "name": f"{pos['title']} (Vacant)",
+                    "title": pos["title"],
+                    "brand": pos["brand"],
+                    "has_employee": False,
+                    "position_id": pos_id,
+                    "is_manager": pos_data["is_manager"],
+                    "is_position_node": True,
+                    "position_title": pos["title"],
+                }
+
+                if pos_data["children"]:
+                    cache_key = f"children_{pos_id}"
+                    if cache_key not in node_cache:
+                        child_nodes = []
+                        for child_id in pos_data["children"]:
+                            child_node = build_position_tree(child_id, visited.copy())
+                            if child_node:
+                                if isinstance(child_node, list):
+                                    child_nodes.extend(child_node)
+                                else:
+                                    child_nodes.append(child_node)
+                        node_cache[cache_key] = child_nodes
+
+                    if node_cache[cache_key]:
+                        vacant_node["children"] = node_cache[cache_key]
+
+                position_nodes.append(vacant_node)
+
+            # Return single node or list of nodes
+            return (
+                position_nodes
+                if len(position_nodes) > 1
+                else (position_nodes[0] if position_nodes else None)
+            )
+
+        # Build tree from root positions
+        company_children = []
+        for root_id in root_positions:
+            root_node = build_position_tree(root_id)
+            if root_node:
+                if isinstance(root_node, list):
+                    company_children.extend(root_node)
+                else:
+                    company_children.append(root_node)
+
+        # Create flat structure if no hierarchy found
+        if not company_children:
+            for pos_id, pos_data in position_hierarchy.items():
+                pos = pos_data["position"]
+                employees_in_pos = []
+                for emp_id in pos_data["employees"]:
+                    if emp_id in employee_dict:
+                        employees_in_pos.append(employee_dict[emp_id])
+
+                if employees_in_pos:
+                    for emp in employees_in_pos:
+                        company_children.append(
+                            {
+                                "name": f"{emp['first_name']} {emp['last_name']}",
+                                "title": pos["title"],
+                                "brand": pos["brand"],
+                                "has_employee": True,
+                                "employee_data": {
+                                    "id": emp["uid"],
+                                    "first_name": emp["first_name"],
+                                    "last_name": emp["last_name"],
+                                    "email": emp["imc_email"],
+                                    "status": emp["status"],
+                                },
+                                "position_id": pos_id,
+                                "is_manager": pos_data["is_manager"],
+                                "is_position_node": True,
+                            }
+                        )
+                else:
+                    company_children.append(
+                        {
+                            "name": f"{pos['title']} (Vacant)",
+                            "title": pos["title"],
+                            "brand": pos["brand"],
+                            "has_employee": False,
+                            "position_id": pos_id,
+                            "is_manager": pos_data["is_manager"],
+                            "is_position_node": True,
+                        }
+                    )
+
+        # Create final company root node
+        org_tree = {
+            "name": company_filter.upper(),
+            "title": company_filter,
+            "brand": company_filter,
+            "has_employee": False,
+            "is_company_root": True,
+            "is_manager": True,
+            "children": company_children,
+        }
+
+        return (
+            jsonify({"success": True, "data": org_tree, "company": company_filter}),
+            200,
+        )
+
+    except Exception as e:
+        import traceback
+
+        print(f"ERROR building org chart: {str(e)}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500

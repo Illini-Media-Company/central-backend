@@ -65,7 +65,8 @@ from db.json_store import json_store_set
 from util.slackbots.copy_editing import scheduler as copy_scheduler
 from util.map_point import scheduler as map_scheduler
 from util.scheduler import scheduler_to_json, db_to_scheduler
-from util.changelog_parser import parse_changelog
+
+# from util.changelog_parser import parse_changelog
 from apscheduler.triggers.date import DateTrigger
 
 from util.slackbots._slackbot import start_slack

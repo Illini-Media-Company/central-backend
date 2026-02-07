@@ -1,0 +1,651 @@
+{% extends 'employee_management/ems_base.html' %}
+
+{% block ems_title %}Org Chart{% endblock %}
+
+{% block ems_extra_head %}
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  /* Main container styling */
+  .org-chart-container {
+    padding: 1.25rem;
+    background: var(--main-bg-color);
+    min-height: calc(100vh - 9.375rem);
+  }
+
+  /* Header section */
+  .org-header {
+    margin-bottom: 1.25rem;
+    padding: 1.25rem;
+    background: var(--main-bg-color);
+    border-radius: var(--main-border-radius);
+    box-shadow: var(--main-box-shadow);
+  }
+
+  .org-header h1 {
+    margin: 0 0 0.625rem 0;
+    color: var(--main-text-color);
+    font-family: futura-pt, system-ui, sans-serif;
+    font-weight: 500;
+    font-style: normal;
+    font-size: 2rem;
+  }
+
+  .org-header p {
+    color: var(--gray-600);
+    margin: 0 0 1.25rem 0;
+    font-family: futura-pt, sans-serif;
+    font-weight: 300;
+    font-style: normal;
+    font-size: 1rem;
+  }
+
+  /* Company filter buttons */
+  .company-filter {
+    display: flex;
+    gap: 0.625rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .company-btn {
+    padding: 0.5rem 1rem;
+    background: var(--main-lt-gray-color);
+    color: var(--main-text-color);
+    border: 0.125rem solid var(--gray-300);
+    border-radius: calc(var(--main-border-radius) + 0.25rem);
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 400;
+    font-family: futura-pt, sans-serif;
+    transition: all 0.15s ease-in-out;
+  }
+
+  .company-btn:hover {
+    background: var(--main-accent-color);
+    color: var(--main-bg-color);
+    border-color: var(--main-accent-color);
+  }
+
+  .company-btn.active {
+    background: var(--main-accent-color);
+    color: var(--main-bg-color);
+    border-color: var(--main-accent-color);
+  }
+
+  .company-btn.active:hover {
+    background: var(--main-accent-color-darkened);
+    border-color: var(--main-accent-color-darkened);
+  }
+
+  /* Chart controls */
+  .org-controls {
+    display: flex;
+    gap: 0.625rem;
+    margin-top: 1.25rem;
+    flex-wrap: wrap;
+  }
+
+  /* Chart container */
+  #org-chart {
+    background: var(--main-bg-color);
+    border-radius: var(--main-border-radius);
+    box-shadow: var(--main-box-shadow);
+    overflow: auto;
+    min-height: 31.25rem;
+    position: relative;
+  }
+
+  #chart-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: var(--gray-600);
+    font-family: futura-pt, sans-serif;
+    font-weight: 300;
+  }
+
+  #chart-svg {
+    display: block;
+    width: 100%;
+    min-height: 37.5rem;
+  }
+
+  /* Node styling */
+  .node {
+    cursor: pointer;
+  }
+
+  .node rect {
+    fill: var(--main-accent-color);
+    stroke: var(--main-accent-color-darkened);
+    stroke-width: 0.125rem;
+    rx: 0.5rem;
+    ry: 0.5rem;
+    transition: all 0.15s ease-in-out;
+  }
+
+  .node.manager rect {
+    fill: var(--gray-800);
+    stroke: var(--gray-900);
+  }
+
+  .node.company-root rect {
+    fill: var(--gray-900);
+    stroke: var(--gray-900);
+    width: 11.25rem !important;
+    height: 6.25rem !important;
+  }
+
+  .node.vacant rect {
+    fill: var(--gray-400);
+    stroke: var(--gray-500);
+    stroke-dasharray: 0.1875rem, 0.1875rem;
+  }
+
+  .node.selected rect {
+    stroke: var(--red-500);
+    stroke-width: 0.1875rem;
+    filter: drop-shadow(0 0 0.3125rem rgba(244, 67, 54, 0.3));
+  }
+
+  .node:hover rect {
+    fill: var(--main-accent-color-darkened);
+    stroke: var(--main-accent-color-darkened);
+  }
+
+  .node.manager:hover rect {
+    fill: var(--gray-900);
+    stroke: var(--gray-900);
+  }
+
+  .node.company-root:hover rect {
+    fill: var(--gray-900);
+    stroke: var(--gray-900);
+  }
+
+  .node.vacant:hover rect {
+    fill: var(--gray-500);
+    stroke: var(--gray-600);
+  }
+
+  .node text {
+    fill: white;
+    font-size: 0.75rem;
+    text-anchor: middle;
+    pointer-events: none;
+    font-family: futura-pt, sans-serif;
+    font-weight: 300;
+  }
+
+  .node text.name {
+    font-weight: 400;
+    font-size: 0.8125rem;
+  }
+
+  .node text.title {
+    fill: rgba(255, 255, 255, 0.9);
+    font-size: 0.6875rem;
+  }
+
+  .node.company-root text {
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .node.company-root text.name {
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  /* Connection lines */
+  .link {
+    fill: none;
+    stroke: var(--gray-300);
+    stroke-width: 0.125rem;
+  }
+
+  /* Selected node info panel */
+  .node-info {
+    margin-top: 1.25rem;
+    padding: 1.25rem;
+    background: var(--main-bg-color);
+    border-radius: var(--main-border-radius);
+    box-shadow: var(--main-box-shadow);
+  }
+
+  .node-info h3 {
+    margin-top: 0;
+    color: var(--main-text-color);
+    border-bottom: 0.125rem solid var(--main-accent-color);
+    padding-bottom: 0.625rem;
+    font-family: futura-pt, sans-serif;
+    font-weight: 500;
+    font-style: normal;
+    font-size: 1.5rem;
+  }
+
+  .current-company {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: var(--green-500);
+    color: white;
+    border-radius: 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 400;
+    margin-left: 0.625rem;
+    font-family: futura-pt, sans-serif;
+  }
+
+  /* Info grid layout */
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
+    gap: 0.9375rem;
+    margin-top: 0.9375rem;
+  }
+
+  .info-item {
+    padding: 0.75rem;
+    background: var(--gray-50);
+    border-radius: 0.5rem;
+    border-left: 0.1875rem solid var(--main-accent-color);
+  }
+
+  .info-label {
+    font-weight: 400;
+    color: var(--gray-600);
+    font-size: 0.75rem;
+    margin-bottom: 0.3125rem;
+    font-family: futura-pt, sans-serif;
+  }
+
+  .info-value {
+    color: var(--main-text-color);
+    font-size: 0.875rem;
+    font-family: futura-pt, sans-serif;
+    font-weight: 300;
+  }
+
+  /* Badge styling */
+  .badge {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.625rem;
+    font-size: 0.6875rem;
+    font-weight: 400;
+    margin-left: 0.5rem;
+    font-family: futura-pt, sans-serif;
+  }
+
+  .badge.manager {
+    background: var(--gray-800);
+    color: white;
+  }
+
+  .badge.vacant {
+    background: var(--gray-500);
+    color: white;
+  }
+
+  .badge.employee {
+    background: var(--green-500);
+    color: white;
+  }
+
+  .badge.company {
+    background: var(--gray-900);
+    color: white;
+  }
+</style>
+{% endblock %}
+
+{% block ems_content %}
+<div class="org-chart-container">
+  <!-- Header section -->
+  <div class="org-header">
+    <h1>
+      Organization Chart
+      <span id="current-company" class="current-company">Select a Company</span>
+    </h1>
+    <p>View management hierarchy by company</p>
+
+    <!-- Company filter buttons -->
+    <div class="company-filter" id="company-buttons">
+      <button class="company-btn active" onclick="filterCompany('IMC')">IMC</button>
+      <button class="company-btn" onclick="filterCompany('WPGU')">WPGU</button>
+      <button class="company-btn" onclick="filterCompany('Illio')">Illio</button>
+      <button class="company-btn" onclick="filterCompany('The Daily Illini')">Daily Illini</button>
+      <button class="company-btn" onclick="filterCompany('Chambana Eats')">Chambana Eats</button>
+      <button class="company-btn" onclick="filterCompany('Illini Content Studio')">Illini Content Studio</button>
+    </div>
+
+    <!-- Chart controls -->
+    <div class="org-controls">
+      <button class="button-primary" onclick="loadOrgChart()">Refresh Chart</button>
+      <button class="button-secondary" onclick="zoomIn()">Zoom In</button>
+      <button class="button-secondary" onclick="zoomOut()">Zoom Out</button>
+      <button class="button-secondary" onclick="resetView()">Reset View</button>
+    </div>
+  </div>
+
+  <!-- Chart container -->
+  <div id="org-chart">
+    <div id="chart-loading">Loading IMC organization chart...</div>
+    <svg id="chart-svg" style="display: none"></svg>
+  </div>
+
+  <!-- Selected node info panel -->
+  <div class="node-info">
+    <h3>Selected Employee</h3>
+    <div id="selected-info">
+      <p style="color: var(--gray-600); font-style: italic">
+        Click on any employee in the chart to view details
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Global state variables
+  let orgData = null;
+  let selectedNode = null;
+  let zoom = null;
+  let currentTransform = d3.zoomIdentity;
+  let currentCompany = "IMC";
+
+  const svg = d3.select("#chart-svg");
+  const g = svg.append("g");
+  const treeLayout = d3.tree().size([1200, 600]);
+
+  // Initialize page
+  document.addEventListener("DOMContentLoaded", function () {
+    updateCompanyButtons();
+    loadOrgChart();
+  });
+
+  // Company filter functionality
+  function filterCompany(company) {
+    currentCompany = company;
+    updateCompanyButtons();
+    loadOrgChart();
+  }
+
+  function updateCompanyButtons() {
+    const buttons = document.querySelectorAll(".company-btn");
+    buttons.forEach((btn) => {
+      btn.classList.remove("active");
+      if (btn.textContent.trim() === currentCompany) {
+        btn.classList.add("active");
+      }
+    });
+
+    const companyDisplay = document.getElementById("current-company");
+    if (companyDisplay) {
+      companyDisplay.textContent = currentCompany.toUpperCase();
+    }
+  }
+
+  // Load org chart data
+  async function loadOrgChart() {
+    if (!currentCompany) return;
+
+    showLoading(true);
+    try {
+      const url = `/ems/api/org/tree?company=${encodeURIComponent(currentCompany)}`;
+      const response = await fetch(url);
+      const result = await response.json();
+
+      if (!result.success) throw new Error(result.error);
+
+      orgData = result.data;
+      renderOrgChart();
+      showLoading(false);
+    } catch (error) {
+      console.error("Error loading org chart:", error);
+      alert("Error loading organization chart: " + error.message);
+      showLoading(false);
+    }
+  }
+
+  function showLoading(show) {
+    const loading = document.getElementById("chart-loading");
+    if (loading) {
+      loading.style.display = show ? "block" : "none";
+      loading.textContent = `Loading ${currentCompany} organization chart...`;
+    }
+    svg.style("display", show ? "none" : "block");
+  }
+
+  // Flatten hierarchy for D3
+  function flattenHierarchy(node, parent = null, depth = 0) {
+    const flatNodes = [];
+    const currentNode = { ...node, parent: parent, depth: depth, children: [] };
+    flatNodes.push(currentNode);
+
+    if (node.children && node.children.length > 0) {
+      const childrenByPosition = {};
+
+      node.children.forEach((child) => {
+        const positionId = child.position_id || "no-position";
+        if (!childrenByPosition[positionId]) childrenByPosition[positionId] = [];
+        childrenByPosition[positionId].push(child);
+      });
+
+      Object.values(childrenByPosition).forEach((positionGroup) => {
+        if (positionGroup.length === 1) {
+          const childFlat = flattenHierarchy(positionGroup[0], currentNode, depth + 1);
+          currentNode.children.push(childFlat[0]);
+          flatNodes.push(...childFlat);
+        } else {
+          positionGroup.forEach((employeeNode, index) => {
+            const employeeFlat = { ...employeeNode, parent: currentNode, depth: depth + 1, children: [] };
+
+            if (index === 0 && employeeNode.children && employeeNode.children.length > 0) {
+              employeeNode.children.forEach((child) => {
+                const childFlat = flattenHierarchy(child, employeeFlat, depth + 2);
+                employeeFlat.children.push(childFlat[0]);
+                flatNodes.push(...childFlat);
+              });
+            }
+
+            currentNode.children.push(employeeFlat);
+            flatNodes.push(employeeFlat);
+          });
+        }
+      });
+    }
+
+    return flatNodes;
+  }
+
+  // Render org chart with D3
+  function renderOrgChart() {
+    if (!orgData) return;
+
+    g.selectAll("*").remove();
+    const root = d3.hierarchy(orgData);
+    treeLayout(root);
+
+    // Draw connection lines
+    g.selectAll(".link")
+      .data(root.links())
+      .enter()
+      .append("path")
+      .attr("class", "link")
+      .attr("d", d3.linkVertical().x(d => d.x).y(d => d.y));
+
+    // Create nodes
+    const node = g.selectAll(".node")
+      .data(root.descendants())
+      .enter()
+      .append("g")
+      .attr("class", d => {
+        let className = "node";
+        if (d.data.is_company_root) className += " company-root";
+        else if (d.data.is_manager) className += " manager";
+        if (d.data.has_employee === false) className += " vacant";
+        if (d === selectedNode) className += " selected";
+        return className;
+      })
+      .attr("transform", d => d.data.is_company_root 
+        ? `translate(${d.x - 90}, ${d.y - 50})`
+        : `translate(${d.x - 75}, ${d.y - 40})`
+      )
+      .on("click", function (event, d) {
+        event.stopPropagation();
+        selectNode(d);
+      });
+
+    // Draw node rectangles
+    node.append("rect")
+      .attr("width", d => d.data.is_company_root ? 180 : 150)
+      .attr("height", d => d.data.is_company_root ? 100 : 80)
+      .attr("rx", 8)
+      .attr("fill", d => {
+        if (d.data.is_company_root) return "var(--gray-900)";
+        if (d.data.is_manager) return "var(--gray-800)";
+        return "var(--main-accent-color)";
+      })
+      .attr("stroke", d => {
+        if (d.data.is_company_root) return "var(--gray-900)";
+        if (d.data.is_manager) return "var(--gray-900)";
+        return "var(--main-accent-color-darkened)";
+      });
+
+    // Add text labels
+    node.append("text")
+      .attr("x", d => d.data.is_company_root ? 90 : 75)
+      .attr("y", d => d.data.is_company_root ? 30 : 25)
+      .attr("class", "name")
+      .text(d => {
+        const name = d.data.name || "";
+        const maxLength = d.data.is_company_root ? 25 : 20;
+        return name.length > maxLength ? name.substring(0, maxLength) + "..." : name;
+      });
+
+    node.append("text")
+      .attr("x", d => d.data.is_company_root ? 90 : 75)
+      .attr("y", d => d.data.is_company_root ? 55 : 45)
+      .attr("class", "title")
+      .text(d => d.data.is_company_root ? "COMPANY" : (d.data.title || ""));
+
+    setupZoom();
+    setTimeout(centerChart, 100);
+  }
+
+  // Zoom functionality
+  function setupZoom() {
+    if (zoom) svg.on(".zoom", null);
+
+    zoom = d3.zoom()
+      .scaleExtent([0.3, 3])
+      .on("zoom", (event) => {
+        currentTransform = event.transform;
+        g.attr("transform", event.transform);
+      });
+
+    svg.call(zoom);
+  }
+
+  function centerChart() {
+    try {
+      const container = document.getElementById("org-chart");
+      if (!container || !g.node()) return;
+
+      const bounds = g.node().getBBox();
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      const scale = Math.min(0.8, (width - 100) / bounds.width, (height - 100) / bounds.height);
+      const x = (width - bounds.width * scale) / 2 - bounds.x * scale;
+      const y = (height - bounds.height * scale) / 2 - bounds.y * scale;
+
+      currentTransform = d3.zoomIdentity.translate(x, y).scale(scale);
+      svg.call(zoom.transform, currentTransform);
+    } catch (error) {
+      console.error("Error centering chart:", error);
+    }
+  }
+
+  // Node selection and info display
+  function selectNode(d) {
+    g.selectAll(".node").classed("selected", node => node === d);
+    selectedNode = d;
+    updateNodeInfo(d);
+  }
+
+  function updateNodeInfo(d) {
+    const infoDiv = document.getElementById("selected-info");
+    let html = "";
+
+    // Badges
+    if (d.data.is_company_root) html += '<span class="badge company">Company</span> ';
+    else if (d.data.is_manager) html += '<span class="badge manager">Manager</span> ';
+
+    if (d.data.has_employee === false && !d.data.is_company_root) html += '<span class="badge vacant">Vacant Position</span> ';
+    else if (d.data.employee_data) html += '<span class="badge employee">Active</span> ';
+
+    html += '<div class="info-grid">';
+    html += `<div class="info-item"><div class="info-label">${d.data.is_company_root ? "Company" : "Name"}</div><div class="info-value">${d.data.name || "-"}</div></div>`;
+
+    if (!d.data.is_company_root) {
+      html += `<div class="info-item"><div class="info-label">Title</div><div class="info-value">${d.data.title || "-"}</div></div>
+               <div class="info-item"><div class="info-label">Company</div><div class="info-value">${d.data.brand || currentCompany || "-"}</div></div>`;
+    }
+
+    // Employee-specific info
+    if (d.data.employee_data) {
+      html += `
+        <div class="info-item">
+          <div class="info-label">Email</div>
+          <div class="info-value">${d.data.employee_data.email || "-"}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Status</div>
+          <div class="info-value">${d.data.employee_data.status || "-"}</div>
+        </div>
+      `;
+    }
+
+    // Hierarchy info
+    if (d.children && d.children.length > 0) {
+      const visibleChildren = d.children.length;
+      html += `
+        <div class="info-item">
+          <div class="info-label">${d.data.is_company_root ? "Total Employees" : "Direct Reports"}</div>
+          <div class="info-value">${visibleChildren}</div>
+        </div>
+      `;
+    }
+
+    if (d.parent && d.parent.data && d.parent.data.name && !d.data.is_company_root) {
+      html += `
+        <div class="info-item">
+          <div class="info-label">Reports To</div>
+          <div class="info-value">${d.parent.data.name}</div>
+        </div>
+      `;
+    }
+
+    html += '</div>';
+    infoDiv.innerHTML = html;
+  }
+
+  function zoomIn() {
+    currentTransform = currentTransform.scale(1.2);
+    svg.transition().duration(200).call(zoom.transform, currentTransform);
+  }
+
+  function zoomOut() {
+    currentTransform = currentTransform.scale(0.8);
+    svg.transition().duration(200).call(zoom.transform, currentTransform);
+  }
+
+  function resetView() {
+    centerChart();
+  }
+</script>
+{% endblock %}
