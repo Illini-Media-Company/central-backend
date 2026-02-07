@@ -101,7 +101,9 @@
 
 
                         {% call nav_dropdown('Settings & Tools') %}
-                            {{ nav_dropdown_item('API query', url_for('api_query')) }}
+                            {% if current_user.is_authenticated %}
+                                {{ nav_dropdown_item('API query', url_for('api_query')) }}
+                            {% endif %}
                             {{ nav_dropdown_item('Changelog', url_for('changelog')) }}
                         {% endcall %}
                     </ul>

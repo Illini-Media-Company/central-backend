@@ -52,6 +52,39 @@ def ensure_context(func):
     return wrapper
 
 
+class IMCBrandMapping(ndb.Model):
+    name = ndb.StringProperty(required=True)
+    slack_channel_id = ndb.StringProperty(required=True)
+
+
+class AppSettings(ndb.Model):
+    brands = ndb.LocalStructuredProperty(IMCBrandMapping, repeated=True)
+
+    @classmethod
+    def get_settings(cls):
+        """ """
+        return cls.get_or_insert("global_settings")
+
+    def get_brand_list(self) -> list[str]:
+        """
+        Returns just the brand names.
+        """
+        return [b.name for b in self.brands]
+
+    def get_channel_by_brand(self, brand_name: str) -> str | None:
+        """
+        Looks up the channel ID for a specific brand.
+        """
+        for b in self.brands:
+            if b.name == brand_name:
+                return b.slack_channel_id
+        return None
+
+
+# settings = AppSettings.get_settings()
+# brand_options = settings.get_brand_list()
+
+
 class EmployeeCard(ndb.Model):
     """
     Describes an individual employee. Stores all information relevant to
@@ -85,9 +118,12 @@ class EmployeeCard(ndb.Model):
         `minor_2` (`str`): The employee's (optional) second minor
         `minor_3` (`str`): The employee's (optional) third minor
         `graduation` (`str`): The employee's expected graduation term
+        `onboarding_form_done` (`bool`): Whether the employee has filled out the onboarding form
+        `onboarded_by` (`str`): Email of the user who onboarded the employee
+        `onboarded_brand` (`str`): The brand the employee was onboarded for
         `created_at` (`datetime`): When this employee was created
         `updated_at` (`datetime`): When this employee was last edited
-        `updated_by` (`str`): User who last updated the employee
+        `updated_by` (`str`): Email of the user who last updated the employee
     """
 
     uid = ndb.ComputedProperty(
@@ -128,6 +164,8 @@ class EmployeeCard(ndb.Model):
 
     # To set the status of the onboarding form
     onboarding_form_done = ndb.BooleanProperty(default=False)
+    onboarded_by = ndb.StringProperty()
+    onboarded_brand = ndb.StringProperty(choices=IMC_BRANDS, default="IMC")
 
     created_at = ndb.DateTimeProperty(
         auto_now_add=True, tzinfo=ZoneInfo("America/Chicago")
@@ -236,15 +274,27 @@ class EmployeePositionRelation(ndb.Model):
 ### EMPLOYEE CARD FUNCTIONS ####################################################
 ################################################################################
 
-"""
-Creates a minimal EmployeeCard for the onboarding workflow.
-This inserts a new employee record with onboarding defaults
-(status="Onboarding", onboarding_form_done=False),
-returns the created record as a dict. If creation fails, returns -1.
-"""
 
+def create_employee_onboarding_card(
+    first_name: str, last_name: str, onboarded_by: str, onboarded_brand: str
+) -> dict | int:
+    """
+    Creates a minimal EmployeeCard for the onboarding workflow.
+    This inserts a new employee record with onboarding defaults
+    (`status`="Onboarding", `onboarding_form_done`=`False`)
 
-def create_employee_onboarding_card(first_name: str, last_name: str) -> dict | int:
+    Arguments:
+        `first_name` (`str`): The first name of the employee to onboard
+        `last_name` (`str`): The last name of the employee to onboard
+        `onboarded_by` (`str`): Email of the user who onboarded the employee
+        `onboarded_brand` (`str`): The brand the employee was onboarded for
+
+    Returns:
+        `dict`: The created EmployeeCard as a dictionary
+
+    Raises:
+        `EEXCEPT`: An error occurred
+    """
     with client.context():
         try:
             employee = EmployeeCard(
@@ -252,13 +302,18 @@ def create_employee_onboarding_card(first_name: str, last_name: str) -> dict | i
                 last_name=last_name,
                 status="Onboarding",
                 onboarding_form_done=False,
+                onboarded_by=onboarded_by,
+                onboarded_brand=onboarded_brand,
             )
+            employee.initial_hire_date = datetime.now(tz=ZoneInfo("America/Chicago"))
+            employee.created_at = datetime.now(tz=ZoneInfo("America/Chicago"))
+            employee.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
             employee.updated_by = current_user.email if current_user else "System"
             employee.put()
             return employee.to_dict()
         except Exception as e:
             print(f"Error creating onboarding EmployeeCard: {e}")
-            return -1
+            return EEXCEPT
 
 
 def create_employee_card(**kwargs: dict) -> dict | int:
@@ -328,7 +383,10 @@ def create_employee_card(**kwargs: dict) -> dict | int:
 def modify_employee_card(uid: int, **kwargs: dict) -> dict | None | int:
     """
     Modifies an existing EmployeeCard object. `uid` is required, all other
-    fields are optional.
+    fields are optional. Sets the current time as `updated_at`. Sets
+    `updated_by` to the current user's email if modified by an authenticated
+    user, to "New Hire" if modified by non-authenticated user, otherwise
+    "System".
 
     Arguments:
         `uid` (`int`): The unique ID of the EmployeeCard to modify
@@ -393,7 +451,12 @@ def modify_employee_card(uid: int, **kwargs: dict) -> dict | None | int:
                     setattr(employee, key, value)
 
             employee.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
-            employee.updated_by = current_user.email if current_user else "System"
+            if current_user and current_user.is_authenticated:
+                employee.updated_by = current_user.email
+            elif current_user:
+                employee.updated_by = "New Hire"
+            else:
+                employee.updated_by = "System"
             employee.put()
 
             # Re-tie the employee to the user in case the email changed

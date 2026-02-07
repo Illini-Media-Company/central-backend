@@ -6,11 +6,9 @@ Last modified Feb. 3, 2026
 """
 
 from flask import Blueprint, render_template, request, jsonify
-from flask_login import login_required
+from flask_login import login_required, current_user
 from util.security import restrict_to
 from datetime import datetime
-import numpy as np
-import os
 import pandas as pd
 
 from flask import request, jsonify, redirect, url_for
@@ -71,6 +69,7 @@ ems_routes = Blueprint("ems_routes", __name__, url_prefix="/ems")
 # TEMPLATE
 @ems_routes.route("/", methods=["GET"])
 @login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
 def ems_dashboard():
     """
     Renders the Employee Management System dashboard.
@@ -83,9 +82,10 @@ def ems_dashboard():
 ################################################################################
 
 
-# TEMPLATE
+# TEMPLATE — employees
 @ems_routes.route("/employees", methods=["GET"])
 @login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
 def ems_employees():
     """
     Renders the Employee Management System employees page.
@@ -108,9 +108,10 @@ def ems_employees():
     )
 
 
-# TEMPLATE
+# TEMPLATE — employee_add
 @ems_routes.route("/employee/add", methods=["GET"])
 @login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
 def ems_employee_add():
     """
     Renders the add employee page.
@@ -124,33 +125,10 @@ def ems_employee_add():
     )
 
 
-"""
-    Show the employee onboarding page.
-    Endpoint:
-        GET /employee/onboard
-    Auth:
-        User must be logged in.
-    Returns:
-        Renders `employee_management/ems_employee_onboard.html`
-        with `selection="employees"` for navbar highlighting.
-    """
-
-
-@ems_routes.route("/employee/onboard", methods=["GET"])
-@login_required
-def ems_employee_onboard():
-    """
-    Renders the employee onboarding (send invite) page.
-    """
-    return render_template(
-        "employee_management/ems_employee_onboard.html",
-        selection="employees",
-    )
-
-
-# TEMPLATE
+# TEMPLATE — employee_file_upload
 @ems_routes.route("/employee/file-upload", methods=["GET"])
 @login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
 def ems_employee_file_upload():
     """
     Renders the file upload page to upload multiple employees.
@@ -162,37 +140,54 @@ def ems_employee_file_upload():
     )
 
 
-@ems_routes.route("/api/employee/create/bulk", methods=["POST"])
+# TEMPLATE — employee_onboard
+@ems_routes.route("/employee/onboard", methods=["GET"])
 @login_required
 @restrict_to(EMS_ADMIN_ACCESS_GROUPS)
-def ems_api_employee_create_all():
-    if "file_input" not in request.files:
-        return jsonify({"error": "No file part in the request"}), 400
-
-    file = request.files["file_input"]
-
-    if file.filename == "":
-        return jsonify({"error": "No selected file"}), 400
-
-    # 2. You can read the file directly into Pandas without saving it to disk
-    try:
-        # Move pointer to start of file just in case
-        file.seek(0)
-        uploaded_df = pd.read_csv(file, encoding="unicode_escape")
-
-        # Do your processing here...
-        print(uploaded_df.head())
-
-        validate_csv(uploaded_df)
-
-        return jsonify({"message": f"Processed {len(uploaded_df)} rows"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+def ems_employee_onboard():
+    """
+    Renders the employee onboarding (send invite) page.
+    """
+    return render_template(
+        "employee_management/ems_employee_onboard.html",
+        selection="employees",
+        brand_options=IMC_BRANDS,
+    )
 
 
-# TEMPLATE
+# TEMPLATE — employee_onboarding_form
+@ems_routes.route("/onboarding/<int:emp_id>", methods=["GET"])
+def ems_employee_onboarding_form(emp_id):
+    employee = get_employee_card_by_id(emp_id)
+    if not employee:
+        return render_template(
+            "error.html",
+            code="404",
+            error="That link is not valid!",
+        )
+    if employee.get("onboarding_form_done"):
+        return render_template(
+            "error.html",
+            code="400",
+            error="This onboarding link has already been used! \
+                To make changes, please reach out to your supervisor \
+                or email helpdesk@illinimedia.com.",
+        )
+
+    return render_template(
+        "employee_management/ems_employee_onboard_form.html",
+        employee=employee,
+        employee_first_name=employee.get("first_name"),
+        employee_last_name=employee.get("last_name"),
+        grad_year_options=EMPLOYEE_GRAD_YEARS,
+        pronoun_options=EMPLOYEE_PRONOUNS,
+    )
+
+
+# TEMPLATE — employee_view
 @ems_routes.route("/employee/view/<int:emp_id>", methods=["GET"])
 @login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
 def ems_employee_view(emp_id):
     """
     Renders the view employee page.
@@ -274,55 +269,7 @@ def ems_employee_view(emp_id):
     )
 
 
-"""
-Public onboarding submit endpoint: validates required fields,
- parses optional birth_date, marks link as used, and saves employee data.
-"""
-
-
-@ems_routes.route("/onboarding/<int:emp_id>/submit", methods=["POST"])
-def ems_api_onboarding_submit(emp_id):
-    data = request.get_json(silent=True) or request.form.to_dict() or {}
-    data.pop("_csrf_token", None)
-
-    employee = get_employee_card_by_id(emp_id)
-    if not employee:
-        return jsonify({"ok": False, "error": "Invalid onboarding link."}), 404
-
-    if employee.get("onboarding_form_done"):
-        return (
-            jsonify(
-                {"ok": False, "error": "This onboarding link has already been used."}
-            ),
-            400,
-        )
-
-    required = ["personal_email", "phone_number"]
-    missing = [k for k in required if not (data.get(k) or "").strip()]
-    if missing:
-        return (
-            jsonify(
-                {"ok": False, "error": f"Missing required fields: {', '.join(missing)}"}
-            ),
-            400,
-        )
-    if data.get("birth_date"):
-        try:
-            data["birth_date"] = datetime.strptime(
-                data["birth_date"], "%Y-%m-%d"
-            ).date()
-        except ValueError:
-            return (
-                jsonify(
-                    {"ok": False, "error": "Invalid birth date format. Use YYYY-MM-DD."}
-                ),
-                400,
-            )
-    updated = modify_employee_card(emp_id, onboarding_form_done=True, **data)
-    if updated is None:
-        return jsonify({"ok": False, "error": "Failed to submit onboarding form."}), 500
-
-    return jsonify({"ok": True, "message": "Onboarding submitted successfully."}), 200
+################################################################################
 
 
 # API
@@ -400,6 +347,35 @@ def ems_api_employee_create():
         ),
         400,
     )
+
+
+# API
+@ems_routes.route("/api/employee/create/bulk", methods=["POST"])
+@login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+def ems_api_employee_create_all():
+    if "file_input" not in request.files:
+        return jsonify({"error": "No file part in the request"}), 400
+
+    file = request.files["file_input"]
+
+    if file.filename == "":
+        return jsonify({"error": "No selected file"}), 400
+
+    # 2. You can read the file directly into Pandas without saving it to disk
+    try:
+        # Move pointer to start of file just in case
+        file.seek(0)
+        uploaded_df = pd.read_csv(file, encoding="unicode_escape")
+
+        # Do your processing here...
+        print(uploaded_df.head())
+
+        validate_csv(uploaded_df)
+
+        return jsonify({"message": f"Processed {len(uploaded_df)} rows"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # API
@@ -553,18 +529,17 @@ def ems_api_employee_delete(uid):
     return jsonify({"message": "Employee deleted successfully."}), 200
 
 
-"""
-Admin-only endpoint: validates invitee input, creates a provisional 
-onboarding employee record, and builds a public onboarding link.
-Sends the onboarding email and returns an error on failure; 
-otherwise redirects back to the EMS employees page.
-"""
-
-
+# API
 @ems_routes.route("/api/employee/onboard/send", methods=["POST"])
 @login_required
 @restrict_to(EMS_ADMIN_ACCESS_GROUPS)
 def ems_api_employee_onboard_send():
+    """
+    Admin-only endpoint: validates invitee input, creates a provisional
+    onboarding employee record, and builds a public onboarding link.
+    Sends the onboarding email and returns an error on failure;
+    otherwise redirects back to the EMS employees page.
+    """
     data = (
         request.form.to_dict()
         if request.form
@@ -574,23 +549,39 @@ def ems_api_employee_onboard_send():
     first_name = (data.get("first_name") or "").strip()
     last_name = (data.get("last_name") or "").strip()
     email = (data.get("email") or "").strip()
+    onboarded_brand = (data.get("onboarded_brand") or "").strip()
+    onboarded_by = current_user.email if current_user else "onboarding@illinimedia.com"
 
-    if not first_name or not last_name or not email:
-        return jsonify({"error": "first_name, last_name, and email are required."}), 400
+    # Bool, whether to notify the user (True) or the brand's channel (False)
+    indv_notif = bool(data.get("indv_notif"))
+
+    if not first_name or not last_name or not email or not onboarded_brand:
+        return (
+            jsonify({"error": "First name, last name, email and brand are required."}),
+            400,
+        )
     if "@" not in email:
         return jsonify({"error": "Invalid email format."}), 400
-    created = create_employee_onboarding_card(
-        first_name=first_name, last_name=last_name
-    )
-    if created in (None, -1):
-        return jsonify({"error": "Failed to create onboarding employee."}), 500
 
+    # Create the EmployeeCard
+    created = create_employee_onboarding_card(
+        first_name=first_name,
+        last_name=last_name,
+        onboarded_by=onboarded_by,
+        onboarded_brand=onboarded_brand,
+    )
+    if created in (None, EEXCEPT):
+        return jsonify({"error": "Failed to create employee."}), 500
+
+    # Get the URL for the employee's onboarding link
     emp_id = created["uid"]
     onboarding_url = url_for(
         "ems_routes.ems_employee_onboarding_form",
         emp_id=emp_id,
         _external=True,  #
     )
+
+    # Email the employee
     rc = send_onboarding_email(
         to_email=email,
         first_name=first_name,
@@ -606,7 +597,76 @@ def ems_api_employee_onboard_send():
             ),
             500,
         )
+
+    # Send Slack messages notifying that step 1 of onboarding is done
+    if indv_notif:
+        # Send a slack notification to onboarded_by (email)
+        pass
+    else:
+        # Send a slack notification to the brand's corresponding channel
+        pass
+
     return redirect(url_for("ems_routes.ems_employees"))
+
+
+# API
+@ems_routes.route("/api/onboarding/<int:emp_id>/submit", methods=["POST"])
+def ems_api_onboarding_submit(emp_id):
+    """
+    Public onboarding submit endpoint: validates required fields,
+    parses optional birth_date, marks link as used, and saves employee data.
+    """
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
+    data.pop("_csrf_token", None)
+
+    # Get the NetID to create an IMC email address
+    netid = data.pop("netid", None)
+
+    # Ensure employee exists (has not since been deleted)
+    employee = get_employee_card_by_id(emp_id)
+    if not employee:
+        return jsonify({"ok": False, "error": "Invalid onboarding link."}), 404
+
+    # Ensure not already filled out
+    if employee.get("onboarding_form_done"):
+        return (
+            jsonify(
+                {"ok": False, "error": "This onboarding link has already been used."}
+            ),
+            400,
+        )
+
+    # Check for missing fields
+    required = ["personal_email", "phone_number"]
+    missing = [k for k in required if not (data.get(k) or "").strip()]
+    if missing:
+        return (
+            jsonify(
+                {"ok": False, "error": f"Missing required fields: {', '.join(missing)}"}
+            ),
+            400,
+        )
+
+    # Format date of birth
+    if data.get("birth_date"):
+        try:
+            data["birth_date"] = datetime.strptime(
+                data["birth_date"], "%Y-%m-%d"
+            ).date()
+        except ValueError:
+            return (
+                jsonify(
+                    {"ok": False, "error": "Invalid birth date format. Use YYYY-MM-DD."}
+                ),
+                400,
+            )
+
+    # Modify the employee
+    updated = modify_employee_card(uid=emp_id, onboarding_form_done=True, **data)
+    if updated in (EEMPDNE, EUSERDNE, EEXISTS, EEXCEPT):
+        return jsonify({"ok": False, "error": "Failed to submit onboarding form."}), 500
+
+    return jsonify({"ok": True, "message": "Onboarding submitted successfully."}), 200
 
 
 ################################################################################
@@ -619,6 +679,7 @@ def ems_api_employee_onboard_send():
 # TEMPLATE
 @ems_routes.route("/positions", methods=["GET"])
 @login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
 def ems_positions():
     """
     Renders the Employee Management System positions page.
@@ -639,6 +700,7 @@ def ems_positions():
 # TEMPLATE
 @ems_routes.route("/position/add", methods=["GET"])
 @login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
 def ems_position_add():
     """
     Renders the add position page.
@@ -662,6 +724,7 @@ def ems_position_add():
 # TEMPLATE
 @ems_routes.route("/position/view/<int:pos_id>", methods=["GET"])
 @login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
 def ems_position_view(pos_id):
     """
     Renders the view position page.
@@ -1248,22 +1311,6 @@ def ems_api_relation_create():
     )
 
 
-# BAVYA ADDED CODE
-@ems_routes.route("/onboarding/<int:emp_id>", methods=["GET"])
-def ems_employee_onboarding_form(emp_id):
-    employee = get_employee_card_by_id(emp_id)
-    if not employee:
-        return "Invalid onboarding link.", 404
-    if employee.get("onboarding_form_done"):
-        return "This onboarding link has already been used.", 400
-
-    return render_template(
-        "employee_management/ems_employee_onboard_form.html",
-        employee=employee,
-        employee_grad_years=EMPLOYEE_GRAD_YEARS,
-    )
-
-
 # API
 @ems_routes.route("/api/relation/<int:uid>/modify", methods=["POST"])
 @login_required
@@ -1452,89 +1499,6 @@ def ems_api_relation_delete(uid):
 ################################################################################
 ### HELPER FUNCTIONS ###########################################################
 ################################################################################
-
-
-def validate_csv(csv):
-    """
-    Validates CSV uploaded to create multiple employees at once
-
-    :param csv: pandas dataframe
-    """
-    required_columns = [
-        "last_name",
-        "first_name",
-        "imc_email",
-        "personal_email",
-        "phone_number",
-        "permanent_address_1",
-        "permanent_city",
-        "permanent_state",
-        "permanent_zip",
-        "status",
-    ]
-    not_req_columns = [
-        "user_uid",
-        "pronouns",
-        "permanent_address_2",
-        "major",
-        "major_2",
-        "major_3",
-        "minor",
-        "minor_2",
-        "minor_3",
-        "birth_date",
-        "payroll_number",
-        "initial_hire_date",
-        "graduation",
-    ]
-    invalid_columns = []
-    missing_columns = []
-    for req_col in required_columns:
-        if req_col not in csv.columns:
-            missing_columns.append(req_col)
-    for col in csv.columns:
-        if col not in not_req_columns and col not in required_columns:
-            invalid_columns.append(col)
-    if len(missing_columns) > 0:
-        raise Exception(f"CSV missing columns: {missing_columns}")
-    if len(invalid_columns) > 0:
-        raise Exception(f"CSV contains invalid columns: {invalid_columns}")
-    # use create API to validate each row
-
-    csv = csv.replace(np.nan, None)
-    csv["permanent_zip"] = csv["permanent_zip"].astype(str)
-
-    for i, row in csv.iterrows():
-        print(i)
-        try:
-            print(create_employee(row.to_dict()))
-        except Exception as e:
-            raise Exception(f"Successfully uploaded until rows {i+1}; {e}")
-
-
-def create_employee(data):
-    date_fields = ["birth_date", "initial_hire_date"]
-
-    for field in date_fields:
-        if data.get(field):
-            # Converts "YYYY-MM-DD" string to a Python date object
-            data[field] = datetime.strptime(data[field], "%Y-%m-%d").date()
-
-    if data.get("payroll_number"):
-        data["payroll_number"] = int(data["payroll_number"])
-
-    if data.get("user_uid"):
-        data["user_uid"] = int(data["user_uid"])
-
-    if data:
-        created = create_employee_card(**data)
-        if not created:
-            raise Exception("An employee already exists with that IMC email")
-        if created == -1:
-            raise Exception("An error occurred while creating the employee.")
-        return "Success!"
-
-    raise Exception("No data was entered. Cannot create employee with no information.")
 
 
 ################################################################################
