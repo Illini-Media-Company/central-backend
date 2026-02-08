@@ -6,6 +6,7 @@
 from flask_login import UserMixin
 from google.cloud import ndb
 from zoneinfo import ZoneInfo
+import datetime
 
 from . import client
 
@@ -21,6 +22,7 @@ class User(ndb.Model):
     ask_oauth_access_token = ndb.TextProperty()
     ask_oauth_refresh_token = ndb.TextProperty()
     ask_oauth_expiry = ndb.DateTimeProperty()
+    query_history = ndb.DateTimeProperty(repeated=True)
 
 
 class LoginUser(UserMixin):
@@ -33,6 +35,7 @@ class LoginUser(UserMixin):
         self.groups = db_user.groups
         self.fav_tools = db_user.fav_tools
         self.last_edited = db_user.last_edited
+        self.query_history = db_user.query_history
 
 
 def add_user(sub, name, email, picture=None, groups=[], last_edited=None):
@@ -53,11 +56,22 @@ def add_user(sub, name, email, picture=None, groups=[], last_edited=None):
                 picture=picture,
                 groups=groups,
                 fav_tools=[],
+                query_history=[],
                 last_edited=last_edited,
             )
         user.put()
     return LoginUser(user)
 
+#Update a users query history, used for knwoledge slackbot to keep track of how many queries a user has made in the past 24 hours
+def update_user_entity(email, data):
+    with client.context():
+        user = User.query().filter(User.email == email).get()
+        if user is not None:
+            for key, value in data.items():
+                setattr(user, key, value)
+            user.put()
+            return True
+    return False
 
 # Update either a user's name, email or picture that already exists in the database
 def update_user(name, email, picture):
@@ -192,3 +206,22 @@ def get_user_favorite_tools(email):
             return user.fav_tools
         else:
             return False
+
+def check_and_log_query(email, limit=10, hours=24):
+    with client.context():
+        user = User.query().filter(User.email == email).get()
+        if user is None:
+            return False
+
+        now = datetime.datetime.now()
+        cutoff = now - datetime.timedelta(hours=hours)
+        current_history = user.query_history if user.query_history else []
+        recent_queries = [t for t in current_history if t > cutoff]
+
+        if len(recent_queries) >= limit:
+            return False
+        
+        recent_queries.append(now)
+        user.query_history = recent_queries
+        user.put()
+        return True
