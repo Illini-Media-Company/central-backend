@@ -5,7 +5,7 @@ to the EMS must be located inside of this file. Classes should not be accessed
 anywhere else in the codebase without the use of helper functions.
 
 Created by Jacob Slabosz on Jan. 4, 2026
-Last modified Feb. 11, 2026
+Last modified Feb. 12, 2026
 """
 
 from google.cloud import ndb
@@ -120,6 +120,7 @@ class EmployeeCard(ndb.Model):
         `onboarding_form_done` (`bool`): Whether the employee has filled out the onboarding form
         `onboarding_update_channel` (`str`): The Slack `channel_id` to send updates to
         `onboarding_update_ts` (`str`): The Slack message `ts` of the original message
+        `onboarding_complete` (`bool`): Whether the employee has completed onboarding
         `slack_id` ('str'): The employee's Slack ID (Only updated by the system)
         `created_at` (`datetime`): When this employee was created
         `updated_at` (`datetime`): When this employee was last edited
@@ -166,6 +167,7 @@ class EmployeeCard(ndb.Model):
     onboarding_form_done = ndb.BooleanProperty(default=False)
     onboarding_update_channel = ndb.StringProperty()
     onboarding_update_ts = ndb.StringProperty()
+    onboarding_complete = ndb.BooleanProperty(default=False)
 
     slack_id = ndb.StringProperty()
 
@@ -477,6 +479,7 @@ def modify_employee_card(uid: int, **kwargs: dict) -> dict | None | int:
         `minor_2` (`str`): The employee's (optional) second minor
         `minor_3` (`str`): The employee's (optional) third minor
         `graduation` (`str`): The employee's expected graduation term
+        `slack_id` ('str'): The employee's Slack ID (Only updated by the system)
 
     Returns:
         `dict`: The modified `EmployeeCard` as a dictionary
@@ -503,11 +506,7 @@ def modify_employee_card(uid: int, **kwargs: dict) -> dict | None | int:
                     EmployeeCard.imc_email == kwargs["imc_email"]
                 ).get()
 
-                is_duplicate = any(
-                    item.key != employee.key for item in [existing] if item
-                )
-
-                if is_duplicate:
+                if existing and existing.key != employee.key:
                     return EEXISTS  # Employee with this IMC email already exists
 
                 # Update the employee's Slack ID if it wasn't directly given (only if their email changed)
@@ -786,11 +785,7 @@ def modify_position_card(uid: int, **kwargs: dict) -> dict | int:
                     )
                 ).get()
 
-                is_duplicate = any(
-                    item.key != position.key for item in [existing] if item
-                )
-
-                if is_duplicate:
+                if existing and existing.key != position.key:
                     return EEXISTS  # Position with this brand and title already exists
 
             # Check if this is a valid Google Group
@@ -1361,6 +1356,7 @@ def get_relations_by_employee_current(employee_id: int) -> list:
     return [relation.to_dict() for relation in relations]
 
 
+@ensure_context
 def get_relations_by_employee_past(employee_id: int) -> list:
     """
     Retrieves all past EmployeePositionRelation entries for a given employee.
@@ -1371,19 +1367,16 @@ def get_relations_by_employee_past(employee_id: int) -> list:
     Returns:
         `list`: A list of all past `EmployeePositionRelation` entries as dictionaries
     """
-    with client.context():
-        relations = (
-            EmployeePositionRelation.query(
-                EmployeePositionRelation.employee_id == employee_id
-            )
-            .order(-EmployeePositionRelation.start_date)
-            .fetch()
+    relations = (
+        EmployeePositionRelation.query(
+            EmployeePositionRelation.employee_id == employee_id
         )
-        return [
-            relation.to_dict()
-            for relation in relations
-            if relation.end_date is not None
-        ]
+        .order(-EmployeePositionRelation.start_date)
+        .fetch()
+    )
+    return [
+        relation.to_dict() for relation in relations if relation.end_date is not None
+    ]
 
 
 @ensure_context
@@ -1428,6 +1421,7 @@ def get_relations_by_position_current(position_id: int) -> list:
     return [relation.to_dict() for relation in relations]
 
 
+@ensure_context
 def get_relations_by_position_past(position_id: int) -> list:
     """
     Retrieves all past EmployeePositionRelation entries for a given position.
@@ -1438,19 +1432,16 @@ def get_relations_by_position_past(position_id: int) -> list:
     Returns:
         `list`: A list of all past `EmployeePositionRelation` entries as dictionaries
     """
-    with client.context():
-        relations = (
-            EmployeePositionRelation.query(
-                EmployeePositionRelation.position_id == position_id
-            )
-            .order(-EmployeePositionRelation.start_date)
-            .fetch()
+    relations = (
+        EmployeePositionRelation.query(
+            EmployeePositionRelation.position_id == position_id
         )
-        return [
-            relation.to_dict()
-            for relation in relations
-            if relation.end_date is not None
-        ]
+        .order(-EmployeePositionRelation.start_date)
+        .fetch()
+    )
+    return [
+        relation.to_dict() for relation in relations if relation.end_date is not None
+    ]
 
 
 def delete_relation(uid: int) -> bool | int:

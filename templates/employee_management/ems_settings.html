@@ -1,0 +1,54 @@
+{% extends 'employee_management/ems_base.html' %}
+
+{% block ems_title %}
+    Settings
+{% endblock %}
+
+{% block ems_extra_head %}
+    <link rel="stylesheet" href="/static/macros/form.css">
+
+    <style>
+        .settings-form {
+            gap: 0.5rem;
+        }
+
+        .settings-form-row {
+            flex-direction: column;
+            align-items: flex-start;
+            flex: 1 1 10rem;
+        }
+
+        .column-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            flex: 1 1 20rem;
+        }
+    </style>
+{% endblock %}
+
+{% import "macros/form.html" as form %}
+{% include "partials/loading.html" %}
+{% include "partials/text_alert.html" %}
+{% include "partials/info_bar.html" %}
+
+{% block ems_content %}
+<h2>Settings</h2>
+<p>
+    <span style="font-weight: 500;">Note:</span> All settings affect global configuration of EMS.
+</p>
+
+<hr>
+
+<section class="section-container">
+    {% call form.form(id="brandSettingsForm", class="settings-form", enctype="multipart/form-data", on_submit="submitBrandSettings(event)") %}
+        
+    {% endcall %}
+</section>
+
+<script>
+
+</script>
+
+{% endblock %}

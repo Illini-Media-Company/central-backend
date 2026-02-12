@@ -92,6 +92,19 @@ def ems_org_chart():
     )
 
 
+# TEMPLATE
+@ems_routes.route("/settings", methods=["GET"])
+@login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+def ems_settings():
+    """
+    Renders the Employee Management System settings page.
+    """
+    return render_template(
+        "employee_management/ems_settings.html", selection="settings"
+    )
+
+
 ################################################################################
 ### EMPLOYEE FUNCTIONS #########################################################
 ################################################################################
@@ -152,46 +165,6 @@ def ems_employee_add_bulk():
         "employee_management/ems_employee_add_bulk.html",
         pronouns=", ".join(EMPLOYEE_PRONOUNS),
         statuses=", ".join(EMPLOYEE_STATUS_OPTIONS),
-    )
-
-
-# TEMPLATE — employee_onboard
-@ems_routes.route("/employee/onboard", methods=["GET"])
-@login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
-def ems_employee_onboard():
-    """
-    Renders the employee onboarding (send invite) page.
-    """
-    return render_template(
-        "employee_management/ems_employee_onboard.html",
-        selection="employees",
-        brand_options=get_imc_brand_names(),
-    )
-
-
-# TEMPLATE — employee_onboarding_form
-@ems_routes.route("/onboarding/<int:emp_id>", methods=["GET"])
-def ems_employee_onboarding_form(emp_id):
-    employee = get_employee_card_by_id(emp_id)
-    if not employee or employee == EEMPDNE:
-        abort(404)
-    if employee.get("onboarding_form_done"):
-        return render_template(
-            "error.html",
-            code="400",
-            error="This onboarding link has already been used! \
-                To make changes, please reach out to your supervisor \
-                or email helpdesk@illinimedia.com.",
-        )
-
-    return render_template(
-        "employee_management/ems_onboarding_form.html",
-        employee=employee,
-        employee_first_name=employee.get("first_name"),
-        employee_last_name=employee.get("last_name"),
-        grad_year_options=EMPLOYEE_GRAD_YEARS,
-        pronoun_options=EMPLOYEE_PRONOUNS,
     )
 
 
@@ -279,8 +252,48 @@ def ems_employee_view(emp_id):
     )
 
 
+# TEMPLATE — employee_onboard
+@ems_routes.route("/employee/onboard", methods=["GET"])
+@login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+def ems_employee_onboard():
+    """
+    Renders the employee onboarding (send invite) page.
+    """
+    return render_template(
+        "employee_management/ems_employee_onboard.html",
+        selection="employees",
+        brand_options=get_imc_brand_names(),
+    )
+
+
+# TEMPLATE — employee_onboarding_form
+@ems_routes.route("/onboarding/<int:emp_id>", methods=["GET"])
+def ems_employee_onboarding_form(emp_id):
+    employee = get_employee_card_by_id(emp_id)
+    if not employee or employee == EEMPDNE:
+        abort(404)
+    if employee.get("onboarding_form_done"):
+        return render_template(
+            "error.html",
+            code="400",
+            error="This onboarding link has already been used! \
+                To make changes, please reach out to your supervisor \
+                or email helpdesk@illinimedia.com.",
+        )
+
+    return render_template(
+        "employee_management/ems_onboarding_form.html",
+        employee=employee,
+        employee_first_name=employee.get("first_name"),
+        employee_last_name=employee.get("last_name"),
+        grad_year_options=EMPLOYEE_GRAD_YEARS,
+        pronoun_options=EMPLOYEE_PRONOUNS,
+    )
+
+
 # TEMPLATE — onboarding_nextsteps_success
-@ems_routes.route("ems/onboarding/nextsteps/login")
+@ems_routes.route("/onboarding/nextsteps/login")
 def ems_employee_onboard_nextsteps_success():
     email = request.args.get("email")
     password = request.args.get("password")
@@ -301,7 +314,7 @@ def ems_employee_onboard_nextsteps_success():
 
 
 # TEMPLATE — onboarding_nextsteps_failure
-@ems_routes.route("ems/onboarding/nextsteps/wait")
+@ems_routes.route("/onboarding/nextsteps/wait")
 def ems_employee_onboard_nextsteps_failure():
     return render_template("/employee_management/ems_onboarding_nextstep_failure.html")
 
