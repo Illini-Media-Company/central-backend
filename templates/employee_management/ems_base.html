@@ -1,5 +1,10 @@
-{% extends 'base.html' %} {% block title %} {% block ems_title %}{% endblock %}
-| EMS {% endblock %} {% block extra_head %}
+{% extends 'base.html' %}
+
+{% block title %}
+    {% block ems_title %}{% endblock %} | EMS
+{% endblock %}
+
+{% block extra_head %}
 <style>
   .page-content {
     width: calc(100% - 2rem);
