@@ -2,6 +2,10 @@ import feedparser
 from datetime import datetime
 import logging
 
+import os
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+
 RSS_URL = "https://dailyillini.com/feed/"
 
 
@@ -128,6 +132,35 @@ def process_new_stories_to_slack():
         logging.info(f"Posted new story to Slack: {title}")
 
     return len(posted), posted
+
+
+_rss_scheduler = BackgroundScheduler(timezone="America/Chicago")
+
+
+def _rss_job():
+    try:
+        count, posted = process_new_stories_to_slack()
+        logging.info(f"[rss_listener] ran: new={count}")
+    except Exception:
+        logging.exception("[rss_listener] job failed")
+
+
+def start_rss_listener():
+    if getattr(_rss_scheduler, "running", False):
+        return
+
+    minutes = int(os.environ.get("RSS_POLL_MINUTES", "5"))
+
+    _rss_scheduler.add_job(
+        _rss_job,
+        trigger=IntervalTrigger(minutes=minutes),
+        id="rss_social_listener",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    _rss_scheduler.start()
+    logging.info(f"[rss_listener] started (every {minutes} min)")
 
 
 if __name__ == "__main__":

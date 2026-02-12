@@ -88,6 +88,7 @@ from views.employee_agreement import employee_agreement_routes
 from views.rotate_tv import rotate_tv_routes
 from views.photo_request import photo_request_routes
 from views.di_social_poster import di_social_poster_routes
+import util.rss_social_listener
 
 from util.helpers.ap_datetime import (
     ap_datetime,

@@ -11,20 +11,15 @@ record which platform it was posted to and we reply with the timestamp.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
-
-from gcsa.google_calendar import GoogleCalendar
 
 from constants import (
     COURTESY_REQUESTS_CHANNEL_ID,
     SLACK_BOT_TOKEN,
-    SOCIAL_MEDIA_GCAL_ID,
     SOCIAL_MEDIA_POSTS_CHANNEL_ID,
-    SOCIALS_CHIEF_EMAIL,
 )
-from util.security import get_creds
 from util.slackbots._slackbot import app
 from db.socials_poster import client as db_client
 from db.socials_poster import DiSocialStory
@@ -41,55 +36,18 @@ REACTION_TO_PLATFORM = {
     "threads": "Threads",
 }
 
-# Calendar scope for socials shift lookup (same as copy_editing)
-SOCIALS_GCAL_SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
-
-
-def get_socials_on_shift_email() -> Optional[str]:
-    """
-    Get the email of the person on shift today from the socials calendar.
-
-    Calendar has one all-day event per day with one person assigned (attendee).
-    Uses same pattern as copy_editing: get_creds, GoogleCalendar, get_events for
-    today in America/Chicago. Returns first attendee's email or None; caller
-    should use SOCIALS_CHIEF_EMAIL as fallback.
-    """
-    if not SOCIAL_MEDIA_GCAL_ID:
-        return None
-    try:
-        creds = get_creds(SOCIALS_GCAL_SCOPES)
-        gc = GoogleCalendar(SOCIAL_MEDIA_GCAL_ID, credentials=creds)
-    except Exception as e:
-        print(f"[socials_slackbot] get_creds/GoogleCalendar failed: {e}")
-        return None
-    current_time = datetime.now(tz=ZoneInfo("America/Chicago"))
-    today = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
-    tomorrow = today + timedelta(days=1)
-    try:
-        events = gc.get_events(
-            today, tomorrow, single_events=True, order_by="startTime"
-        )
-    except Exception as e:
-        print(f"[socials_slackbot] get_events failed: {e}")
-        return None
-    for event in events:
-        if not getattr(event, "attendees", None):
-            continue
-        for attendee in event.attendees:
-            email = getattr(attendee, "email", None)
-            if email and not str(email).endswith("resource.calendar.google.com"):
-                return email
-    return None
-
 
 def update_slack_message_ref(
     url: str, channel_id: str, message_ts: str
 ) -> Optional[Dict[str, Any]]:
-    """Save the Slack message ts for this story so we can match reactions later. Channel is global (SOCIAL_MEDIA_POSTS_CHANNEL_ID)."""
+    """Save the Slack channel + message ts for this story so we can reply or match reactions later."""
     with db_client.context():
         story = DiSocialStory.query().filter(DiSocialStory.story_url == url).get()
         if story:
+            story.slack_channel_id = channel_id
             story.slack_message_ts = message_ts
+            if story.slack_message_timestamp is None:
+                story.slack_message_timestamp = datetime.now()
             story.put()
             return story.to_dict()
     return None
@@ -98,13 +56,16 @@ def update_slack_message_ref(
 def get_story_by_slack_message(
     channel_id: str, message_ts: str
 ) -> Optional[Dict[str, Any]]:
-    """Look up a story by the Slack message ts. Channel must match SOCIAL_MEDIA_POSTS_CHANNEL_ID."""
-    if not message_ts or channel_id != SOCIAL_MEDIA_POSTS_CHANNEL_ID:
+    """Look up a story by the Slack message (channel + ts). Used when we get a reaction."""
+    if not channel_id or not message_ts:
         return None
     with db_client.context():
         story = (
             DiSocialStory.query()
-            .filter(DiSocialStory.slack_message_ts == message_ts)
+            .filter(
+                DiSocialStory.slack_channel_id == channel_id,
+                DiSocialStory.slack_message_ts == message_ts,
+            )
             .get()
         )
         return story.to_dict() if story else None
@@ -181,25 +142,13 @@ def post_story_to_social_channel(
 ) -> Dict[str, Any]:
     """
     Post a new story to the social channel. We send a short parent message, then a thread
-    reply with the full details (and image if we have one; if no image, the message contains
-    no image). Also stores channel/ts on the story so reactions work.
+    reply with the full details (and image if we have one, otherwise a "Needs Visual" button).
+    Also stores channel/ts on the story so reactions and follow-up replies work.
     """
     if not SOCIAL_MEDIA_POSTS_CHANNEL_ID:
         return {"ok": False, "error": "SOCIAL_MEDIA_POSTS_CHANNEL_ID not set"}
 
-    # Tag the person on shift today (from socials calendar), or fall back to chief
-    email = get_socials_on_shift_email() or SOCIALS_CHIEF_EMAIL
-    slack_id = None
-    if email:
-        try:
-            slack_id = app.client.users_lookupByEmail(email=email)["user"]["id"]
-        except Exception as e:
-            print(f"[socials_slackbot] users_lookupByEmail({email}) failed: {e}")
-    short_text = (
-        f"<@{slack_id}> New story: {story_title}"
-        if slack_id
-        else f"New story: {story_title}"
-    )
+    short_text = f"New story: {story_title}"
     try:
         res = app.client.chat_postMessage(
             token=SLACK_BOT_TOKEN,
@@ -212,17 +161,17 @@ def post_story_to_social_channel(
         print(f"[socials_slackbot] chat_postMessage failed: {e}")
         return {"ok": False, "error": str(e)}
 
-    # Do not show "Needs Visual" button; if no image, message just has no image.
+    include_button = not bool(image_url)
     thread_blocks, fallback = build_blocks_from_story(
         story_url=story_url,
         story_title=story_title,
         writer_name=writer_name,
         photographer_name=photographer_name,
         image_url=image_url,
-        include_needs_visual_button=False,
-        story_url_for_button=None,
-        social_channel_id=None,
-        social_message_ts=None,
+        include_needs_visual_button=include_button,
+        story_url_for_button=story_url if include_button else None,
+        social_channel_id=channel_id if include_button else None,
+        social_message_ts=message_ts if include_button else None,
     )
     try:
         app.client.chat_postMessage(
