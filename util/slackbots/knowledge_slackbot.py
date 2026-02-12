@@ -1,5 +1,6 @@
 import datetime
 import re
+import random
 from util.slackbots._slackbot import app
 from threading import Thread
 from util.security import csrf
@@ -11,8 +12,7 @@ from util.discovery_engine import (
     extract_search_results,
     search_query,
 )
-from constants import PUBLIC_BASE_URL,SLACK_BOT_TOKEN
-
+from constants import PUBLIC_BASE_URL, SLACK_BOT_TOKEN
 
 
 def _slack_user_profile(user_id):
@@ -37,29 +37,63 @@ def _format_sources(sources):
             lines.append(f"{idx}. {title}")
     return "\n".join(lines)
 
+
 def _fix_slack_markdown(text):
     if not text:
         return text
-    text = re.sub(r'\*\*(.+?)\*\*', r'*\1*', text)
-    
-    text = re.sub(r'^#+\s*(.*)$', r'*\1*', text, flags=re.MULTILINE)
+    text = re.sub(r"\*\*(.+?)\*\*", r"*\1*", text)
 
-    text = re.sub(r'^(\s{4,})\*\s+', r'\1• ', text, flags=re.MULTILINE)
-    
-    text = re.sub(r'^\*\s+', r'• ', text, flags=re.MULTILINE)
+    text = re.sub(r"^#+\s*(.*)$", r"*\1*", text, flags=re.MULTILINE)
+
+    text = re.sub(r"^(\s{4,})\*\s+", r"\1• ", text, flags=re.MULTILINE)
+
+    text = re.sub(r"^\*\s+", r"• ", text, flags=re.MULTILINE)
     return text
+
 
 def _split_text(text, limit=2900):
     chunks = []
     while len(text) > limit:
         split_index = text.rfind(" ", 0, limit)
         if split_index == -1:
-            split_index = limit  
+            split_index = limit
         chunks.append(text[:split_index])
         text = text[split_index:].lstrip()
     if text:
         chunks.append(text)
     return chunks
+
+
+def _normalize_cmd(text: str) -> str:
+    return re.sub(r"\s+", " ", (text or "").strip().lower())
+
+
+def _easter_egg_response(question_raw: str):
+    q = _normalize_cmd(question_raw)
+
+    greeting_triggers = {"hi", "hello", "hey"}
+
+    greeting_responses = [
+        "hello :P",
+        "heyyy",
+        "hi there",
+        "what’s up",
+        "howdy",
+        "yo",
+        "hey hey",
+        "bello",
+    ]
+
+    if q in greeting_triggers:
+        return random.choice(greeting_responses)
+
+    exact = {
+        "good bot": "thank u :)",
+        "bad bot": "sorry :(",
+    }
+
+    return exact.get(q)
+
 
 def _ask_and_respond(question, access_token, user_id, respond):
     try:
@@ -98,26 +132,27 @@ def _ask_and_respond(question, access_token, user_id, respond):
 
         formatted_answer = _fix_slack_markdown(answer_text)
         blocks = [
-            {
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": f"*Q:* {question}"}
-            }
+            {"type": "section", "text": {"type": "mrkdwn", "text": f"*Q:* {question}"}}
         ]
 
         for chunk in _split_text(formatted_answer):
-            blocks.append({
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": chunk}
-            })
+            blocks.append(
+                {"type": "section", "text": {"type": "mrkdwn", "text": chunk}}
+            )
 
         if sources:
             sources_text = _format_sources(sources)
             if sources_text:
                 blocks.append({"type": "divider"})
-                blocks.append({
-                    "type": "section",
-                    "text": {"type": "mrkdwn", "text": f"*Sources:*\n{sources_text}"}
-                })
+                blocks.append(
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f"*Sources:*\n{sources_text}",
+                        },
+                    }
+                )
 
         respond(blocks=blocks, response_type="in_channel")
     except Exception as e:
@@ -128,13 +163,17 @@ def _ask_and_respond(question, access_token, user_id, respond):
         )
 
 
-
 @app.command("/ask")
 def ask_command(ack, body, respond):
     ack()
     question = (body.get("text") or "").strip()
     if not question:
         respond(text="Usage: /ask <question>", response_type="ephemeral")
+        return
+
+    egg = _easter_egg_response(question)
+    if egg:
+        respond(text=egg, response_type="in_channel")
         return
 
     user_id = body.get("user_id")
@@ -156,9 +195,7 @@ def ask_command(ack, body, respond):
         name = profile.get("real_name") or profile.get("display_name") or email
         add_user(sub=None, name=name, email=email, picture=None, groups=[])
 
-
     is_allowed = check_and_log_query(email, limit=10, hours=24)
-
 
     if not is_allowed:
         respond(
