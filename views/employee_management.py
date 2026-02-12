@@ -310,9 +310,23 @@ def ems_employee_onboard_nextsteps_failure():
 @ems_routes.route("/onboarding/<int:emp_id>/complete", methods=["GET"])
 @login_required
 def ems_onboarding_complete(emp_id):
-    # Notify via Slack of completion
+    # Get the employee
     employee = get_employee_card_by_id(emp_id)
     if employee:
+        # Check if the logged in user is this employee
+        if current_user.email != employee["imc_email"]:
+            abort(
+                409,
+                description="The logged in user does not match the employee.",
+            )
+
+        # Check if this employee is already marked as complete
+        if employee["onboarding_complete"]:
+            abort(
+                409,
+                description="This employee has already completed onboarding.",
+            )
+
         # Ensure they've logged into Slack & get their ID
         slack_id = _lookup_user_id_by_email(employee["imc_email"])
         if not slack_id:
@@ -323,7 +337,9 @@ def ems_onboarding_complete(emp_id):
             )
 
         # Save the employee's Slack ID
-        modify_employee_card(uid=employee.uid, slack_id=slack_id)
+        modify_employee_card(
+            uid=employee.uid, slack_id=slack_id, onboarding_complete=True
+        )
 
         slack_channel = employee["onboarding_update_channel"]
         slack_ts = employee["onboarding_update_ts"]
@@ -344,7 +360,13 @@ def ems_onboarding_complete(emp_id):
                 f"[EMS] ERROR: Failed to send completion Slack message. {res['error']}"
             )
 
-    return render_template("/employee_management/ems_onboarding_complete.html")
+        return render_template("/employee_management/ems_onboarding_complete.html")
+    # If employee not found
+    else:
+        abort(
+            404,
+            description="That onboarding link is not valid. Please contact helpdesk@illinimedia.com if you believe this is a mistake.",
+        )
 
 
 ################################################################################
