@@ -394,6 +394,7 @@ Food Truck Tracker (Dashboard)
             </div>
         {% endif %}
     </div>
+    {% include "partials/button_alert.html" %}
 </div>
 
 <script>
@@ -583,50 +584,78 @@ Food Truck Tracker (Dashboard)
         if (!infoResponse.ok) {
             alert("Failed to fetch loctime details.");
             button.disabled = false;
-            button.innerText = 'Delete';
+            button.innerText = 'Delete'; 
         return;
         }
 
         const loctime = await infoResponse.json();
 
         let endpoint = '/food-truck/loctime-remove/' + uid; 
-       
+
+        let confirmDelete = false;
         // If this loctime has a recurrence_id, ask whether to delete just this one or the whole series.
         if (loctime.recurrence_id) {
-            const deleteSeries = confirm(
-                "This event is part of a recurring schedule.\n\n" +
-                "OK = delete ALL recurring events\n" +
-                "Cancel = delete ONLY this event"
+            
+            confirmDelete = await showButtonAlert(
+            "Delete event?",
+            "This will permanently delete this event.",          
+            "Delete",
+            "Cancel"
             );
 
-            if (deleteSeries) {
-                // Delete the entire recurring series
-                endpoint = `/food-truck/loctime-remove-series/${loctime.uid}`;
+            // to see if we should delete singular or all recurring
+            if (confirmDelete) {
+                const deleteSeries = await showButtonAlert(
+                "Delete singular or recurring?",
+                "Singular will delete ONLY this event. Recurring will delete ALL events tied to this recurring schedule",   
+                "Recurring",
+                "Singular"
+                );
 
-            }
+                
+                if (deleteSeries) {
+                endpoint = `/food-truck/loctime-remove-series/${loctime.uid}`;  
+                } else {
+                    endpoint = `/food-truck/loctime-remove/${loctime.uid}`;  
+                }
+            } 
+        } else {
+            confirmDelete = await showButtonAlert(
+            "Delete event?",
+            "This will permanently delete this event.",          
+            "Delete",
+            "Cancel"
+            );
         }
+        
+        // if user confirmed the "delete"
+        if (confirmDelete) {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: '_csrf_token={{ csrf_token() }}'
+            });
 
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: '_csrf_token={{ csrf_token() }}'
-        });
+            if (response.ok) {
+                button.innerText = 'Deleted!';
 
-        if (response.ok) {
-            button.innerText = 'Deleted!';
+                console.log("\tRemoved.");
+                window.location.reload();
+            } else {
+                button.disabled = false;
+                button.innerHTML = 'Delete';
 
-            console.log("\tRemoved.");
-            window.location.reload();
+                const message = await response.text();
+                console.error(message);
+                alert("\tError removing locTime: " + message);
+            }
         } else {
             button.disabled = false;
             button.innerHTML = 'Delete';
-
-            const message = await response.text();
-            console.error(message);
-            alert("\tError removing locTime: " + message);
         }
+        
     }
 
     // Function executed when user clicks the cancel button while modifying the truck
