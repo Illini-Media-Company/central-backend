@@ -283,18 +283,13 @@
         <div style="display:flex; gap:0.5rem; align-items:center;">
             <a href="/ems/employee/onboard">
                 <button class="button-primary">
-                    Onboard Employee
+                    <i class="bi bi-rocket-takeoff"></i>&nbsp; Onboard
                 </button>
             </a>
     
-            <a href="/ems/employee/add" target="_blank">
+            <a href="/ems/employee/add">
                 <button class="button-primary">
-                    Add Employee
-                </button>
-            </a>
-            <a href="/ems/employee/file-upload" target="_blank">
-                <button class="button-primary">
-                    Add Employees via File Upload
+                    <i class="bi bi-person-plus"></i>&nbsp; Add
                 </button>
             </a>
         </div>
@@ -510,7 +505,7 @@
                     >
                 </td>
                 <td>${emp.last_name}, ${emp.first_name}</td>
-                <td>${emp.imc_email}</td>
+                <td>${emp.imc_email || '—'}</td>
                 <td class="row-small-text">
                     ${emp.personal_email || '—'}
                     <br>

@@ -68,7 +68,7 @@
 
         {# Default favicon; can be overridden on other pages #}
         {% block favicon %}
-            <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+            <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
         {% endblock %}
     </head>
 

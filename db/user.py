@@ -1,7 +1,9 @@
-# Stores information about a user.
+"""
+Stores information about a user.
 
-# Created
-# Last modified Oct. 5, 2025
+Created
+Last modified Feb. 11, 2026
+"""
 
 from flask_login import UserMixin
 from google.cloud import ndb
@@ -32,8 +34,6 @@ class User(ndb.Model):
     last_login = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
     # ID's of favorite tools to display on the index page
     fav_tools = ndb.IntegerProperty(repeated=True)
-    # EmployeeCard object associated with the user (if any)
-    employee_card_key = ndb.KeyProperty(kind="EmployeeCard")
 
 
 class LoginUser(UserMixin):
@@ -51,6 +51,8 @@ class LoginUser(UserMixin):
 def add_user(
     sub, name, email, picture=None, groups=[], last_edited=None, last_login=None
 ):
+    from db.employee_management import tie_employee_to_user
+
     with client.context():
         user = User.query().filter(User.email == email).get()
         if user is not None:
@@ -73,11 +75,14 @@ def add_user(
                 last_login=last_login,
             )
         user.put()
+        tie_employee_to_user(user_uid=user.uid)
     return LoginUser(user)
 
 
 # Update either a user's name, email or picture that already exists in the database
 def update_user(name, email, picture, last_login=None):
+    from db.employee_management import tie_employee_to_user
+
     with client.context():
         user = User.query().filter(User.email == email).get()
         if user is not None:
@@ -89,6 +94,7 @@ def update_user(name, email, picture, last_login=None):
                 user.picture = picture
             user.last_login = last_login or datetime.now(ZoneInfo("America/Chicago"))
             user.put()
+            tie_employee_to_user(user_uid=user.uid)
     return LoginUser(user)
 
 

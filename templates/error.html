@@ -59,9 +59,14 @@
         <h2 id="main-error-header">Uh oh! There was an error:</h2>
         <br>
         <p id="main-error-body">{{ error }}</p>
-        <a href="javascript:window.history.back()">
-            <button class="button-primary" onclick="href">
-                Back to Safety
+        <a href="javascript:window.history.back()" style="text-decoration: none;">
+            <button class="button-primary">
+                Go Back
+            </button>
+        </a>
+        <a href="{{ url_for('index') }}" style="text-decoration: none;">
+            <button class="button-primary">
+                Return Home
             </button>
         </a>
     </div>

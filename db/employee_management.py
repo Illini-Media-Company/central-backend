@@ -5,21 +5,21 @@ to the EMS must be located inside of this file. Classes should not be accessed
 anywhere else in the codebase without the use of helper functions.
 
 Created by Jacob Slabosz on Jan. 4, 2026
-Last modified Feb. 3, 2026
+Last modified Feb. 11, 2026
 """
 
 from google.cloud import ndb
 from google.cloud.ndb import exceptions as ndb_exceptions
-from .user import User
-from datetime import datetime, date
+from db.user import User
+from datetime import datetime
 from zoneinfo import ZoneInfo
 from flask_login import current_user
 
-from util.google_groups import (
+from util.google_admin import (
     update_group_membership,
     check_group_exists,
 )
-from util.slackbots.general import can_bot_access_channel
+from util.slackbots.general import can_bot_access_channel, _lookup_user_id_by_email
 from util.employee_management import *
 
 from constants import (
@@ -61,16 +61,19 @@ class AppSettings(ndb.Model):
     brands = ndb.LocalStructuredProperty(IMCBrandMapping, repeated=True)
 
     @classmethod
+    @ensure_context
     def get_settings(cls):
         """ """
         return cls.get_or_insert("global_settings")
 
+    @ensure_context
     def get_brand_list(self) -> list[str]:
         """
         Returns just the brand names.
         """
         return [b.name for b in self.brands]
 
+    @ensure_context
     def get_channel_by_brand(self, brand_name: str) -> str | None:
         """
         Looks up the channel ID for a specific brand.
@@ -79,10 +82,6 @@ class AppSettings(ndb.Model):
             if b.name == brand_name:
                 return b.slack_channel_id
         return None
-
-
-# settings = AppSettings.get_settings()
-# brand_options = settings.get_brand_list()
 
 
 class EmployeeCard(ndb.Model):
@@ -119,8 +118,9 @@ class EmployeeCard(ndb.Model):
         `minor_3` (`str`): The employee's (optional) third minor
         `graduation` (`str`): The employee's expected graduation term
         `onboarding_form_done` (`bool`): Whether the employee has filled out the onboarding form
-        `onboarded_by` (`str`): Email of the user who onboarded the employee
-        `onboarded_brand` (`str`): The brand the employee was onboarded for
+        `onboarding_update_channel` (`str`): The Slack `channel_id` to send updates to
+        `onboarding_update_ts` (`str`): The Slack message `ts` of the original message
+        `slack_id` ('str'): The employee's Slack ID (Only updated by the system)
         `created_at` (`datetime`): When this employee was created
         `updated_at` (`datetime`): When this employee was last edited
         `updated_by` (`str`): Email of the user who last updated the employee
@@ -164,8 +164,10 @@ class EmployeeCard(ndb.Model):
 
     # To set the status of the onboarding form
     onboarding_form_done = ndb.BooleanProperty(default=False)
-    onboarded_by = ndb.StringProperty()
-    onboarded_brand = ndb.StringProperty(choices=IMC_BRANDS, default="IMC")
+    onboarding_update_channel = ndb.StringProperty()
+    onboarding_update_ts = ndb.StringProperty()
+
+    slack_id = ndb.StringProperty()
 
     created_at = ndb.DateTimeProperty(
         auto_now_add=True, tzinfo=ZoneInfo("America/Chicago")
@@ -270,13 +272,47 @@ class EmployeePositionRelation(ndb.Model):
     updated_by = ndb.StringProperty()
 
 
+# Set initial default settings
+settings = AppSettings.get_settings()
+if not settings.brands:
+    initial_map = [
+        IMCBrandMapping(name="The Daily Illini", slack_channel_id="C0AE2KZF4EM"),
+        IMCBrandMapping(name="IMC", slack_channel_id="C0ADHATJQP5"),
+    ]
+    settings.brands = initial_map
+    settings.put()
+
+
+@ensure_context
+def get_imc_brand_names() -> list[str]:
+    """
+    Public helper to get brand names from settings.
+    """
+    settings = AppSettings.get_settings()
+    return settings.get_brand_list()
+
+
+@ensure_context
+def get_slack_channel_id(brand_name: str) -> str | None:
+    """
+    Public helper to get a specific channel ID by brand name from settings.
+
+    Arguments:
+        `brand_name` (`str`): The name of the brand as it appears in settings
+    Returns:
+        `str`: The `channel_id`, else `None`
+    """
+    settings = AppSettings.get_settings()
+    return settings.get_channel_by_brand(brand_name)
+
+
 ################################################################################
 ### EMPLOYEE CARD FUNCTIONS ####################################################
 ################################################################################
 
 
 def create_employee_onboarding_card(
-    first_name: str, last_name: str, onboarded_by: str, onboarded_brand: str
+    first_name: str, last_name: str, onboarding_update_channel: str
 ) -> dict | int:
     """
     Creates a minimal EmployeeCard for the onboarding workflow.
@@ -286,8 +322,7 @@ def create_employee_onboarding_card(
     Arguments:
         `first_name` (`str`): The first name of the employee to onboard
         `last_name` (`str`): The last name of the employee to onboard
-        `onboarded_by` (`str`): Email of the user who onboarded the employee
-        `onboarded_brand` (`str`): The brand the employee was onboarded for
+        `onboarding_update_channel` (`str`): The Slack `channel_id` to send updates to
 
     Returns:
         `dict`: The created EmployeeCard as a dictionary
@@ -302,8 +337,7 @@ def create_employee_onboarding_card(
                 last_name=last_name,
                 status="Onboarding",
                 onboarding_form_done=False,
-                onboarded_by=onboarded_by,
-                onboarded_brand=onboarded_brand,
+                onboarding_update_channel=onboarding_update_channel,
             )
             employee.initial_hire_date = datetime.now(tz=ZoneInfo("America/Chicago"))
             employee.created_at = datetime.now(tz=ZoneInfo("America/Chicago"))
@@ -314,6 +348,35 @@ def create_employee_onboarding_card(
         except Exception as e:
             print(f"Error creating onboarding EmployeeCard: {e}")
             return EEXCEPT
+
+
+def update_employee_onboarding_card(uid: int, ts: str) -> dict | int:
+    """
+    Updates an EmployeeCard to include the Slack ts.
+
+    Arguments:
+        `uid` (`int`): The UID of the EmployeeCard
+        `ts` (`str`): The Slack ts for the initial onboarding message
+    Returns:
+        `dict`: The modified EmployeeCard
+    Raises:
+        `EEMPDNE`: Employee not found
+        `EEXCEPT`: Other fatal error
+    """
+    with client.context():
+        employee = EmployeeCard.get_by_id(uid)
+        if not employee:
+            return EEMPDNE  # Employee not found
+        try:
+            employee.onboarding_update_ts = ts
+            employee.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
+            employee.updated_by = "System"
+
+            employee.put()
+
+        except Exception as e:
+            print(f"Error modifying EmployeeCard: {e}")
+            return EEXCEPT  # Employee modification failed
 
 
 def create_employee_card(**kwargs: dict) -> dict | int:
@@ -366,12 +429,13 @@ def create_employee_card(**kwargs: dict) -> dict | int:
                 if not user:
                     return EUSERDNE
             employee = EmployeeCard(**kwargs)
+            employee.slack_id = _lookup_user_id_by_email(employee.imc_email)
             employee.created_at = datetime.now(tz=ZoneInfo("America/Chicago"))
             employee.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
             employee.updated_by = current_user.email if current_user else "System"
             employee.put()
             temp = employee.uid
-            tie_employee_to_user(temp)
+            tie_employee_to_user(employee_uid=temp)
             employee = EmployeeCard.get_by_id(temp)
 
             return employee.to_dict()
@@ -446,6 +510,13 @@ def modify_employee_card(uid: int, **kwargs: dict) -> dict | None | int:
                 if is_duplicate:
                     return EEXISTS  # Employee with this IMC email already exists
 
+                # Update the employee's Slack ID if it wasn't directly given (only if their email changed)
+                if kwargs["imc_email"] != employee.imc_email:
+                    if not "slack_id" in kwargs:
+                        employee.slack_id = _lookup_user_id_by_email(
+                            kwargs["imc_email"]
+                        )
+
             for key, value in kwargs.items():
                 if hasattr(employee, key):
                     setattr(employee, key, value)
@@ -461,7 +532,7 @@ def modify_employee_card(uid: int, **kwargs: dict) -> dict | None | int:
 
             # Re-tie the employee to the user in case the email changed
             temp = employee.uid
-            tie_employee_to_user(temp)
+            tie_employee_to_user(employee_uid=temp)
             employee = EmployeeCard.get_by_id(temp)
 
             return employee.to_dict()
@@ -538,13 +609,14 @@ def delete_employee_card(uid: int) -> bool | int:
             return EEXCEPT  # Deletion failed
 
 
-def tie_employee_to_user(uid: int) -> bool | int:
+@ensure_context
+def tie_employee_to_user(employee_uid: int = None, user_uid: int = None) -> bool | int:
     """
-    Links an EmployeeCard to a User by their UIDs. Must be called within a
-    client context.
+    Links an EmployeeCard to a User. Only one argument should be provided
 
     Arguments:
-        `uid` (`int`): The UID of the EmployeeCard
+        `employee_uid` (`int`): The UID of the EmployeeCard
+        `user_uid` (`int`): The UID of the User
 
     Returns:
         `bool`: `True` if linking was successful
@@ -554,8 +626,16 @@ def tie_employee_to_user(uid: int) -> bool | int:
         `EEMPDNE`: Employee does not exist
         `EEXCEPT`: Other fatal error
     """
-    employee = EmployeeCard.get_by_id(uid)
-    user = User.query(User.email == employee.imc_email).get() if employee else None
+    if employee_uid:
+        employee = EmployeeCard.get_by_id(employee_uid)
+        user = User.query(User.email == employee.imc_email).get() if employee else None
+    elif user_uid:
+        user = User.get_by_id(user_uid)
+        employee = (
+            EmployeeCard.query(EmployeeCard.imc_email == user.email).get()
+            if user
+            else None
+        )
 
     if not employee:
         return EEMPDNE  # Employee does not exist
@@ -565,7 +645,10 @@ def tie_employee_to_user(uid: int) -> bool | int:
     try:
         employee.user_uid = user.key.id()
         employee.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
-        employee.updated_by = current_user.email if current_user else "System"
+        if current_user and current_user.is_authenticated:
+            employee.updated_by = current_user.email
+        else:
+            employee.updated_by = "System"
         employee.put()
         return True
     except Exception as e:
@@ -685,6 +768,7 @@ def modify_position_card(uid: int, **kwargs: dict) -> dict | int:
         `ESLACKDNE`: If one of the Slack channels does not exist or the bot cannot access
         `ESUPREP`: If updating supervisors fails
         `EGROUP`: If updating Google Groups fails
+        `ESLACK`: If updating Slack channels fails
         `EEXCEPT`: Other fatal error
     """
     with client.context():
@@ -777,16 +861,30 @@ def modify_position_card(uid: int, **kwargs: dict) -> dict | int:
                 "google_group" in kwargs
                 and kwargs["google_group"] != position.google_group
             )
-            if should_update_groups:
+
+            should_update_slack = (
+                "slack_channels" in kwargs
+                and kwargs["slack_channels"] != position.slack_channels
+            )
+
+            if should_update_groups or should_update_slack:
                 rels = get_relations_by_position_current(position.uid)
-                employee_old_groups = {}
                 employees = []
+                employee_old_groups = {}
+                employee_old_slack = {}
 
                 for rel in rels:
                     emp = EmployeeCard.get_by_id(rel["employee_id"])
                     if emp:
-                        employee_old_groups[emp.uid] = get_groups_for_employee(emp.uid)
                         employees.append(emp)
+                        if should_update_groups:
+                            employee_old_groups[emp.uid] = get_groups_for_employee(
+                                emp.uid
+                            )
+                        if should_update_slack:
+                            employee_old_slack[
+                                emp.uid
+                            ] = get_slack_channels_for_employee(emp.uid)
 
             # Modify the position fields
             for key, value in kwargs.items():
@@ -809,6 +907,24 @@ def modify_position_card(uid: int, **kwargs: dict) -> dict | int:
                         )
                         if not success:
                             return EGROUP  # Updating Google Groups failed
+
+            # Update Slack channels for all employees in this position
+            if should_update_slack:
+                for emp in employees:
+                    old_channels = employee_old_slack.get(emp.uid, [])
+                    new_channels = get_slack_channels_for_employee(
+                        emp.uid, override_pos=position
+                    )
+
+                    if set(old_channels) != set(new_channels):
+                        if emp.slack_id:
+                            success, _ = update_slack_channels(
+                                user_id=emp.slack_id,
+                                old_channels=old_channels,
+                                new_channels=new_channels,
+                            )
+                            if not success:
+                                return ESLACK  # Updating Slack channels failed
 
             return position.to_dict()
         except Exception as e:
@@ -1015,6 +1131,7 @@ def create_relation(**kwargs: dict) -> dict | int:
         `EPOSDNE`: If the PositionCard does not exist
         `EEMPDNE`: If the EmployeeCard does not exist
         `EGROUP`: If Google Groups update fails
+        `ESLACK`: If updating Slack channels fails
         `EEXCEPT`: Other fatal error
     """
     with client.context():
@@ -1050,6 +1167,7 @@ def create_relation(**kwargs: dict) -> dict | int:
 
         try:
             old_groups = get_groups_for_employee(employee.uid)
+            old_channels = get_slack_channels_for_employee(employee.uid)
             relation = EmployeePositionRelation(**kwargs)
 
             relation.created_at = datetime.now(tz=ZoneInfo("America/Chicago"))
@@ -1061,10 +1179,24 @@ def create_relation(**kwargs: dict) -> dict | int:
             new_groups = get_groups_for_employee(employee.uid)
             if set(old_groups) != set(new_groups):
                 success, error = update_group_membership(
-                    employee.imc_email, old_groups, new_groups
+                    user_email=employee.imc_email,
+                    old_groups=old_groups,
+                    new_groups=new_groups,
                 )
                 if not success:
                     return EGROUP  # Updating Google Groups failed
+
+            # Update Slack channels if necessary
+            new_channels = get_slack_channels_for_employee(employee.uid)
+            if set(old_channels) != set(new_channels):
+                if employee.slack_id:
+                    success, error = update_slack_channels(
+                        user_id=employee.slack_id,
+                        old_channels=old_channels,
+                        new_channels=new_channels,
+                    )
+                    if not success:
+                        return ESLACK
 
             return relation.to_dict()
         except Exception as e:
@@ -1093,6 +1225,7 @@ def modify_relation(uid: int, **kwargs: dict) -> dict | int:
         `ERELDNE`: EmployeePositionRelation not found
         `EEMPDNE`: Associated EmployeeCard not found
         `EGROUP`: If Google Groups update fails
+        `ESLACK`: If updating Slack channels fails
         `EEXCEPT`: Other fatal error
     """
     with client.context():
@@ -1111,6 +1244,7 @@ def modify_relation(uid: int, **kwargs: dict) -> dict | int:
                 del kwargs["employee_id"]  # Prevent changing employee_id
 
             old_groups = get_groups_for_employee(employee.uid)
+            old_channels = get_slack_channels_for_employee(employee.uid)
 
             for key, value in kwargs.items():
                 if hasattr(relation, key):
@@ -1120,13 +1254,30 @@ def modify_relation(uid: int, **kwargs: dict) -> dict | int:
             relation.updated_by = current_user.email if current_user else "System"
             relation.put()
 
+            # Update Google groups if necessary
             new_groups = get_groups_for_employee(employee.uid, override_rel=relation)
             if set(old_groups) != set(new_groups):
                 success, error = update_group_membership(
-                    employee.imc_email, old_groups, new_groups
+                    user_email=employee.imc_email,
+                    old_groups=old_groups,
+                    new_groups=new_groups,
                 )
                 if not success:
                     return EGROUP  # Updating Google Groups failed
+
+            # Update Slack channels if necessary
+            new_channels = get_slack_channels_for_employee(
+                employee.uid, override_rel=relation
+            )
+            if set(old_channels) != set(new_channels):
+                if employee.slack_id:
+                    success, error = update_slack_channels(
+                        user_id=employee.slack_id,
+                        old_channels=old_channels,
+                        new_channels=new_channels,
+                    )
+                    if not success:
+                        return ESLACK
 
             return relation.to_dict()
         except Exception as e:
@@ -1167,6 +1318,7 @@ def get_relation_by_id(uid: int) -> dict | int:
         return relation.to_dict() if relation else ERELDNE
 
 
+@ensure_context
 def get_relations_by_employee(employee_id: int) -> list:
     """
     Retrieves all EmployeePositionRelation entries for a given employee.
@@ -1177,15 +1329,14 @@ def get_relations_by_employee(employee_id: int) -> list:
     Returns:
         `list`: A list of all `EmployeePositionRelation` entries as dictionaries
     """
-    with client.context():
-        relations = (
-            EmployeePositionRelation.query(
-                EmployeePositionRelation.employee_id == employee_id
-            )
-            .order(-EmployeePositionRelation.start_date)
-            .fetch()
+    relations = (
+        EmployeePositionRelation.query(
+            EmployeePositionRelation.employee_id == employee_id
         )
-        return [relation.to_dict() for relation in relations]
+        .order(-EmployeePositionRelation.start_date)
+        .fetch()
+    )
+    return [relation.to_dict() for relation in relations]
 
 
 @ensure_context
@@ -1235,6 +1386,7 @@ def get_relations_by_employee_past(employee_id: int) -> list:
         ]
 
 
+@ensure_context
 def get_relations_by_position(position_id: int) -> list:
     """
     Retrieves all EmployeePositionRelation entries for a given position.
@@ -1245,15 +1397,14 @@ def get_relations_by_position(position_id: int) -> list:
     Returns:
         `list`: A list of all `EmployeePositionRelation` entries as dictionaries
     """
-    with client.context():
-        relations = (
-            EmployeePositionRelation.query(
-                EmployeePositionRelation.position_id == position_id
-            )
-            .order(-EmployeePositionRelation.start_date)
-            .fetch()
+    relations = (
+        EmployeePositionRelation.query(
+            EmployeePositionRelation.position_id == position_id
         )
-        return [relation.to_dict() for relation in relations]
+        .order(-EmployeePositionRelation.start_date)
+        .fetch()
+    )
+    return [relation.to_dict() for relation in relations]
 
 
 @ensure_context
@@ -1317,6 +1468,7 @@ def delete_relation(uid: int) -> bool | int:
         `ERELDNE`: EmployeePositionRelation not found
         `EEMPDNE`: If the associated EmployeeCard does not exist
         `EGROUP`: If Google Groups update fails
+        `ESLACK`: If updating Slack channels fails
         `EEXCEPT`: Other fatal error
     """
     with client.context():
@@ -1330,16 +1482,31 @@ def delete_relation(uid: int) -> bool | int:
 
         try:
             old_groups = get_groups_for_employee(employee.uid)
+            old_channels = get_slack_channels_for_employee(employee.uid)
             relation.key.delete()
 
             # Update Google Groups if necessary
             new_groups = get_groups_for_employee(employee.uid)
             if set(old_groups) != set(new_groups):
                 success, error = update_group_membership(
-                    employee.imc_email, old_groups, new_groups
+                    user_email=employee.imc_email,
+                    old_groups=old_groups,
+                    new_groups=new_groups,
                 )
                 if not success:
                     return EGROUP  # Updating Google Groups failed
+
+            # Update Slack channels if necessary
+            new_channels = get_slack_channels_for_employee(employee.uid)
+            if set(old_channels) != set(new_channels):
+                if employee.slack_id:
+                    success, error = update_slack_channels(
+                        user_id=employee.slack_id,
+                        old_channels=old_channels,
+                        new_channels=new_channels,
+                    )
+                    if not success:
+                        return ESLACK
 
             return True
         except Exception as e:
@@ -1397,3 +1564,41 @@ def get_groups_for_employee(
                 groups.add(position.google_group)
 
     return list(groups)
+
+
+def get_slack_channels_for_employee(
+    employee_uid: int,
+    override_rel: EmployeePositionRelation = None,
+    override_pos: PositionCard = None,
+) -> list:
+    """
+    Retrieves all Slack channel IDs associated with the positions held by a given employee.
+
+    Returns:
+        `list`: A list of unique Slack channel IDs
+    """
+    channels = set()
+
+    # Get the current relations for the employee
+    relations = get_relations_by_employee_current(employee_uid)
+
+    for rel_dict in relations:
+        # 1. Handle Relation Overrides (check if the relation was just ended)
+        if override_rel and rel_dict["uid"] == override_rel.uid:
+            if override_rel.end_date is not None:
+                continue  # Relation ended; skip adding these channels
+
+            pos_id = override_rel.position_id
+        else:
+            pos_id = rel_dict["position_id"]
+
+        # 2. Handle Position Overrides
+        if override_pos and pos_id == override_pos.uid:
+            if override_pos.slack_channels:
+                channels.update(override_pos.slack_channels)
+        else:
+            position = PositionCard.get_by_id(pos_id)
+            if position and position.slack_channels:
+                channels.update(position.slack_channels)
+
+    return list(channels)

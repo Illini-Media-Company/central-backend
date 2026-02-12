@@ -2,28 +2,31 @@
 This file defines the API for the Employee Management System.
 
 Created by Jacob Slabosz on Jan. 12, 2026
-Last modified Feb. 3, 2026
+Last modified Feb. 11, 2026
 """
 
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, abort
 from flask_login import login_required, current_user
 from util.security import restrict_to
 from datetime import datetime
 import pandas as pd
 
-from flask import request, jsonify, redirect, url_for
-from db.employee_management import create_employee_onboarding_card
+from flask import request, jsonify, url_for
 from util.employee_management import send_onboarding_email
 
-
-from flask import redirect, url_for
 from constants import EMS_ADMIN_ACCESS_GROUPS
 
 from db.user import get_user_profile_photo
 
 from util.employee_management import *
+from util.slackbots.general import _lookup_user_id_by_email
+from util.google_admin import create_google_user
 
 from db.employee_management import (
+    get_imc_brand_names,
+    get_slack_channel_id,
+    create_employee_onboarding_card,
+    update_employee_onboarding_card,
     create_employee_card,
     modify_employee_card,
     get_all_employee_cards,
@@ -125,16 +128,16 @@ def ems_employee_add():
     )
 
 
-# TEMPLATE — employee_file_upload
-@ems_routes.route("/employee/file-upload", methods=["GET"])
+# TEMPLATE — employee_add_bulk
+@ems_routes.route("/employee/add/bulk", methods=["GET"])
 @login_required
 @restrict_to(EMS_ADMIN_ACCESS_GROUPS)
-def ems_employee_file_upload():
+def ems_employee_add_bulk():
     """
     Renders the file upload page to upload multiple employees.
     """
     return render_template(
-        "employee_management/ems_employee_file_upload.html",
+        "employee_management/ems_employee_add_bulk.html",
         pronouns=", ".join(EMPLOYEE_PRONOUNS),
         statuses=", ".join(EMPLOYEE_STATUS_OPTIONS),
     )
@@ -151,7 +154,7 @@ def ems_employee_onboard():
     return render_template(
         "employee_management/ems_employee_onboard.html",
         selection="employees",
-        brand_options=IMC_BRANDS,
+        brand_options=get_imc_brand_names(),
     )
 
 
@@ -159,12 +162,8 @@ def ems_employee_onboard():
 @ems_routes.route("/onboarding/<int:emp_id>", methods=["GET"])
 def ems_employee_onboarding_form(emp_id):
     employee = get_employee_card_by_id(emp_id)
-    if not employee:
-        return render_template(
-            "error.html",
-            code="404",
-            error="That link is not valid!",
-        )
+    if not employee or employee == EEMPDNE:
+        abort(404)
     if employee.get("onboarding_form_done"):
         return render_template(
             "error.html",
@@ -175,7 +174,7 @@ def ems_employee_onboarding_form(emp_id):
         )
 
     return render_template(
-        "employee_management/ems_employee_onboard_form.html",
+        "employee_management/ems_onboarding_form.html",
         employee=employee,
         employee_first_name=employee.get("first_name"),
         employee_last_name=employee.get("last_name"),
@@ -196,10 +195,9 @@ def ems_employee_view(emp_id):
     employee = get_employee_card_by_id(emp_id)
 
     if employee == EEMPDNE:
-        return render_template(
-            "error.html",
-            code="404",
-            error="That employee doesn't seem to exist! \
+        abort(
+            404,
+            description="That employee doesn't seem to exist! \
                 Ensure this employee has not been deleted. \
                 If the issue persists, contact an administrator.",
         )
@@ -267,6 +265,74 @@ def ems_employee_view(emp_id):
         depart_reasons_invol=DEPART_REASON_INVOL,
         depart_reasons_admin=DEPART_REASON_ADMIN,
     )
+
+
+# TEMPLATE — onboarding_nextsteps_success
+@ems_routes.route("ems/onboarding/nextsteps/login")
+def ems_employee_onboard_nextsteps_success():
+    email = request.args.get("email")
+    password = request.args.get("password")
+    uid = request.args.get("uid")
+    if not email or not password or not uid:
+        return render_template(
+            "error.html",
+            code="400",
+            error="This page cannot be viewed.",
+        )
+
+    return render_template(
+        "/employee_management/ems_onboarding_nextstep_success.html",
+        email=email,
+        password=password,
+        uid=uid,
+    )
+
+
+# TEMPLATE — onboarding_nextsteps_failure
+@ems_routes.route("ems/onboarding/nextsteps/wait")
+def ems_employee_onboard_nextsteps_failure():
+    return render_template("/employee_management/ems_onboarding_nextstep_failure.html")
+
+
+# TEMPLATE & API
+@ems_routes.route("/onboarding/<int:emp_id>/complete", methods=["GET"])
+@login_required
+def ems_onboarding_complete(emp_id):
+    # Notify via Slack of completion
+    employee = get_employee_card_by_id(emp_id)
+    if employee:
+        # Ensure they've logged into Slack & get their ID
+        slack_id = _lookup_user_id_by_email(employee["imc_email"])
+        if not slack_id:
+            return render_template(
+                "error.html",
+                code="409",
+                error="It seems you did not log into Slack. Please do so, then refresh this page.",
+            )
+
+        # Save the employee's Slack ID
+        modify_employee_card(uid=employee.uid, slack_id=slack_id)
+
+        slack_channel = employee["onboarding_update_channel"]
+        slack_ts = employee["onboarding_update_ts"]
+        full_name = employee["full_name"]
+        ems_url = url_for("ems_routes.ems_employee_view", emp_id=emp_id, _external=True)
+
+        res = slack_dm_onboarding_complete(
+            channel_id=slack_channel,
+            thread_ts=slack_ts,
+            employee_name=full_name,
+            slack_id=slack_id,
+            ems_url=ems_url,
+        )
+        if not isinstance(res, dict):
+            print("[EMS] ERROR: Failed to send completion Slack message.")
+        if not res.get("ok"):
+            print(
+                f"[EMS] ERROR: Failed to send completion Slack message. {res['error']}"
+            )
+
+    return render_template("/employee_management/ems_onboarding_complete.html")
 
 
 ################################################################################
@@ -546,6 +612,7 @@ def ems_api_employee_onboard_send():
         else (request.get_json(silent=True) or {})
     )
 
+    # Get data
     first_name = (data.get("first_name") or "").strip()
     last_name = (data.get("last_name") or "").strip()
     email = (data.get("email") or "").strip()
@@ -555,6 +622,29 @@ def ems_api_employee_onboard_send():
     # Bool, whether to notify the user (True) or the brand's channel (False)
     indv_notif = bool(data.get("indv_notif"))
 
+    # Send Slack messages notifying that step 1 of onboarding is done
+    if indv_notif:
+        # Channel should be the user who onboarded
+        user_id = _lookup_user_id_by_email(onboarded_by)
+        if not user_id:
+            return (
+                jsonify({"error": "The logged in user could not be found in Slack."}),
+                500,
+            )
+        onboarding_update_channel = user_id
+    else:
+        # Channel should be the brand's EMS channel
+        channel_id = get_slack_channel_id(onboarded_brand)
+        if not channel_id:
+            return (
+                jsonify(
+                    {"error": "The brand's channel_id is not defined in settings."}
+                ),
+                500,
+            )
+        onboarding_update_channel = channel_id
+
+    # Validate required fields
     if not first_name or not last_name or not email or not onboarded_brand:
         return (
             jsonify({"error": "First name, last name, email and brand are required."}),
@@ -567,8 +657,7 @@ def ems_api_employee_onboard_send():
     created = create_employee_onboarding_card(
         first_name=first_name,
         last_name=last_name,
-        onboarded_by=onboarded_by,
-        onboarded_brand=onboarded_brand,
+        onboarding_update_channel=onboarding_update_channel,
     )
     if created in (None, EEXCEPT):
         return jsonify({"error": "Failed to create employee."}), 500
@@ -578,7 +667,7 @@ def ems_api_employee_onboard_send():
     onboarding_url = url_for(
         "ems_routes.ems_employee_onboarding_form",
         emp_id=emp_id,
-        _external=True,  #
+        _external=True,
     )
 
     # Email the employee
@@ -599,14 +688,22 @@ def ems_api_employee_onboard_send():
         )
 
     # Send Slack messages notifying that step 1 of onboarding is done
-    if indv_notif:
-        # Send a slack notification to onboarded_by (email)
-        pass
-    else:
-        # Send a slack notification to the brand's corresponding channel
-        pass
+    res = slack_dm_onboarding_started(
+        channel_id=onboarding_update_channel, employee_name=created["full_name"]
+    )
+    if not isinstance(res, dict):
+        return jsonify({"error": "Slack message failed for an unknown reason."}), 500
+    if not res.get("ok"):
+        return jsonify({"error": f"Slack message failed: {res['error']}"}), 500
 
-    return redirect(url_for("ems_routes.ems_employees"))
+    # Store the Slack TS
+    res = update_employee_onboarding_card(uid=created["uid"], ts=res["ts"])
+    if res == EEMPDNE:
+        return jsonify({"error": "Creating the employee failed."}), 400
+    if res == EEXCEPT:
+        return jsonify({"error": "A fatal error occurred."}), 400
+
+    return jsonify({"ok": True, "message": "Onboarding successfully started."}), 200
 
 
 # API
@@ -616,6 +713,8 @@ def ems_api_onboarding_submit(emp_id):
     Public onboarding submit endpoint: validates required fields,
     parses optional birth_date, marks link as used, and saves employee data.
     """
+    from util.google_admin import USER_TEMP_PASSWORD
+
     data = request.get_json(silent=True) or request.form.to_dict() or {}
     data.pop("_csrf_token", None)
 
@@ -625,7 +724,10 @@ def ems_api_onboarding_submit(emp_id):
     # Ensure employee exists (has not since been deleted)
     employee = get_employee_card_by_id(emp_id)
     if not employee:
-        return jsonify({"ok": False, "error": "Invalid onboarding link."}), 404
+        abort(
+            404,
+            description="That onboarding link has since been deleted. Please contact helpdesk@illinimedia.com",
+        )
 
     # Ensure not already filled out
     if employee.get("onboarding_form_done"):
@@ -637,7 +739,19 @@ def ems_api_onboarding_submit(emp_id):
         )
 
     # Check for missing fields
-    required = ["personal_email", "phone_number"]
+    required = [
+        "last_name",
+        "first_name",
+        "personal_email",
+        "pronouns",
+        "phone_number",
+        "permanent_address_1",
+        "permanent_city",
+        "permanent_zip",
+        "major",
+        "graduation",
+        "birth_date",
+    ]
     missing = [k for k in required if not (data.get(k) or "").strip()]
     if missing:
         return (
@@ -666,7 +780,52 @@ def ems_api_onboarding_submit(emp_id):
     if updated in (EEMPDNE, EUSERDNE, EEXISTS, EEXCEPT):
         return jsonify({"ok": False, "error": "Failed to submit onboarding form."}), 500
 
-    return jsonify({"ok": True, "message": "Onboarding submitted successfully."}), 200
+    # Notify via Slack of completion
+    first_name = updated["first_name"]
+    last_name = updated["last_name"]
+    slack_channel = updated["onboarding_update_channel"]
+    slack_ts = updated["onboarding_update_ts"]
+    res = slack_dm_info_received(channel_id=slack_channel, thread_ts=slack_ts)
+    if not isinstance(res, dict):
+        return jsonify({"error": "Slack message failed for an unknown reason."}), 500
+    if not res.get("ok"):
+        return jsonify({"error": f"Slack message failed: {res['error']}"}), 500
+
+    # Create the Google account
+    success, error = create_google_user(
+        netid=netid, first_name=first_name, last_name=last_name
+    )
+
+    if success == True:
+        # If the Google account created successfully, notify via Slack, display page
+        res = slack_dm_google_created(channel_id=slack_channel, thread_ts=slack_ts)
+        redirect_url = url_for(
+            "ems_routes.ems_employee_onboard_nextsteps_success",
+            email=f"{netid}@illinimedia.com",
+            password=USER_TEMP_PASSWORD,
+            uid=emp_id,
+            _external=True,
+        )
+
+        # Save the new email to the EmployeeCard
+        updated = modify_employee_card(uid=emp_id, imc_email=f"{netid}@illinimedia.com")
+    else:
+        # Else, notify and display other page
+        res = slack_dm_google_failed(channel_id=slack_channel, thread_ts=slack_ts)
+        redirect_url = url_for(
+            "ems_routes.ems_employee_onboard_nextsteps_failure", _external=True
+        )
+
+    return (
+        jsonify(
+            {
+                "ok": True,
+                "message": "Onboarding submitted successfully.",
+                "redirect_url": redirect_url,
+            }
+        ),
+        200,
+    )
 
 
 ################################################################################
@@ -734,10 +893,9 @@ def ems_position_view(pos_id):
     position["slack_channels"] = ", ".join(position["slack_channels"])
 
     if position == EPOSDNE:
-        return render_template(
-            "error.html",
-            code="404",
-            error="That position doesn't seem to exist! \
+        abort(
+            404,
+            description="That position doesn't seem to exist! \
                 Ensure this position has not been deleted. \
                 If the issue persists, contact an administrator.",
         )

@@ -29,18 +29,20 @@
 {% endblock %}
 
 {% import "macros/form.html" as form %}
+{% include "partials/loading.html" %}
+{% include "partials/text_alert.html" %}
+{% include "partials/info_bar.html" %}
 
 {% block ems_content %}
 <div style="display: flex; flex-direction: row; gap: 2rem; align-items: center;">
     <a href="/ems/employees" style="color: inherit; font-size: 2rem;">
         <i class="bi bi-arrow-left"></i>
     </a>
-    <h2>Onboard a New Employee</h2>
+    <h2>Onboard New Employee</h2>
 </div>
-
-<p>
-    Use this form to onboard a new employee that has not worked for IMC in the past. 
-    Otherwise, locate the employee and modify them.
+<p><span style="font-weight: 500;">Note:</span> This page should only be used to onboard new employees to the Employee Management System.
+    To add an existing employee, please use the <a href="/ems/employee/add">add page</a>. If an employee previously worked for Illini
+    Media Company and is being rehired, locate them in EMS and modify their card.
 </p>
 
 <p>
@@ -50,6 +52,12 @@
     management Slack channel unless the "Notify Me Directly" option is selected, in which case you
     will be notified directly and the channel will not receive any notifications
 </p>
+
+<a href="/ems/employee/onboard/bulk">
+    <button class="button-primary">
+        Bulk Onboard
+    </button>
+</a>
 
 <hr>
 
@@ -95,7 +103,6 @@
                                 label="Illinois Email",
                                 required=true,
                                 placeholder="NetID@illinois.edu",
-                                pattern=".*@illinois\.edu$",
                                 class="onboard-form-row"
                             ) }}
                             <div style="display: flex; flex-direction: row; gap: 1rem;">
@@ -125,26 +132,61 @@
 </section>
 
 <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const msg = sessionStorage.getItem("infoBarMessage");
+        if (msg) {
+            showInfoBar(msg);
+            sessionStorage.removeItem("infoBarMessage");
+        }
+    });
+
     async function submitEmployeeOnboard(event) {
-      event.preventDefault();
-    
-      const form = event.target;
-      const formData = new FormData(form);
-    
-      const response = await fetch("/ems/api/employee/onboard/send", {
-        method: "POST",
-        body: formData,
-      });
-    
-      // Your endpoint returns a redirect on success
-      if (response.redirected) {
-        window.location.href = response.url;
-        return;
-      }
-    
-      // Otherwise show error
-      const data = await response.json().catch(() => ({}));
-      alert(data.error || "An unknown error occurred.");
+        event.preventDefault();
+        console.log("Submitting...");
+
+        showLoading("Onboarding Employee...");
+
+        const formData = new FormData(event.target);
+
+        // Send the data to the backend endpoint
+        let endpoint = "/ems/api/employee/onboard/send";
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+            ...Object.fromEntries(
+                Array.from(formData.entries()).filter(([key, value]) => value !== "")
+            ),
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        // Check if it was successful
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", "Onboarding successfully started."); // Safe so we can display after reload
+            window.location.href = "{{ redirect_url }}";
+        } else {
+            // Alert of the error
+            console.log("Updating the employee failed!");
+
+            try {
+                const data = await response.json();
+                const message = data.error || "An unknown error occurred.";
+
+                console.error(message);
+                hideLoading();
+                await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            } catch (err) {
+                const fallback = await response.text();
+                hideLoading();
+                await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+            }
+        }
     }
     </script>
     

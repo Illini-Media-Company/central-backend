@@ -85,15 +85,15 @@
                     <div style="display: flex; flex-direction: column; gap: 1rem;">
                         <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
                             {{ form.text_input( 
-                                name="last_name",
-                                label="Last Name",
+                                name="first_name",
+                                label="First Name",
                                 required=true,
                                 initial_val=employee_first_name,
                                 class="onboarding-form-row"
                             ) }}
                             {{ form.text_input( 
-                                name="first_name",
-                                label="First Name",
+                                name="last_name",
+                                label="Last Name",
                                 required=true,
                                 initial_val=employee_last_name,
                                 class="onboarding-form-row"
@@ -342,7 +342,7 @@
         event.preventDefault();
         console.log("Submitting...");
 
-        showLoading("Creating Employee...");
+        showLoading("Submitting...");
 
         const formData = new FormData(event.target);
 
@@ -365,9 +365,11 @@
 
         // Check if it was successful
         if (response.status === 200) {
+            const data = await response.json();
+
             // Trigger a reload of the window
-            sessionStorage.setItem("infoBarMessage", "Employee successfully updated."); // Safe so we can display after reload
-            window.location.href = "{{ redirect_url }}";
+            sessionStorage.setItem("infoBarMessage", "Onboarding successfully submitted."); // Safe so we can display after reload
+            window.location.href = data.redirect_url;
         } else {
             // Alert of the error
             console.log("Updating the employee failed!");

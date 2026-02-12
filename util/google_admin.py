@@ -1,9 +1,9 @@
 """
-This file contains utility functions for managing Google Group memberships. All functions
+This file contains utility functions for managing Google Admin tasks. All functions
 are executed with admin credentials. 
 
 Created by Jacob Slabosz on Feb. 2, 2026
-Last modified Feb. 3, 2026
+Last modified Feb. 11, 2026
 """
 
 from googleapiclient.discovery import build
@@ -11,6 +11,9 @@ from util.security import get_admin_creds
 
 MEMBER_SCOPE = ["https://www.googleapis.com/auth/admin.directory.group.member"]
 GROUP_SCOPE = ["https://www.googleapis.com/auth/admin.directory.group"]
+USER_SCOPE = "https://www.googleapis.com/auth/admin.directory.user"
+
+USER_TEMP_PASSWORD = "TempPass123!"
 
 
 def manage_group_membership(
@@ -81,37 +84,24 @@ def update_group_membership(
     Returns:
         tuple (`bool`, `str | None`): Whether the operation was successful and an error message if not
     """
-    print(f"Updating groups for {user_email}")
-    print(f"Old groups: {old_groups}")
-    print(f"New groups: {new_groups}")
 
     remove_from_groups = list(set(old_groups) - set(new_groups))
     add_to_groups = list(set(new_groups) - set(old_groups))
-    print(remove_from_groups)
-    print(add_to_groups)
 
     if remove_from_groups:
-        print("Removing from groups:")
         for group in remove_from_groups:
             # Remove user from group
-            print(f" - {group}")
             success, error = manage_group_membership(group, user_email, action="remove")
             if not success:
                 print(f"\tError removing user from group {group}: {error}")
                 return False, error
-            else:
-                print("\tDone.")
     if add_to_groups:
-        print("Adding to groups:")
         for group in add_to_groups:
             # Add user to group
-            print(f" - {group}")
             success, error = manage_group_membership(group, user_email, action="add")
             if not success:
                 print(f"\tError adding user to group {group}: {error}")
                 return False, error
-            else:
-                print("\tDone.")
 
     return True, None
 
@@ -140,3 +130,40 @@ def check_group_exists(group_email: str) -> bool:
             # you might want to log it or raise it.
             print(f"Error checking group existence: {e}")
             return False
+
+
+def create_google_user(
+    netid: str, first_name: str, last_name: str
+) -> tuple[bool, str | None]:
+    """
+    Creates a new user in Google Workspace.
+
+    Arguments:
+        `netid` (`str`): The NetID of the new user (i.e. their new email)
+        `first_name` (`str`): The new user's first name
+        `last_name` (`str`): The new user's last name
+
+    Returns:
+        tuple (success: bool, error_message: str | None)
+    """
+    creds = get_admin_creds([USER_SCOPE])
+
+    with build("admin", "directory_v1", credentials=creds) as service:
+        user_body = {
+            "primaryEmail": f"{netid}@illinimedia.com",
+            "name": {"givenName": first_name, "familyName": last_name},
+            "password": USER_TEMP_PASSWORD,
+            "changePasswordAtNextLogin": True,  # Force them to change the temp password
+        }
+
+        try:
+            res = service.users().insert(body=user_body).execute()
+            print(f"Successfully created Google user: {res.get('primaryEmail')}")
+            return True, None
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "alreadyexists" in error_msg.replace(" ", ""):
+                return False, "This email already exists in Google Workspace."
+
+            print(f"Google Directory API Error (Create User): {e}")
+            return False, str(e)
