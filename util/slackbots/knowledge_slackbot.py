@@ -77,7 +77,7 @@ def _easter_egg_response(question_raw: str):
         "hello :P",
         "heyyy",
         "hi there",
-        "what’s up",
+        "what's up",
         "howdy",
         "yo",
         "hey hey",
@@ -87,9 +87,38 @@ def _easter_egg_response(question_raw: str):
     if q in greeting_triggers:
         return random.choice(greeting_responses)
 
+    if q == "tell me a joke":
+        jokes = [
+            "Why don't scientists trust atoms? Because they make up everything.",
+            "I told my friend 10 jokes to make him laugh. Sadly, no pun in ten did.",
+            "Why did the scarecrow win an award? Because he was outstanding in his field.",
+            "I'm reading a book about anti-gravity. It's impossible to put down.",
+            "Why don't skeletons fight each other? They don't have the guts.",
+            "What do you call fake spaghetti? An impasta.",
+            "Why did the math book look sad? Because it had too many problems.",
+            "I used to play piano by ear, but now I use my hands.",
+            "Why did the golfer bring two pairs of pants? In case he got a hole in one.",
+            "What do you call cheese that isn't yours? Nacho cheese.",
+            "Why did the coffee file a police report? It got mugged.",
+            "Why don't eggs tell jokes? They'd crack each other up.",
+            "What did one wall say to the other wall? I'll meet you at the corner.",
+            "Why can't your nose be 12 inches long? Because then it would be a foot.",
+            "Why did the bicycle fall over? Because it was two tired.",
+            "What did the ocean say to the beach? Nothing, it just waved.",
+            "Why did the student eat his homework? Because the teacher said it was a piece of cake.",
+            "What kind of tree fits in your hand? A palm tree.",
+            "Why don't oysters donate to charity? Because they're shellfish.",
+            "I asked the librarian if the library had books about paranoia. She whispered, 'They're right behind you.'",
+        ]
+        return random.choice(jokes)
+
     exact = {
         "good bot": "thank u :)",
         "bad bot": "sorry :(",
+        "ill": "INI",
+        "who are you": "I am batman",
+        "what is the meaning of life": "42",
+        "what is love": "baby don't hurt me",
     }
 
     return exact.get(q)
