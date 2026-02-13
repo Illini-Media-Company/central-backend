@@ -1,0 +1,897 @@
+{# 
+Created by Jacob Slabosz on Jan. 25, 2026
+Last modified Jan. 28, 2026 
+#}
+
+{#
+A macro for a form to add a new employee position relation.
+Note that this macro cannot be called within another form tag. It is a full-
+screen popup that can be placed anywhere in the HTML file and will display with
+absolute position. If employee_id is defined, position_id should be left as none,
+and vice versa. All other arguments are required. Show this form by having a 
+button trigger the emsRelationAddShowForm() function.
+#}
+{% import "macros/form.html" as form %}
+
+{% macro ems_relation_add(
+    employee_id, 
+    position_id,
+    employee_choices, 
+    position_choices, 
+    departure_categories,
+    depart_reasons_vol,
+    depart_reasons_invol,
+    depart_reasons_admin
+) %}
+    <style>
+        #ems-relation-add-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+
+            background-color: rgba(255, 255, 255, 0.8);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9996;
+        }
+
+        .ems-relation-add-container {
+            background-color: var(--main-bg-color);
+            border-radius: var(--main-border-radius);
+            box-shadow: var(--main-box-shadow);
+
+            text-align: center;
+
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+
+            padding: 1rem;
+            max-width: 80%;
+        }
+
+        .ems-relation-add-close-button {
+            border: none;
+            background-color: inherit;
+            color: inherit;
+        }
+
+        .ems-relation-add-button-container {
+            display: flex;
+            flex-direction: row;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .ems-relation-add-form-row {
+            flex-direction: column;
+            align-items: flex-start;
+            flex: 1 1 5rem;
+            gap: 0.25rem;
+        }
+
+        .ems-relation-add-form-row.grow {
+            flex: 1;
+        }
+
+        .ems-relation-add-form-row.grow .select-input {
+            width: -webkit-fill-available;
+        }
+
+        .input-readonly select {
+            pointer-events: none;
+            background-color: var(--main-lt-gray-color) !important;
+            cursor: not-allowed;
+            user-select: none;
+        }
+
+        .ems-relation-add-form-row.shrink {
+            flex: 0 auto;
+        }
+
+        #ems-relation-add-depart-container {
+            display: none;
+        }
+    </style>
+
+    <div id="ems-relation-add-screen">
+        <div class="ems-relation-add-container">
+
+            {# Header #}
+            <div class="section-header" style="padding: 0; gap: 1rem;">
+                <h3 style="margin-bottom: 0">Connect Position to Employee</h3>
+                <button type="button" class="ems-relation-add-close-button" onclick="emsRelationAddHideForm()">
+                    <i class="bi bi-x-circle"></i>
+                </button>
+            </div>
+
+            <hr style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+
+            {# Form #}
+            {% call form.form(id="relationAddForm", enctype="application/x-www-form-urlencoded", on_submit="return emsRelationAddSubmit(event)") %}
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    {# Position/Employee Selection #}
+                    <div style="display: flex; flex-direction: row; gap: 0.5rem;">
+                        {# Position Selection #}
+                        {% if employee_id %}
+                            {# Disabled input with the employee's ID #}
+                            {{ form.select_input( 
+                                name="ems-relation-add_employee_id",
+                                label="Employee",
+                                options=employee_choices,
+                                required=false,
+                                initial_val=employee_id,
+                                class="ems-relation-add-form-row grow input-readonly"
+                            ) }}
+
+                            {# Position #}
+                            {{ form.select_input( 
+                                name="ems-relation-add_position_id",
+                                label="Position",
+                                options=position_choices,
+                                required=true,
+                                class="ems-relation-add-form-row grow"
+                            ) }}
+                        {% endif %}
+
+                        {# Employee Selection #}
+                        {% if position_id %}
+                            {# Employee #}
+                            {{ form.select_input( 
+                                name="ems-relation-add_employee_id",
+                                label="Employee",
+                                options=employee_choices,
+                                required=true,
+                                class="ems-relation-add-form-row grow"
+                            ) }}
+
+                            {# Disabled input with the position's ID #}
+                            {{ form.select_input( 
+                                name="ems-relation-add_position_id",
+                                label="Position",
+                                options=position_choices,
+                                required=false,
+                                initial_val=position_id,
+                                class="ems-relation-add-form-row grow input-readonly"
+                            ) }}
+                        {% endif %}
+                    </div>
+
+                    <div style="display: flex; flex-direction: row; gap: 0.5rem;">
+                        {# Start Date #}
+                        {{ form.text_input( 
+                            name="ems-relation-add_start_date",
+                            label="Start Date",
+                            alt_type="date",
+                            required=true,
+                            class="ems-relation-add-form-row"
+                        ) }}
+
+                        {# Toggle #}
+                        {{ form.switch_input(
+                            name="ems-relation-add_show_depart",
+                            label="Employee no longer in position",
+                            class="ems-relation-add-form-row shrink"
+                        ) }}
+                    </div>
+
+                    {# Only displayed if position not current #}
+                    <div id="ems-relation-add-depart-container">
+                        <div style="display: flex; flex-direction: row; gap: 0.5rem;">
+                            {# End Date #}
+                            {{ form.text_input( 
+                                name="ems-relation-add_end_date",
+                                label="End Date",
+                                alt_type="date",
+                                required=false,
+                                class="ems-relation-add-form-row"
+                            ) }}
+
+                            {# Departure Category #}
+                            {{ form.select_input( 
+                                name="ems-relation-add_departure_category",
+                                label="Departure Category",
+                                options=departure_categories,
+                                required=false,
+                                class="ems-relation-add-form-row"
+                            ) }}
+
+                            {# Departure Reasons #}
+                            <div>
+                                {# Departure Reason Voluntary #}
+                                {{ form.select_input( 
+                                    name="ems-relation-add_departure_reason_vol",
+                                    label="Departure Reason",
+                                    options=depart_reasons_vol,
+                                    required=false,
+                                    class="ems-relation-add-form-row"
+                                ) }}
+
+                                {# Departure Reason Involuntary #}
+                                {{ form.select_input( 
+                                    name="ems-relation-add_departure_reason_invol",
+                                    label="Departure Reason",
+                                    options=depart_reasons_invol,
+                                    required=false,
+                                    class="ems-relation-add-form-row"
+                                ) }}
+
+                                {# Departure Reason Administrative #}
+                                {{ form.select_input( 
+                                    name="ems-relation-add_departure_reason_admin",
+                                    label="Departure Reason",
+                                    options=depart_reasons_admin,
+                                    required=false,
+                                    class="ems-relation-add-form-row"
+                                ) }}
+                            </div>
+                        </div>
+
+                        {{ form.textarea_input( 
+                            name="ems-relation-add_departure_notes",
+                            label="Departure Notes",
+                            required=false,
+                            class="ems-relation-add-form-row"
+                        ) }}
+                    </div>
+
+                    {# Submit Button #}
+                    <div class="ems-relation-add-button-container">
+                        {{ form.submit_button(text="Submit", label="ems_relation_add_submit_button") }}
+                    </div>
+                </div>
+            {% endcall %}
+        </div>
+    </div>
+
+    <script>
+
+        window.addEventListener('load', () => {
+            const deptReasonVol = document.getElementById("formfield-ems-relation-add_departure_reason_vol");
+            const deptReasonInvol = document.getElementById("formfield-ems-relation-add_departure_reason_invol");
+            const deptReasonAdmin = document.getElementById("formfield-ems-relation-add_departure_reason_admin");
+
+            deptReasonVol.style.display = "none";
+            deptReasonInvol.style.display = "none";
+            deptReasonAdmin.style.display = "none";
+
+            // Show departure options when toggle is checked
+            const toggleDepart = document.getElementById("ems-relation-add_show_depart");
+            toggleDepart.addEventListener("change", () => {
+                const departContainer = document.getElementById("ems-relation-add-depart-container");
+
+                if (toggleDepart.checked) {
+                    departContainer.style.display = "block";
+                } else {
+                    departContainer.style.display = "none";
+                }
+            });
+
+            // Event listener to show departure reasons
+            const deptCategory = document.getElementById("ems-relation-add_departure_category");
+            deptCategory.addEventListener("change", () => {
+                input = deptCategory.value;
+
+                if (input == "Voluntary") {
+                    deptReasonVol.style.display = "flex";
+                    deptReasonInvol.style.display = "none";
+                    deptReasonAdmin.style.display = "none";
+                } else if  (input == "Involuntary") {
+                    deptReasonVol.style.display = "none";
+                    deptReasonInvol.style.display = "flex";
+                    deptReasonAdmin.style.display = "none";
+                } else if (input == "Administrative") {
+                    deptReasonVol.style.display = "none";
+                    deptReasonInvol.style.display = "none";
+                    deptReasonAdmin.style.display = "flex";
+                }
+            });
+        });
+
+        // Show the form
+        function emsRelationAddShowForm() {
+            const alertScreen  = document.getElementById("ems-relation-add-screen");
+            alertScreen.style.display = "flex";
+        }
+
+        // Close button
+        function emsRelationAddHideForm() {
+            const alertScreen  = document.getElementById("ems-relation-add-screen");
+            alertScreen.style.display = "none";
+        }
+
+        // Submit button
+        async function emsRelationAddSubmit(event) {
+            event.preventDefault();
+            console.log("Submitting...");
+
+            showLoading("Creating Relation...");
+
+            const formData = new FormData(event.target);
+
+            console.log(Object.fromEntries(Array.from(formData.entries())))
+
+            const formEntries = Object.fromEntries(
+                Array.from(formData.entries()).filter(([key, value]) => value !== "")
+            );
+
+            const prefix = "ems-relation-add_";
+            const cleanedEntries = Object.fromEntries(
+                Object.entries(formEntries).map(([key, value]) => {
+                    const newKey = key.startsWith(prefix) ? key.replace(prefix, "") : key;
+                    return [newKey, value];
+                })
+            );
+
+            // Consolidate departure reasons
+            const reason = cleanedEntries.departure_reason_vol || 
+                        cleanedEntries.departure_reason_invol || 
+                        cleanedEntries.departure_reason_admin;
+
+            if (reason) {
+                cleanedEntries["departure_reason"] = reason;
+            }
+
+            // Cleanup temporary keys and logic toggles
+            const keysToRemove = ['show_depart', 'departure_reason_vol', 'departure_reason_invol', 'departure_reason_admin'];
+            
+            // Check if user changed mind
+            const isDeparted = document.getElementById("ems-relation-add_show_depart").checked;
+            if (!isDeparted) {
+                const departKeys = ['end_date', 'departure_category', 'departure_reason', 'departure_notes'];
+                departKeys.forEach(k => keysToRemove.push(k));
+            }
+
+            keysToRemove.forEach(k => delete cleanedEntries[k]);
+
+            console.log(cleanedEntries)
+
+            // Send the data to the backend endpoint
+            let endpoint = "/ems/api/relation/create";
+            const payload = {
+                _csrf_token: "{{ csrf_token() }}",
+                ...cleanedEntries,
+            }
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            // Check if it was successful
+            if (response.status === 200) {
+                // Trigger a reload of the window
+                sessionStorage.setItem("infoBarMessage", "Relation successfully created."); // Safe so we can display after reload
+                window.location.reload();
+            } else {
+                // Alert of the error
+                console.log("Creating the relation failed!");
+
+                try {
+                    const data = await response.json();
+                    const message = data.error || "An unknown error occurred.";
+
+                    console.error(message);
+                    hideLoading();
+                    await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+                } catch (err) {
+                    const fallback = await response.text();
+                    hideLoading();
+                    await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+                }
+            }
+        }
+    </script>
+{% endmacro %}
+
+
+{#
+This file defines a macro for a form to modify an employee position relation.
+Note that this macro cannot be called within another form tag. It is a full-
+screen popup that can be placed anywhere in the HTML file and will display with
+absolute position. All arguments are required. Show this form by having a 
+button trigger the emsRelationModifyShowForm() function and passing the relation's
+UID as the only argument.
+#}
+{% macro ems_relation_modify(
+    employee_id, 
+    position_id,
+    employee_choices, 
+    position_choices,
+    departure_categories,
+    depart_reasons_vol,
+    depart_reasons_invol,
+    depart_reasons_admin
+) %}
+    <style>
+        #ems_relation_modify-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+
+            background-color: rgba(255, 255, 255, 0.8);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9995;
+        }
+
+        .ems_relation_modify-container {
+            background-color: var(--main-bg-color);
+            border-radius: var(--main-border-radius);
+            box-shadow: var(--main-box-shadow);
+
+            text-align: center;
+
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+
+            padding: 1rem;
+            max-width: 80%;
+        }
+
+        .ems_relation_modify-close-button {
+            border: none;
+            background-color: inherit;
+            color: inherit;
+        }
+
+        .ems_relation_modify-button-container {
+            display: flex;
+            flex-direction: row;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .ems_relation_modify-form-row {
+            flex-direction: column;
+            align-items: flex-start;
+            flex: 1 1 5rem;
+            gap: 0.25rem;
+        }
+
+        .ems_relation_modify-form-row.grow {
+            flex: 1;
+        }
+
+        .ems_relation_modify-form-row.grow .select-input {
+            width: -webkit-fill-available;
+        }
+
+        .ems_relation_modify-form-row.shrink {
+            flex: 0 auto;
+        }
+
+        #ems_relation_modify-depart-container {
+            display: none;
+        }
+    </style>
+
+    <div id="ems_relation_modify-screen">
+        <div class="ems_relation_modify-container">
+
+            {# Header #}
+            <div class="section-header" style="padding: 0; gap: 1rem;">
+                <h3 style="margin-bottom: 0">Connect Position to Employee</h3>
+                <button type="button" class="ems_relation_modify-close-button" onclick="emsRelationModifyHideForm()">
+                    <i class="bi bi-x-circle"></i>
+                </button>
+            </div>
+
+            <hr style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+
+            {# Form #}
+            {% call form.form(id="relationAddForm", enctype="application/x-www-form-urlencoded", on_submit="return emsRelationModifySubmit(event)") %}
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <div style="display: flex; flex-direction: row; gap: 0.5rem;">
+                        {# Disabled input with the employee's ID #}
+                        {{ form.select_input( 
+                            name="ems_relation_modify_employee_id",
+                            label="Employee",
+                            options=employee_choices,
+                            required=false,
+                            disabled=true,
+                            initial_val=employee_id,
+                            class="ems_relation_modify-form-row grow"
+                        ) }}
+
+                        {# Disabled input with the position's ID #}
+                        {{ form.select_input( 
+                            name="ems_relation_modify_position_id",
+                            label="Position",
+                            options=position_choices,
+                            required=false,
+                            disabled=true,
+                            class="ems_relation_modify-form-row grow"
+                        ) }}
+                    </div>
+
+                    <div style="display: flex; flex-direction: row; gap: 0.5rem;">
+                        {# Start Date #}
+                        {{ form.text_input( 
+                            name="ems_relation_modify_start_date",
+                            label="Start Date",
+                            alt_type="date",
+                            required=true,
+                            class="ems_relation_modify-form-row"
+                        ) }}
+
+                        {# Toggle #}
+                        {{ form.switch_input(
+                            name="ems_relation_modify_show_depart",
+                            label="Employee no longer in position",
+                            class="ems_relation_modify-form-row shrink"
+                        ) }}
+                    </div>
+
+                    {# Only displayed if position not current #}
+                    <div id="ems_relation_modify-depart-container">
+                        <div style="display: flex; flex-direction: row; gap: 0.5rem;">
+                            {# End Date #}
+                            {{ form.text_input( 
+                                name="ems_relation_modify_end_date",
+                                label="End Date",
+                                alt_type="date",
+                                required=false,
+                                class="ems_relation_modify-form-row"
+                            ) }}
+
+                            {# Departure Category #}
+                            {{ form.select_input( 
+                                name="ems_relation_modify_departure_category",
+                                label="Departure Category",
+                                options=departure_categories,
+                                required=false,
+                                class="ems_relation_modify-form-row"
+                            ) }}
+
+                            {# Departure Reasons #}
+                            <div>
+                                {# Departure Reason Voluntary #}
+                                {{ form.select_input( 
+                                    name="ems_relation_modify_departure_reason_vol",
+                                    label="Departure Reason",
+                                    options=depart_reasons_vol,
+                                    required=false,
+                                    class="ems_relation_modify-form-row"
+                                ) }}
+
+                                {# Departure Reason Involuntary #}
+                                {{ form.select_input( 
+                                    name="ems_relation_modify_departure_reason_invol",
+                                    label="Departure Reason",
+                                    options=depart_reasons_invol,
+                                    required=false,
+                                    class="ems_relation_modify-form-row"
+                                ) }}
+
+                                {# Departure Reason Administrative #}
+                                {{ form.select_input( 
+                                    name="ems_relation_modify_departure_reason_admin",
+                                    label="Departure Reason",
+                                    options=depart_reasons_admin,
+                                    required=false,
+                                    class="ems_relation_modify-form-row"
+                                ) }}
+                            </div>
+                        </div>
+
+                        {{ form.textarea_input( 
+                            name="ems_relation_modify_departure_notes",
+                            label="Departure Notes",
+                            required=false,
+                            class="ems_relation_modify-form-row"
+                        ) }}
+                    </div>
+
+                    {# Submit Button #}
+                    <div class="ems_relation_modify-button-container">
+                        <button onclick="emsRelationModifyDelete()" type="button" class="button-secondary">
+                            <i class="bi bi-exclamation-triangle"></i>&nbsp;&nbsp;Permanently Delete
+                        </button>
+                        {{ form.submit_button(text="Save", label="ems_relation_modify_submit_button") }}
+                    </div>
+                </div>
+            {% endcall %}
+        </div>
+    </div>
+
+    <script>
+
+        let emsRelationModifyRelationID = 0;
+
+        window.addEventListener('load', () => {
+            const deptReasonVol = document.getElementById("formfield-ems_relation_modify_departure_reason_vol");
+            const deptReasonInvol = document.getElementById("formfield-ems_relation_modify_departure_reason_invol");
+            const deptReasonAdmin = document.getElementById("formfield-ems_relation_modify_departure_reason_admin");
+
+            deptReasonVol.style.display = "none";
+            deptReasonInvol.style.display = "none";
+            deptReasonAdmin.style.display = "none";
+
+            // Show departure options when toggle is checked
+            const toggleDepart = document.getElementById("ems_relation_modify_show_depart");
+            toggleDepart.addEventListener("change", () => {
+                const departContainer = document.getElementById("ems_relation_modify-depart-container");
+
+                if (toggleDepart.checked) {
+                    departContainer.style.display = "block";
+                } else {
+                    departContainer.style.display = "none";
+                }
+            });
+
+            // Event listener to show departure reasons
+            const deptCategory = document.getElementById("ems_relation_modify_departure_category");
+            deptCategory.addEventListener("change", () => {
+                input = deptCategory.value;
+
+                if (input == "Voluntary") {
+                    deptReasonVol.style.display = "flex";
+                    deptReasonInvol.style.display = "none";
+                    deptReasonAdmin.style.display = "none";
+                } else if  (input == "Involuntary") {
+                    deptReasonVol.style.display = "none";
+                    deptReasonInvol.style.display = "flex";
+                    deptReasonAdmin.style.display = "none";
+                } else if (input == "Administrative") {
+                    deptReasonVol.style.display = "none";
+                    deptReasonInvol.style.display = "none";
+                    deptReasonAdmin.style.display = "flex";
+                }
+            });
+        });
+
+        // Show the form
+        async function emsRelationModifyShowForm(relation_uid) {
+            showLoading("Loading...");
+            
+            try {
+                const response = await fetch(`/ems/api/relation/${relation_uid}/get`);
+                if (!response.ok) {
+                    showTextAlert("Error", "Failed to fetch data", "Dismiss")
+                    return;
+                }
+                
+                const data = await response.json();
+
+                const fieldMap = {
+                    'employee_id': 'ems_relation_modify_employee_id',
+                    'position_id': 'ems_relation_modify_position_id',
+                    'start_date': 'ems_relation_modify_start_date',
+                    'end_date': 'ems_relation_modify_end_date',
+                    'departure_category': 'ems_relation_modify_departure_category',
+                    'departure_notes': 'ems_relation_modify_departure_notes'
+                };
+
+                // Autofill standard fields
+                for (const [key, id] of Object.entries(fieldMap)) {
+                    const element = document.getElementById(id);
+                    if (element && data[key]) {
+                        // If it's a date, ensure format is YYYY-MM-DD
+                        if (element.type === 'date') {
+                            const dateObj = new Date(data[key]);
+            
+                            const year  = dateObj.getUTCFullYear();
+                            const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+                            const day   = String(dateObj.getUTCDate()).padStart(2, '0');
+                            
+                            element.value = `${year}-${month}-${day}`;
+                        } else {
+                            element.value = data[key];
+                        }
+                    }
+                }
+
+                // Handle the Departure Toggle and logic
+                const departSwitch = document.getElementById("ems_relation_modify_show_depart");
+                const departContainer = document.getElementById("ems_relation_modify-depart-container");
+                
+                if (data.end_date) {
+                    departSwitch.checked = true;
+                    departContainer.style.display = "block";
+                    
+                    // Handle the specific departure reason select based on category
+                    const category = data.departure_category;
+                    if (category) {
+                        // Map Category to the specific reason select ID
+                        const reasonMap = {
+                            'Voluntary': 'ems_relation_modify_departure_reason_vol',
+                            'Involuntary': 'ems_relation_modify_departure_reason_invol',
+                            'Administrative': 'ems_relation_modify_departure_reason_admin'
+                        };
+                        
+                        const reasonSelectId = reasonMap[category];
+                        const reasonSelect = document.getElementById(reasonSelectId);
+                        
+                        if (reasonSelect) {
+                            reasonSelect.parentElement.parentElement.style.display = "flex";
+                            reasonSelect.value = data.departure_reason;
+                        }
+                    }
+                } else {
+                    departSwitch.checked = false;
+                    departContainer.style.display = "none";
+                }
+
+                // Show the form
+                const alertScreen = document.getElementById("ems_relation_modify-screen");
+                alertScreen.style.display = "flex";
+
+                emsRelationModifyRelationID = relation_uid;
+
+            } catch (error) {
+                console.error(error);
+                showTextAlert("Error", "Failed to fetch data", "Dismiss")
+                return;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Close button
+        function emsRelationModifyHideForm() {
+            const alertScreen  = document.getElementById("ems_relation_modify-screen");
+            alertScreen.style.display = "none";
+        }
+
+        // Submit button
+        async function emsRelationModifySubmit(event) {
+            event.preventDefault();
+            console.log("Saving...");
+
+            showLoading("Saving Relation...");
+
+            const formData = new FormData(event.target);
+
+            const formEntries = Object.fromEntries(
+                Array.from(formData.entries()).filter(([key, value]) => value !== "")
+            );
+
+            const prefix = "ems_relation_modify_";
+            const cleanedEntries = Object.fromEntries(
+                Object.entries(formEntries).map(([key, value]) => {
+                    const newKey = key.startsWith(prefix) ? key.replace(prefix, "") : key;
+                    return [newKey, value];
+                })
+            );
+
+            // Consolidate departure reasons
+            const reason = cleanedEntries.departure_reason_vol || 
+                        cleanedEntries.departure_reason_invol || 
+                        cleanedEntries.departure_reason_admin;
+
+            if (reason) {
+                cleanedEntries["departure_reason"] = reason;
+            }
+
+            // Cleanup temporary keys and logic toggles
+            const keysToRemove = ['show_depart', 'departure_reason_vol', 'departure_reason_invol', 'departure_reason_admin'];
+            
+            // Check if user changed mind
+            const isDeparted = document.getElementById("ems_relation_modify_show_depart").checked;
+            if (!isDeparted) {
+                const departKeys = ['end_date', 'departure_category', 'departure_reason', 'departure_notes'];
+                departKeys.forEach(field => {
+                    cleanedEntries[field] = null;
+                });
+            }
+
+            keysToRemove.forEach(k => delete cleanedEntries[k]);
+
+            console.log(cleanedEntries)
+
+            // Send the data to the backend endpoint
+            let endpoint = `/ems/api/relation/${emsRelationModifyRelationID}/modify`;
+            const payload = {
+                _csrf_token: "{{ csrf_token() }}",
+                ...cleanedEntries,
+            }
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            // Check if it was successful
+            if (response.status === 200) {
+                // Trigger a reload of the window
+                sessionStorage.setItem("infoBarMessage", "Relation successfully modified."); // Safe so we can display after reload
+                window.location.reload();
+            } else {
+                // Alert of the error
+                console.log("Modifying the relation failed!");
+
+                try {
+                    const data = await response.json();
+                    const message = data.error || "An unknown error occurred.";
+
+                    console.error(message);
+                    hideLoading();
+                    await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+                } catch (err) {
+                    const fallback = await response.text();
+                    hideLoading();
+                    await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+                }
+            }
+        }
+    
+        // Delete button
+        async function emsRelationModifyDelete() {
+            console.log("Deleting...");
+
+            result = await showButtonAlert(
+                header="WARNING: Delete Relation?", 
+                body="Are you sure you want to permanently delete the relationship \
+                between this employee and position? This action cannot be undone, and \
+                the position will be permanently removed from the employee's profile. \
+                If the employee is no longer in this position, modify to add an end date.",
+                alertButtonText="Yes, permanently delete", 
+                cancelButtonText="Cancel"
+            )
+
+            if (!result) {
+                hideLoading();
+                return;
+            }
+
+            showLoading("Deleting Relation...");
+
+            // Send the data to the backend endpoint
+            let endpoint = `/ems/api/relation/${emsRelationModifyRelationID}/delete`;
+            const payload = {
+                _csrf_token: "{{ csrf_token() }}",
+            }
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            // Check if it was successful
+            if (response.status === 200) {
+                // Trigger a reload of the window
+                sessionStorage.setItem("infoBarMessage", `Relation successfully deleted.`); // Save so we can display after reload
+                window.location.reload();
+            } else {
+                // Alert of the error
+                console.log("Deleting the relation failed!");
+
+                try {
+                    const data = await response.json();
+                    const message = data.error || "An unknown error occurred.";
+
+                    console.error(message);
+                    hideLoading();
+                    await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+                } catch (err) {
+                    const fallback = await response.text();
+                    hideLoading();
+                    await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+                }
+            }
+        }
+
+    </script>
+{% endmacro %}
+

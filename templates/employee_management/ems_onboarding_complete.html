@@ -1,0 +1,66 @@
+{% extends 'employee_management/ems_base.html' %}
+
+{% block ems_title %}
+    Onboarding Complete
+{% endblock %}
+
+{% block ems_extra_head %}
+    <link rel="stylesheet" href="/static/macros/form.css">
+
+    <style>
+        .ems-nav-container {
+            display: none;
+        }
+
+        #main-container {
+            display: flex;
+            flex-direction: row;
+            gap: 0.5rem;
+        }
+
+        .button-form {
+            text-align: center;
+        }
+
+        @media (max-width: 480px) {
+            #main-container {
+                flex-direction: column;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% import "macros/form.html" as form %}
+{% include "partials/loading.html" %}
+{% include "partials/text_alert.html" %}
+{% include "partials/info_bar.html" %}
+
+{% block ems_content %}
+<div style="display: flex; flex-direction: row; gap: 2rem; align-items: center;">
+    <h2>Onboarding Complete</h2>
+</div>
+
+<hr>
+
+<section class="section-container" id="main-container">
+    <div class="inner-container" style="padding: 0.75rem;">
+        <div style="text-align: center;">
+            <p style="margin: 1rem 0;">
+                The onboarding process is now complete. You may close this page.
+            </p>
+        </div>
+    </div>
+
+</section>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const msg = sessionStorage.getItem("infoBarMessage");
+        if (msg) {
+            showInfoBar(msg);
+            sessionStorage.removeItem("infoBarMessage");
+        }
+    });
+</script>
+
+{% endblock %}

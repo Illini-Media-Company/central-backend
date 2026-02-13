@@ -29,7 +29,7 @@ ID. To access a field within a form, access the form, then append:
 where xyz should be replaced with the name of the field.
 
 Created by Jacob Slabosz on Oct. 2, 2025
-Last modified Oct. 2, 2025 
+Last modified Jan. 28, 2026
 #}
 
 {# Macro to make a form (Jinja) #}
@@ -37,6 +37,34 @@ Last modified Oct. 2, 2025
     <form class="form {{ class }}" id="{{ id }}" enctype="{{ enctype }}" onsubmit="{{ on_submit }}">
         {{ caller() }}
     </form>
+{% endmacro %}
+
+{#
+Macro to create a switch input inside of a form (Jinja)
+Functions as a checkbox.
+name and label are strings.
+class is optional and is the name of a class.
+Subtext is optional.
+#}
+{% macro switch_input(name, label, class, subtext) %}
+    <div class="form-row {{ class }}" id="formfield-{{ name }}">
+        <div>
+            <label for="{{ name }}" class="field-label">
+                {{ label }}
+            </label>
+            {% if subtext %}
+                <p class="subtext">{{ subtext }}</p>
+            {% endif %}
+        </div>
+        <label class="form-switch">
+            <input 
+                id="{{ name }}"
+                name="{{ name }}"
+                type="checkbox"
+            >
+            <span class="form-slider form-round"></span>
+        </label>
+    </div>
 {% endmacro %}
 
 {# 
@@ -48,11 +76,14 @@ alt_type optionally lets you choose other HTML input
     types based on text (like 'url', 'date', 'datetime-local')
 maxlength is the maximum length of the input in characters
 #}
-{% macro text_input(name, label, required, class, placeholder, subtext, alt_type, maxlength, pattern) %}
+{% macro text_input(name, label, required, class, placeholder, subtext, alt_type, maxlength, pattern, initial_val) %}
     <div class="form-row {{ class }}" id="formfield-{{ name }}">
         <div>
             <label for="{{ name }}" class="field-label">
                 {{ label }}
+                {% if required %}
+                    <span title="Required field" style="color: var(--main-accent-color);">*</span>
+                {% endif %}
             </label>
             {% if subtext %}
                 <p class="subtext">{{ subtext }}</p>
@@ -83,6 +114,10 @@ maxlength is the maximum length of the input in characters
             {% if required %}
                 required
             {% endif %}
+
+            {% if initial_val %}
+                value = "{{ initial_val }}"
+            {% endif %}
         >
     </div>
 {% endmacro %}
@@ -102,6 +137,9 @@ option_container is the name of a class to override
         <div>
             <label for="{{ name }}" class="field-label">
                 {{ label }}
+                {% if required %}
+                    <span title="Required field" style="color: var(--main-accent-color);">*</span>
+                {% endif %}
             </label>
             {% if subtext %}
                 <p class="subtext">{{ subtext }}</p>
@@ -135,23 +173,37 @@ Macro to create a select input inside of a form (Jinja)
 name and label are strings, required is boolean.
 class is optional and is the name of a class.
 Subtext is optional.
-options is a list of strings. 
+options is a list of strings. It can also be a list of dicts
+    containing `value` and `name` keys
+no_default is a boolean. When true, will not display "Select..."
 #}
-{% macro select_input(name, label, required, class, subtext, options) %}
+{% macro select_input(name, label, required, class, subtext, options, no_default, initial_val, disabled) %}
     <div class="form-row {{ class }}" id="formfield-{{ name }}">
         <div>
             <label for="{{ name }}" class="field-label">
                 {{ label }}
+                {% if required %}
+                    <span title="Required field" style="color: var(--main-accent-color);">*</span>
+                {% endif %}
             </label>
             {% if subtext %}
                 <p class="subtext">{{ subtext }}</p>
             {% endif %}
         </div>
+
         <div class="select-input">
-            <select name="{{ name }}" id="{{ name }}">
-                <option value="" disabled selected>Select...</option>
+            <select name="{{ name }}" id="{{ name }}" {% if multiple %}multiple{% endif %} {% if disabled %}disabled{% endif %}>
+                {% if no_default %}
+                    <option value="" selected></option>
+                {% else %}
+                    <option value="" disabled selected>Select...</option>
+                {% endif %}
                 {% for option in options %}
-                    <option value="{{ option }}">{{ option }}</option>
+                    {% if option is mapping %}
+                        <option value="{{ option.value }}" {% if option.value == initial_val %}selected{% endif %}>{{ option.name }}</option>
+                    {% else %}
+                        <option value="{{ option }}" {% if option == initial_val %}selected{% endif %}>{{ option }}</option>
+                    {% endif %}
                 {% endfor %}
             </select>
             <i class="bi bi-caret-down-fill select-dropdown-icon"></i>
@@ -159,11 +211,54 @@ options is a list of strings.
     </div>
 {% endmacro %}
 
-{% macro textarea_input(name, label, required, class, placeholder, subtext, maxlength) %}
+{# 
+NOT COMPLETE 
+#}
+{% macro multiple_select_input(name, label, required, class, subtext, options, no_default, initial_vals) %}
+    {% set selected_list = initial_vals if initial_vals is iterable and initial_vals is not string else [] %}
     <div class="form-row {{ class }}" id="formfield-{{ name }}">
         <div>
             <label for="{{ name }}" class="field-label">
                 {{ label }}
+                {% if required %}
+                    <span title="Required field" style="color: var(--main-accent-color);">*</span>
+                {% endif %}
+            </label>
+            {% if subtext %}
+                <p class="subtext">{{ subtext }}</p>
+            {% endif %}
+        </div>
+
+        <div class="form-multiple-select">
+            {% for option in options %}
+                {% set val = option.value if option is mapping else option %}
+                {% set display = option.name if option is mapping else option %}
+                {% set is_selected = val|string in selected_list|map('string') %}
+                
+                <label class="select-option">
+                    <input type="checkbox" name="{{ name }}" value="{{ val }}" 
+                           {% if is_selected %}checked{% endif %} class="hidden-checkbox">
+                    <div class="option-content">
+                        <span class="checkbox-box"></span>
+                        <span class="option-text">{{ display }}</span>
+                    </div>
+                </label>
+            {% endfor %}
+        </div>
+    </div>
+{% endmacro %}
+
+{#
+
+#}
+{% macro textarea_input(name, label, required, class, placeholder, subtext, maxlength, initial_val) %}
+    <div class="form-row {{ class }}" id="formfield-{{ name }}">
+        <div>
+            <label for="{{ name }}" class="field-label">
+                {{ label }}
+                {% if required %}
+                    <span title="Required field" style="color: var(--main-accent-color);">*</span>
+                {% endif %}
             </label>
             {% if subtext %}
                 <p class="subtext">{{ subtext }}</p>
@@ -185,7 +280,7 @@ options is a list of strings.
             {% if required %}
                 required
             {% endif %}
-        ></textarea>
+        >{% if initial_val %}{{ initial_val }}{% endif %}</textarea>
     </div>
 {% endmacro %}
 
@@ -196,3 +291,11 @@ text and label are strings, class is the name of a class
 {% macro submit_button(text, label, class) %}
     <button class="button-primary submit-button {{ class }}" type="submit" id="{{ label }}">{{ text }}</button>
 {% endmacro %}
+
+{#
+Macro to create a file upload feature for a form (Jinja)
+name is the name of an id, type is the filetype that the form is restricted to
+#}
+{% macro file_input(name, type) %}
+    <input type="file" id="{{ name }}" name="{{ name }}" accept="{{ type }}">
+{% endmacro %} 

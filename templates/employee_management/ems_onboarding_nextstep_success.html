@@ -1,0 +1,177 @@
+{% extends 'employee_management/ems_base.html' %}
+
+{% block ems_title %}
+    Onboarding
+{% endblock %}
+
+{% block ems_extra_head %}
+    <link rel="stylesheet" href="/static/macros/form.css">
+
+    <style>
+        .ems-nav-container {
+            display: none;
+        }
+
+        #main-container {
+            display: flex;
+            flex-direction: row;
+            gap: 0.5rem;
+        }
+
+        .button-form {
+            text-align: center;
+        }
+
+        @media (max-width: 640px) {
+            #main-container {
+                flex-direction: column;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% import "macros/form.html" as form %}
+{% include "partials/loading.html" %}
+{% include "partials/text_alert.html" %}
+{% include "partials/info_bar.html" %}
+
+{% block ems_content %}
+<div style="display: flex; flex-direction: row; gap: 2rem; align-items: center;">
+    <h2>Next Steps</h2>
+</div>
+
+<p>
+    Please complete the next steps promptly.
+</p>
+
+<hr>
+
+<section class="section-container" id="main-container">
+    {# Google #}
+    <div class="inner-container" style="padding: 0.75rem;">
+        <div class="section-header">
+            <h3 style="margin-bottom: 0">IMC Google Account</h3>
+        </div>
+        <hr style="margin-top: 1rem;">
+        
+        <div style="text-align: center;">
+            {% if not current_user.is_authenticated or current_user.email != email %}
+            <p>
+                Click the button below and log in using the following credentials:
+            </p>
+            <h4>{{ email }}</h4>
+            <h4>{{ password }}</h4>
+            <a href="{{ url_for('login', state=request.full_path) }}">
+                <button class="button-primary" style="margin: 1rem 0;">
+                    Log In
+                </button>
+            </a>
+            <p>
+                You will be prompted to change your password upon logging in. Take a moment to personalize your 
+                account with a (professional) profile photo and whatever else you would like. Afterwards, please 
+                return to this page.
+            </p>
+            {% else %}
+            <div>
+                <i class="bi bi-check-circle-fill" style="color: var(--green-500); font-size: 2rem;"></i>
+                <h3 style="margin-top: 0.5rem;">Complete!</h3>
+            </div>
+            {% endif %}
+        </div>
+
+        <h4>Note:</h4>
+        <p>
+            Your Illini Media Company Google account is your primary login for most work-relation applications.
+            You <span style="font-weight: 500;">must</span> use this account for all work done for IMC. Employees
+            should not use their personal account or Illinois accounts for work purposes.
+        </p>
+    </div>
+
+    {# Slack #}
+    <div class="inner-container" style="padding: 0.75rem;">
+        <div class="section-header">
+            <h3 style="margin-bottom: 0">Slack</h3>
+        </div>
+        <hr style="margin-top: 1rem;">
+
+        <div style="text-align: center;">
+            <div id="slack-container">
+                <p>
+                    Click the button below, then select "Sign In with Google". 
+                    Use your newly created @illinimedia.com account.
+                </p>
+                <a href="https://thedailyillini.slack.com" target="_blank">
+                    <button class="button-primary" style="margin: 1rem 0;" onclick="completeSlack()">
+                        Log in
+                    </button>
+                </a>
+                <p>
+                    After logging in, follow the instructions provided by Scout, IMC's Slack
+                    helper. Scout will add you to the correct channels.
+                </p>
+                <p>
+                    After this point, all further communication from IMC will occur through Slack.
+                </p>
+            </div>
+            <div id="slack-complete" style="display: none;">
+                <i class="bi bi-check-circle-fill" style="color: var(--green-500); font-size: 2rem;"></i>
+                <h3 style="margin-top: 0.5rem;">Complete!</h3>
+            </div>
+        </div>
+
+        <h4>Note:</h4>
+        <p>
+            Slack is the primary form of communication used by Illini Media Company. All employees are
+            required to check Slack frequently. You are highly encouraged to download the Slack app to
+            your phone and log in using your IMC Google account. Also, please ensure that your notifications
+            are turned on. Slack is also available as a desktop application for computers.
+        </p>
+    </div>
+
+    {# IMC Console #}
+    <div class="inner-container" style="padding: 0.75rem;">
+        <div class="section-header">
+            <h3 style="margin-bottom: 0">IMC Console</h3>
+        </div>
+        <hr style="margin-top: 1rem;">
+
+        <div style="text-align: center;">
+            <h4>
+                Only click the below button once you have logged in to both Google and Slack to complete your onboarding process.
+            </h4>
+            <a href="{{ url_for('ems_routes.ems_onboarding_complete', emp_id=uid) }}">
+                <button class="button-primary" style="margin: 1rem 0;">
+                    Complete Onboarding
+                </button>
+            </a>
+        </div>
+
+        <h4>Note:</h4>
+        <p>
+            The IMC Console serves as a centralized hub for many important work tools, materials
+            and applications. It will look a bit empty now, but once you are done with the onboarding
+            process and have been assigned to your position(s), you'll see it fill up with more useful
+            items.
+        </p>
+    </div>
+</section>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const msg = sessionStorage.getItem("infoBarMessage");
+        if (msg) {
+            showInfoBar(msg);
+            sessionStorage.removeItem("infoBarMessage");
+        }
+    });
+
+    function completeSlack() {
+        const slackText = document.getElementById("slack-container");
+        const slackComplete = document.getElementById("slack-complete");
+
+        slackText.style.display = "none";
+        slackComplete.style.display = "block";
+    }
+</script>
+
+{% endblock %}
