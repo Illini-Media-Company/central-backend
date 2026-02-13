@@ -363,7 +363,7 @@
             ...Object.fromEntries(
                 Array.from(formData.entries()).filter(([key, value]) => value !== "")
             ),
-        }
+        };
 
         const response = await fetch(endpoint, {
             method: 'POST',

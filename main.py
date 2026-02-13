@@ -67,6 +67,7 @@ from util.security import (
     get_google_provider_cfg,
     is_user_in_group,
     update_groups,
+    restrict_to,
 )
 from util.map_point import remove_point
 from util.gcal import get_allstaff_events
@@ -121,7 +122,7 @@ from views.employee_management import get_ems_brand_image_url
 
 # CONFIGURE LOGGING
 LOG_FORMAT = "%(levelname)s | %(filename)s:%(lineno)d | %(funcName)s() | %(message)s"
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format=LOG_FORMAT)
+logging.basicConfig(stream=sys.stdout, level=logging.INFO, format=LOG_FORMAT)
 
 logging.info("Initializing Flask...")
 app = Flask(__name__)
@@ -463,6 +464,7 @@ def callback():
 
 @app.route("/all-users")
 @login_required
+@restrict_to(TOOLS_ADMIN_ACCESS_GROUPS)
 def all_users():
     users = get_all_users()
     return render_template("all_users.html", users=users)

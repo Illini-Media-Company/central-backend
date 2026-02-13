@@ -908,7 +908,7 @@
         const payload = {
             _csrf_token: "{{ csrf_token() }}",
             ...formEntries,
-        }
+        };
 
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -1063,7 +1063,7 @@
         let endpoint = "/ems/api/position/{{ position.uid }}/restore";
         const payload = {
             _csrf_token: "{{ csrf_token() }}",
-        }
+        };
 
         const response = await fetch(endpoint, {
             method: 'POST',

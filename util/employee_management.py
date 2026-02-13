@@ -211,11 +211,9 @@ def validate_csv(csv):
     csv["permanent_zip"] = csv["permanent_zip"].astype(str)
 
     for i, row in csv.iterrows():
-        print(i)
-        try:
-            print(create_employee(row.to_dict()))
-        except Exception as e:
-            raise Exception(f"Successfully uploaded until rows {i+1}; {e}")
+        res = create_employee(row.to_dict())
+        if not isinstance(res, dict):
+            raise Exception(f"Successfully uploaded until rows {i+1}; {res}")
 
 
 def create_employee(data):
