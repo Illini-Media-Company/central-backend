@@ -7,10 +7,8 @@ Last modified Feb. 11, 2026
 """
 
 import base64
-import numpy as np
 import logging
 from flask import render_template
-from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -153,97 +151,6 @@ def send_onboarding_email(to_email: str, first_name: str, onboarding_url: str) -
         return {"ok": True, "message_id": sent.get("id")}
     except HttpError as e:
         return {"ok": False, "error": str(e)}
-
-
-def validate_csv(csv):
-    """
-    Validates CSV uploaded to create multiple employees at once
-
-    Arguments:
-        `csv`: pandas dataframe
-
-    Returns:
-        None
-
-    """
-    required_columns = [
-        "last_name",
-        "first_name",
-        "imc_email",
-        "personal_email",
-        "phone_number",
-        "permanent_address_1",
-        "permanent_city",
-        "permanent_state",
-        "permanent_zip",
-        "status",
-    ]
-    not_req_columns = [
-        "user_uid",
-        "pronouns",
-        "permanent_address_2",
-        "major",
-        "major_2",
-        "major_3",
-        "minor",
-        "minor_2",
-        "minor_3",
-        "birth_date",
-        "payroll_number",
-        "initial_hire_date",
-        "graduation",
-    ]
-    invalid_columns = []
-    missing_columns = []
-    for req_col in required_columns:
-        if req_col not in csv.columns:
-            missing_columns.append(req_col)
-    for col in csv.columns:
-        if col not in not_req_columns and col not in required_columns:
-            invalid_columns.append(col)
-    if len(missing_columns) > 0:
-        raise Exception(f"CSV missing columns: {missing_columns}")
-    if len(invalid_columns) > 0:
-        raise Exception(f"CSV contains invalid columns: {invalid_columns}")
-    # use create API to validate each row
-
-    csv = csv.replace(np.nan, None)
-    csv["permanent_zip"] = csv["permanent_zip"].astype(str)
-
-    for i, row in csv.iterrows():
-        res = create_employee(row.to_dict())
-        if not isinstance(res, dict):
-            raise Exception(f"Successfully uploaded until rows {i+1}; {res}")
-
-
-def create_employee(data):
-    """
-    Used by bulk upload
-    """
-    from db.employee_management import create_employee_card
-
-    date_fields = ["birth_date", "initial_hire_date"]
-
-    for field in date_fields:
-        if data.get(field):
-            # Converts "YYYY-MM-DD" string to a Python date object
-            data[field] = datetime.strptime(data[field], "%Y-%m-%d").date()
-
-    if data.get("payroll_number"):
-        data["payroll_number"] = int(data["payroll_number"])
-
-    if data.get("user_uid"):
-        data["user_uid"] = int(data["user_uid"])
-
-    if data:
-        created = create_employee_card(**data)
-        if not created:
-            raise Exception("An employee already exists with that IMC email")
-        if created == -1:
-            raise Exception("An error occurred while creating the employee.")
-        return "Success!"
-
-    raise Exception("No data was entered. Cannot create employee with no information.")
 
 
 def get_ems_brand_image_url(brand: str) -> str:
