@@ -16,6 +16,9 @@ from db.illordle_word import (
 from util.security import restrict_to
 from util.stories import get_title_from_url
 
+from util.google_analytics import send_ga4_event
+from constants import IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID
+
 
 illordle_routes = Blueprint("illordle_routes", __name__, url_prefix="/illordle")
 
@@ -46,6 +49,15 @@ def list_words():
 @illordle_routes.route("/word/today", methods=["GET"])
 @cross_origin()
 def get_todays_word():
+    # Log in Google Analytics
+    utm_source = request.args.get("utm_source", "none")
+    utm_medium = request.args.get("utm_medium", "none")
+    send_ga4_event(
+        "illordle_word_fetch",
+        IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID,
+        {"utm_source": utm_source, "utm_medium": utm_medium},
+    )
+
     today = datetime.now(tz=ZoneInfo("America/Chicago")).date()
     word = get_word(today)
     if word != None:

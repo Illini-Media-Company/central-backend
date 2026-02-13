@@ -16,6 +16,12 @@ GOOGLE_PROJECT_ID = os.environ.get("DATASTORE_PROJECT_ID", None)
 GOOGLE_MAP_API = os.environ.get("GOOGLE_MAP_API", None)
 FOOD_TRUCK_MAPS_ID = os.environ.get("FOOD_TRUCK_MAPS_ID", None)
 
+# Google Analytics information
+IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID = "G-6V6FSKGBDZ"
+IMC_CONSOLE_GOOGLE_ANALYTICS_KEY = os.environ.get(
+    "IMC_CONSOLE_GOOGLE_ANALYTICS_KEY", None
+)
+
 APPS_SCRIPT_RUNNER_EMAIL = "apps-script-runner@illinimedia.com"
 CONTEND_DOC_AUD = (
     "906651552672-3vsqi0s6ggr50gs1u7chgcn15hqlgg4e.apps.googleusercontent.com"
@@ -245,6 +251,7 @@ TOOLS_ADMIN_ACCESS_GROUPS = [
     "imc-staff-webdev",
     "ceo",
     "student-managers",
+    "professional-staff",
 ]  # Ability to add and modify tools that display on the index page
 
 # Slack channels (used by Slack bot)
