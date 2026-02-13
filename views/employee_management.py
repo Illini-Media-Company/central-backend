@@ -748,14 +748,14 @@ def ems_api_employee_onboard_send():
     Sends the onboarding email and returns an error on failure;
     otherwise redirects back to the EMS employees page.
     """
-    logging.info(
-        f"{current_user.email if current_user else 'unknown user'} sending an onboarding invite to {data.get('email', 'unknown email')}."
-    )
-
     data = (
         request.form.to_dict()
         if request.form
         else (request.get_json(silent=True) or {})
+    )
+
+    logging.info(
+        f"{current_user.email if current_user else 'unknown user'} sending an onboarding invite to {data.get('email', 'unknown email')}."
     )
 
     # Get data
