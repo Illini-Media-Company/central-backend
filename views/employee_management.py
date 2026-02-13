@@ -425,7 +425,7 @@ def ems_onboarding_complete(emp_id):
 
         # Save the employee's Slack ID
         modify_employee_card(
-            uid=employee.uid,
+            uid=employee["uid"],
             slack_id=slack_id,
             onboarding_complete=True,
             status="Active",
