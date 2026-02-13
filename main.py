@@ -58,6 +58,7 @@ from db.all_tools import (
 )
 from db.map_point import get_all_points
 from db.json_store import json_store_set
+from db.employee_management import initialize_ems_settings
 
 ################################################################################
 # UTIL IMPORTS #################################################################
@@ -508,6 +509,10 @@ def logout():
 def yurr():
     return render_template("yurr.html")
 
+
+logging.info("Initializing EMS settings...")
+initialize_ems_settings()
+logging.info("Done initializing EMS settings.")
 
 if __name__ == "__main__":
     if os.environ.get("DATASTORE_EMULATOR_HOST") is None:
