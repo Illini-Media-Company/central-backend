@@ -255,7 +255,7 @@
             _csrf_token: "{{ csrf_token() }}",
             ...formEntries,
             supervisors: newSups,
-        }
+        };
 
         const response = await fetch(endpoint, {
             method: 'POST',

@@ -314,7 +314,7 @@ button trigger the emsRelationAddShowForm() function.
 
             const formData = new FormData(event.target);
 
-            console.log(Object.fromEntries(Array.from(formData.entries())))
+            console.log(Object.fromEntries(Array.from(formData.entries())));
 
             const formEntries = Object.fromEntries(
                 Array.from(formData.entries()).filter(([key, value]) => value !== "")
@@ -349,14 +349,14 @@ button trigger the emsRelationAddShowForm() function.
 
             keysToRemove.forEach(k => delete cleanedEntries[k]);
 
-            console.log(cleanedEntries)
+            console.log(cleanedEntries);
 
             // Send the data to the backend endpoint
             let endpoint = "/ems/api/relation/create";
             const payload = {
                 _csrf_token: "{{ csrf_token() }}",
                 ...cleanedEntries,
-            }
+            };
 
             const response = await fetch(endpoint, {
                 method: 'POST',
@@ -662,7 +662,7 @@ UID as the only argument.
             try {
                 const response = await fetch(`/ems/api/relation/${relation_uid}/get`);
                 if (!response.ok) {
-                    showTextAlert("Error", "Failed to fetch data", "Dismiss")
+                    showTextAlert("Error", "Failed to fetch data", "Dismiss");
                     return;
                 }
                 
@@ -735,7 +735,7 @@ UID as the only argument.
 
             } catch (error) {
                 console.error(error);
-                showTextAlert("Error", "Failed to fetch data", "Dismiss")
+                showTextAlert("Error", "Failed to fetch data", "Dismiss");
                 return;
             } finally {
                 hideLoading();
@@ -792,14 +792,14 @@ UID as the only argument.
 
             keysToRemove.forEach(k => delete cleanedEntries[k]);
 
-            console.log(cleanedEntries)
+            console.log(cleanedEntries);
 
             // Send the data to the backend endpoint
             let endpoint = `/ems/api/relation/${emsRelationModifyRelationID}/modify`;
             const payload = {
                 _csrf_token: "{{ csrf_token() }}",
                 ...cleanedEntries,
-            }
+            };
 
             const response = await fetch(endpoint, {
                 method: 'POST',

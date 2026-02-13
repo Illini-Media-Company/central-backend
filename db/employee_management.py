@@ -275,18 +275,24 @@ class EmployeePositionRelation(ndb.Model):
 
 
 # Set initial default settings
-settings = AppSettings.get_settings()
-if not settings.brands:
-    initial_map = [
-        IMCBrandMapping(name="IMC", slack_channel_id="C08D4RYCL13"),
-        IMCBrandMapping(name="The Daily Illini", slack_channel_id="C04TB2QH65C"),
-        IMCBrandMapping(name="WPGU", slack_channel_id="C0ACRA54EEA"),
-        IMCBrandMapping(name="Illio", slack_channel_id="C0ACX015BM2"),
-        IMCBrandMapping(name="Chambana Eats", slack_channel_id="C0AED1B6UH5"),
-        IMCBrandMapping(name="Illini Content Studio", slack_channel_id="C0AER1Z12FP"),
-    ]
-    settings.brands = initial_map
-    settings.put()
+def initialize_ems_settings():
+    with client.context():
+        settings = AppSettings.get_settings()
+        if not settings.brands:
+            initial_map = [
+                IMCBrandMapping(name="IMC", slack_channel_id="C08D4RYCL13"),
+                IMCBrandMapping(
+                    name="The Daily Illini", slack_channel_id="C04TB2QH65C"
+                ),
+                IMCBrandMapping(name="WPGU", slack_channel_id="C0ACRA54EEA"),
+                IMCBrandMapping(name="Illio", slack_channel_id="C0ACX015BM2"),
+                IMCBrandMapping(name="Chambana Eats", slack_channel_id="C0AED1B6UH5"),
+                IMCBrandMapping(
+                    name="Illini Content Studio", slack_channel_id="C0AER1Z12FP"
+                ),
+            ]
+            settings.brands = initial_map
+            settings.put()
 
 
 @ensure_context

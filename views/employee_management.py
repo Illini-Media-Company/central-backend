@@ -316,8 +316,10 @@ def ems_employee_onboarding_form(emp_id):
 # TEMPLATE — onboarding_nextsteps_success
 @ems_routes.route("/onboarding/nextsteps/login")
 def ems_employee_onboard_nextsteps_success():
+    from util.google_admin import USER_TEMP_PASSWORD
+
     email = request.args.get("email")
-    password = request.args.get("password")
+    password = USER_TEMP_PASSWORD
     uid = request.args.get("uid")
 
     if not email or not password or not uid:
@@ -877,8 +879,6 @@ def ems_api_onboarding_submit(emp_id):
     Public onboarding submit endpoint: validates required fields,
     parses optional birth_date, marks link as used, and saves employee data.
     """
-    from util.google_admin import USER_TEMP_PASSWORD
-
     logging.info(f"Submitting onboarding form for employee ID {emp_id}.")
 
     data = request.get_json(silent=True) or request.form.to_dict() or {}
@@ -1001,7 +1001,6 @@ def ems_api_onboarding_submit(emp_id):
         redirect_url = url_for(
             "ems_routes.ems_employee_onboard_nextsteps_success",
             email=f"{netid}@illinimedia.com",
-            password=USER_TEMP_PASSWORD,
             uid=emp_id,
             _external=True,
         )

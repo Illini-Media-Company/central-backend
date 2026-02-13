@@ -58,6 +58,7 @@ from db.all_tools import (
 )
 from db.map_point import get_all_points
 from db.json_store import json_store_set
+from db.employee_management import initialize_ems_settings
 
 ################################################################################
 # UTIL IMPORTS #################################################################
@@ -67,6 +68,7 @@ from util.security import (
     get_google_provider_cfg,
     is_user_in_group,
     update_groups,
+    restrict_to,
 )
 from util.map_point import remove_point
 from util.gcal import get_allstaff_events
@@ -121,7 +123,7 @@ from views.employee_management import get_ems_brand_image_url
 
 # CONFIGURE LOGGING
 LOG_FORMAT = "%(levelname)s | %(filename)s:%(lineno)d | %(funcName)s() | %(message)s"
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format=LOG_FORMAT)
+logging.basicConfig(stream=sys.stdout, level=logging.INFO, format=LOG_FORMAT)
 
 logging.info("Initializing Flask...")
 app = Flask(__name__)
@@ -463,6 +465,7 @@ def callback():
 
 @app.route("/all-users")
 @login_required
+@restrict_to(TOOLS_ADMIN_ACCESS_GROUPS)
 def all_users():
     users = get_all_users()
     return render_template("all_users.html", users=users)
@@ -506,6 +509,10 @@ def logout():
 def yurr():
     return render_template("yurr.html")
 
+
+logging.info("Initializing EMS settings...")
+initialize_ems_settings()
+logging.info("Done initializing EMS settings.")
 
 if __name__ == "__main__":
     if os.environ.get("DATASTORE_EMULATOR_HOST") is None:
