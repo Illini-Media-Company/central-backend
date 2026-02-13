@@ -5,7 +5,7 @@ to the EMS must be located inside of this file. Classes should not be accessed
 anywhere else in the codebase without the use of helper functions.
 
 Created by Jacob Slabosz on Jan. 4, 2026
-Last modified Feb. 12, 2026
+Last modified Feb. 13, 2026
 """
 
 from google.cloud import ndb
@@ -278,8 +278,12 @@ class EmployeePositionRelation(ndb.Model):
 settings = AppSettings.get_settings()
 if not settings.brands:
     initial_map = [
-        IMCBrandMapping(name="The Daily Illini", slack_channel_id="C0AE2KZF4EM"),
-        IMCBrandMapping(name="IMC", slack_channel_id="C0ADHATJQP5"),
+        IMCBrandMapping(name="IMC", slack_channel_id="C08D4RYCL13"),
+        IMCBrandMapping(name="The Daily Illini", slack_channel_id="C04TB2QH65C"),
+        IMCBrandMapping(name="WPGU", slack_channel_id="C0ACRA54EEA"),
+        IMCBrandMapping(name="Illio", slack_channel_id="C0ACX015BM2"),
+        IMCBrandMapping(name="Chambana Eats", slack_channel_id="C0AED1B6UH5"),
+        IMCBrandMapping(name="Illini Content Studio", slack_channel_id="C0AER1Z12FP"),
     ]
     settings.brands = initial_map
     settings.put()
@@ -416,6 +420,7 @@ def create_employee_card(**kwargs: dict) -> dict | int:
     Raises:
         `EEXISTS`: If an employee already exists with the given `imc_email`
         `EUSERDNE`: If the associated User does not exist
+        `EMISSING`: If required fields are missing (`imc_email`)
         `EEXCEPT`: Other fatal error
     """
     with client.context():
@@ -425,6 +430,8 @@ def create_employee_card(**kwargs: dict) -> dict | int:
             ).get()
             if existing:
                 return EEXISTS  # Employee with this IMC email already exists
+        else:
+            return EMISSING  # Missing required field
         try:
             if "user_uid" in kwargs:
                 user = User.get_by_id(kwargs["user_uid"])

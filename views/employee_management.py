@@ -2,7 +2,7 @@
 This file defines the API for the Employee Management System.
 
 Created by Jacob Slabosz on Jan. 12, 2026
-Last modified Feb. 11, 2026
+Last modified Feb. 13, 2026
 """
 
 from flask import Blueprint, render_template, request, jsonify, abort
@@ -100,8 +100,14 @@ def ems_settings():
     """
     Renders the Employee Management System settings page.
     """
+    from db.employee_management import AppSettings
+
+    settings = AppSettings.get_settings()
+
     return render_template(
-        "employee_management/ems_settings.html", selection="settings"
+        "employee_management/ems_settings.html",
+        selection="settings",
+        brands=settings.brands,
     )
 
 
@@ -176,16 +182,20 @@ def ems_employee_view(emp_id):
     """
     Renders the view employee page.
     """
+    logging.info(f"Viewing employee with ID {emp_id}")
     # Get the employee
     employee = get_employee_card_by_id(emp_id)
 
     if employee == EEMPDNE:
+        logging.debug(f"Employee with ID {emp_id} does not exist.")
         abort(
             404,
             description="That employee doesn't seem to exist! \
                 Ensure this employee has not been deleted. \
                 If the issue persists, contact an administrator.",
         )
+
+    logging.debug(f"Employee data for ID {emp_id}: {employee}")
 
     employee["current_positions"] = []
     employee["past_positions"] = []
@@ -204,6 +214,9 @@ def ems_employee_view(emp_id):
                     "start_date": rel["start_date"],
                 }
             )
+    logging.debug(
+        f"Current positions for employee ID {emp_id}: {employee['current_positions']}"
+    )
 
     # Get the employee's past positions
     past_relations = get_relations_by_employee_past(emp_id)
@@ -223,6 +236,9 @@ def ems_employee_view(emp_id):
                     "departure_notes": rel["departure_notes"],
                 }
             )
+    logging.debug(
+        f"Past positions for employee ID {emp_id}: {employee['past_positions']}"
+    )
 
     # Get all possible position options for dropdown
     all_positions = get_all_active_position_cards()
@@ -270,14 +286,19 @@ def ems_employee_onboard():
 # TEMPLATE — employee_onboarding_form
 @ems_routes.route("/onboarding/<int:emp_id>", methods=["GET"])
 def ems_employee_onboarding_form(emp_id):
+    logging.info(f"Accessing onboarding form for employee ID {emp_id}")
+
     employee = get_employee_card_by_id(emp_id)
     if not employee or employee == EEMPDNE:
+        logging.info(f"Employee with ID {emp_id} does not exist or has been deleted.")
         abort(404)
     if employee.get("onboarding_form_done"):
-        return render_template(
-            "error.html",
-            code="400",
-            error="This onboarding link has already been used! \
+        logging.info(
+            f"Onboarding form for employee ID {emp_id} has already been completed."
+        )
+        abort(
+            400,
+            description="This onboarding link has already been used! \
                 To make changes, please reach out to your supervisor \
                 or email helpdesk@illinimedia.com.",
         )
@@ -298,11 +319,24 @@ def ems_employee_onboard_nextsteps_success():
     email = request.args.get("email")
     password = request.args.get("password")
     uid = request.args.get("uid")
+
     if not email or not password or not uid:
-        return render_template(
-            "error.html",
-            code="400",
-            error="This page cannot be viewed.",
+        abort(400, description="Missing required parameters.")
+
+    uid = int(uid)
+
+    employee = get_employee_card_by_id(uid)
+    if not employee or employee == EEMPDNE:
+        logging.info(f"Employee with ID {uid} does not exist or has been deleted.")
+        abort(400, description="Unable to locate an employee with that ID.")
+
+    if employee["onboarding_complete"]:
+        logging.info(f"Employee with ID {uid} has already completed onboarding.")
+        abort(
+            400,
+            description="This onboarding link has already been used! \
+                To make changes, please reach out to your supervisor \
+                or email helpdesk@illinimedia.com.",
         )
 
     return render_template(
@@ -323,11 +357,18 @@ def ems_employee_onboard_nextsteps_failure():
 @ems_routes.route("/onboarding/<int:emp_id>/complete", methods=["GET"])
 @login_required
 def ems_onboarding_complete(emp_id):
+    logging.info(
+        f"Completing onboarding for employee ID {emp_id} by user {current_user.email}"
+    )
+
     # Get the employee
     employee = get_employee_card_by_id(emp_id)
     if employee:
         # Check if the logged in user is this employee
         if current_user.email != employee["imc_email"]:
+            logging.info(
+                f"User {current_user.email} attempted to complete onboarding for employee ID {emp_id} with email {employee['imc_email']}."
+            )
             abort(
                 409,
                 description="The logged in user does not match the employee.",
@@ -335,6 +376,9 @@ def ems_onboarding_complete(emp_id):
 
         # Check if this employee is already marked as complete
         if employee["onboarding_complete"]:
+            logging.info(
+                f"Employee ID {emp_id} attempted to complete onboarding, but it is already marked as complete."
+            )
             abort(
                 409,
                 description="This employee has already completed onboarding.",
@@ -343,15 +387,27 @@ def ems_onboarding_complete(emp_id):
         # Ensure they've logged into Slack & get their ID
         slack_id = _lookup_user_id_by_email(employee["imc_email"])
         if not slack_id:
+            logging.info(
+                f"Employee ID {emp_id} with email {employee['imc_email']} has not logged into Slack or could not be found in Slack."
+            )
             return render_template(
                 "error.html",
                 code="409",
                 error="It seems you did not log into Slack. Please do so, then refresh this page.",
             )
+        logging.debug(
+            f"Employee ID {emp_id} has Slack ID {slack_id}. Proceeding with onboarding completion."
+        )
 
         # Save the employee's Slack ID
         modify_employee_card(
-            uid=employee.uid, slack_id=slack_id, onboarding_complete=True
+            uid=employee.uid,
+            slack_id=slack_id,
+            onboarding_complete=True,
+            status="Active",
+        )
+        logging.debug(
+            f"Employee ID {emp_id} marked as onboarding complete with Slack ID {slack_id}."
         )
 
         slack_channel = employee["onboarding_update_channel"]
@@ -367,15 +423,17 @@ def ems_onboarding_complete(emp_id):
             ems_url=ems_url,
         )
         if not isinstance(res, dict):
-            print("[EMS] ERROR: Failed to send completion Slack message.")
-        if not res.get("ok"):
-            print(
-                f"[EMS] ERROR: Failed to send completion Slack message. {res['error']}"
+            logging.error(
+                f"Failed to send completion Slack message for employee ID {emp_id} due to an unknown error."
             )
-
+        if not res.get("ok"):
+            logging.error(
+                f"Failed to send completion Slack message for employee ID {emp_id}. Error: {res['error']}"
+            )
         return render_template("/employee_management/ems_onboarding_complete.html")
     # If employee not found
     else:
+        logging.info(f"Employee with ID {emp_id} does not exist or has been deleted.")
         abort(
             404,
             description="That onboarding link is not valid. Please contact helpdesk@illinimedia.com if you believe this is a mistake.",
@@ -444,6 +502,17 @@ def ems_api_employee_create():
             return (
                 jsonify(
                     {"error": "An employee already exists with the given IMC email."}
+                ),
+                400,
+            )
+
+        # Missing required fields
+        if created == EMISSING:
+            return (
+                jsonify(
+                    {
+                        "error": "Missing required fields. Ensure all required fields are included and try again."
+                    }
                 ),
                 400,
             )
@@ -653,6 +722,10 @@ def ems_api_employee_onboard_send():
     Sends the onboarding email and returns an error on failure;
     otherwise redirects back to the EMS employees page.
     """
+    logging.info(
+        f"{current_user.email if current_user else 'unknown user'} sending an onboarding invite to {data.get('email', 'unknown email')}."
+    )
+
     data = (
         request.form.to_dict()
         if request.form
@@ -666,23 +739,48 @@ def ems_api_employee_onboard_send():
     onboarded_brand = (data.get("onboarded_brand") or "").strip()
     onboarded_by = current_user.email if current_user else "onboarding@illinimedia.com"
 
+    # Validate required fields
+    if not first_name or not last_name or not email or not onboarded_brand:
+        logging.debug(f"Onboarding invite failed validation. Received data: {data}")
+        return (
+            jsonify({"error": "First name, last name, email and brand are required."}),
+            400,
+        )
+    if "@" not in email:
+        logging.debug(
+            f"Onboarding invite failed validation due to invalid email format: {email}"
+        )
+        return jsonify({"error": "Invalid email format."}), 400
+
     # Bool, whether to notify the user (True) or the brand's channel (False)
     indv_notif = bool(data.get("indv_notif"))
 
     # Send Slack messages notifying that step 1 of onboarding is done
     if indv_notif:
+        logging.debug(
+            f"Individual notification selected for onboarding {first_name} {last_name}. Attempting to look up Slack ID for {onboarded_by} to send DM updates."
+        )
         # Channel should be the user who onboarded
         user_id = _lookup_user_id_by_email(onboarded_by)
         if not user_id:
+            logging.error(
+                f"Failed to look up Slack ID for {onboarded_by}. Cannot send individual onboarding notifications."
+            )
             return (
                 jsonify({"error": "The logged in user could not be found in Slack."}),
                 500,
             )
         onboarding_update_channel = user_id
     else:
+        logging.debug(
+            f"Brand channel notification selected for onboarding {first_name} {last_name}. Attempting to look up Slack channel ID for brand {onboarded_brand} to send updates."
+        )
         # Channel should be the brand's EMS channel
         channel_id = get_slack_channel_id(onboarded_brand)
         if not channel_id:
+            logging.error(
+                f"Failed to look up Slack channel ID for brand {onboarded_brand}. Cannot send onboarding notifications to brand channel."
+            )
             return (
                 jsonify(
                     {"error": "The brand's channel_id is not defined in settings."}
@@ -691,22 +789,19 @@ def ems_api_employee_onboard_send():
             )
         onboarding_update_channel = channel_id
 
-    # Validate required fields
-    if not first_name or not last_name or not email or not onboarded_brand:
-        return (
-            jsonify({"error": "First name, last name, email and brand are required."}),
-            400,
-        )
-    if "@" not in email:
-        return jsonify({"error": "Invalid email format."}), 400
-
     # Create the EmployeeCard
+    logging.debug(
+        f"Creating onboarding employee record for {first_name} {last_name} with email {email} and brand {onboarded_brand}."
+    )
     created = create_employee_onboarding_card(
         first_name=first_name,
         last_name=last_name,
         onboarding_update_channel=onboarding_update_channel,
     )
     if created in (None, EEXCEPT):
+        logging.error(
+            f"Failed to create onboarding employee record for {first_name} {last_name}. Error: {created if created else 'unknown error'}"
+        )
         return jsonify({"error": "Failed to create employee."}), 500
 
     # Get the URL for the employee's onboarding link
@@ -716,6 +811,7 @@ def ems_api_employee_onboard_send():
         emp_id=emp_id,
         _external=True,
     )
+    logging.debug(f"Onboarding URL for employee ID {emp_id}: {onboarding_url}")
 
     # Email the employee
     rc = send_onboarding_email(
@@ -724,6 +820,9 @@ def ems_api_employee_onboard_send():
         onboarding_url=onboarding_url,
     )
     if not isinstance(rc, dict) or not rc.get("ok"):
+        logging.error(
+            f"Failed to send onboarding email to {email} for employee ID {emp_id}. Error: {rc if isinstance(rc, dict) else 'unknown error'}"
+        )
         return (
             jsonify(
                 {
@@ -733,23 +832,41 @@ def ems_api_employee_onboard_send():
             ),
             500,
         )
+    logging.debug(
+        f"Onboarding email sent successfully to {email} for employee ID {emp_id}."
+    )
 
     # Send Slack messages notifying that step 1 of onboarding is done
     res = slack_dm_onboarding_started(
         channel_id=onboarding_update_channel, employee_name=created["full_name"]
     )
     if not isinstance(res, dict):
+        logging.error(
+            f"Failed to send onboarding started Slack message for employee ID {emp_id} due to an unknown error."
+        )
         return jsonify({"error": "Slack message failed for an unknown reason."}), 500
     if not res.get("ok"):
+        logging.error(
+            f"Failed to send onboarding started Slack message for employee ID {emp_id}. Error: {res['error']}"
+        )
         return jsonify({"error": f"Slack message failed: {res['error']}"}), 500
 
     # Store the Slack TS
     res = update_employee_onboarding_card(uid=created["uid"], ts=res["ts"])
     if res == EEMPDNE:
+        logging.error(
+            f"Failed to update onboarding employee record for employee ID {emp_id} with Slack TS {res['ts']} because the employee was not found."
+        )
         return jsonify({"error": "Creating the employee failed."}), 400
     if res == EEXCEPT:
+        logging.error(
+            f"An exception occurred while updating onboarding employee record for employee ID {emp_id} with Slack TS {res['ts']}."
+        )
         return jsonify({"error": "A fatal error occurred."}), 400
 
+    logging.debug(
+        f"Onboarding process successfully initiated for employee ID {emp_id}."
+    )
     return jsonify({"ok": True, "message": "Onboarding successfully started."}), 200
 
 
@@ -762,15 +879,25 @@ def ems_api_onboarding_submit(emp_id):
     """
     from util.google_admin import USER_TEMP_PASSWORD
 
+    logging.info(f"Submitting onboarding form for employee ID {emp_id}.")
+
     data = request.get_json(silent=True) or request.form.to_dict() or {}
     data.pop("_csrf_token", None)
 
     # Get the NetID to create an IMC email address
     netid = data.pop("netid", None)
+    if not netid:
+        logging.debug(
+            f"Onboarding form submission for employee ID {emp_id} failed validation due to missing NetID."
+        )
+        return jsonify({"ok": False, "error": "NetID is required."}), 400
 
     # Ensure employee exists (has not since been deleted)
     employee = get_employee_card_by_id(emp_id)
     if not employee:
+        logging.debug(
+            f"Onboarding form submission failed because employee with ID {emp_id} does not exist."
+        )
         abort(
             404,
             description="That onboarding link has since been deleted. Please contact helpdesk@illinimedia.com",
@@ -778,6 +905,9 @@ def ems_api_onboarding_submit(emp_id):
 
     # Ensure not already filled out
     if employee.get("onboarding_form_done"):
+        logging.debug(
+            f"Onboarding form submission for employee ID {emp_id} failed because the onboarding form has already been completed."
+        )
         return (
             jsonify(
                 {"ok": False, "error": "This onboarding link has already been used."}
@@ -801,6 +931,9 @@ def ems_api_onboarding_submit(emp_id):
     ]
     missing = [k for k in required if not (data.get(k) or "").strip()]
     if missing:
+        logging.debug(
+            f"Onboarding form submission for employee ID {emp_id} failed validation due to missing required fields: {missing}"
+        )
         return (
             jsonify(
                 {"ok": False, "error": f"Missing required fields: {', '.join(missing)}"}
@@ -815,6 +948,9 @@ def ems_api_onboarding_submit(emp_id):
                 data["birth_date"], "%Y-%m-%d"
             ).date()
         except ValueError:
+            logging.debug(
+                f"Onboarding form submission for employee ID {emp_id} failed validation due to invalid birth date format: {data['birth_date']}"
+            )
             return (
                 jsonify(
                     {"ok": False, "error": "Invalid birth date format. Use YYYY-MM-DD."}
@@ -825,6 +961,9 @@ def ems_api_onboarding_submit(emp_id):
     # Modify the employee
     updated = modify_employee_card(uid=emp_id, onboarding_form_done=True, **data)
     if updated in (EEMPDNE, EUSERDNE, EEXISTS, EEXCEPT):
+        logging.error(
+            f"Failed to update employee record for employee ID {emp_id} upon onboarding form submission. Error: {updated if updated else 'unknown error'}"
+        )
         return jsonify({"ok": False, "error": "Failed to submit onboarding form."}), 500
 
     # Notify via Slack of completion
@@ -832,11 +971,21 @@ def ems_api_onboarding_submit(emp_id):
     last_name = updated["last_name"]
     slack_channel = updated["onboarding_update_channel"]
     slack_ts = updated["onboarding_update_ts"]
+
     res = slack_dm_info_received(channel_id=slack_channel, thread_ts=slack_ts)
     if not isinstance(res, dict):
+        logging.error(
+            f"Failed to send onboarding info received Slack message for employee ID {emp_id} due to an unknown error."
+        )
         return jsonify({"error": "Slack message failed for an unknown reason."}), 500
     if not res.get("ok"):
+        logging.error(
+            f"Failed to send onboarding info received Slack message for employee ID {emp_id}. Error: {res['error']}"
+        )
         return jsonify({"error": f"Slack message failed: {res['error']}"}), 500
+    logging.debug(
+        f"Onboarding info received Slack message sent successfully for employee ID {emp_id}."
+    )
 
     # Create the Google account
     success, error = create_google_user(
@@ -844,6 +993,9 @@ def ems_api_onboarding_submit(emp_id):
     )
 
     if success == True:
+        logging.debug(
+            f"Google account created successfully for employee ID {emp_id} with NetID {netid}."
+        )
         # If the Google account created successfully, notify via Slack, display page
         res = slack_dm_google_created(channel_id=slack_channel, thread_ts=slack_ts)
         redirect_url = url_for(
@@ -858,11 +1010,17 @@ def ems_api_onboarding_submit(emp_id):
         updated = modify_employee_card(uid=emp_id, imc_email=f"{netid}@illinimedia.com")
     else:
         # Else, notify and display other page
+        logging.error(
+            f"Failed to create Google account for employee ID {emp_id} with NetID {netid}. Error: {str(error)}"
+        )
         res = slack_dm_google_failed(channel_id=slack_channel, thread_ts=slack_ts)
         redirect_url = url_for(
             "ems_routes.ems_employee_onboard_nextsteps_failure", _external=True
         )
 
+    logging.debug(
+        f"Onboarding process completed for employee ID {emp_id}. Redirecting to next steps page."
+    )
     return (
         jsonify(
             {
@@ -935,17 +1093,22 @@ def ems_position_view(pos_id):
     """
     Renders the view position page.
     """
+    logging.info(f"Viewing position with ID {pos_id}")
+    # Get the position
     position = get_position_card_by_id(pos_id)
 
-    position["slack_channels"] = ", ".join(position["slack_channels"])
-
     if position == EPOSDNE:
+        logging.debug(f"Position with ID {pos_id} does not exist.")
         abort(
             404,
             description="That position doesn't seem to exist! \
                 Ensure this position has not been deleted. \
                 If the issue persists, contact an administrator.",
         )
+
+    logging.debug(f"Position data for ID {pos_id}: {position}")
+
+    position["slack_channels"] = ", ".join(position["slack_channels"])
 
     position["current_employees"] = []
     position["past_employees"] = []
@@ -964,6 +1127,9 @@ def ems_position_view(pos_id):
                     "start_date": rel["start_date"],
                 }
             )
+    logging.debug(
+        f"Current employees for position ID {pos_id}: {position['current_employees']}"
+    )
 
     # # Get the position's past employees
     # past_relations = get_relations_by_position_past(pos_id)
@@ -1242,7 +1408,22 @@ def ems_api_position_modify(uid):
             return (
                 jsonify(
                     {
-                        "error": "The position was updated, but there was an error updating the Google Groups for at least one employee. Check that the group email is correct."
+                        "error": "The position was updated, but there was an error updating \
+                            the Google Groups for at least one employee. Check that the group \
+                            email is correct and manually remove the employee from the group."
+                    }
+                ),
+                500,
+            )
+
+        # SLACK error
+        if modified == ESLACK:
+            return (
+                jsonify(
+                    {
+                        "error": "The position was updated, but there was an error updating \
+                            the Slack channels for at least one employee. Check that the channel \
+                            IDs are correct and manually remove the employee from the channels."
                     }
                 ),
                 500,
@@ -1496,7 +1677,22 @@ def ems_api_relation_create():
             return (
                 jsonify(
                     {
-                        "error": "The relation was created, but there was an error updating the employee's Google Groups. Check that the group email is correct."
+                        "error": "The relation was created, but there was an error updating \
+                            the employee's Google Groups. Check that the group email is correct \
+                            and manually remove the employee from the group."
+                    }
+                ),
+                400,
+            )
+
+        # Slack error
+        if created == ESLACK:
+            return (
+                jsonify(
+                    {
+                        "error": "The relation was created, but there was an error updating \
+                            the employee's Slack channels. Check that the channel IDs are correct \
+                            and manually remove the employee from the channels."
                     }
                 ),
                 400,
@@ -1587,7 +1783,22 @@ def ems_api_relation_modify(uid):
             return (
                 jsonify(
                     {
-                        "error": "The relation was modified, but there was an error updating the employee's Google Groups. Check that the group email is correct."
+                        "error": "The relation was modified, but there was an error updating \
+                            the employee's Google Groups. Check that the group email is correct \
+                            and manually remove the employee from the group."
+                    }
+                ),
+                400,
+            )
+
+        # Slack error
+        if modified == ESLACK:
+            return (
+                jsonify(
+                    {
+                        "error": "The relation was modified, but there was an error updating \
+                            the employee's Slack channels. Check that the channel IDs are correct \
+                            and manually remove the employee from the channels."
                     }
                 ),
                 400,
@@ -1689,7 +1900,22 @@ def ems_api_relation_delete(uid):
         return (
             jsonify(
                 {
-                    "error": "The relation was deleted, but there was an error updating the employee's Google Groups. Check that the group email is correct."
+                    "error": "The relation was deleted, but there was an error updating \
+                        the employee's Google Groups. Check that the group email is correct \
+                        and manually remove the employee from the group."
+                }
+            ),
+            400,
+        )
+
+    # Slack error
+    if deleted == ESLACK:
+        return (
+            jsonify(
+                {
+                    "error": "The relation was deleted, but there was an error updating \
+                        the employee's Slack channels. Check that the channel IDs are correct \
+                        and manually remove the employee from the channels."
                 }
             ),
             400,

@@ -1,304 +1,306 @@
 {% extends 'employee_management/ems_base.html' %}
 
-{% block ems_title %}Org Chart{% endblock %}
+{% block ems_title %}
+    Org Chart
+{% endblock %}
 
 {% block ems_extra_head %}
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
-  /* Main container styling */
-  .org-chart-container {
-    padding: 1.25rem;
-    background: var(--main-bg-color);
-    min-height: calc(100vh - 9.375rem);
-  }
+    /* Main container styling */
+    .org-chart-container {
+        padding: 1.25rem;
+        background: var(--main-bg-color);
+        min-height: calc(100vh - 9.375rem);
+    }
 
-  /* Header section */
-  .org-header {
-    margin-bottom: 1.25rem;
-    padding: 1.25rem;
-    background: var(--main-bg-color);
-    border-radius: var(--main-border-radius);
-    box-shadow: var(--main-box-shadow);
-  }
+    /* Header section */
+    .org-header {
+        margin-bottom: 1.25rem;
+        padding: 1.25rem;
+        background: var(--main-bg-color);
+        border-radius: var(--main-border-radius);
+        box-shadow: var(--main-box-shadow);
+    }
 
-  .org-header h1 {
-    margin: 0 0 0.625rem 0;
-    color: var(--main-text-color);
-    font-family: futura-pt, system-ui, sans-serif;
-    font-weight: 500;
-    font-style: normal;
-    font-size: 2rem;
-  }
+    .org-header h1 {
+        margin: 0 0 0.625rem 0;
+        color: var(--main-text-color);
+        font-family: futura-pt, system-ui, sans-serif;
+        font-weight: 500;
+        font-style: normal;
+        font-size: 2rem;
+    }
 
-  .org-header p {
-    color: var(--gray-600);
-    margin: 0 0 1.25rem 0;
-    font-family: futura-pt, sans-serif;
-    font-weight: 300;
-    font-style: normal;
-    font-size: 1rem;
-  }
+    .org-header p {
+        color: var(--gray-600);
+        margin: 0 0 1.25rem 0;
+        font-family: futura-pt, sans-serif;
+        font-weight: 300;
+        font-style: normal;
+        font-size: 1rem;
+    }
 
-  /* Company filter buttons */
-  .company-filter {
-    display: flex;
-    gap: 0.625rem;
-    margin-bottom: 1.25rem;
-    flex-wrap: wrap;
-    align-items: center;
-  }
+    /* Company filter buttons */
+    .company-filter {
+        display: flex;
+        gap: 0.625rem;
+        margin-bottom: 1.25rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
 
-  .company-btn {
-    padding: 0.5rem 1rem;
-    background: var(--main-lt-gray-color);
-    color: var(--main-text-color);
-    border: 0.125rem solid var(--gray-300);
-    border-radius: calc(var(--main-border-radius) + 0.25rem);
-    cursor: pointer;
-    font-size: 0.875rem;
-    font-weight: 400;
-    font-family: futura-pt, sans-serif;
-    transition: all 0.15s ease-in-out;
-  }
+    .company-btn {
+        padding: 0.5rem 1rem;
+        background: var(--main-lt-gray-color);
+        color: var(--main-text-color);
+        border: 0.125rem solid var(--gray-300);
+        border-radius: calc(var(--main-border-radius) + 0.25rem);
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-weight: 400;
+        font-family: futura-pt, sans-serif;
+        transition: all 0.15s ease-in-out;
+    }
 
-  .company-btn:hover {
-    background: var(--main-accent-color);
-    color: var(--main-bg-color);
-    border-color: var(--main-accent-color);
-  }
+    .company-btn:hover {
+        background: var(--main-accent-color);
+        color: var(--main-bg-color);
+        border-color: var(--main-accent-color);
+    }
 
-  .company-btn.active {
-    background: var(--main-accent-color);
-    color: var(--main-bg-color);
-    border-color: var(--main-accent-color);
-  }
+    .company-btn.active {
+        background: var(--main-accent-color);
+        color: var(--main-bg-color);
+        border-color: var(--main-accent-color);
+    }
 
-  .company-btn.active:hover {
-    background: var(--main-accent-color-darkened);
-    border-color: var(--main-accent-color-darkened);
-  }
+    .company-btn.active:hover {
+        background: var(--main-accent-color-darkened);
+        border-color: var(--main-accent-color-darkened);
+    }
 
-  /* Chart controls */
-  .org-controls {
-    display: flex;
-    gap: 0.625rem;
-    margin-top: 1.25rem;
-    flex-wrap: wrap;
-  }
+    /* Chart controls */
+    .org-controls {
+        display: flex;
+        gap: 0.625rem;
+        margin-top: 1.25rem;
+        flex-wrap: wrap;
+    }
 
-  /* Chart container */
-  #org-chart {
-    background: var(--main-bg-color);
-    border-radius: var(--main-border-radius);
-    box-shadow: var(--main-box-shadow);
-    overflow: auto;
-    min-height: 31.25rem;
-    position: relative;
-  }
+    /* Chart container */
+    #org-chart {
+        background: var(--main-bg-color);
+        border-radius: var(--main-border-radius);
+        box-shadow: var(--main-box-shadow);
+        overflow: auto;
+        min-height: 31.25rem;
+        position: relative;
+    }
 
-  #chart-loading {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-    color: var(--gray-600);
-    font-family: futura-pt, sans-serif;
-    font-weight: 300;
-  }
+    #chart-loading {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: var(--gray-600);
+        font-family: futura-pt, sans-serif;
+        font-weight: 300;
+    }
 
-  #chart-svg {
-    display: block;
-    width: 100%;
-    min-height: 37.5rem;
-  }
+    #chart-svg {
+        display: block;
+        width: 100%;
+        min-height: 37.5rem;
+    }
 
-  /* Node styling */
-  .node {
-    cursor: pointer;
-  }
+    /* Node styling */
+        .node {
+        cursor: pointer;
+    }
 
-  .node rect {
-    fill: var(--main-accent-color);
-    stroke: var(--main-accent-color-darkened);
-    stroke-width: 0.125rem;
-    rx: 0.5rem;
-    ry: 0.5rem;
-    transition: all 0.15s ease-in-out;
-  }
+    .node rect {
+        fill: var(--main-accent-color);
+        stroke: var(--main-accent-color-darkened);
+        stroke-width: 0.125rem;
+        rx: 0.5rem;
+        ry: 0.5rem;
+        transition: all 0.15s ease-in-out;
+    }
 
-  .node.manager rect {
-    fill: var(--gray-800);
-    stroke: var(--gray-900);
-  }
+    .node.manager rect {
+        fill: var(--gray-800);
+        stroke: var(--gray-900);
+    }
 
-  .node.company-root rect {
-    fill: var(--gray-900);
-    stroke: var(--gray-900);
-    width: 11.25rem !important;
-    height: 6.25rem !important;
-  }
+    .node.company-root rect {
+        fill: var(--gray-900);
+        stroke: var(--gray-900);
+        width: 11.25rem !important;
+        height: 6.25rem !important;
+    }
 
-  .node.vacant rect {
-    fill: var(--gray-400);
-    stroke: var(--gray-500);
-    stroke-dasharray: 0.1875rem, 0.1875rem;
-  }
+    .node.vacant rect {
+        fill: var(--gray-400);
+        stroke: var(--gray-500);
+        stroke-dasharray: 0.1875rem, 0.1875rem;
+    }
 
-  .node.selected rect {
-    stroke: var(--red-500);
-    stroke-width: 0.1875rem;
-    filter: drop-shadow(0 0 0.3125rem rgba(244, 67, 54, 0.3));
-  }
+    .node.selected rect {
+        stroke: var(--red-500);
+        stroke-width: 0.1875rem;
+        filter: drop-shadow(0 0 0.3125rem rgba(244, 67, 54, 0.3));
+    }
 
-  .node:hover rect {
-    fill: var(--main-accent-color-darkened);
-    stroke: var(--main-accent-color-darkened);
-  }
+    .node:hover rect {
+        fill: var(--main-accent-color-darkened);
+        stroke: var(--main-accent-color-darkened);
+    }
 
-  .node.manager:hover rect {
-    fill: var(--gray-900);
-    stroke: var(--gray-900);
-  }
+    .node.manager:hover rect {
+        fill: var(--gray-900);
+        stroke: var(--gray-900);
+    }
 
-  .node.company-root:hover rect {
-    fill: var(--gray-900);
-    stroke: var(--gray-900);
-  }
+    .node.company-root:hover rect {
+        fill: var(--gray-900);
+        stroke: var(--gray-900);
+    }
 
-  .node.vacant:hover rect {
-    fill: var(--gray-500);
-    stroke: var(--gray-600);
-  }
+    .node.vacant:hover rect {
+        fill: var(--gray-500);
+        stroke: var(--gray-600);
+    }
 
-  .node text {
-    fill: white;
-    font-size: 0.75rem;
-    text-anchor: middle;
-    pointer-events: none;
-    font-family: futura-pt, sans-serif;
-    font-weight: 300;
-  }
+    .node text {
+        fill: white;
+        font-size: 0.75rem;
+        text-anchor: middle;
+        pointer-events: none;
+        font-family: futura-pt, sans-serif;
+        font-weight: 300;
+    }
 
-  .node text.name {
-    font-weight: 400;
-    font-size: 0.8125rem;
-  }
+    .node text.name {
+        font-weight: 400;
+        font-size: 0.8125rem;
+    }
 
-  .node text.title {
-    fill: rgba(255, 255, 255, 0.9);
-    font-size: 0.6875rem;
-  }
+    .node text.title {
+        fill: rgba(255, 255, 255, 0.9);
+        font-size: 0.6875rem;
+    }
 
-  .node.company-root text {
-    font-size: 0.875rem;
-    font-weight: 500;
-  }
+    .node.company-root text {
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
 
-  .node.company-root text.name {
-    font-size: 1rem;
-    font-weight: 500;
-  }
+    .node.company-root text.name {
+        font-size: 1rem;
+        font-weight: 500;
+    }
 
-  /* Connection lines */
-  .link {
-    fill: none;
-    stroke: var(--gray-300);
-    stroke-width: 0.125rem;
-  }
+    /* Connection lines */
+    .link {
+        fill: none;
+        stroke: var(--gray-300);
+        stroke-width: 0.125rem;
+    }
 
-  /* Selected node info panel */
-  .node-info {
-    margin-top: 1.25rem;
-    padding: 1.25rem;
-    background: var(--main-bg-color);
-    border-radius: var(--main-border-radius);
-    box-shadow: var(--main-box-shadow);
-  }
+    /* Selected node info panel */
+    .node-info {
+        margin-top: 1.25rem;
+        padding: 1.25rem;
+        background: var(--main-bg-color);
+        border-radius: var(--main-border-radius);
+        box-shadow: var(--main-box-shadow);
+    }
 
-  .node-info h3 {
-    margin-top: 0;
-    color: var(--main-text-color);
-    border-bottom: 0.125rem solid var(--main-accent-color);
-    padding-bottom: 0.625rem;
-    font-family: futura-pt, sans-serif;
-    font-weight: 500;
-    font-style: normal;
-    font-size: 1.5rem;
-  }
+    .node-info h3 {
+        margin-top: 0;
+        color: var(--main-text-color);
+        border-bottom: 0.125rem solid var(--main-accent-color);
+        padding-bottom: 0.625rem;
+        font-family: futura-pt, sans-serif;
+        font-weight: 500;
+        font-style: normal;
+        font-size: 1.5rem;
+    }
 
-  .current-company {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    background: var(--green-500);
-    color: white;
-    border-radius: 1.25rem;
-    font-size: 0.875rem;
-    font-weight: 400;
-    margin-left: 0.625rem;
-    font-family: futura-pt, sans-serif;
-  }
+    .current-company {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: var(--green-500);
+        color: white;
+        border-radius: 1.25rem;
+        font-size: 0.875rem;
+        font-weight: 400;
+        margin-left: 0.625rem;
+        font-family: futura-pt, sans-serif;
+    }
 
-  /* Info grid layout */
-  .info-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
-    gap: 0.9375rem;
-    margin-top: 0.9375rem;
-  }
+    /* Info grid layout */
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
+        gap: 0.9375rem;
+        margin-top: 0.9375rem;
+    }
 
-  .info-item {
-    padding: 0.75rem;
-    background: var(--gray-50);
-    border-radius: 0.5rem;
-    border-left: 0.1875rem solid var(--main-accent-color);
-  }
+    .info-item {
+        padding: 0.75rem;
+        background: var(--gray-50);
+        border-radius: 0.5rem;
+        border-left: 0.1875rem solid var(--main-accent-color);
+    }
 
-  .info-label {
-    font-weight: 400;
-    color: var(--gray-600);
-    font-size: 0.75rem;
-    margin-bottom: 0.3125rem;
-    font-family: futura-pt, sans-serif;
-  }
+    .info-label {
+        font-weight: 400;
+        color: var(--gray-600);
+        font-size: 0.75rem;
+        margin-bottom: 0.3125rem;
+        font-family: futura-pt, sans-serif;
+    }
 
-  .info-value {
-    color: var(--main-text-color);
-    font-size: 0.875rem;
-    font-family: futura-pt, sans-serif;
-    font-weight: 300;
-  }
+    .info-value {
+        color: var(--main-text-color);
+        font-size: 0.875rem;
+        font-family: futura-pt, sans-serif;
+        font-weight: 300;
+    }
 
-  /* Badge styling */
-  .badge {
-    display: inline-block;
-    padding: 0.125rem 0.5rem;
-    border-radius: 0.625rem;
-    font-size: 0.6875rem;
-    font-weight: 400;
-    margin-left: 0.5rem;
-    font-family: futura-pt, sans-serif;
-  }
+    /* Badge styling */
+    .badge {
+        display: inline-block;
+        padding: 0.125rem 0.5rem;
+        border-radius: 0.625rem;
+        font-size: 0.6875rem;
+        font-weight: 400;
+        margin-left: 0.5rem;
+        font-family: futura-pt, sans-serif;
+    }
 
-  .badge.manager {
-    background: var(--gray-800);
-    color: white;
-  }
+    .badge.manager {
+        background: var(--gray-800);
+        color: white;
+    }
 
-  .badge.vacant {
-    background: var(--gray-500);
-    color: white;
-  }
+    .badge.vacant {
+        background: var(--gray-500);
+        color: white;
+    }
 
-  .badge.employee {
-    background: var(--green-500);
-    color: white;
-  }
+    .badge.employee {
+        background: var(--green-500);
+        color: white;
+    }
 
-  .badge.company {
-    background: var(--gray-900);
-    color: white;
-  }
+    .badge.company {
+        background: var(--gray-900);
+        color: white;
+    }
 </style>
 {% endblock %}
 
@@ -307,7 +309,7 @@
   <!-- Header section -->
   <div class="org-header">
     <h1>
-      Organization Chart
+      Organization Chart (Under Construction)
       <span id="current-company" class="current-company">Select a Company</span>
     </h1>
     <p>View management hierarchy by company</p>

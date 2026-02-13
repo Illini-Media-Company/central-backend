@@ -705,21 +705,21 @@
 
             if (statusSelect.value == 'Unpaid') {
                 payRate.value = 0;
-                payRate.disabled = true;
+                payRate.readOnly = true;
                 afterText.innerHTML = ``;
                 afterText2.innerHTML = ``;
             } else if (statusSelect.value == 'Hourly') {
                 afterText.innerHTML = `/ Hour`;
                 afterText2.innerHTML = ` / Hour`;
-                payRate.disabled = false;
+                payRate.readOnly = false;
             } else if (statusSelect.value == 'Stipend') {
                 afterText.innerHTML = `/ Pay Period`;
                 afterText2.innerHTML = ` / Pay Period`;
-                payRate.disabled = false;
+                payRate.readOnly = false;
             } else if (statusSelect.value == 'Salary') {
                 afterText.innerHTML = `/ Year`;
                 afterText2.innerHTML = ` / Year`;
-                payRate.disabled = false;
+                payRate.readOnly = false;
             }
         }
         statusSelect.addEventListener("input", updatePayLabel);

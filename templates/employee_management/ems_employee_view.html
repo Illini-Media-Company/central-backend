@@ -201,7 +201,14 @@
             {# Name & Pronouns #}
             <div class="inner-container" style="padding: 0.75rem;">
                 <div class="form-initial-show">
-                    <h2 style="margin-bottom: 0;">{{ employee.last_name }}, {{ employee.first_name }}</h2>
+                    <h2 style="margin-bottom: 0;">
+                        {{ employee.last_name }}, {{ employee.first_name }}
+                        {% if employee.status == 'Inactive' %}
+                            <span style="color: var(--main-accent-color); font-size: 1rem;">(Inactive)</span>
+                        {% elif employee.status == 'Onboarding' %}
+                            <span style="color: var(--main-accent-color); font-size: 1rem;">(Onboarding)</span>
+                        {% endif %}
+                    </h2>
                     <P style="margin-bottom: 0;">{{ employee.pronouns or "Unknown" }}</P>
                 </div>
                 <div class="form-initial-hide">

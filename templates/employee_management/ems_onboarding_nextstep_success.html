@@ -22,7 +22,7 @@
             text-align: center;
         }
 
-        @media (max-width: 480px) {
+        @media (max-width: 640px) {
             #main-container {
                 flex-direction: column;
             }
@@ -55,12 +55,13 @@
         <hr style="margin-top: 1rem;">
         
         <div style="text-align: center;">
+            {% if not current_user.is_authenticated or current_user.email != email %}
             <p>
                 Click the button below and log in using the following credentials:
             </p>
             <h4>{{ email }}</h4>
             <h4>{{ password }}</h4>
-            <a href="google.com/login" target="_blank">
+            <a href="{{ url_for('login', state=request.full_path) }}">
                 <button class="button-primary" style="margin: 1rem 0;">
                     Log In
                 </button>
@@ -70,6 +71,12 @@
                 account with a (professional) profile photo and whatever else you would like. Afterwards, please 
                 return to this page.
             </p>
+            {% else %}
+            <div>
+                <i class="bi bi-check-circle-fill" style="color: var(--green-500); font-size: 2rem;"></i>
+                <h3 style="margin-top: 0.5rem;">Complete!</h3>
+            </div>
+            {% endif %}
         </div>
 
         <h4>Note:</h4>
@@ -88,22 +95,28 @@
         <hr style="margin-top: 1rem;">
 
         <div style="text-align: center;">
-            <p>
-                Click the button below, then select "Sign In with Google". 
-                Use your newly created @illinimedia.com account.
-            </p>
-            <a href="https://thedailyillini.slack.com" target="_blank">
-                <button class="button-primary" style="margin: 1rem 0;">
-                    Log in
-                </button>
-            </a>
-            <p>
-                After logging in, follow the instructions provided by Scout, IMC's Slack
-                helper. Scout will add you to the correct channels.
-            </p>
-            <p>
-                After this point, all further communication from IMC will occur through Slack.
-            </p>
+            <div id="slack-container">
+                <p>
+                    Click the button below, then select "Sign In with Google". 
+                    Use your newly created @illinimedia.com account.
+                </p>
+                <a href="https://thedailyillini.slack.com" target="_blank">
+                    <button class="button-primary" style="margin: 1rem 0;" onclick="completeSlack()">
+                        Log in
+                    </button>
+                </a>
+                <p>
+                    After logging in, follow the instructions provided by Scout, IMC's Slack
+                    helper. Scout will add you to the correct channels.
+                </p>
+                <p>
+                    After this point, all further communication from IMC will occur through Slack.
+                </p>
+            </div>
+            <div id="slack-complete" style="display: none;">
+                <i class="bi bi-check-circle-fill" style="color: var(--green-500); font-size: 2rem;"></i>
+                <h3 style="margin-top: 0.5rem;">Complete!</h3>
+            </div>
         </div>
 
         <h4>Note:</h4>
@@ -126,9 +139,6 @@
             <h4>
                 Only click the below button once you have logged in to both Google and Slack to complete your onboarding process.
             </h4>
-            <p>
-                Log in using your @illinimedia.com Google account.
-            </p>
             <a href="{{ url_for('ems_routes.ems_onboarding_complete', emp_id=uid) }}">
                 <button class="button-primary" style="margin: 1rem 0;">
                     Complete Onboarding
@@ -154,6 +164,14 @@
             sessionStorage.removeItem("infoBarMessage");
         }
     });
+
+    function completeSlack() {
+        const slackText = document.getElementById("slack-container");
+        const slackComplete = document.getElementById("slack-complete");
+
+        slackText.style.display = "none";
+        slackComplete.style.display = "block";
+    }
 </script>
 
 {% endblock %}

@@ -121,7 +121,7 @@ from views.employee_management import get_ems_brand_image_url
 
 # CONFIGURE LOGGING
 LOG_FORMAT = "%(levelname)s | %(filename)s:%(lineno)d | %(funcName)s() | %(message)s"
-logging.basicConfig(stream=sys.stdout, level=logging.INFO, format=LOG_FORMAT)
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format=LOG_FORMAT)
 
 logging.info("Initializing Flask...")
 app = Flask(__name__)
