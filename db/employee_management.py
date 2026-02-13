@@ -8,7 +8,6 @@ Created by Jacob Slabosz on Jan. 4, 2026
 Last modified Feb. 13, 2026
 """
 
-import pandas as pd
 from google.cloud import ndb
 from google.cloud.ndb import exceptions as ndb_exceptions
 from db.user import User
@@ -1621,67 +1620,6 @@ def get_slack_channels_for_employee(
                 channels.update(position.slack_channels)
 
     return list(channels)
-
-
-def validate_csv(csv):
-    """
-    Validates CSV uploaded to create multiple employees at once
-
-    Arguments:
-        `csv`: pandas dataframe
-
-    Returns:
-        None
-
-    """
-    required_columns = [
-        "last_name",
-        "first_name",
-        "imc_email",
-        "personal_email",
-        "phone_number",
-        "permanent_address_1",
-        "permanent_city",
-        "permanent_state",
-        "permanent_zip",
-        "status",
-    ]
-    not_req_columns = [
-        "user_uid",
-        "pronouns",
-        "permanent_address_2",
-        "major",
-        "major_2",
-        "major_3",
-        "minor",
-        "minor_2",
-        "minor_3",
-        "birth_date",
-        "payroll_number",
-        "initial_hire_date",
-        "graduation",
-    ]
-    invalid_columns = []
-    missing_columns = []
-    for req_col in required_columns:
-        if req_col not in csv.columns:
-            missing_columns.append(req_col)
-    for col in csv.columns:
-        if col not in not_req_columns and col not in required_columns:
-            invalid_columns.append(col)
-    if len(missing_columns) > 0:
-        raise Exception(f"CSV missing columns: {missing_columns}")
-    if len(invalid_columns) > 0:
-        raise Exception(f"CSV contains invalid columns: {invalid_columns}")
-    # use create API to validate each row
-
-    csv = csv.where(csv.notnull(), None)
-    csv["permanent_zip"] = csv["permanent_zip"].astype(str)
-
-    for i, row in csv.iterrows():
-        res = create_employee(row.to_dict())
-        if not isinstance(res, dict):
-            raise Exception(f"Successfully uploaded until rows {i+1}; {res}")
 
 
 def create_employee(data):
