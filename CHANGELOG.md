@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.4.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.3.0...v2.4.0) (2026-02-13)
+
+
+### Features
+
+* Add Employee Management System (EMS) ([#65](https://github.com/Illini-Media-Company/central-backend/issues/65)) ([776ebe9](https://github.com/Illini-Media-Company/central-backend/commit/776ebe9103ec76f03711fe92740105838b9de721))
+* Add Google Analytics tracking ([ee2a3b3](https://github.com/Illini-Media-Company/central-backend/commit/ee2a3b36451fde24813b84799596c206808cb0d5))
+
 ## [2.3.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.2.2...v2.3.0) (2025-11-26)
 
 
