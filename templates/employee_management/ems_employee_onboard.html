@@ -1,0 +1,195 @@
+{% extends 'employee_management/ems_base.html' %}
+
+{% block ems_title %}
+    Onboard Employee
+{% endblock %}
+
+{% block ems_extra_head %}
+    <link rel="stylesheet" href="/static/macros/form.css">
+
+    <style>
+        .onboard-form {
+            gap: 0.5rem;
+        }
+
+        .onboard-form-row {
+            flex-direction: column;
+            align-items: flex-start;
+            flex: 1 1 10rem;
+        }
+
+        .column-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            flex: 1 1 20rem;
+        }
+    </style>
+{% endblock %}
+
+{% import "macros/form.html" as form %}
+{% include "partials/loading.html" %}
+{% include "partials/text_alert.html" %}
+{% include "partials/info_bar.html" %}
+
+{% block ems_content %}
+<div style="display: flex; flex-direction: row; gap: 2rem; align-items: center;">
+    <a href="/ems/employees" style="color: inherit; font-size: 2rem;">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <h2>Onboard New Employee</h2>
+</div>
+<p><span style="font-weight: 500;">Note:</span> This page should only be used to onboard new employees to the Employee Management System.
+    To add an existing employee, please use the <a href="/ems/employee/add">add page</a>. If an employee previously worked for Illini
+    Media Company and is being rehired, locate them in EMS and modify their card.
+</p>
+
+<p>
+    Onboarding an employee will create their employee card and send them a one-time link
+    via email to complete their personal information. Afterwards, it will create the user's
+    IMC Google account. All onboarding notifications will be sent to the brand's employee
+    management Slack channel unless the "Notify Me Directly" option is selected, in which case you
+    will be notified directly and the channel will not receive any notifications
+</p>
+
+<a href="/ems/employee/onboard/bulk">
+    <button class="button-primary">
+        Bulk Onboard
+    </button>
+</a>
+
+<hr>
+
+<section class="section-container">
+    {% call form.form(
+        id="employeeOnboardForm",
+        class="onboard-form",
+        enctype="multipart/form-data",
+        on_submit="submitEmployeeOnboard(event)"
+    ) %}
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <div style="display: flex; flex-direction: row; gap: 0.5rem; flex-wrap: wrap; align-items: flex-start;">
+            <div class="column-container">
+                <div class="inner-container" style="padding: 0.75rem;">
+                    <div class="section-header">
+                        <h3 style="margin-bottom: 0">New Hire Information</h3>
+                    </div>
+
+                    <hr style="margin-top: 1rem;">
+
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        {# Name #}
+                        <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
+                            {{ form.text_input(
+                                name="first_name",
+                                label="First Name",
+                                required=true,
+                                class="onboard-form-row"
+                            ) }}
+
+                            {{ form.text_input(
+                                name="last_name",
+                                label="Last Name",
+                                required=true,
+                                class="onboard-form-row"
+                            ) }}
+                        </div>
+
+                        {# Email & Brand #}
+                        <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
+                            {{ form.text_input( 
+                                name="email",
+                                label="Illinois Email",
+                                required=true,
+                                placeholder="NetID@illinois.edu",
+                                class="onboard-form-row"
+                            ) }}
+                            <div style="display: flex; flex-direction: row; gap: 1rem;">
+                                {{ form.select_input( 
+                                    name="onboarded_brand",
+                                    label="Brand",
+                                    options=brand_options,
+                                    required=true,
+                                    class="onboard-form-row"
+                                ) }}
+                                {{ form.switch_input(
+                                    name="indv_notif",
+                                    label="Notify Me Directly",
+                                    class="onboard-form-row"
+                                ) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center;">
+            {{ form.submit_button(text="Send Onboarding Email", label="submit_button") }}
+        </div>
+    {% endcall %}
+</section>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const msg = sessionStorage.getItem("infoBarMessage");
+        if (msg) {
+            showInfoBar(msg);
+            sessionStorage.removeItem("infoBarMessage");
+        }
+    });
+
+    async function submitEmployeeOnboard(event) {
+        event.preventDefault();
+        console.log("Submitting...");
+
+        showLoading("Onboarding Employee...");
+
+        const formData = new FormData(event.target);
+
+        // Send the data to the backend endpoint
+        let endpoint = "/ems/api/employee/onboard/send";
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+            ...Object.fromEntries(
+                Array.from(formData.entries()).filter(([key, value]) => value !== "")
+            ),
+        };
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        // Check if it was successful
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", "Onboarding successfully started."); // Safe so we can display after reload
+            window.location.href = "{{ redirect_url }}";
+        } else {
+            // Alert of the error
+            console.log("Updating the employee failed!");
+
+            try {
+                const data = await response.json();
+                const message = data.error || "An unknown error occurred.";
+
+                console.error(message);
+                hideLoading();
+                await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            } catch (err) {
+                const fallback = await response.text();
+                hideLoading();
+                await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+            }
+        }
+    }
+    </script>
+    
+{% endblock %}
+
+

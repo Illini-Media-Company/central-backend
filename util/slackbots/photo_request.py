@@ -13,6 +13,11 @@ from zoneinfo import ZoneInfo
 
 from constants import SLACK_BOT_TOKEN, ENV
 from util.slackbots._slackbot import app
+from util.slackbots.general import (
+    _lookup_user_id_by_email,
+    dm_user_by_email,
+    dm_channel_by_id,
+)
 from db.photo_request import (
     claim_photo_request,
     complete_photo_request,
@@ -28,15 +33,6 @@ from constants import (
 )
 
 
-# helpers
-def _lookup_user_id_by_email(email: str) -> Optional[str]:
-    try:
-        return app.client.users_lookupByEmail(email=email)["user"]["id"]
-    except Exception as e:
-        print(f"[photo_request] users_lookupByEmail({email}) failed: {e}")
-        return None
-
-
 def get_slack_emoji(destination: Optional[str]) -> str:
     """Return a Slack emoji code based on the destination."""
     dest_map = {
@@ -48,42 +44,6 @@ def get_slack_emoji(destination: Optional[str]) -> str:
         "Other": "imc",
     }
     return dest_map.get(destination, "imc")  # default to IMC
-
-
-def dm_user_by_email(
-    email: str, text: str, blocks: Optional[List[Dict[str, Any]]] = None
-) -> Dict[str, Any]:
-    uid = _lookup_user_id_by_email(email)
-    if not uid:
-        return {"ok": False, "error": f"user_not_found:{email}"}
-    try:
-        res = app.client.chat_postMessage(
-            token=SLACK_BOT_TOKEN,
-            channel=uid,  # DM via user id
-            text=text,
-            blocks=blocks or None,
-        )
-        return {"ok": True, "channel": res["channel"], "ts": res["ts"]}
-    except Exception as e:
-        print(f"[photo_request] DM failed: {e}")
-        return {"ok": False, "error": str(e)}
-
-
-def dm_user_by_id(
-    user_id: str, text: str, blocks: Optional[List[Dict[str, Any]]] = None
-) -> Dict[str, Any]:
-    """DM a Slack user by their Slack user id."""
-    try:
-        res = app.client.chat_postMessage(
-            token=SLACK_BOT_TOKEN,
-            channel=user_id,
-            text=text,
-            blocks=blocks or None,
-        )
-        return {"ok": True, "channel": res["channel"], "ts": res["ts"]}
-    except Exception as e:
-        print(f"[photo_request] DM by id failed: {e}")
-        return {"ok": False, "error": str(e)}
 
 
 def _label_for_request(req: dict, default: str = "this request") -> str:
@@ -128,14 +88,14 @@ def send_claimer_confirmation(
 
     # Prefer user_id (always works if we have it)
     if user_id:
-        res = dm_user_by_id(user_id=user_id, text=msg_text)
+        res = dm_channel_by_id(channel_id=user_id, text=msg_text)
 
     # Try to resolve user_id from email, then DM by id
     elif email:
         try:
             uid = _lookup_user_id_by_email(email)
             if uid:
-                res = dm_user_by_id(user_id=uid, text=msg_text)
+                res = dm_channel_by_id(channel_id=uid, text=msg_text)
             else:
                 # Fallback to email-based DM
                 res = dm_user_by_email(email=email, text=msg_text)
@@ -912,8 +872,8 @@ def delete_request(uid: int):
         if submitter:
             message_text = f'🗑️ Your photo request "*{label}*" was deleted. If you believe this was an error, please contact a photo editor.'
 
-            dm_user_by_id(
-                user_id=submitter,
+            dm_channel_by_id(
+                channel_id=submitter,
                 text=message_text,
             )
     except Exception as e:
@@ -944,8 +904,8 @@ def delete_request(uid: int):
         try:
             message_text = f'🗑️ A photo request you claimed "*{label}*" was deleted.'
 
-            dm_user_by_id(
-                user_id=claimer,
+            dm_channel_by_id(
+                channel_id=claimer,
                 text=message_text,
             )
         except Exception as e:

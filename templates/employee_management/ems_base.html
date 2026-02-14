@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {% block ems_title %}{% endblock %} | EMS
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .page-content {
+    width: calc(100% - 2rem);
+  }
+
+  .ems-main-container {
+    display: flex;
+    flex-direction: row;
+    gap: 1.5rem;
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .expanded .section-header {
+    gap: 1rem;
+  }
+
+  .ems-nav-button {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    border-radius: var(--main-border-radius);
+    background-color: var(--main-bg-color);
+    padding: 0.5rem 1rem;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    align-items: center;
+
+    transition:
+      color 0.15s ease-in-out,
+      gap 0.15s ease-in-out;
+  }
+
+  .expanded .ems-nav-button {
+    gap: 1rem;
+  }
+
+  .ems-nav-button:hover {
+    color: var(--main-accent-color);
+  }
+
+  .ems-sidebar-highlight {
+    color: var(--main-accent-color);
+  }
+
+  .ems-nav-collapse {
+    border-radius: var(--main-border-radius);
+    background-color: var(--main-bg-color);
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+  }
+
+  .ems-sidebar-hidable {
+    display: inline-block;
+    vertical-align: middle;
+    overflow: hidden;
+    white-space: nowrap;
+
+    max-width: 0;
+    opacity: 0;
+
+    transition:
+      max-width 0.15s ease-in-out,
+      opacity 0.1s ease-in-out;
+  }
+
+  .expanded .ems-sidebar-hidable {
+    max-width: 100%;
+    opacity: 1;
+  }
+
+  .no-transition {
+    transition: none !important;
+  }
+
+  .no-transition * {
+    transition: none !important;
+  }
+
+  @media (max-width: 480px) {
+    .ems-main-container {
+      flex-direction: column;
+    }
+
+    .ems-nav-container {
+      flex-direction: row;
+      align-self: center;
+    }
+
+    .ems-navbar-hide-mobile {
+      display: none;
+    }
+
+    #ems-content-block {
+      width: 100%;
+    }
+  }
+</style>
+
+{% block ems_extra_head %} {% endblock %} {% endblock %} {% block content %}
+
+<div class="ems-main-container">
+  <section class="section-container ems-nav-container">
+    {# Header #}
+    <div
+      title="Expand/Collapse"
+      class="section-header ems-navbar-hide-mobile"
+      style="flex-direction: row; padding: 0"
+    >
+      <div class="ems-nav-collapse">
+        <i class="bi bi-list"></i>
+      </div>
+      <h4
+        class="ems-sidebar-hidable"
+        style="margin-bottom: 0; font-size: 1.5rem"
+      >
+        Employee Management System
+      </h4>
+    </div>
+    <hr style="margin-top: 1rem" class="ems-navbar-hide-mobile" />
+
+    {# Dashboard #}
+    <a
+      title="Dashboard"
+      href="/ems/"
+      class="ems-nav-button {% if selection == 'dash' %} ems-sidebar-highlight {% endif %}"
+    >
+      <i class="bi bi-columns-gap"></i>
+      <h4
+        class="ems-sidebar-hidable ems-navbar-hide-mobile"
+        style="margin-bottom: 0"
+      >
+        Dashboard
+      </h4>
+    </a>
+
+    {# Employees #}
+    <a
+      title="Employees"
+      href="/ems/employees"
+      class="ems-nav-button {% if selection == 'employees' %} ems-sidebar-highlight {% endif %}"
+    >
+      <i class="bi bi-person-badge"></i>
+      <h4
+        class="ems-sidebar-hidable ems-navbar-hide-mobile"
+        style="margin-bottom: 0"
+      >
+        Employees
+      </h4>
+    </a>
+
+    {# Positions #}
+    <a
+      title="Positions"
+      href="/ems/positions"
+      class="ems-nav-button {% if selection == 'positions' %} ems-sidebar-highlight {% endif %}"
+    >
+      <i class="bi bi-briefcase"></i>
+      <h4
+        class="ems-sidebar-hidable ems-navbar-hide-mobile"
+        style="margin-bottom: 0"
+      >
+        Positions
+      </h4>
+    </a>
+
+    {# Org Chart #}
+    <a
+      title="Org Chart"
+      href="/ems/org-chart"
+      class="ems-nav-button {% if selection == 'org-chart' %} ems-sidebar-highlight {% endif %}"
+    >
+      <i class="bi bi-diagram-3"></i>
+      <h4
+        class="ems-sidebar-hidable ems-navbar-hide-mobile"
+        style="margin-bottom: 0"
+      >
+        Org Chart
+      </h4>
+    </a>
+
+    {# Settings #}
+    <a
+      title="Settings"
+      href="/ems/settings"
+      class="ems-nav-button {% if selection == 'settings' %} ems-sidebar-highlight {% endif %}"
+    >
+      <i class="bi bi-gear"></i>
+      <h4
+        class="ems-sidebar-hidable ems-navbar-hide-mobile"
+        style="margin-bottom: 0"
+      >
+        Settings
+      </h4>
+    </a>
+  </section>
+
+  <section style="flex: 2; min-width: 0" id="ems-content-block">
+    {% block ems_content %} {% endblock %}
+  </section>
+</div>
+
+<script>
+  window.addEventListener("load", () => {
+    const collapseButton = document.querySelector(".ems-nav-collapse");
+    const sidebar = document.querySelector(".section-container");
+
+    // Disable transitions to prevent weird load bugs
+    sidebar.classList.add("no-transition");
+
+    const savedState = localStorage.getItem("emsNavState");
+    if (savedState === "expanded") {
+      sidebar.classList.add("expanded");
+    }
+
+    setTimeout(() => {
+      sidebar.classList.remove("no-transition");
+    }, 10);
+
+    // Event lister to collapse and expand the sidebar nav
+    collapseButton.addEventListener("click", () => {
+      sidebar.classList.toggle("expanded");
+
+      if (sidebar.classList.contains("expanded")) {
+        localStorage.setItem("emsNavState", "expanded");
+      } else {
+        localStorage.setItem("emsNavState", "collapsed");
+      }
+    });
+  });
+</script>
+
+{% endblock %}

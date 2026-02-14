@@ -2,7 +2,7 @@
     /* Override Bootstrap's default settings */
     --bs-font-sans-serif: futura-pt, system-ui, sans-serif;
     --bs-body-font-weight: 300;
-    --bs-body-color: #212121;
+    --bs-body-color: var(--gray-900);
 
     /* Define global fonts */
     font-family: futura-pt, system-ui, sans-serif;
@@ -10,14 +10,32 @@
     font-style: normal;
 
     /* Define global colors as variables */
-    --main-bg-color: #FFFFFF;
-    --main-text-color: #212121;
-    --main-extralight-color: #FAFAFA;
-    --main-lt-gray-color: #EEEEEE;
-    --main-md-gray-color: #DDDDDD;
-    --main-dk-gray-color: #212121;
-    --main-accent-color: #F99F20;
-    --main-accent-color-darkened: #E68805;
+    --main-bg-color:                #FFFFFF;
+    --main-text-color:              var(--gray-900);
+    --main-extralight-color:        var(--gray-50);
+    --main-lt-gray-color:           var(--gray-200);
+    --main-md-gray-color:           var(--gray-300);
+    --main-dk-gray-color:           var(--gray-900);
+    --main-accent-color:            var(--imc-orange-500);
+    --main-accent-color-darkened:   var(--imc-orange-600);
+
+    --gray-900:         #212121;
+    --gray-800:         #424242;
+    --gray-700:         #616161;
+    --gray-600:         #757575;
+    --gray-500:         #9E9E9E;
+    --gray-400:         #BDBDBD;
+    --gray-300:         #E0E0E0;
+    --gray-200:         #EEEEEE;
+    --gray-100:         #F5F5F5;
+    --gray-50:          #FAFAFA;
+
+    --red-500:          #F44336;
+
+    --imc-orange-500:   #F99F20;
+    --imc-orange-600:   #E68805;
+
+    --green-500:        #4CAF50;
 
     /* Define global corner radius */
     --main-border-radius: 1rem;
@@ -99,6 +117,25 @@ h4 {
 }
 
 .button-secondary:disabled {
+    background-color: var(--main-md-gray-color);
+    color: var(--main-text-color);
+    cursor: not-allowed;
+}
+
+.button-bg-color {
+    border: none;
+    border-radius: calc(var(--main-border-radius) + 0.25rem);
+    background-color: var(--main-bg-color);
+    color: var(--main-text-color);
+    padding: 0.25rem 1rem;
+    transition: background-color .15s ease-in-out;
+}
+
+.button-bg-color:hover {
+    background-color: var(--main-md-gray-color);
+}
+
+.button-bg-color:disabled {
     background-color: var(--main-md-gray-color);
     color: var(--main-text-color);
     cursor: not-allowed;

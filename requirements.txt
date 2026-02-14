@@ -19,3 +19,4 @@ talisman
 requests_oauthlib
 apscheduler
 markdown
+pandas

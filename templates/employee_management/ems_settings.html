@@ -1,0 +1,97 @@
+{% extends 'employee_management/ems_base.html' %}
+
+{% block ems_title %}
+    Settings
+{% endblock %}
+
+{% block ems_extra_head %}
+    <link rel="stylesheet" href="/static/macros/form.css">
+
+    <style>
+        .settings-form {
+            gap: 0.5rem;
+        }
+
+        .settings-form-row {
+            flex-direction: column;
+            align-items: flex-start;
+            flex: 1 1 10rem;
+        }
+
+        .column-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            flex: 1 1 20rem;
+        }
+    </style>
+{% endblock %}
+
+{% import "macros/form.html" as form %}
+{% include "partials/loading.html" %}
+{% include "partials/text_alert.html" %}
+{% include "partials/info_bar.html" %}
+
+{% block ems_content %}
+<h2>Settings (Under Construction)</h2>
+<p>
+    <span style="font-weight: 500;">Note:</span> All settings affect global configuration of EMS.
+</p>
+
+<hr>
+
+<section class="section-container">
+    {% call form.form(id="brandSettingsForm", class="settings-form", enctype="multipart/form-data", on_submit="submitBrandSettings(event)") %}
+        <div class="column-container">
+            {# Brand Mappings #}
+            <div class="inner-container" style="padding: 0.75rem;">
+                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin-bottom: 0">
+                        Brands
+                    </h3>
+                    <button type="button" class="button-primary" onclick="addNewBrand()">
+                        + Add Brand
+                    </button>
+                </div>
+                <p>
+                    Map brand names to the Slack channels where EMS notifications are routed.
+                </p>
+                <hr style="margin-top: 1rem;">
+
+                <div id="brand-rows-container" style="display: flex; flex-direction: column; gap: 1rem;">
+                    {% for brand in brands %}
+                        <div class="brand-entry" style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap; align-items: flex-end; border-bottom: 1px solid var(--main-lt-gray-color); padding-bottom: 1rem;">
+                            {{ form.text_input( 
+                                name="name_" ~ loop.index0,
+                                label="Brand Name",
+                                required=true,
+                                initial_val=brand.name,
+                                class="settings-form-row"
+                            ) }}
+                            {{ form.text_input( 
+                                name="channel_" ~ loop.index0,
+                                label="Slack Channel ID",
+                                required=true,
+                                initial_val=brand.slack_channel_id,
+                                class="settings-form-row"
+                            ) }}
+                            <button type="button" class="button-secondary" onclick="this.parentElement.remove()">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        {{ form.submit_button(text="Save Settings", label="submit_button") }}
+
+    {% endcall %}
+</section>
+
+<script>
+
+</script>
+
+{% endblock %}
