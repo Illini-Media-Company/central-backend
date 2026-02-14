@@ -30,6 +30,10 @@ from constants import GOOGLE_MAP_API, FOOD_TRUCK_MAPS_ID
 from util.google_analytics import send_ga4_event
 from constants import IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID
 
+
+logger = logging.getLogger(__name__)
+
+
 food_truck_routes = Blueprint("food_truck_routes", __name__, url_prefix="/food-truck")
 
 
@@ -40,9 +44,9 @@ food_truck_routes = Blueprint("food_truck_routes", __name__, url_prefix="/food-t
 @restrict_to(["food-truck-admin", "imc-staff-webdev"])
 def admin():
     with client.context():
-        print("Loading admin page...")
+        logger.info("Loading admin page...")
         trucks = get_all_registered_trucks()
-    print("Done.")
+    logger.debug("Done.")
     return render_template("food_truck_admin.html", registered=trucks)
 
 
@@ -52,15 +56,15 @@ def admin():
 # @restrict_to(["student-managers", "editors", "imc-staff-webdev"])
 def dashboard():
     with client.context():
-        print("Loading dashboard page...")
+        logger.info("Loading dashboard page...")
         email = request.args.get("login_email")
         uid = request.args.get("login_uid")
         source = request.args.get("login_source")
         google_maps_api_key = GOOGLE_MAP_API
         food_truck_map_id = FOOD_TRUCK_MAPS_ID
-        print(f"\tlogin_email  = {email}")
-        print(f"\tlogin_uid    = {uid}")
-        print(f"\tlogin_source = {source}")
+        logger.debug(f"\tlogin_email  = {email}")
+        logger.debug(f"\tlogin_uid    = {uid}")
+        logger.debug(f"\tlogin_source = {source}")
 
         # This does not execute on the first load (since email and uid are undefined)
         # When the page reloads when the user clicks the "Find" button, this executes
@@ -84,7 +88,7 @@ def dashboard():
         else:
             source_str = None
 
-    print("Done.")
+    logger.debug("Done.")
     return render_template(
         "food_truck_dash.html",
         truck=truck,
@@ -105,7 +109,7 @@ def dashboard():
 @login_required
 @restrict_to(["food-truck-admin", "imc-staff-webdev"])
 def register_truck():
-    print("CALLED — Registering food truck...")
+    logger.info("CALLED — Registering food truck...")
     with client.context():
         name = request.form["name"]
         cuisine = request.form["cuisine"]
@@ -117,7 +121,7 @@ def register_truck():
             name=name, cuisine=cuisine, emoji=emoji, url=url, email=email
         )
 
-    print("Done.")
+    logger.debug("Done.")
     return "Food truck registered", 200
 
 
@@ -126,13 +130,13 @@ def register_truck():
 @login_required
 @restrict_to(["food-truck-admin", "imc-staff-webdev"])
 def deregister_truck(uid):
-    print("CALLED — Deregistering food truck...")
+    logger.info("CALLED — Deregistering food truck...")
     with client.context():
         if uid.isdigit() and deregister_food_truck(int(uid)):
-            print("Done.")
+            logger.debug("Done.")
             return "Food truck deregistered.", 200
         else:
-            print("Failed.")
+            logger.error("Failed.")
             return "Food truck not found.", 404
 
 
@@ -141,7 +145,7 @@ def deregister_truck(uid):
 @login_required
 @restrict_to(["food-truck-admin", "imc-staff-webdev"])
 def modify_truck(uid):
-    print("CALLED — Modifying food truck...")
+    logger.info("CALLED — Modifying food truck...")
     with client.context():
         name = request.form["name"]
         cuisine = request.form["cuisine"]
@@ -153,7 +157,7 @@ def modify_truck(uid):
             uid=int(uid), name=name, cuisine=cuisine, emoji=emoji, url=url, email=email
         )
 
-    print("Done.")
+    logger.debug("Done.")
     return "Food truck modified", 200
 
 
