@@ -207,13 +207,13 @@ def page_not_found(e):
     Error handler for 404 errors (Page not found). Can be manually shown through an API by calling:
     `abort(404, description="Your string here")`
     """
-    # User the string provided from abort(), otherwise default
+    # Use the string provided from abort(), otherwise default
     default_error = "That link is not valid! Please check that it is correct then try again. If the issue persists, notify a developer."
+    generic_default = "The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again."
+
     error_message = (
         e.description
-        if hasattr(e, "description")
-        and e.description
-        != "The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again."
+        if hasattr(e, "description") and e.description != generic_default
         else default_error
     )
 
@@ -224,6 +224,32 @@ def page_not_found(e):
             error=error_message,
         ),
         404,
+    )
+
+
+@app.errorhandler(403)
+def access_forbidden(e):
+    """
+    Error handler for 403 errors (Forbidden). Can be manually shown through an API by calling:
+    `abort(403, description="Your string here")`
+    """
+    # Use the string provided from abort(), otherwise default
+    default_error = "You do not have permission to access this resource. If you believe this is an error, please contact a system administrator."
+    generic_default = "You don't have the permission to access the requested resource. It is either read-protected or not readable by the server."
+
+    error_message = (
+        e.description
+        if hasattr(e, "description") and e.description != generic_default
+        else default_error
+    )
+
+    return (
+        render_template(
+            "error.html",
+            code="403",
+            error=error_message,
+        ),
+        403,
     )
 
 

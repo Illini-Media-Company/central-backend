@@ -366,6 +366,14 @@
                                 options=employee_grad_years,
                                 class="filter-item"
                             ) }}
+
+                            {# Brand #}
+                            {{ form.select_input( 
+                                name="filter_brand",
+                                label="Brand",
+                                options=all_brands,
+                                class="filter-item"
+                            ) }}
                         </div>
                         <hr>
                         <div class="filter-button-container">
@@ -425,6 +433,13 @@
                     <th onclick="handleSort(this, 'birth_date')">
                         <span><i class="bi bi-caret-up"></i></span>
                         Birth Date
+                    </th>
+                    <th onclick="handleSort(this, 'num_cur_pos')">
+                        <span><i class="bi bi-caret-up"></i></span>
+                        # Positions
+                    </th>
+                    <th style="padding-right: 3rem;">
+                        Brands
                     </th>
                     <th onclick="handleSort(this, 'payroll_number')">
                         <span><i class="bi bi-caret-up"></i></span>
@@ -527,6 +542,17 @@
                 </td>
                 <td>
                     ${simplifyDate(emp.birth_date) || '—'}
+                </td>
+                <td>
+                    ${emp.num_cur_pos}
+                </td>
+                <td class="row-small-text">
+                    ${(emp.cur_brands || "")
+                        .toString()
+                        .split(',')
+                        .filter(brand => brand.trim() !== "") // Remove empty strings
+                        .map(brand => `<div>${brand.trim()}</div>`)
+                        .join('')}
                 </td>
                 <td>
                     ${emp.payroll_number || '—'}
@@ -735,9 +761,10 @@
         const bornBefore = document.getElementById("filter_born_before").value;
         const status = document.getElementById("filter_status").value;
         const graduation = document.getElementById("filter_graduation").value;
+        const brand = document.getElementById("filter_brand").value;
 
         const filterDropdown = document.getElementById("filterDropdown");
-        if (!hireAfter && !hireBefore && !bornAfter && !bornBefore && !status && !graduation) {
+        if (!hireAfter && !hireBefore && !bornAfter && !bornBefore && !status && !graduation && !brand) {
             filtersApplied = false;
             filterDropdown.classList.remove("filtering");
         } else {
@@ -784,6 +811,17 @@
                 // Check Status
                 if (status && (!emp.status || emp.status.toLowerCase() !== status.toLowerCase())) return false;
                 if (graduation && (!emp.graduation || emp.graduation.toLowerCase() !== graduation.toLowerCase())) return false;
+                if (brand) {
+                    const empBrandsRaw = String(emp.cur_brands || "");
+                    
+                    const brandList = empBrandsRaw.split(',')
+                        .map(b => b.trim().toLowerCase())
+                        .filter(b => b !== "");
+                    
+                    if (!brandList.includes(brand.toLowerCase())) {
+                        return false;
+                    }
+                }
             }
 
             return true;

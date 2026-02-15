@@ -5,9 +5,10 @@ to the EMS must be located inside of this file. Classes should not be accessed
 anywhere else in the codebase without the use of helper functions.
 
 Created by Jacob Slabosz on Jan. 4, 2026
-Last modified Feb. 13, 2026
+Last modified Feb. 14, 2026
 """
 
+import logging
 from google.cloud import ndb
 from google.cloud.ndb import exceptions as ndb_exceptions
 from db.user import User
@@ -443,33 +444,48 @@ def create_employee_card(**kwargs: dict) -> dict | int:
         `EMISSING`: If required fields are missing (`imc_email`)
         `EEXCEPT`: Other fatal error
     """
+    logging.info(f"Attempting to create EmployeeCard.")
+
     with client.context():
         if "imc_email" in kwargs:
             existing = EmployeeCard.query(
                 EmployeeCard.imc_email == kwargs["imc_email"]
             ).get()
             if existing:
+                logging.warning(
+                    f"Employee with email {kwargs['imc_email']} already exists."
+                )
                 return EEXISTS  # Employee with this IMC email already exists
         else:
+            logging.warning("Missing required field: imc_email.")
             return EMISSING  # Missing required field
         try:
             if "user_uid" in kwargs:
                 user = User.get_by_id(kwargs["user_uid"])
                 if not user:
+                    logging.warning(
+                        f"User with UID {kwargs['user_uid']} does not exist."
+                    )
                     return EUSERDNE
             employee = EmployeeCard(**kwargs)
+            logging.debug(f"Created EmployeeCard object.")
             employee.slack_id = _lookup_user_id_by_email(employee.imc_email)
             employee.created_at = datetime.now(tz=ZoneInfo("America/Chicago"))
             employee.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
             employee.updated_by = current_user.email if current_user else "System"
             employee.put()
+            logging.debug(f"Saved EmployeeCard to datastore with ID {employee.uid}.")
+
             temp = employee.uid
             tie_employee_to_user(employee_uid=temp)
             employee = EmployeeCard.get_by_id(temp)
 
+            logging.info(
+                f"Successfully created EmployeeCard for {employee.full_name} with email {employee.imc_email}."
+            )
             return employee.to_dict()
         except Exception as e:
-            print(f"Error creating EmployeeCard: {e}")
+            logging.warning(f"Error creating EmployeeCard: {e}")
             return EEXCEPT  # Employee creation failed
 
 
@@ -585,6 +601,24 @@ def get_employee_card_by_id(uid: int) -> dict | int:
         return employee.to_dict() if employee else EEMPDNE
 
 
+def get_employee_card_by_email(email: str) -> dict | int:
+    """
+    Retrieves an EmployeeCard by the employee's IMC email.
+
+    Arguments:
+        `email` (`str`): The IMC email of the employee
+
+    Returns:
+        `dict`: The `EmployeeCard` as a dictionary
+
+    Raises:
+        `EEMPDNE`: If EmployeeCard not found
+    """
+    with client.context():
+        employee = EmployeeCard.query(EmployeeCard.imc_email == email).get()
+        return employee.to_dict() if employee else EEMPDNE
+
+
 def get_all_employee_cards() -> list:
     """
     Retrieves all EmployeeCard entries in the database.
@@ -652,10 +686,15 @@ def tie_employee_to_user(employee_uid: int = None, user_uid: int = None) -> bool
         `EEMPDNE`: Employee does not exist
         `EEXCEPT`: Other fatal error
     """
+
     if employee_uid:
+        logging.info(
+            f"Attempting to link EmployeeCard with UID {employee_uid} to a User."
+        )
         employee = EmployeeCard.get_by_id(employee_uid)
         user = User.query(User.email == employee.imc_email).get() if employee else None
     elif user_uid:
+        logging.info(f"Attempting to link User with UID {user_uid} to an EmployeeCard.")
         user = User.get_by_id(user_uid)
         employee = (
             EmployeeCard.query(EmployeeCard.imc_email == user.email).get()
@@ -664,8 +703,10 @@ def tie_employee_to_user(employee_uid: int = None, user_uid: int = None) -> bool
         )
 
     if not employee:
+        logging.warning(f"Employee with UID {employee_uid} does not exist.")
         return EEMPDNE  # Employee does not exist
     if not user:
+        logging.warning(f"User with UID {user_uid} does not exist.")
         return EUSERDNE  # User does not exist
 
     try:
@@ -676,9 +717,13 @@ def tie_employee_to_user(employee_uid: int = None, user_uid: int = None) -> bool
         else:
             employee.updated_by = "System"
         employee.put()
+
+        logging.debug(
+            f"Successfully linked EmployeeCard (UID {employee.uid}) to User (UID {user.key.id()})."
+        )
         return True
     except Exception as e:
-        print(f"Error linking EmployeeCard to User: {e}")
+        logging.warning(f"Error linking EmployeeCard to User: {str(e)}")
         return EEXCEPT  # If linking fails
 
 
@@ -1633,19 +1678,19 @@ def create_employee(data):
         if data.get(field):
             # Converts "YYYY-MM-DD" string to a Python date object
             data[field] = datetime.strptime(data[field], "%Y-%m-%d").date()
+            logging.debug(f"Converted field {field} to date object: {data[field]}")
 
     if data.get("payroll_number"):
         data["payroll_number"] = int(data["payroll_number"])
+        logging.debug(f"Converted payroll_number to int: {data['payroll_number']}")
 
     if data.get("user_uid"):
         data["user_uid"] = int(data["user_uid"])
+        logging.debug(f"Converted user_uid to int: {data['user_uid']}")
 
     if data:
         created = create_employee_card(**data)
-        if not created:
-            raise Exception("An employee already exists with that IMC email")
-        if created == -1:
-            raise Exception("An error occurred while creating the employee.")
-        return "Success!"
+        return created
 
+    logging.warning("No data provided for employee creation.")
     raise Exception("No data was entered. Cannot create employee with no information.")

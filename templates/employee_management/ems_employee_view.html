@@ -149,6 +149,7 @@
 
 {% block ems_content %}
 
+{% if admin_access %}
 {{ ems_macros.ems_relation_add(
     employee_id=employee.uid, 
     position_id=none,
@@ -169,11 +170,14 @@
     depart_reasons_invol=depart_reasons_invol,
     depart_reasons_admin=depart_reasons_admin,
 ) }}
+{% endif %}
 
 <div style="display: flex; flex-direction: row; gap: 2rem; align-items: center;">
+    {% if admin_access %}
     <a href="/ems/employees" style="color: inherit; font-size: 2rem;">
         <i class="bi bi-arrow-left"></i>
     </a>
+    {% endif %}
     <h2>View/Edit Employee</h2>
 </div>
 
@@ -191,12 +195,18 @@
             </div>
             {# Delete Button #}
             <div class="form-initial-hide">
-                <div class="inner-container delete-button-container">
-                    <button class="button-secondary" type="button" onclick="deleteEmployee()" style="text-wrap: nowrap; width: fit-content;">
-                        <i class="bi bi-exclamation-triangle"></i>&nbsp; Permanently Delete
-                    </button>
-                    <br>
-                </div>
+                {% if admin_access %}
+                    <div class="inner-container delete-button-container">
+                        <button class="button-secondary" type="button" onclick="deleteEmployee()" style="text-wrap: nowrap; width: fit-content;">
+                            <i class="bi bi-exclamation-triangle"></i>&nbsp; Permanently Delete
+                        </button>
+                        <br>
+                    </div>
+                {% else %}
+                    <img src="{{ employee.user_profile }}"
+                        class="employee-profile-photo"
+                    >
+                {% endif %}
             </div>
             {# Name & Pronouns #}
             <div class="inner-container" style="padding: 0.75rem;">
@@ -551,6 +561,7 @@
                             </p>
                         </div>
                         <div class="form-initial-hide">
+                            {% if admin_access %}
                             {{ form.text_input( 
                                 name="initial_hire_date",
                                 label="Initial Hire Date",
@@ -559,11 +570,22 @@
                                 initial_val=employee.initial_hire_date,
                                 class="employee-modify-form-row"
                             ) }}
+                            {% else %}
+                            <p style="margin-bottom: 0;">
+                                {{ employee.initial_hire_date|ap_date or "—" }}&nbsp;
+                                <span style="font-size: 0.75rem;">
+                                    {% if employee.initial_hire_date %}
+                                        ({{ employee.initial_hire_date | time_since }})
+                                    {% endif %}
+                                </span>
+                            </p>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
 
                 {# Administrative #}
+                {% if admin_access %}
                 <div class="inner-container" style="padding: 0.75rem;">
                     <div class="section-header" style="padding: 0;">
                         <h4 style="margin-bottom: 0">Administrative</h4>
@@ -636,6 +658,7 @@
                         </div>
                     </div>
                 </div>
+                {% endif %}
             </div>
 
             {# Right Column #}
@@ -645,9 +668,11 @@
                     {# Header #}
                     <div class="section-header" style="padding: 0;">
                         <h3 style="margin-bottom: 0">Current Positions</h3>
-                        <button class="button-primary" type="button" onclick="emsRelationAddShowForm()">
-                            Assign Position
-                        </button>
+                        {% if admin_access %}
+                            <button class="button-primary" type="button" onclick="emsRelationAddShowForm()">
+                                Assign Position
+                            </button>
+                        {% endif %}
                     </div>
 
                     <hr style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
@@ -664,16 +689,18 @@
                                         <span style="font-size: 0.75rem;">({{ pos.start_date | time_since }})</span>
                                     </p>
                                 </div>
-                                <div class="position-item-button-container">
-                                    <button class="position-item-action-button form-initial-hide" type="button" title="Modify Assignment" onclick="emsRelationModifyShowForm('{{ pos.relation_uid }}')">
-                                        <i class="bi bi-pencil-square"></i>
-                                    </button>
-                                    <a href="/ems/position/view/{{ pos.position_uid }}" target="_blank">
-                                        <button class="position-item-action-button" type="button" title="View/Edit Position" style="color: var(--main-accent-color);">
-                                            <i class="bi bi-briefcase"></i>
+                                {% if admin_access %}
+                                    <div class="position-item-button-container">
+                                        <button class="position-item-action-button form-initial-hide" type="button" title="Modify Assignment" onclick="emsRelationModifyShowForm('{{ pos.relation_uid }}')">
+                                            <i class="bi bi-pencil-square"></i>
                                         </button>
-                                    </a>
-                                </div>
+                                        <a href="/ems/position/view/{{ pos.position_uid }}" target="_blank">
+                                            <button class="position-item-action-button" type="button" title="View/Edit Position" style="color: var(--main-accent-color);">
+                                                <i class="bi bi-briefcase"></i>
+                                            </button>
+                                        </a>
+                                    </div>
+                                {% endif %}
                             </div>
                         {% endfor %}
                     </div>
@@ -709,6 +736,7 @@
                                         </p>
                                     {% endif %}
                                 </div>
+                                {% if admin_access %}
                                 <div class="position-item-button-container">
                                     <button class="position-item-action-button form-initial-hide" type="button" title="Modify Assignment" onclick="emsRelationModifyShowForm('{{ pos.relation_uid }}')">
                                         <i class="bi bi-pencil-square"></i>
@@ -719,6 +747,7 @@
                                         </button>
                                     </a>
                                 </div>
+                                {% endif %}
                             </div>
                         {% endfor %}
                     </div>
@@ -784,6 +813,60 @@
         });
     }
 
+    async function modifyEmployee(event) {
+        event.preventDefault();
+        console.log("Saving...");
+
+        showLoading("Modifying Employee...");
+
+        const formData = new FormData(event.target);
+
+        const formEntries = Object.fromEntries(
+            Array.from(formData.entries()).filter(([key, value]) => value !== "")
+        );
+
+        // Send the data to the backend endpoint
+        let endpoint = "/ems/api/employee/{{ employee.uid }}/modify";
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+            ...formEntries,
+        };
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        // Check if it was successful
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", "Employee successfully modified."); // Safe so we can display after reload
+            window.location.reload();
+        } else {
+            // Alert of the error
+            console.log("Modifying the employee failed!");
+
+            try {
+                const data = await response.json();
+                const message = data.error || "An unknown error occurred.";
+
+                console.error(message);
+                hideLoading();
+                await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            } catch (err) {
+                const fallback = await response.text();
+                hideLoading();
+                await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+            }
+        }
+    }
+</script>
+
+{% if admin_access %}
+<script>
     // Delete the employee
     async function deleteEmployee() {
         console.log("Deleting...");
@@ -842,57 +925,7 @@
             }
         }
     }
-
-    async function modifyEmployee(event) {
-        event.preventDefault();
-        console.log("Saving...");
-
-        showLoading("Modifying Employee...");
-
-        const formData = new FormData(event.target);
-
-        const formEntries = Object.fromEntries(
-            Array.from(formData.entries()).filter(([key, value]) => value !== "")
-        );
-
-        // Send the data to the backend endpoint
-        let endpoint = "/ems/api/employee/{{ employee.uid }}/modify";
-        const payload = {
-            _csrf_token: "{{ csrf_token() }}",
-            ...formEntries,
-        };
-
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-        });
-
-        // Check if it was successful
-        if (response.status === 200) {
-            // Trigger a reload of the window
-            sessionStorage.setItem("infoBarMessage", "Employee successfully modified."); // Safe so we can display after reload
-            window.location.reload();
-        } else {
-            // Alert of the error
-            console.log("Modifying the employee failed!");
-
-            try {
-                const data = await response.json();
-                const message = data.error || "An unknown error occurred.";
-
-                console.error(message);
-                hideLoading();
-                await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
-            } catch (err) {
-                const fallback = await response.text();
-                hideLoading();
-                await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
-            }
-        }
-    }
 </script>
+{% endif %}
 
 {% endblock %}

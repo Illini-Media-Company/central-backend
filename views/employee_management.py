@@ -2,13 +2,13 @@
 This file defines the API for the Employee Management System.
 
 Created by Jacob Slabosz on Jan. 12, 2026
-Last modified Feb. 13, 2026
+Last modified Feb. 14, 2026
 """
 
 import logging
 from flask import Blueprint, render_template, request, jsonify, abort
 from flask_login import login_required, current_user
-from util.security import restrict_to
+from util.security import restrict_to, is_user_in_group
 from datetime import datetime
 
 from flask import request, jsonify, url_for
@@ -50,6 +50,7 @@ from db.employee_management import (
     modify_employee_card,
     get_all_employee_cards,
     get_employee_card_by_id,
+    get_employee_card_by_email,
     delete_employee_card,
     create_position_card,
     modify_position_card,
@@ -151,9 +152,28 @@ def ems_employees():
     # Get the corresponding user's profile photo
     for emp in all_employees:
         if emp["user_uid"]:
-            emp["user_profile"] = get_user_profile_photo(emp["user_uid"])
+            emp["user_profile"] = (
+                get_user_profile_photo(emp["user_uid"])
+                or "/static/defaults/employee_profile.png"
+            )
         else:
             emp["user_profile"] = "/static/defaults/employee_profile.png"
+
+        # Determine what brands the employee currently works for
+        cur_pos = get_relations_by_employee_current(emp["uid"])
+        emp["cur_brands"] = []
+        if cur_pos:
+            emp["num_cur_pos"] = len(cur_pos)
+
+            for rel in cur_pos:
+                position = get_position_card_by_id(rel["position_id"])
+                if position:
+                    emp["cur_brands"].append(position["brand"])
+        else:
+            emp["num_cur_pos"] = 0
+
+        # Alphabetize and remove duplicates
+        emp["cur_brands"] = sorted(list(set(emp["cur_brands"])))
 
     return render_template(
         "employee_management/ems_employees.html",
@@ -161,6 +181,7 @@ def ems_employees():
         selected_employees=all_employees,
         employee_statuses=EMPLOYEE_STATUS_OPTIONS,
         employee_grad_years=EMPLOYEE_GRAD_YEARS,
+        all_brands=IMC_BRANDS,
     )
 
 
@@ -199,12 +220,12 @@ def ems_employee_add_bulk():
 # TEMPLATE — employee_view
 @ems_routes.route("/employee/view/<int:emp_id>", methods=["GET"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
 def ems_employee_view(emp_id):
     """
     Renders the view employee page.
     """
     logging.info(f"Viewing employee with ID {emp_id}")
+
     # Get the employee
     employee = get_employee_card_by_id(emp_id)
 
@@ -216,6 +237,28 @@ def ems_employee_view(emp_id):
                 Ensure this employee has not been deleted. \
                 If the issue persists, contact an administrator.",
         )
+
+    # Validate access
+    # if is_user_in_group(current_user, EMS_ADMIN_ACCESS_GROUPS):
+    if is_user_in_group(current_user, EMS_ADMIN_ACCESS_GROUPS):
+        logging.info(
+            f"User {current_user.email} has admin access to employee ID {emp_id}."
+        )
+        admin_access = True
+    else:
+        admin_access = False  # Gives less viewing permissions than an admin would have
+        if not employee["imc_email"] or employee["imc_email"] != current_user.email:
+            logging.info(
+                f"User {current_user.email} attempted to access employee ID {emp_id} without permission."
+            )
+            abort(
+                403,
+                description="You do not have permission to view this employee.",
+            )
+        else:
+            logging.info(
+                f"User {current_user.email} is viewing their own employee record (ID {emp_id})."
+            )
 
     logging.debug(f"Employee data for ID {emp_id}: {employee}")
 
@@ -262,12 +305,15 @@ def ems_employee_view(emp_id):
         f"Past positions for employee ID {emp_id}: {employee['past_positions']}"
     )
 
-    # Get all possible position options for dropdown
-    all_positions = get_all_active_position_cards()
-    position_options = [
-        {"value": pos["uid"], "name": f"{pos['brand']} — {pos['title']}"}
-        for pos in all_positions
-    ]
+    # Get all possible position options for dropdown (not needed if not an admin)
+    if admin_access:
+        all_positions = get_all_active_position_cards()
+        position_options = [
+            {"value": pos["uid"], "name": f"{pos['brand']} — {pos['title']}"}
+            for pos in all_positions
+        ]
+    else:
+        position_options = []
 
     # Get the corresponding user's profile photo
     if employee["user_uid"]:
@@ -287,7 +333,29 @@ def ems_employee_view(emp_id):
         depart_reasons_vol=DEPART_REASON_VOL,
         depart_reasons_invol=DEPART_REASON_INVOL,
         depart_reasons_admin=DEPART_REASON_ADMIN,
+        admin_access=admin_access,
     )
+
+
+@ems_routes.route("employee/view/me", methods=["GET"])
+@login_required
+def ems_employee_view_me():
+    """
+    Renders the current user's employee view page.
+    """
+    user_email = current_user.email
+
+    employee = get_employee_card_by_email(user_email)
+    if not employee or employee == EEMPDNE:
+        logging.info(
+            f"Employee card for user email {user_email} does not exist or has been deleted."
+        )
+        abort(
+            404,
+            description=f"Your email ({user_email}) is not currently linked to an employee record. If you believe this is a mistake, please contact an administrator.",
+        )
+
+    return ems_employee_view(employee["uid"])
 
 
 # TEMPLATE — employee_onboard
@@ -419,6 +487,7 @@ def ems_onboarding_complete(emp_id):
                 code="409",
                 error="It seems you did not log into Slack. Please do so, then refresh this page.",
             )
+
         logging.debug(
             f"Employee ID {emp_id} has Slack ID {slack_id}. Proceeding with onboarding completion."
         )
@@ -482,7 +551,7 @@ def ems_api_employee_create():
     data = request.get_json() or {}
 
     # Remove the CSRF token from the JSON to pass to the function
-    del data["_csrf_token"]
+    data.pop("_csrf_token", None)
 
     date_fields = ["birth_date", "initial_hire_date"]
 
@@ -562,12 +631,16 @@ def ems_api_employee_create():
 def ems_api_employee_create_all():
     import pandas as pd
 
+    logging.info("Bulk creating employees via CSV upload.")
+
     if "file_input" not in request.files:
+        logging.info("No file part in the request.")
         return jsonify({"error": "No file part in the request"}), 400
 
     file = request.files["file_input"]
 
     if file.filename == "":
+        logging.info("No file selected for upload.")
         return jsonify({"error": "No selected file"}), 400
 
     # 2. You can read the file directly into Pandas without saving it to disk
@@ -576,20 +649,18 @@ def ems_api_employee_create_all():
         file.seek(0)
         uploaded_df = pd.read_csv(file, encoding="unicode_escape")
 
-        # Do your processing here...
-        print(uploaded_df.head())
-
         validate_csv(uploaded_df)
 
+        logging.info(f"Processing {len(uploaded_df)} rows from uploaded CSV.")
         return jsonify({"message": f"Processed {len(uploaded_df)} rows"}), 200
     except Exception as e:
+        logging.error(f"Error processing CSV: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 
 # API
 @ems_routes.route("/api/employee/<int:uid>/modify", methods=["POST"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
 def ems_api_employee_modify(uid):
     """
     API endpoint to modify an existing employee.
@@ -604,7 +675,7 @@ def ems_api_employee_modify(uid):
     data = request.get_json() or {}
 
     # Remove the CSRF token from the JSON to pass to the function
-    del data["_csrf_token"]
+    data.pop("_csrf_token", None)
 
     date_fields = ["birth_date", "initial_hire_date"]
 
@@ -632,6 +703,34 @@ def ems_api_employee_modify(uid):
         return jsonify({"error": "Invalid user ID format."}), 400
 
     if data:
+        # Validate access
+        if is_user_in_group(current_user, EMS_ADMIN_ACCESS_GROUPS):
+            logging.info(
+                f"User {current_user.email} has admin access to modify employee ID {uid}."
+            )
+        else:
+            employee = get_employee_card_by_id(uid)
+            if not employee["imc_email"] or employee["imc_email"] != current_user.email:
+                logging.info(
+                    f"User {current_user.email} attempted to modify employee ID {uid} without permission."
+                )
+                return (
+                    jsonify(
+                        {"error": "You do not have permission to modify this employee."}
+                    ),
+                    403,
+                )
+            else:
+                logging.info(
+                    f"User {current_user.email} is modifying their own employee record (ID {uid})."
+                )
+
+                # Remove field that non-admins are not allowed to modify
+                data.pop("status", None)
+                data.pop("imc_email", None)
+                data.pop("initial_hire_date", None)
+                data.pop("payroll_number", None)
+
         modified = modify_employee_card(uid, **data)
 
         # Fatal error
@@ -1248,7 +1347,7 @@ def ems_api_position_create():
     data = request.get_json() or {}
 
     # Remove the CSRF token from the JSON to pass to the function
-    del data["_csrf_token"]
+    data.pop("_csrf_token", None)
 
     # Convert pay rate to float
     try:
@@ -1346,7 +1445,7 @@ def ems_api_position_modify(uid):
     data = request.get_json() or {}
 
     # Remove the CSRF token from the JSON to pass to the function
-    del data["_csrf_token"]
+    data.pop("_csrf_token", None)
 
     # Convert pay rate to float
     try:
@@ -1629,7 +1728,7 @@ def ems_api_relation_create():
     data = request.get_json() or {}
 
     # Remove the CSRF token from the JSON to pass to the function
-    del data["_csrf_token"]
+    data.pop("_csrf_token", None)
 
     date_fields = ["start_date", "end_date"]
 
@@ -1753,7 +1852,7 @@ def ems_api_relation_modify(uid):
     data = request.get_json() or {}
 
     # Remove the CSRF token from the JSON to pass to the function
-    del data["_csrf_token"]
+    data.pop("_csrf_token", None)
 
     date_fields = ["start_date", "end_date"]
 
@@ -1953,6 +2052,105 @@ def ems_api_relation_delete(uid):
 ################################################################################
 ### HELPER FUNCTIONS ###########################################################
 ################################################################################
+
+
+def validate_csv(csv):
+    """
+    Validates CSV uploaded to create multiple employees at once
+
+    Arguments:
+        `csv`: pandas dataframe
+
+    Returns:
+        None
+
+    """
+    logging.debug(f"Validating uploaded CSV with columns: {csv.columns.tolist()}")
+
+    required_columns = [
+        "last_name",
+        "first_name",
+        "imc_email",
+        "status",
+    ]
+    not_req_columns = [
+        "user_uid",
+        "pronouns",
+        "personal_email",
+        "phone_number",
+        "permanent_address_1",
+        "permanent_address_2",
+        "permanent_city",
+        "permanent_state",
+        "permanent_zip",
+        "major",
+        "major_2",
+        "major_3",
+        "minor",
+        "minor_2",
+        "minor_3",
+        "birth_date",
+        "payroll_number",
+        "initial_hire_date",
+        "graduation",
+    ]
+    invalid_columns = []
+    missing_columns = []
+    for req_col in required_columns:
+        if req_col not in csv.columns:
+            missing_columns.append(req_col)
+    for col in csv.columns:
+        if col not in not_req_columns and col not in required_columns:
+            invalid_columns.append(col)
+    if len(missing_columns) > 0:
+        logging.debug(f"CSV is missing required columns: {missing_columns}")
+        raise Exception(f"CSV missing columns: {missing_columns}")
+    if len(invalid_columns) > 0:
+        logging.debug(f"CSV contains invalid columns: {invalid_columns}")
+        raise Exception(f"CSV contains invalid columns: {invalid_columns}")
+    # use create API to validate each row
+
+    csv = csv.where(csv.notnull(), None)
+    csv["permanent_zip"] = csv["permanent_zip"].astype(str)
+
+    for i, row in csv.iterrows():
+        # Convert row to dict and remove any keys where the value is None or NaN
+        row_dict = {k: v for k, v in row.to_dict().items() if v is not None and v == v}
+
+        logging.debug(f"Validating row {i} with data: {row_dict}")
+        res = create_employee(row_dict)
+
+        # Check for errors
+        if not isinstance(res, dict):
+            if not res:
+                logging.debug(
+                    f"Fatal error occurred while creating employee for row {i}."
+                )
+                error = "A fatal error occurred while creating the employee."
+            if res == EEXISTS:
+                logging.debug(
+                    f"An employee already exists with that IMC email for row {i}."
+                )
+                error = "An employee already exists with that IMC email."
+            if res == EUSERDNE:
+                logging.debug(
+                    f"The associated user account does not exist for row {i}."
+                )
+                error = "The associated user account does not exist."
+            if res == EMISSING:
+                logging.debug(
+                    f"Missing required fields for employee creation for row {i}."
+                )
+                error = "Missing required fields for employee creation."
+            if res == EEXCEPT:
+                logging.debug(
+                    f"An unexpected error occurred during employee creation for row {i}."
+                )
+                error = "An unexpected error occurred during employee creation."
+
+            raise Exception(
+                f"Successfully uploaded until row {i+1} of data before an error occurred; {error}"
+            )
 
 
 ################################################################################
@@ -2244,64 +2442,3 @@ def get_org_tree():
         print(f"ERROR building org chart: {str(e)}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
-
-
-def validate_csv(csv):
-    """
-    Validates CSV uploaded to create multiple employees at once
-
-    Arguments:
-        `csv`: pandas dataframe
-
-    Returns:
-        None
-
-    """
-    required_columns = [
-        "last_name",
-        "first_name",
-        "imc_email",
-        "personal_email",
-        "phone_number",
-        "permanent_address_1",
-        "permanent_city",
-        "permanent_state",
-        "permanent_zip",
-        "status",
-    ]
-    not_req_columns = [
-        "user_uid",
-        "pronouns",
-        "permanent_address_2",
-        "major",
-        "major_2",
-        "major_3",
-        "minor",
-        "minor_2",
-        "minor_3",
-        "birth_date",
-        "payroll_number",
-        "initial_hire_date",
-        "graduation",
-    ]
-    invalid_columns = []
-    missing_columns = []
-    for req_col in required_columns:
-        if req_col not in csv.columns:
-            missing_columns.append(req_col)
-    for col in csv.columns:
-        if col not in not_req_columns and col not in required_columns:
-            invalid_columns.append(col)
-    if len(missing_columns) > 0:
-        raise Exception(f"CSV missing columns: {missing_columns}")
-    if len(invalid_columns) > 0:
-        raise Exception(f"CSV contains invalid columns: {invalid_columns}")
-    # use create API to validate each row
-
-    csv = csv.where(csv.notnull(), None)
-    csv["permanent_zip"] = csv["permanent_zip"].astype(str)
-
-    for i, row in csv.iterrows():
-        res = create_employee(row.to_dict())
-        if not isinstance(res, dict):
-            raise Exception(f"Successfully uploaded until rows {i+1}; {res}")
