@@ -161,6 +161,25 @@ def add_truck_loctime_repeat(
     reported_by,
     end_date,
 ):
+    """
+    Adds multiple loctimes separated by one week intervals until specified end date (repeating loctime).
+    Note: loctime can repeat on end date
+
+    Arguments:
+        `truck_uid` (`float`): The unique ID of the food truck.
+        `lat` (`float`): The latitude coordinate of the location.
+        `lon` (`float`): The longitude coordinate of the location.
+        `nearest_address` (`str`): The nearest address to the location.
+        `location_desc` (`str`): Description of the location.
+        `start_time` (`datetime`): The start time of the loctime.
+        `end_time` (`datetime`): The end time of the loctime.
+        `reported_by` (`str`): The person reporting the loctime.
+        `end_date` (`date`): The end date for the recurring series (repeats weekly).
+
+    Returns:
+        `bool`: True if all recurring loctimes were created successfully, False if overlap detected.
+
+    """
     # check if any objects will overlap
     start_check = start_time
     end_check = end_time
@@ -210,6 +229,15 @@ def remove_truck_loctime(uid):
 
 # Removes all locTimes with the passed recurrence_id
 def remove_truck_loctime_repeat(recurrence_id):
+    """
+    Removes all repeating loctimes that were created together(same recurrence_id).
+
+    Arguments:
+        `recurrence_id` (`str`): The unique recurrence ID that groups repeating times together to delete.
+
+    Returns:
+        `int`: The number of loctimes that was deleted.
+    """
     keys = foodTruckLocTime.query(
         foodTruckLocTime.recurrence_id == recurrence_id
     ).fetch(keys_only=True)

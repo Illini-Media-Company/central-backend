@@ -182,6 +182,13 @@ def get_registration(uid):
 # @login_required
 # @restrict_to(["student-managers", "editors", "imc-staff-webdev"])
 def add_loctime():
+    """
+    API endpoint to add a loctime for a food truck
+
+    Returns:
+        (str, int): A tuple containing a message and a HTTP status code
+
+    """
     with client.context():
         truck_uid = float(request.form["uid"])
         latitude = float(request.form["lat"])
@@ -243,6 +250,16 @@ def remove_loctime(uid):
 # Remove all locTime's with a specific recurrence_id for a truck
 @food_truck_routes.route("/loctime-remove-series/<uid>", methods=["POST"])
 def remove_loctime_series(uid):
+    """
+    API endpoint to delete a group of repeating loctimes for a food truck
+
+    Args:
+        uid: Unique ID of a food truck
+
+    Returns:
+        (str, int): A tuple containing a message and a HTTP status code
+
+    """
     with client.context():
         loctime = get_loctime_by_id(int(uid))
 
