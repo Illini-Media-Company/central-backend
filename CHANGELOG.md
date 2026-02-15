@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.4.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.4.0...v2.4.1) (2026-02-15)
+
+
+### Bug Fixes
+
+* All users page properly displays correct profile photos ([7815189](https://github.com/Illini-Media-Company/central-backend/commit/78151893ee797edcfdf9073c6ce99f76751f283e))
+* Employees can view and modify their own EmployeeCard at /ems/employee/view/me ([9cfee48](https://github.com/Illini-Media-Company/central-backend/commit/9cfee4826baa5a442aac4cfdefcda9fd492a469a))
+* EMS bulk employee upload now requires less fields ([dc1e348](https://github.com/Illini-Media-Company/central-backend/commit/dc1e348a27b2981183972b883372606144c356c5))
+
 ## [2.4.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.3.0...v2.4.0) (2026-02-13)
 
 
