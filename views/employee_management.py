@@ -317,7 +317,10 @@ def ems_employee_view(emp_id):
 
     # Get the corresponding user's profile photo
     if employee["user_uid"]:
-        employee["user_profile"] = get_user_profile_photo(employee["user_uid"])
+        employee["user_profile"] = (
+            get_user_profile_photo(employee["user_uid"])
+            or "/static/defaults/employee_profile.png"
+        )
     else:
         employee["user_profile"] = "/static/defaults/employee_profile.png"
 
