@@ -118,7 +118,7 @@
                                 name="personal_email",
                                 label="Personal Email Address",
                                 subtext="Should not be @illinois.edu",
-                                required=true,
+                                required=false,
                                 alt_type="email",
                                 class="employee-add-form-row"
                             ) }}
@@ -128,7 +128,7 @@
                             name="phone_number",
                             label="Personal Phone Number",
                             placeholder="+# (###) ### - ####",
-                            required=true,
+                            required=false,
                             alt_type="tel",
                             pattern="^(\+\d{1,3}\s)?\(\d{3}\)\s\d{3}\s-\s\d{4}$",
                             class="employee-add-form-row row-vertical-flex"
@@ -149,7 +149,7 @@
                                 name="permanent_address_1",
                                 label="Address Line 1",
                                 subtext="Street address",
-                                required=true,
+                                required=false,
                                 class="employee-add-form-row"
                             ) }}
 
@@ -166,7 +166,7 @@
                             {{ form.text_input( 
                                 name="permanent_city",
                                 label="City",
-                                required=true,
+                                required=false,
                                 class="employee-add-form-row"
                             ) }}
 
@@ -174,7 +174,7 @@
                                 name="permanent_state",
                                 label="State",
                                 maxlength=2,
-                                required=true,
+                                required=false,
                                 class="employee-add-form-row"
                             ) }}
 
@@ -183,7 +183,7 @@
                                 label="ZIP Code",
                                 pattern="[0-9]{5}",
                                 maxlength=5,
-                                required=true,
+                                required=false,
                                 class="employee-add-form-row"
                             ) }}
                         </div>
