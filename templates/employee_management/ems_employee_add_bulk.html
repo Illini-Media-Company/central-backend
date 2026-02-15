@@ -113,17 +113,17 @@
             </div>
             
             <div>
-                <h4>personal_email <span style="font-weight: 300; color: var(--main-accent-color);">(required)</span></h4>
+                <h4>personal_email <span style="font-weight: 300; color: var(--main-accent-color);">(optional)</span></h4>
                 <p class="column-name-description">Must not end in @illinimedia.com or @illinois.edu</p>
             </div>
 
             <div>
-                <h4>phone_number <span style="font-weight: 300; color: var(--main-accent-color);">(required)</span></h4>
+                <h4>phone_number <span style="font-weight: 300; color: var(--main-accent-color);">(optional)</span></h4>
                 <p class="column-name-description">Must be of the format +# (###) ### - ####</p>
             </div>
 
             <div>
-                <h4>permanent_address_1 <span style="font-weight: 300; color: var(--main-accent-color);">(required)</span></h4>
+                <h4>permanent_address_1 <span style="font-weight: 300; color: var(--main-accent-color);">(optional)</span></h4>
                 <p class="column-name-description">Line 1 of the employee's permanent address</p>
             </div>
 
@@ -133,17 +133,17 @@
             </div>
 
             <div>
-                <h4>permanent_city <span style="font-weight: 300; color: var(--main-accent-color);">(required)</span></h4>
+                <h4>permanent_city <span style="font-weight: 300; color: var(--main-accent-color);">(optional)</span></h4>
                 <p class="column-name-description">The city of the employee's permanent address</p>
             </div>
 
             <div>
-                <h4>permanent_state <span style="font-weight: 300; color: var(--main-accent-color);">(required)</span></h4>
+                <h4>permanent_state <span style="font-weight: 300; color: var(--main-accent-color);">(optional)</span></h4>
                 <p class="column-name-description">Two-letter abbreviation, both capitalized</p>
             </div>
 
             <div>
-                <h4>permanent_zip <span style="font-weight: 300; color: var(--main-accent-color);">(required)</span></h4>
+                <h4>permanent_zip <span style="font-weight: 300; color: var(--main-accent-color);">(optional)</span></h4>
                 <p class="column-name-description">5-digit ZIP code</p>
             </div>
 
@@ -212,7 +212,7 @@
         event.preventDefault();
         console.log("Saving...");
 
-        showLoading("Modifying Employee...");
+        showLoading("Adding Employees...");
 
         const formData = new FormData(event.target);
         formData.append("_csrf_token", "{{ csrf_token() }}");
@@ -228,11 +228,11 @@
         // Check if it was successful
         if (response.status === 200) {
             // Trigger a reload of the window
-            sessionStorage.setItem("infoBarMessage", "Employee successfully modified."); // Safe so we can display after reload
-            window.location.reload();
+            sessionStorage.setItem("infoBarMessage", "Employees successfully created."); // Safe so we can display after reload
+            window.location.assign("/ems/employees");
         } else {
             // Alert of the error
-            console.log("Modifying the employee failed!");
+            console.log("Creating the employees failed!");
 
             try {
                 const data = await response.json();
