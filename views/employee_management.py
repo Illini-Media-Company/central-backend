@@ -1138,7 +1138,9 @@ def ems_api_onboarding_submit(emp_id):
         logging.error(
             f"Failed to create Google account for employee ID {emp_id} with NetID {netid}. Error: {str(error)}"
         )
-        res = slack_dm_google_failed(channel_id=slack_channel, thread_ts=slack_ts)
+        res = slack_dm_google_failed(
+            channel_id=slack_channel, thread_ts=slack_ts, error=str(error)
+        )
         redirect_url = url_for(
             "ems_routes.ems_employee_onboard_nextsteps_failure", _external=True
         )
