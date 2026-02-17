@@ -33,6 +33,7 @@
 .inner-container {
     border-radius: var(--main-border-radius);
     background-color: var(--main-bg-color);
+    box-shadow: var(--input-box-shadow);
     padding: 0.5rem;
     width: 100%
 }
@@ -74,6 +75,7 @@
     align-items: center;
 
     border: 0.15rem solid var(--main-bg-color);
+    box-shadow: var(--input-box-shadow);
 
     transition: border-color .15s ease-in-out;
 }

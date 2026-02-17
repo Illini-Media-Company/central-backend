@@ -252,7 +252,7 @@
 
         {# Row 2 (Only displayed while onboarding) #}
         {% if admin_access %}
-        {% if not employee.onboarding_complete %}
+        {% if not employee.onboarding_complete and not employee.status == "Active" %}
             <div class="row-container" style="justify-content: center;">
                 {% if not employee.onboarding_form_done %}
                     {# Only show these buttons if they have not completed the form #}
@@ -277,8 +277,8 @@
             {# Left Column #}
             <div class="column-container" style="flex: 0 auto;">
                 {# Buttons #}
-                <div style="text-align: center;">
-                    <button id="modify-button" onclick="showModify()" type="button" class="button-primary">
+                <div style="text-align: center; display: flex; gap: 0.5rem;">
+                    <button id="modify-button" onclick="showModify()" type="button" class="button-primary" style="width: 100%; flex: 1;">
                         <i class="bi bi-pen"></i>&nbsp;&nbsp;Modify
                     </button>
                     <button id="cancel-button" onclick="hideModify()" type="button" class="button-bg-color" style="display: none;">
@@ -375,10 +375,10 @@
                                 </p>
                             </div>
                             <div class="form-initial-hide">
-                                <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
+                                <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
                                     {{ form.text_input( 
                                         name="permanent_address_1",
-                                        label="Address Line 1",
+                                        label="U.S. Legal Address Line 1",
                                         required=true,
                                         initial_val=employee.permanent_address_1,
                                         class="employee-modify-form-row"
@@ -386,7 +386,7 @@
 
                                     {{ form.text_input( 
                                         name="permanent_address_2",
-                                        label="Address Line 2",
+                                        label="U.S. Legal Address Line 2",
                                         required=false,
                                         initial_val=employee.permanent_address_2,
                                         class="employee-modify-form-row"
@@ -691,7 +691,7 @@
                     <div class="section-header" style="padding: 0;">
                         <h3 style="margin-bottom: 0">Current Positions</h3>
                         {% if admin_access %}
-                            <button class="button-primary" type="button" onclick="emsRelationAddShowForm()">
+                            <button class="button-secondary" type="button" onclick="emsRelationAddShowForm()">
                                 Assign Position
                             </button>
                         {% endif %}
@@ -788,7 +788,8 @@
         }
 
         let submit_button = document.getElementById("submit_button");
-        submit_button.style.display = "none"
+        submit_button.style.display = "none";
+        submit_button.style.flex = "1";
 
         // Handles formatting for the employee's phone number
         document.getElementById('phone_number').addEventListener('input', function (e) {

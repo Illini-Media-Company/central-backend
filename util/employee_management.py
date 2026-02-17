@@ -95,14 +95,17 @@ ONBOARDING_COMPLETE_TEXT = "Onboarding for {name} complete"
 
 ONBOARDING_EMAIL_TEXT_BODY = """Hi {first_name},
 
-    Welcome to Illini Media! Please fill out your onboarding form using the link below:
+    Welcome to the Illini Media Company team! Please fill out your onboarding form using the link below::
 
     {onboarding_url}
 
-    If you have any issues accessing the form, reply to this email.
+    Note: This form is best viewed on desktop.
 
-    Best,
-    Illini Media Team"""
+    After completing the form, please keep an eye out for future communications from us, which 
+    will be via Slack. If you have any issues accessing the form or have any questions regarding 
+    the process, reach out to helpdesk@illinimedia.com.
+
+    Illini Media Company"""
 
 
 def send_onboarding_email(to_email: str, first_name: str, onboarding_url: str) -> dict:
@@ -126,7 +129,7 @@ def send_onboarding_email(to_email: str, first_name: str, onboarding_url: str) -
 
     service = build("gmail", "v1", credentials=creds)
 
-    subject = "Complete your Illini Media onboarding"
+    subject = "[Action Required] Complete Your Illini Media Onboarding"
     text_body = ONBOARDING_EMAIL_TEXT_BODY.format(
         first_name=first_name, onboarding_url=onboarding_url
     )

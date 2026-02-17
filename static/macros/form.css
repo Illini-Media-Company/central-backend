@@ -53,6 +53,7 @@
   background-color: var(--main-lt-gray-color);
   -webkit-transition: .4s;
   transition: .4s;
+  box-shadow: var(--input-box-shadow);
 }
 
 .form-slider:before {
@@ -100,6 +101,7 @@ input:checked + .form-slider:before {
     font-weight: 300;
     font-style: normal;
     width: 100%;
+    box-shadow: var(--input-box-shadow);
 }
 
 input[type="date"].text-input {
@@ -127,6 +129,7 @@ input[type="date"].text-input {
 
 .radio-input {
     accent-color: var(--main-accent-color);
+    box-shadow: var(--input-box-shadow);
 }
 
 .radio-label {
@@ -142,6 +145,7 @@ input[type="date"].text-input {
     padding: 0.25rem 0.75rem;
     border-radius: var(--main-border-radius);
     border: 1px solid var(--main-md-gray-color);
+    box-shadow: var(--input-box-shadow);
     font-size: 1rem;
     font-weight: 300;
     font-style: normal;
@@ -178,6 +182,7 @@ select:disabled {
     border: 1px solid var(--main-md-gray-color);
     border-radius: var(--main-border-radius);
     background-color: var(--main-bg-color);
+    box-shadow: var(--input-box-shadow);
     max-height: 220px; /* Adjust based on your design */
     overflow-y: auto;
     display: flex;
@@ -262,6 +267,7 @@ select:disabled {
     padding: 0.25rem 0.5rem;
     border-radius: var(--main-border-radius);
     border: 1px solid var(--main-md-gray-color);
+    box-shadow: var(--input-box-shadow);
     font-size: 1rem;
     font-weight: 300;
     font-style: normal;

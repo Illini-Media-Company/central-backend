@@ -42,6 +42,7 @@
 
     /* Define global shadow */
     --main-box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,0.2);
+    --input-box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.1);
 }
 
 a {
@@ -91,6 +92,7 @@ h4 {
     color: var(--main-bg-color);
     padding: 0.25rem 1rem;
     transition: background-color .15s ease-in-out;
+    box-shadow: var(--input-box-shadow);
 }
 
 .button-primary:hover {
@@ -110,6 +112,7 @@ h4 {
     color: var(--main-text-color);
     padding: 0.25rem 1rem;
     transition: background-color .15s ease-in-out;
+    box-shadow: var(--input-box-shadow);
 }
 
 .button-secondary:hover {
@@ -129,6 +132,7 @@ h4 {
     color: var(--main-text-color);
     padding: 0.25rem 1rem;
     transition: background-color .15s ease-in-out;
+    box-shadow: var(--input-box-shadow);
 }
 
 .button-bg-color:hover {

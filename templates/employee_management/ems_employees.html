@@ -148,6 +148,7 @@
             color: inherit;
             padding: 0.25rem 1rem 0.25rem 0.5rem;
             border-radius: var(--main-border-radius);
+            box-shadow: var(--input-box-shadow);
 
             display: flex;
             width: fit-content;
@@ -166,6 +167,7 @@
 
         .filter-button.expanded {
             padding: 0 0.35rem;
+            box-shadow: none;
         }
 
         .filter-options-container {
@@ -288,7 +290,7 @@
             </a>
     
             <a href="/ems/employee/add">
-                <button class="button-primary">
+                <button class="button-bg-color">
                     <i class="bi bi-person-plus"></i>&nbsp; Add
                 </button>
             </a>
@@ -400,7 +402,7 @@
     </div>
 
     {# Table #}
-    <div style="overflow-x: auto; max-width: 100%; border-radius: var(--main-border-radius);">
+    <div style="overflow-x: auto; max-width: 100%; border-radius: var(--main-border-radius); box-shadow: var(--input-box-shadow);">
         <table id="employeeTable">
             <thead>
                 <tr>
