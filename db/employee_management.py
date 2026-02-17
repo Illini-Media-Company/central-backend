@@ -448,6 +448,9 @@ def create_employee_card(**kwargs: dict) -> dict | int:
 
     with client.context():
         if "imc_email" in kwargs:
+            # Normalize email to lowercase
+            kwargs["imc_email"] = kwargs["imc_email"].lower()
+
             existing = EmployeeCard.query(
                 EmployeeCard.imc_email == kwargs["imc_email"]
             ).get()
@@ -456,9 +459,15 @@ def create_employee_card(**kwargs: dict) -> dict | int:
                     f"Employee with email {kwargs['imc_email']} already exists."
                 )
                 return EEXISTS  # Employee with this IMC email already exists
+
         else:
             logging.warning("Missing required field: imc_email.")
             return EMISSING  # Missing required field
+
+        if "personal_email" in kwargs:
+            # Normalize email to lowercase
+            kwargs["personal_email"] = kwargs["personal_email"].lower()
+
         try:
             if "user_uid" in kwargs:
                 user = User.get_by_id(kwargs["user_uid"])
@@ -545,6 +554,9 @@ def modify_employee_card(uid: int, **kwargs: dict) -> dict | None | int:
                     return EUSERDNE  # User with this UID does not exist
 
             if "imc_email" in kwargs:
+                # Normalize email to lowercase
+                kwargs["imc_email"] = kwargs["imc_email"].lower()
+
                 existing = EmployeeCard.query(
                     EmployeeCard.imc_email == kwargs["imc_email"]
                 ).get()
@@ -558,6 +570,10 @@ def modify_employee_card(uid: int, **kwargs: dict) -> dict | None | int:
                         employee.slack_id = _lookup_user_id_by_email(
                             kwargs["imc_email"]
                         )
+
+            if "personal_email" in kwargs:
+                # Normalize email to lowercase
+                kwargs["personal_email"] = kwargs["personal_email"].lower()
 
             for key, value in kwargs.items():
                 if hasattr(employee, key):
@@ -615,7 +631,7 @@ def get_employee_card_by_email(email: str) -> dict | int:
         `EEMPDNE`: If EmployeeCard not found
     """
     with client.context():
-        employee = EmployeeCard.query(EmployeeCard.imc_email == email).get()
+        employee = EmployeeCard.query(EmployeeCard.imc_email == email.lower()).get()
         return employee.to_dict() if employee else EEMPDNE
 
 

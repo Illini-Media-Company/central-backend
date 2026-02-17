@@ -2,7 +2,7 @@
 This file defines the API for the Employee Management System.
 
 Created by Jacob Slabosz on Jan. 12, 2026
-Last modified Feb. 14, 2026
+Last modified Feb. 16, 2026
 """
 
 import logging
@@ -1017,6 +1017,40 @@ def ems_api_onboarding_submit(emp_id):
             f"Onboarding form submission for employee ID {emp_id} failed validation due to missing NetID."
         )
         return jsonify({"ok": False, "error": "NetID is required."}), 400
+
+    # convert to lowercase to ensure consistency
+    netid = netid.lower()
+
+    # Validate the NetID (make sure not UIN or email)
+    is_alphanumeric = netid.isalnum()
+    if not is_alphanumeric:
+        logging.debug(
+            f"Onboarding form submission for employee ID {emp_id} failed validation due to invalid NetID format: {netid}"
+        )
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": "NetID must be alphanumeric. Ensure you entered your NetID, not your UIN.",
+                }
+            ),
+            400,
+        )
+
+    is_not_all_numbers = not netid.isdigit()
+    if not is_not_all_numbers:
+        logging.debug(
+            f"Onboarding form submission for employee ID {emp_id} failed validation due to invalid NetID format: {netid}"
+        )
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": "NetID must be alphanumeric. Ensure you have only entered your NetID, not your full email.",
+                }
+            ),
+            400,
+        )
 
     # Ensure employee exists (has not since been deleted)
     employee = get_employee_card_by_id(emp_id)
