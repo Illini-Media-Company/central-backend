@@ -3,17 +3,20 @@ This file contains utility functions for managing Google Admin tasks. All functi
 are executed with admin credentials. 
 
 Created by Jacob Slabosz on Feb. 2, 2026
-Last modified Feb. 11, 2026
+Last modified Feb. 16, 2026
 """
 
+import logging
 from googleapiclient.discovery import build
 from util.security import get_admin_creds
+
+logger = logging.getLogger(__name__)
 
 MEMBER_SCOPE = ["https://www.googleapis.com/auth/admin.directory.group.member"]
 GROUP_SCOPE = ["https://www.googleapis.com/auth/admin.directory.group"]
 USER_SCOPE = "https://www.googleapis.com/auth/admin.directory.user"
 
-USER_TEMP_PASSWORD = "TempPass123!"
+# USER_TEMP_PASSWORD = "TempPass123!"
 
 
 def manage_group_membership(
@@ -128,13 +131,13 @@ def check_group_exists(group_email: str) -> bool:
 
             # If it's a different error (like a 403 Permission error),
             # you might want to log it or raise it.
-            print(f"Error checking group existence: {e}")
+            logging.error(f"Error checking group existence: {e}")
             return False
 
 
 def create_google_user(
-    netid: str, first_name: str, last_name: str
-) -> tuple[bool, str | None]:
+    netid: str, first_name: str, last_name: str, personal_email: str, password: str
+) -> tuple[bool, str]:
     """
     Creates a new user in Google Workspace.
 
@@ -142,9 +145,12 @@ def create_google_user(
         `netid` (`str`): The NetID of the new user (i.e. their new email)
         `first_name` (`str`): The new user's first name
         `last_name` (`str`): The new user's last name
-
+        `personal_email` (`str`): The new user's personal email (for recovery and notifications)
+        `password` (`str`): The new user's temporary password (will be forced to change on first login)
     Returns:
-        tuple (success: bool, error_message: str | None)
+        `tuple`:
+            * `bool`: Whether the user was successfully created
+            * `str`: An error message if the user was not created, or the user's password if they were created
     """
     creds = get_admin_creds([USER_SCOPE])
 
@@ -152,18 +158,26 @@ def create_google_user(
         user_body = {
             "primaryEmail": f"{netid}@illinimedia.com",
             "name": {"givenName": first_name, "familyName": last_name},
-            "password": USER_TEMP_PASSWORD,
+            "password": f"temporary-{password}",
             "changePasswordAtNextLogin": True,  # Force them to change the temp password
+            "emails": [
+                {
+                    "address": personal_email,
+                    "type": "home",
+                    "primary": False,
+                }
+            ],
+            "recoveryEmail": personal_email,
         }
 
         try:
             res = service.users().insert(body=user_body).execute()
-            print(f"Successfully created Google user: {res.get('primaryEmail')}")
-            return True, None
+            logging.info(f"Successfully created Google user: {res.get('primaryEmail')}")
+            return True, f"temporary-{password}"
         except Exception as e:
             error_msg = str(e).lower()
             if "alreadyexists" in error_msg.replace(" ", ""):
                 return False, "This email already exists in Google Workspace."
 
-            print(f"Google Directory API Error (Create User): {e}")
+            logging.info(f"Google Directory API Error (Create User): {e}")
             return False, str(e)

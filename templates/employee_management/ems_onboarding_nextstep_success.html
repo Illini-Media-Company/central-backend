@@ -61,7 +61,7 @@
             </p>
             <h4>{{ email }}</h4>
             <h4>{{ password }}</h4>
-            <a href="{{ url_for('login', state=request.full_path) }}">
+            <a href="{{ url_for('login', state=request.full_path) }}" target="_blank">
                 <button class="button-primary" style="margin: 1rem 0;">
                     Log In
                 </button>

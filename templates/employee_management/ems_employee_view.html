@@ -250,7 +250,24 @@
             </div>
         </div>
 
-        {# Row 2 #}
+        {# Row 2 (Only displayed while onboarding) #}
+        {% if not employee.onboarding_complete %}
+            <div class="row-container">
+                {% if not employee.onboarding_form_done %}
+                    {# Only show these buttons if they have not completed the form #}
+                    <button class="button-bg-color" type="button" onclick="copyToClipboard(`{{ url_for('ems_routes.ems_employee_onboarding_form', emp_id=employee.uid, _external=True) }}`)">
+                        Copy Onboarding Form Link
+                    </button>
+                {% else %}
+                    {# Only show these buttons if they completed the form but not the rest #}
+                    <button class="button-bg-color" type="button" onclick="copyToClipboard(`{{ url_for('ems_routes.ems_employee_onboard_nextsteps_success', uid=employee.uid, override='true', _external=True) }}`)">
+                        Copy "Next Steps" Link
+                    </button>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        {# Row 3 #}
         <div class="row-container">
             {# Left Column #}
             <div class="column-container" style="flex: 0 auto;">
@@ -955,6 +972,32 @@
                 await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
             }
         }
+    }
+
+    function copyToClipboard(text) {
+        if (!navigator.clipboard) {
+            // Fallback for older browsers or non-secure contexts
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showInfoBar("Link copied to clipboard!");
+            } catch (err) {
+                showInfoBar("Failed to copy to clipboard.")
+                console.error('Fallback: Oops, unable to copy', err);
+            }
+            document.body.removeChild(textArea);
+            return;
+        }
+
+        navigator.clipboard.writeText(text).then(function() {
+            showInfoBar("Link copied to clipboard!");
+        }, function(err) {
+            showInfoBar("Failed to copy to clipboard.")
+            console.error('Async: Could not copy text: ', err);
+        });
     }
 </script>
 {% endif %}

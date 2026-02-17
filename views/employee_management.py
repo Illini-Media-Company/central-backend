@@ -6,7 +6,7 @@ Last modified Feb. 16, 2026
 """
 
 import logging
-from flask import Blueprint, render_template, request, jsonify, abort
+from flask import Blueprint, render_template, request, jsonify, abort, session
 from flask_login import login_required, current_user
 from util.security import restrict_to, is_user_in_group
 from datetime import datetime
@@ -381,20 +381,31 @@ def ems_employee_onboard():
 def ems_employee_onboarding_form(emp_id):
     logging.info(f"Accessing onboarding form for employee ID {emp_id}")
 
+    # Ensure this employee card was not deleted
     employee = get_employee_card_by_id(emp_id)
     if not employee or employee == EEMPDNE:
         logging.info(f"Employee with ID {emp_id} does not exist or has been deleted.")
         abort(404)
+
+    # Check if onboarding form already completed to prevent reuse of the link after onboarding is done
     if employee.get("onboarding_form_done"):
-        logging.info(
-            f"Onboarding form for employee ID {emp_id} has already been completed."
-        )
-        abort(
-            400,
-            description="This onboarding link has already been used! \
-                To make changes, please reach out to your supervisor \
-                or email helpdesk@illinimedia.com.",
-        )
+        # If onboarding complete, they cannot use this link
+        if employee.get("onboarding_complete"):
+            logging.info(
+                f"Onboarding form for employee ID {emp_id} has already been completed."
+            )
+            abort(
+                400,
+                description="This onboarding link has already been used! \
+                    To make changes, please reach out to your supervisor \
+                    or email helpdesk@illinimedia.com.",
+            )
+        # Otherwise if the form is done but onboarding not complete, give them the next steps page
+        else:
+            logging.info(
+                f"Onboarding form for employee ID {emp_id} has already been completed, but onboarding is not marked as complete. Redirecting to next steps page."
+            )
+            return ems_employee_onboard_nextsteps_success(emp_id)
 
     return render_template(
         "employee_management/ems_onboarding_form.html",
@@ -407,24 +418,19 @@ def ems_employee_onboarding_form(emp_id):
 
 
 # TEMPLATE — onboarding_nextsteps_success
-@ems_routes.route("/onboarding/nextsteps/login")
-def ems_employee_onboard_nextsteps_success():
-    from util.google_admin import USER_TEMP_PASSWORD
+@ems_routes.route("/onboarding/nextsteps/login/<int:uid>")
+def ems_employee_onboard_nextsteps_success(uid):
+    session_uid = session.get("onboarding_uid")
+    email = None
+    password = None
 
-    email = request.args.get("email")
-    password = USER_TEMP_PASSWORD
-    uid = request.args.get("uid")
-
-    if not email or not password or not uid:
-        abort(400, description="Missing required parameters.")
-
-    uid = int(uid)
-
+    # Ensure the employee was not deleted
     employee = get_employee_card_by_id(uid)
     if not employee or employee == EEMPDNE:
         logging.info(f"Employee with ID {uid} does not exist or has been deleted.")
-        abort(400, description="Unable to locate an employee with that ID.")
+        abort(404, description="Unable to locate an employee with that ID.")
 
+    # Check if onboarding done
     if employee["onboarding_complete"]:
         logging.info(f"Employee with ID {uid} has already completed onboarding.")
         abort(
@@ -433,6 +439,39 @@ def ems_employee_onboard_nextsteps_success():
                 To make changes, please reach out to your supervisor \
                 or email helpdesk@illinimedia.com.",
         )
+
+    # Prefer to get info from the session cookies
+    if session_uid and session_uid == uid:
+        email = session.get("onboarding_email")
+        password = session.get("onboarding_password")
+
+    # Get from the DB object if not available in the session
+    if not email or not password:
+        logging.info(
+            f"Onboarding info for employee ID {uid} not found in session. Fetching from database."
+        )
+        email = employee.get("imc_email")
+
+        # Eventual consistency issue, should resolve after a short moment
+        if not email:
+            logging.warning(
+                f"Employee with ID {uid} does not have an email associated."
+            )
+            abort(
+                400,
+                description="Google account not yet provisioned. Please wait a moment, then refresh this page. If the issue persists, email helpdesk@illinimedia.com.",
+            )
+
+        # Check if this was a manually resent link or if they reused the onboarding form link
+        if request.args.get("override") == "true":
+            # Since this block only runs if the link was sent manually
+            password = "(Password provided via email)"
+            logging.info(
+                f"Onboarding link for employee ID {uid} was manually resent. Displaying generic password message instead of actual password."
+            )
+        else:
+            # Rebuild using same login as util/google_admin.py
+            password = f"temporary-{employee.get('uid')}"
 
     return render_template(
         "/employee_management/ems_onboarding_nextstep_success.html",
@@ -1148,32 +1187,46 @@ def ems_api_onboarding_submit(emp_id):
     )
 
     # Create the Google account
-    success, error = create_google_user(
-        netid=netid, first_name=first_name, last_name=last_name
+    personal_email = updated["personal_email"]
+    uid = updated["uid"]
+    success, data = create_google_user(
+        netid=netid,
+        first_name=first_name,
+        last_name=last_name,
+        personal_email=personal_email,
+        password=uid,
     )
 
     if success == True:
         logging.debug(
             f"Google account created successfully for employee ID {emp_id} with NetID {netid}."
         )
-        # If the Google account created successfully, notify via Slack, display page
-        res = slack_dm_google_created(channel_id=slack_channel, thread_ts=slack_ts)
-        redirect_url = url_for(
-            "ems_routes.ems_employee_onboard_nextsteps_success",
-            email=f"{netid}@illinimedia.com",
-            uid=emp_id,
-            _external=True,
-        )
 
         # Save the new email to the EmployeeCard
         updated = modify_employee_card(uid=emp_id, imc_email=f"{netid}@illinimedia.com")
+
+        # If the Google account created successfully, notify via Slack, display page
+        res = slack_dm_google_created(channel_id=slack_channel, thread_ts=slack_ts)
+
+        # Save info in session storage to display on next page
+        session["onboarding_email"] = f"{netid}@illinimedia.com"
+        session[
+            "onboarding_password"
+        ] = data  # Returned password from Google account creation
+        session["onboarding_uid"] = emp_id
+
+        redirect_url = url_for(
+            "ems_routes.ems_employee_onboard_nextsteps_success",
+            uid=emp_id,
+            _external=True,
+        )
     else:
         # Else, notify and display other page
         logging.error(
-            f"Failed to create Google account for employee ID {emp_id} with NetID {netid}. Error: {str(error)}"
+            f"Failed to create Google account for employee ID {emp_id} with NetID {netid}. Error: {str(data)}"
         )
         res = slack_dm_google_failed(
-            channel_id=slack_channel, thread_ts=slack_ts, error=str(error)
+            channel_id=slack_channel, thread_ts=slack_ts, error=str(data)
         )
         redirect_url = url_for(
             "ems_routes.ems_employee_onboard_nextsteps_failure", _external=True
