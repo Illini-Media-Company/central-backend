@@ -19,10 +19,19 @@ jobs:
         with:
           workload_identity_provider: 'projects/983096734619/locations/global/workloadIdentityPools/github-actions/providers/deploy'
           service_account: 'deploy@central-backend-399421.iam.gserviceaccount.com'
+      - name: Format Version String
+        id: format_version
+        run: |
+          RAW_VER="${{ github.event.release.tag_name || github.sha }}"
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            RAW_VER=$(echo $RAW_VER | cut -c1-7)
+          fi
+          CLEAN_VER=$(echo $RAW_VER | tr '.' '-' | tr '[:upper:]' '[:lower:]')
+          echo "version=$CLEAN_VER" >> $GITHUB_OUTPUT
       - id: 'deploy'
         uses: 'google-github-actions/deploy-appengine@v1'
         with:
-          version: ${{ github.event.release.tag_name || github.sha }}
+          version: ${{ steps.format_version.outputs.version }}
           env_vars: |-
             ENV=prod
             SECRET_KEY=${{ secrets.SECRET_KEY }}
