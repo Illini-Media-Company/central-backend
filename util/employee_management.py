@@ -327,7 +327,11 @@ def slack_dm_google_failed(channel_id: str, thread_ts: str, error: str) -> dict:
 
 
 def slack_dm_onboarding_complete(
-    channel_id: str, thread_ts: str, employee_name: str, slack_id: str, ems_url: str
+    channel_id: str,
+    thread_ts: str,
+    employee_name: str,
+    ems_url: str,
+    slack_id: str | None = None,
 ) -> dict:
     """
     Sends a message as a broadcasted reply to the original notifying that employee's
@@ -384,9 +388,13 @@ def get_onboarding_started_blocks(name: str) -> dict:
     ]
 
 
-def get_onboarding_complete_blocks(slack_id: str, url: str) -> dict:
+def get_onboarding_complete_blocks(
+    url: str,
+    slack_id: str | None = None,
+) -> dict:
     """
-    Creates the blocks used for the initial onboarding message.
+    Creates the blocks used for the initial onboarding message. If `slack_id`
+    if `None`, will return blocks for an overridden onboarding without Slack access.
 
     Arguments:
         `slack_id` (`str`): The Slack ID employee being onboarded
@@ -395,22 +403,42 @@ def get_onboarding_complete_blocks(slack_id: str, url: str) -> dict:
     Returns:
         `dict`: The Slack message as blocks
     """
-    return [
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": f":white_check_mark: Onboarding complete for <@{slack_id}>.",
+    if slack_id is None:
+        return [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": ":white_check_mark: Onboarding manually overridden (Complete).",
+                },
             },
-        },
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": f"Use <{url}|this link> to assign the employee to a position which will automatically add them to the correct Slack channels and Google Groups.",
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"Use <{url}|this link> to assign the employee to a position which \
+                        will automatically add them to the correct Slack channels and Google Groups. \
+                        Note that the employee's Slack and Google accounts have not been verified.",
+                },
             },
-        },
-    ]
+        ]
+    else:
+        return [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f":white_check_mark: Onboarding complete for <@{slack_id}>.",
+                },
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"Use <{url}|this link> to assign the employee to a position which will automatically add them to the correct Slack channels and Google Groups.",
+                },
+            },
+        ]
 
 
 def get_google_failed_blocks(error: str) -> dict:

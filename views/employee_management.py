@@ -1070,7 +1070,7 @@ def ems_api_onboarding_submit(emp_id):
             jsonify(
                 {
                     "ok": False,
-                    "error": "NetID must be alphanumeric. Ensure you entered your NetID, not your UIN.",
+                    "error": "NetID must be alphanumeric. Ensure you have only entered your NetID, not your full email.",
                 }
             ),
             400,
@@ -1085,7 +1085,7 @@ def ems_api_onboarding_submit(emp_id):
             jsonify(
                 {
                     "ok": False,
-                    "error": "NetID must be alphanumeric. Ensure you have only entered your NetID, not your full email.",
+                    "error": "NetID must be alphanumeric. Ensure you entered your NetID, not your UIN.",
                 }
             ),
             400,
@@ -1245,6 +1245,109 @@ def ems_api_onboarding_submit(emp_id):
         ),
         200,
     )
+
+
+# API
+@ems_routes.route("/api/onboarding/<int:emp_id>/override", methods=["POST"])
+@login_required
+@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+def ems_api_onboarding_override(emp_id):
+    """
+    Manually override onboarding completion for an employee. This is intended for use in exceptional
+    cases where the employee cannot complete the onboarding process through normal means (e.g.,
+    issues with Google account creation, Slack access, etc.) but still needs to be marked as onboarded
+    in the system. This endpoint will mark the employee's onboarding as complete and send a Slack
+    message to notify relevant parties. It does not perform any of the usual checks or processes
+    involved in standard onboarding completion, so it should be used with caution.
+    """
+    logging.info(
+        f"Manually overriding onboarding for employee ID {emp_id} by user {current_user.email}"
+    )
+
+    try:
+        # Get the employee
+        employee = get_employee_card_by_id(emp_id)
+        if employee:
+            # Check if this employee is already marked as complete
+            if employee["onboarding_complete"]:
+                logging.info(f"Onboarding already complete for employee {emp_id}.")
+                return (
+                    jsonify(
+                        {
+                            "ok": False,
+                            "error": "Onboarding is already marked as complete for this employee.",
+                        }
+                    ),
+                    400,
+                )
+
+            # Save the employee's Slack ID
+            modify_employee_card(
+                uid=employee["uid"],
+                onboarding_form_done=True,
+                onboarding_complete=True,
+                status="Active",
+            )
+            logging.debug(f"Employee ID {emp_id} marked as onboarding complete.")
+
+            slack_channel = employee["onboarding_update_channel"]
+            slack_ts = employee["onboarding_update_ts"]
+            full_name = employee["full_name"]
+            ems_url = url_for(
+                "ems_routes.ems_employee_view", emp_id=emp_id, _external=True
+            )
+
+            res = slack_dm_onboarding_complete(
+                channel_id=slack_channel,
+                thread_ts=slack_ts,
+                employee_name=full_name,
+                slack_id=None,
+                ems_url=ems_url,
+            )
+            if not isinstance(res, dict):
+                logging.error(
+                    f"Failed to send completion Slack message for employee ID {emp_id} due to an unknown error."
+                )
+            if not res.get("ok"):
+                logging.error(
+                    f"Failed to send completion Slack message for employee ID {emp_id}. Error: {res['error']}"
+                )
+            return (
+                jsonify(
+                    {
+                        "ok": True,
+                        "message": "Onboarding successfully overridden.",
+                    }
+                ),
+                200,
+            )
+        # If employee not found
+        else:
+            logging.info(
+                f"Employee with ID {emp_id} does not exist or has been deleted."
+            )
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "message": "Employee not found.",
+                    }
+                ),
+                404,
+            )
+    except Exception as e:
+        logging.error(
+            f"An exception occurred while overriding onboarding for employee ID {emp_id}. Error: {str(e)}"
+        )
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": "An error occurred while overriding onboarding.",
+                }
+            ),
+            500,
+        )
 
 
 ################################################################################

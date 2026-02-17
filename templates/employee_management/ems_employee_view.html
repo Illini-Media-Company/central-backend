@@ -251,8 +251,9 @@
         </div>
 
         {# Row 2 (Only displayed while onboarding) #}
+        {% if admin_access %}
         {% if not employee.onboarding_complete %}
-            <div class="row-container">
+            <div class="row-container" style="justify-content: center;">
                 {% if not employee.onboarding_form_done %}
                     {# Only show these buttons if they have not completed the form #}
                     <button class="button-bg-color" type="button" onclick="copyToClipboard(`{{ url_for('ems_routes.ems_employee_onboarding_form', emp_id=employee.uid, _external=True) }}`)">
@@ -264,7 +265,11 @@
                         Copy "Next Steps" Link
                     </button>
                 {% endif %}
+                <button class="button-bg-color" type="button" onclick="overrideOnboarding()">
+                    Override: Complete Onboarding
+                </button>
             </div>
+        {% endif %}
         {% endif %}
 
         {# Row 3 #}
@@ -958,6 +963,65 @@
         } else {
             // Alert of the error
             console.log("Deleting the employee failed!");
+
+            try {
+                const data = await response.json();
+                const message = data.error || "An unknown error occurred.";
+
+                console.error(message);
+                hideLoading();
+                await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            } catch (err) {
+                const fallback = await response.text();
+                hideLoading();
+                await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+            }
+        }
+    }
+
+    // Override the onboarding process
+    async function overrideOnboarding() {
+        console.log("Overriding...");
+
+        result = await showButtonAlert(
+            header="Override Onboarding?", 
+            body="If you override the onboarding process, EMS will not validate that the \
+            user has logged into both Google and Slack. If they have not yet filled out the \
+            onboarding form, the link will become invalid and you will need to manually add \
+            their information.", 
+            alertButtonText="Yes, override", 
+            cancelButtonText="Cancel"
+        )
+
+        if (!result) {
+            hideLoading();
+            return;
+        }
+
+        showLoading("Completing onboarding...");
+
+        // Send the data to the backend endpoint
+        let endpoint = "/ems/api/onboarding/{{ employee.uid }}/override";
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        // Check if it was successful
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", `Onboarding successfully overridden for {{ employee.full_name }}.`); // Save so we can display after reload
+            window.location.reload();
+        } else {
+            // Alert of the error
+            console.log("Overriding onboarding failed!");
 
             try {
                 const data = await response.json();
