@@ -22,6 +22,7 @@ jobs:
       - id: 'deploy'
         uses: 'google-github-actions/deploy-appengine@v1'
         with:
+          version: ${{ github.event.release.tag_name || github.sha }}
           env_vars: |-
             ENV=prod
             SECRET_KEY=${{ secrets.SECRET_KEY }}
@@ -42,6 +43,7 @@ jobs:
             CC_CLIENT_SECRET=${{ secrets.CC_CLIENT_SECRET }}
             RETOOL_API_KEY=${{ secrets.RETOOL_API_KEY }}
             FOOD_TRUCK_MAPS_ID=${{ secrets.FOOD_TRUCK_MAPS_ID }}
+            IMC_CONSOLE_GOOGLE_ANALYTICS_KEY=${{ secrets.IMC_CONSOLE_GOOGLE_ANALYTICS_KEY}}
 
   build:
     name: Start Schedulers
