@@ -3,7 +3,7 @@ This file defines the helper functions and error codes for the Employee Manageme
 Also defines functions responsible for sending onboarding and offboarding emails.
 
 Created by Jacob Slabosz on Feb. 3, 2026
-Last modified Feb. 11, 2026
+Last modified Feb. 16, 2026
 """
 
 import base64
@@ -291,13 +291,14 @@ def slack_dm_google_created(channel_id: str, thread_ts: str) -> dict:
     return {"ok": True, "channel": res["channel"], "ts": res["ts"]}
 
 
-def slack_dm_google_failed(channel_id: str, thread_ts: str) -> dict:
+def slack_dm_google_failed(channel_id: str, thread_ts: str, error: str) -> dict:
     """
     Sends a message as a reply to the original notifying that the Google account creation failed.
 
     Arguments:
         `channel_id` (`str`): The Slack `channel_id` of the original message
         `thread_ts` (`str`): The timestamp (`ts`) of the parent message to reply to
+        `error` (`str`): The error message to include in the Slack message
 
     Returns:
         `dict`:
@@ -307,9 +308,13 @@ def slack_dm_google_failed(channel_id: str, thread_ts: str) -> dict:
             * `ts` (`str`): (If `ok` = `True`) The timestamp the message sent at
     """
     text = ONBOARDING_GOOGLE_FAILED_TEXT
-    blocks = ONBOARDING_GOOGLE_FAILED_BLOCKS
+    blocks = get_google_failed_blocks(error=error)
     res = reply_to_slack_message(
-        channel_id=channel_id, thread_ts=thread_ts, text=text, blocks=blocks
+        channel_id=channel_id,
+        thread_ts=thread_ts,
+        text=text,
+        blocks=blocks,
+        reply_broadcast=True,
     )
 
     # Validate
@@ -404,6 +409,34 @@ def get_onboarding_complete_blocks(slack_id: str, url: str) -> dict:
                 "type": "mrkdwn",
                 "text": f"Use <{url}|this link> to assign the employee to a position which will automatically add them to the correct Slack channels and Google Groups.",
             },
+        },
+    ]
+
+
+def get_google_failed_blocks(error: str) -> dict:
+    """
+    Creates the blocks used for the initial onboarding message.
+
+    Arguments:
+        `error` (`str`): The error message to include in the Slack message
+
+    Returns:
+        `dict`: The Slack message as blocks
+    """
+    return [
+        {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": ":x: Google account creation failed"},
+        },
+        {"type": "section", "text": {"type": "mrkdwn", "text": f"```{error}```"}},
+        {
+            "type": "context",
+            "elements": [
+                {
+                    "type": "mrkdwn",
+                    "text": "Please manually create the user's Google account and update their card in EMS with their IMC email.",
+                }
+            ],
         },
     ]
 
