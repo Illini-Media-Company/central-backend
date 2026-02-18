@@ -90,7 +90,7 @@ WPGU_ONAIR_GCAL_ID = "c_b888554deb36a74a61aea32bac28ab500ade0003cd2ae61085354e07
 EMS_ADMIN_ACCESS_GROUPS = [
     "webdev",
     "imc-staff-webdev",
-    "helpdesk",
+    "helpdesk@illinimedia.com",
     "student-managers",
     "professional-staff",
 ]
