@@ -1,3 +1,9 @@
+"""
+
+Created on Jan. 26 by Jon Hogg
+Last modified Feb. 18, 2026
+"""
+
 from typing import Dict, List, Optional, Tuple
 
 import requests
@@ -15,6 +21,10 @@ API_VERSION = "v1alpha"
 
 
 def _serving_config() -> str:
+    """
+    Build the Discovery Engine serving config resource path.
+    Raises if required Discovery Engine env vars are missing.
+    """
     missing = []
     if not DISCOVERY_ENGINE_PROJECT_ID:
         missing.append("DISCOVERY_ENGINE_PROJECT_ID")
@@ -45,6 +55,10 @@ def _serving_config() -> str:
 
 
 def _session_path() -> str:
+    """
+    Build the Discovery Engine session resource path.
+    Uses an ephemeral session id placeholder.
+    """
     return (
         "projects/"
         f"{DISCOVERY_ENGINE_PROJECT_ID}/"
@@ -63,6 +77,10 @@ def answer_query(
     access_token: str,
     user_pseudo_id: Optional[str] = None,
 ) -> dict:
+    """
+    Call the Discovery Engine answer endpoint for a question.
+    Returns the parsed JSON response or raises on API errors.
+    """
     serving_config = _serving_config()
     url = (
         f"https://discoveryengine.googleapis.com/{API_VERSION}/{serving_config}:answer"
@@ -104,6 +122,10 @@ def search_query(
     user_pseudo_id: Optional[str] = None,
     page_size: int = 10,
 ) -> dict:
+    """
+    Call the Discovery Engine search endpoint for source retrieval.
+    Returns the parsed JSON response or raises on API errors.
+    """
     serving_config = _serving_config()
     url = (
         f"https://discoveryengine.googleapis.com/{API_VERSION}/{serving_config}:search"
@@ -139,6 +161,10 @@ def search_query(
 
 
 def extract_search_results(response: dict) -> List[Dict]:
+    """
+    Extract source title/URI pairs from a search API response.
+    Filters out results that have neither a title nor URI.
+    """
     results = response.get("results") or []
     out: List[Dict] = []
     for res in results:
@@ -154,6 +180,10 @@ def extract_search_results(response: dict) -> List[Dict]:
 
 
 def _get_ref_id(ref: dict, index: int) -> str:
+    """
+    Resolve a stable reference id from varying API field names.
+    Falls back to the reference index when no id fields exist.
+    """
     return (
         ref.get("referenceId")
         or ref.get("reference_id")
@@ -163,6 +193,10 @@ def _get_ref_id(ref: dict, index: int) -> str:
 
 
 def _get_doc_metadata(ref: dict) -> dict:
+    """
+    Extract document metadata from a citation reference object.
+    Checks structured, chunked, then unstructured payload shapes.
+    """
     # 1. Check for Structured Info (Priority for Google Drive results)
     structured = ref.get("structuredDocumentInfo") or ref.get(
         "structured_document_info"
@@ -204,6 +238,10 @@ def _get_doc_metadata(ref: dict) -> dict:
 
 
 def _extract_title_uri(ref: dict) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Derive a display title and URI from reference metadata.
+    Uses URI as a fallback title when no title is present.
+    """
     doc_meta = _get_doc_metadata(ref)
     title = doc_meta.get("title")
     uri = doc_meta.get("uri") or doc_meta.get("document")
@@ -215,6 +253,10 @@ def _extract_title_uri(ref: dict) -> Tuple[Optional[str], Optional[str]]:
 def extract_answer_and_citations(
     response: dict,
 ) -> Tuple[Optional[str], List[Dict], List]:
+    """
+    Parse answer text, sources, and skipped reasons from API output.
+    Prefers citation-linked sources and falls back to top references.
+    """
     answer = response.get("answer") or {}
     answer_text = (
         answer.get("answerText")

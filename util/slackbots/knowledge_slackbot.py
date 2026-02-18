@@ -1,3 +1,9 @@
+"""
+
+Created on Jan. 26 by Jon Hogg
+Last modified Feb. 18, 2026
+"""
+
 import datetime
 import re
 import random
@@ -16,6 +22,10 @@ from constants import PUBLIC_BASE_URL, SLACK_BOT_TOKEN
 
 
 def _slack_user_profile(user_id):
+    """
+    Fetch a Slack user's profile data by user id.
+    Returns None if the Slack API call fails.
+    """
     try:
         res = app.client.users_info(token=SLACK_BOT_TOKEN, user=user_id)
         return res.get("user", {}).get("profile", {})
@@ -25,6 +35,10 @@ def _slack_user_profile(user_id):
 
 
 def _format_sources(sources):
+    """
+    Format source objects into a numbered Slack markdown list.
+    Each line includes a linked title when a URI is available.
+    """
     lines = []
     for idx, source in enumerate(sources, start=1):
         title = source.get("title") or "Source"
@@ -39,6 +53,10 @@ def _format_sources(sources):
 
 
 def _fix_slack_markdown(text):
+    """
+    Convert common markdown patterns to Slack-friendly formatting.
+    Normalizes bold, headers, and bullet markers.
+    """
     if not text:
         return text
     text = re.sub(r"\*\*(.+?)\*\*", r"*\1*", text)
@@ -52,6 +70,10 @@ def _fix_slack_markdown(text):
 
 
 def _split_text(text, limit=2900):
+    """
+    Split long text into chunks under the Slack block size limit.
+    Prefers breaking at whitespace where possible.
+    """
     chunks = []
     while len(text) > limit:
         split_index = text.rfind(" ", 0, limit)
@@ -65,10 +87,18 @@ def _split_text(text, limit=2900):
 
 
 def _normalize_cmd(text: str) -> str:
+    """
+    Normalize user input for exact command matching.
+    Trims, lowercases, and collapses repeated whitespace.
+    """
     return re.sub(r"\s+", " ", (text or "").strip().lower())
 
 
 def _easter_egg_response(question_raw: str):
+    """
+    Return canned responses for greetings and predefined prompts.
+    Returns None when no easter egg response is matched.
+    """
     q = _normalize_cmd(question_raw)
 
     greeting_triggers = {"hi", "hello", "hey"}
@@ -125,6 +155,10 @@ def _easter_egg_response(question_raw: str):
 
 
 def _ask_and_respond(question, access_token, user_id, respond):
+    """
+    Query Discovery Engine and send a formatted Slack response.
+    Includes fallback search sources and user-facing error handling.
+    """
     try:
         response = answer_query(
             query=question,
@@ -194,6 +228,10 @@ def _ask_and_respond(question, access_token, user_id, respond):
 
 @app.command("/ask")
 def ask_command(ack, body, respond):
+    """
+    Handle the /ask Slack command end to end.
+    Validates input, auth, limits, and dispatches async answering.
+    """
     ack()
     question = (body.get("text") or "").strip()
     if not question:

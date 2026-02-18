@@ -1,3 +1,9 @@
+"""
+
+Created on Jan. 26 by Jon Hogg
+Last modified Feb. 18, 2026
+"""
+
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -9,6 +15,10 @@ from db.user import get_user_entity, set_user_ask_oauth_tokens
 
 
 def refresh_access_token(refresh_token: str) -> dict:
+    """
+    Exchange a Google refresh token for a new access token.
+    Uses the configured OAuth client credentials.
+    """
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         raise ValueError("GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET is not set.")
     google_provider_cfg = get_google_provider_cfg()
@@ -24,6 +34,10 @@ def refresh_access_token(refresh_token: str) -> dict:
 
 
 def _is_expired(expiry: Optional[datetime], skew_seconds: int = 60) -> bool:
+    """
+    Check whether a token expiry is missing or effectively expired.
+    Applies a small skew buffer before actual expiration.
+    """
     if expiry is None:
         return True
     now = datetime.utcnow()
@@ -31,6 +45,10 @@ def _is_expired(expiry: Optional[datetime], skew_seconds: int = 60) -> bool:
 
 
 def get_valid_access_token(email: str) -> Optional[str]:
+    """
+    Get a usable access token for a user email.
+    Returns cached token when valid, otherwise refreshes and saves one.
+    """
     user = get_user_entity(email)
     if user is None:
         return None
