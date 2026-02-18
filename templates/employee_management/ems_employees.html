@@ -455,7 +455,7 @@
                         <span><i class="bi bi-caret-up"></i></span>
                         Status
                     </th>
-                    <th onclick="handleSort(this, 'user_key')">
+                    <th onclick="handleSort(this, 'user_uid')">
                         <span><i class="bi bi-caret-up"></i></span> 
                         User?
                     </th>
@@ -618,8 +618,8 @@
             let valB = b[columnKey] || "";
 
             if (columnKey === 'name') {
-                valA = (a.first_name + a.last_name).toLowerCase();
-                valB = (b.first_name + b.last_name).toLowerCase();
+                valA = (a.last_name + " " + a.first_name).toLowerCase();
+                valB = (b.last_name + " " + b.first_name).toLowerCase();
             }
 
             if (columnKey === 'birth_date' || columnKey === 'initial_hire_date') {
@@ -627,7 +627,7 @@
                 valB = valB ? new Date(valB).getTime() : 0;
             }
 
-            if (columnKey === 'user_key') {
+            if (columnKey === 'user_uid') {
                 valA = valA ? true : false;
                 valB = valB ? true : false;
             }
