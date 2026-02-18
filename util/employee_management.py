@@ -419,9 +419,7 @@ def get_onboarding_complete_blocks(
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"Use <{url}|this link> to assign the employee to a position which \
-                        will automatically add them to the correct Slack channels and Google Groups. \
-                        Note that the employee's Slack and Google accounts have not been verified.",
+                    "text": f"Use <{url}|this link> to assign the employee to a position which will automatically add them to the correct Slack channels and Google Groups. Note that the employee's Slack and Google accounts have not been verified.",
                 },
             },
         ]
