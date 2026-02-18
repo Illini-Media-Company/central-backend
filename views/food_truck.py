@@ -2,6 +2,8 @@ from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required
 from flask_cors import cross_origin
 from db.food_truck import (
+    add_truck_loctime_repeat,
+    remove_truck_loctime_repeat,
     register_food_truck,
     deregister_food_truck,
     modify_food_truck,
@@ -19,14 +21,16 @@ from db.food_truck import (
 )
 from util.security import restrict_to, csrf
 from datetime import datetime
-from db.json_store import json_store_get, json_store_set
-from util.scheduler import scheduler_to_json
 from db import client
 import logging
 from constants import GOOGLE_MAP_API, FOOD_TRUCK_MAPS_ID
 
 from util.google_analytics import send_ga4_event
 from constants import IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID
+
+
+logger = logging.getLogger(__name__)
+
 
 food_truck_routes = Blueprint("food_truck_routes", __name__, url_prefix="/food-truck")
 
@@ -38,9 +42,7 @@ food_truck_routes = Blueprint("food_truck_routes", __name__, url_prefix="/food-t
 @restrict_to(["food-truck-admin", "imc-staff-webdev"])
 def admin():
     with client.context():
-        print("Loading admin page...")
         trucks = get_all_registered_trucks()
-    print("Done.")
     return render_template("food_truck_admin.html", registered=trucks)
 
 
@@ -50,15 +52,11 @@ def admin():
 # @restrict_to(["student-managers", "editors", "imc-staff-webdev"])
 def dashboard():
     with client.context():
-        print("Loading dashboard page...")
         email = request.args.get("login_email")
         uid = request.args.get("login_uid")
         source = request.args.get("login_source")
         google_maps_api_key = GOOGLE_MAP_API
         food_truck_map_id = FOOD_TRUCK_MAPS_ID
-        print(f"\tlogin_email  = {email}")
-        print(f"\tlogin_uid    = {uid}")
-        print(f"\tlogin_source = {source}")
 
         # This does not execute on the first load (since email and uid are undefined)
         # When the page reloads when the user clicks the "Find" button, this executes
@@ -82,7 +80,7 @@ def dashboard():
         else:
             source_str = None
 
-    print("Done.")
+    logger.debug("Done.")
     return render_template(
         "food_truck_dash.html",
         truck=truck,
@@ -103,7 +101,6 @@ def dashboard():
 @login_required
 @restrict_to(["food-truck-admin", "imc-staff-webdev"])
 def register_truck():
-    print("CALLED — Registering food truck...")
     with client.context():
         name = request.form["name"]
         cuisine = request.form["cuisine"]
@@ -115,7 +112,6 @@ def register_truck():
             name=name, cuisine=cuisine, emoji=emoji, url=url, email=email
         )
 
-    print("Done.")
     return "Food truck registered", 200
 
 
@@ -124,13 +120,11 @@ def register_truck():
 @login_required
 @restrict_to(["food-truck-admin", "imc-staff-webdev"])
 def deregister_truck(uid):
-    print("CALLED — Deregistering food truck...")
     with client.context():
         if uid.isdigit() and deregister_food_truck(int(uid)):
-            print("Done.")
             return "Food truck deregistered.", 200
         else:
-            print("Failed.")
+            logger.error("Failed.")
             return "Food truck not found.", 404
 
 
@@ -139,7 +133,6 @@ def deregister_truck(uid):
 @login_required
 @restrict_to(["food-truck-admin", "imc-staff-webdev"])
 def modify_truck(uid):
-    print("CALLED — Modifying food truck...")
     with client.context():
         name = request.form["name"]
         cuisine = request.form["cuisine"]
@@ -151,7 +144,6 @@ def modify_truck(uid):
             uid=int(uid), name=name, cuisine=cuisine, emoji=emoji, url=url, email=email
         )
 
-    print("Done.")
     return "Food truck modified", 200
 
 
@@ -171,10 +163,18 @@ def get_registration(uid):
 
 
 # Add a new locTime for a truck (ACCESSED WITHOUT LOGIN)
+# Will add a repeating time if "repeat" is checked
 @food_truck_routes.route("/loctime", methods=["POST"])
 # @login_required
 # @restrict_to(["student-managers", "editors", "imc-staff-webdev"])
 def add_loctime():
+    """
+    API endpoint to add a loctime for a food truck
+
+    Returns:
+        (str, int): A tuple containing a message and a HTTP status code
+
+    """
     with client.context():
         truck_uid = float(request.form["uid"])
         latitude = float(request.form["lat"])
@@ -184,22 +184,41 @@ def add_loctime():
         start_time = datetime.strptime(request.form["start_time"], "%Y-%m-%dT%H:%M")
         end_time = datetime.strptime(request.form["end_time"], "%Y-%m-%dT%H:%M")
         reported_by = request.form["reported_by"]
+        repeat = request.form.get("repeat") is not None
+        repeat_end_raw = request.form.get("repeat_end", "").strip()
 
         if check_existing_loctime(truck_uid, start_time, end_time):
             return "Invalid: An existing time overlaps with the requested time.", 422
 
-        add_truck_loctime(
-            truck_uid=truck_uid,
-            lat=latitude,
-            lon=longitude,
-            nearest_address=nearest_address,
-            location_desc=location_desc,
-            start_time=start_time,
-            end_time=end_time,
-            reported_by=reported_by,
-        )
+        if not repeat:
+            add_truck_loctime(
+                truck_uid=truck_uid,
+                lat=latitude,
+                lon=longitude,
+                nearest_address=nearest_address,
+                location_desc=location_desc,
+                start_time=start_time,
+                end_time=end_time,
+                reported_by=reported_by,
+            )
 
-    return "locTime created", 200
+            return "locTime created", 200
+        else:
+            end_date = datetime.strptime(repeat_end_raw, "%Y-%m-%d").date()
+
+            add_truck_loctime_repeat(
+                truck_uid=truck_uid,
+                lat=latitude,
+                lon=longitude,
+                nearest_address=nearest_address,
+                location_desc=location_desc,
+                start_time=start_time,
+                end_time=end_time,
+                reported_by=reported_by,
+                end_date=end_date,
+            )
+
+            return "repeating locTime created", 200
 
 
 # Remove a locTime for a truck (given the locTime's UID) (ACCESSED WITHOUT LOGIN)
@@ -212,6 +231,36 @@ def remove_loctime(uid):
             return "locTime removed.", 200
         else:
             return "locTime not found.", 404
+
+
+# Remove all locTime's with a specific recurrence_id for a truck
+@food_truck_routes.route("/loctime-remove-series/<uid>", methods=["POST"])
+def remove_loctime_series(uid):
+    """
+    API endpoint to delete a group of repeating loctimes for a food truck
+
+    Args:
+        uid: Unique ID of a food truck
+
+    Returns:
+        (str, int): A tuple containing a message and a HTTP status code
+
+    """
+    with client.context():
+        loctime = get_loctime_by_id(int(uid))
+
+        if loctime == None:
+            return "locTime not found!!!", 404
+
+        recurrence_id = loctime.get("recurrence_id")
+
+        if not recurrence_id:
+            # guard against user trying to delete non-recurring locTime
+            remove_truck_loctime(uid)
+            return "Deleted 1 non-recurring locTime.", 200
+
+        deleted = remove_truck_loctime_repeat(recurrence_id)
+        return f"Deleted {deleted} recurring locTime(s).", 200
 
 
 # Modify a locTime for a truck (given the locTime's UID) (ACCESSED WITHOUT LOGIN)
