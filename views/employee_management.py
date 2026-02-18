@@ -1425,8 +1425,6 @@ def ems_position_view(pos_id):
 
     logging.debug(f"Position data for ID {pos_id}: {position}")
 
-    position["slack_channels"] = "\n".join(position["slack_channels"])
-
     position["current_employees"] = []
     position["past_employees"] = []
 
