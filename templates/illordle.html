@@ -1,89 +1,172 @@
 {% extends 'base.html' %}
 
 {% block title %}
-Illordle Admin
+ILLordle Dashboard
 {% endblock %}
 
-{% block content %}
+{% block extra_head %}
+<link rel="stylesheet" href="/static/macros/form.css">
+
 <style>
-    .container {
-        width: 80%;
-        margin: 0 auto;
-        margin-top: 25px;
+    table {
+        border-collapse: separate;
+        border-spacing: 0 0.5rem;
+        width: 100%;
+        background-color: var(--main-bg-color);
+        border-radius: var(--main-border-radius);
     }
-    .modifiable-input {
-        display: none;
+
+    tr {
+        border-radius: var(--main-border-radius);
     }
-    .modifiable-url-input {
-        display: none;
+
+    tr:hover td {
+        background-color: var(--main-extralight-color);
     }
+
+    td {
+        padding: 0.75rem 1rem;
+        background-color: var(--main-bg-color);
+        font-weight: 300;
+    }
+
+    td:first-child {
+        border-top-left-radius: var(--main-border-radius);
+        border-bottom-left-radius: var(--main-border-radius);
+    }
+
+    td:last-child {
+        border-top-right-radius: var(--main-border-radius);
+        border-bottom-right-radius: var(--main-border-radius);
+    }
+
+    th {
+        padding: 0.75rem 1rem;
+        white-space: nowrap;
+        border-bottom: 1px solid var(--main-lt-gray-color);
+        align-items: center;
+    }
+
     .table th:nth-child(1),
     .table td:nth-child(1) {
         width: 12.5%; /* Set a fixed width for the Date column */
     }
+
     .table th:nth-child(2),
     .table td:nth-child(2) {
         width: 15%; /* Set a fixed width for the Word column */
     }
+
     .table th:nth-child(3),
     .table td:nth-child(3) {
         width: 10%; /* Set a fixed width for the Word column */
     }
+
     .table th:nth-child(4),
     .table td:nth-child(4) {
         width: 45%; /* Set a fixed width for the Related Story column */
     }
+
     .table th:nth-child(5),
     .table td:nth-child(5) {
         width: 17.5%; /* Set a fixed width for the Actions column */
     }
+
+    .word-input {
+        display: none;
+    }
+
+    .url-input {
+        display: none;
+    }
+
     .error-message {
         color: red;
     }
 </style>
+{% endblock %}
 
-<div class="container">
-    <div class="d-flex justify-content-center">
-        <div class="w-100">
-            <h3>Illordle Dashboard</h3>
-            <table class="table">
-                <thead>
+{% include "partials/info_bar.html" %}
+{% include "partials/loading.html" %}
+{% include "partials/text_alert.html" %}
+{% import "macros/form.html" as form %}
+
+{% block content %}
+
+<h1>ILLordle Dashboard</h1>
+
+<p>Set upcoming ILLordle words.</p>
+
+<hr style="margin-bottom: 2rem;">
+
+<section class="section-container" id="requests-container">
+
+    {# Section Header #}
+    <div class="section-header">
+        <h2 style="margin-bottom: 0">Upcoming Words</h2>
+    </div>
+
+    {# Table #}
+    <div style="overflow-x: auto; max-width: 100%; border-radius: var(--main-border-radius); box-shadow: var(--input-box-shadow);">
+        <table>
+            {# Header #}
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Author</th>
+                    <th>Word</th>
+                    <th>Related Story</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+
+            {# Body #}
+            <tbody>
+                {% for word in words %}
                     <tr>
-                        <th>Date</th>
-                        <th>Author</th>
-                        <th>Word</th>
-                        <th>Related Story</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for word in words %}
-                    <tr>
-                        <td>{{ word['date'].strftime("%m/%d/%Y") }}</td>
+                        <td>
+                            {{ word['date'].strftime("%m/%d/%Y") }}
+                        </td>
                         <td>
                             <span class="word-author">{{ word['author'] }}</span>
                         </td>
                         <td>
                             <span class="word-value">{{ "*****" if word['word'] != "" else "" }}</span>
-                            <input type="text" class="form-control modifiable-input" value="{{ word['word'] }}" />
+                            {{ form.text_input( 
+                                name="word",
+                                placeholder="5 or 6 letter word",
+                                initial_val=word['word'],
+                                input_class="word-input"
+                            ) }}
                         </td>
                         <td>
                             <a href="{{ word['story_url'] }}" class="story-title">{{ word['story_title'] }}</a>
-                            <input type="text" class="form-control modifiable-url-input" placeholder="Paste URL" value="{{ word['story_url'] }}" />
+                            {{ form.text_input( 
+                                name="url",
+                                placeholder="Paste Story URL",
+                                initial_val=word['story_url'],
+                                input_class="url-input"
+                            ) }}
                             <div class="error-message" style="display: none;"></div> <!-- Error message div -->
                         </td>
                         <td>
-                            <button class="btn btn-primary modify-button">Modify</button>
-                            <button class="btn btn-success update-button" style="display: none;">Update</button>
-                            <button class="btn btn-danger cancel-button" style="display: none;">Cancel</button>
+                            <button class="button-primary modify-button">
+                                Modify
+                            </button>
+                            <button class="button-primary update-button" style="display: none;">
+                                Update
+                            </button>
+                            <button class="button-secondary cancel-button" style="display: none;">
+                                Cancel
+                            </button>
                         </td>
                     </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-</div>
+</section>
+
 <script>
     // Add event listeners to enable modification and update
     const modifyButtons = document.querySelectorAll('.modify-button');
@@ -92,9 +175,8 @@ Illordle Admin
     const wordValues = document.querySelectorAll('.word-value');
     const wordAuthors = document.querySelectorAll('.word-author');
     const storyTitles = document.querySelectorAll('.story-title');
-    const modifiableInputs = document.querySelectorAll('.modifiable-input');
-    const modifiableUrlInputs = document.querySelectorAll('.modifiable-url-input');
-    const errorMessages = document.querySelectorAll('.error-message'); // Error message elements
+    const modifiableInputs = document.querySelectorAll('.word-input');
+    const modifiableUrlInputs = document.querySelectorAll('.url-input');
 
     modifyButtons.forEach((button, index) => {
         button.addEventListener('click', () => {
@@ -106,22 +188,19 @@ Illordle Admin
             wordValues[index].style.display = 'none';
             storyTitles[index].style.display = 'none';
             modifyButtons[index].style.display = 'none';
-
-            // Hide the error message
-            errorMessages[index].style.display = 'none';
         });
     });
 
     updateButtons.forEach((button, index) => {
         button.addEventListener('click', async () => {
-            button.disabled = true;
-            button.innerHTML = 'Updating...';
+            showLoading("Updating...");
 
             const today = new Date();
             today.setDate(today.getDate() + index);
             const date = today.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 
             const newWord = modifiableInputs[index].value;
+            console.log(newWord)
             const newUrl = modifiableUrlInputs[index].value;
 
             const response = await fetch(`/illordle/word/${date}`, {
@@ -133,24 +212,13 @@ Illordle Admin
             })
 
             if (response.status === 200) {
-                const responseData = await response.json();
-
-                wordValues[index].textContent = newWord;
-                wordAuthors[index].textContent = responseData['author'];
-                storyTitles[index].textContent = responseData['story_title'];
-                storyTitles[index].href = newUrl;
-                wordValues[index].style.display = 'block';
-                storyTitles[index].style.display = 'block';
-                modifiableInputs[index].style.display = 'none';
-                modifiableUrlInputs[index].style.display = 'none';
-                modifyButtons[index].style.display = 'inline-block';
-                updateButtons[index].style.display = 'none';
-                cancelButtons[index].style.display = 'none';
+                sessionStorage.setItem("infoBarMessage", "Word successfully updated."); // Safe so we can display after reload
+                window.location.reload();
             } else {
+                console.log("Error modifying word:");
                 const message = await response.text();
                 console.error(message);
-                errorMessages[index].textContent = message;
-                errorMessages[index].style.display = 'block';
+
                 wordValues[index].style.display = 'block';
                 storyTitles[index].style.display = 'block';
                 modifiableInputs[index].style.display = 'none';
@@ -158,9 +226,10 @@ Illordle Admin
                 modifyButtons[index].style.display = 'inline-block';
                 updateButtons[index].style.display = 'none';
                 cancelButtons[index].style.display = 'none';
+
+                await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+                hideLoading();
             }
-            button.disabled = false;
-            button.innerHTML = 'Update';
         });
     });
 
@@ -173,7 +242,6 @@ Illordle Admin
             modifyButtons[index].style.display = 'inline-block';
             updateButtons[index].style.display = 'none';
             cancelButtons[index].style.display = 'none';
-            errorMessages[index].style.display = 'none';
         });
     });
 </script>

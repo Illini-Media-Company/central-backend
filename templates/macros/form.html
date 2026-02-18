@@ -76,7 +76,7 @@ alt_type optionally lets you choose other HTML input
     types based on text (like 'url', 'date', 'datetime-local')
 maxlength is the maximum length of the input in characters
 #}
-{% macro text_input(name, label, required, class, placeholder, subtext, alt_type, maxlength, pattern, initial_val) %}
+{% macro text_input(name, label, required, class, input_class, placeholder, subtext, alt_type, maxlength, pattern, initial_val) %}
     <div class="form-row {{ class }}" id="formfield-{{ name }}">
         <div>
             <label for="{{ name }}" class="field-label">
@@ -96,7 +96,7 @@ maxlength is the maximum length of the input in characters
                 type    = "text"
             {% endif %}
             id      = "{{ name }}" 
-            class   = "text-input" 
+            class   = "text-input {{ input_class }}" 
             name    = "{{ name }}"
 
             {% if maxlength %}
