@@ -21,8 +21,6 @@ from db.food_truck import (
 )
 from util.security import restrict_to, csrf
 from datetime import datetime
-from db.json_store import json_store_get, json_store_set
-from util.scheduler import scheduler_to_json
 from db import client
 import logging
 from constants import GOOGLE_MAP_API, FOOD_TRUCK_MAPS_ID
@@ -44,9 +42,7 @@ food_truck_routes = Blueprint("food_truck_routes", __name__, url_prefix="/food-t
 @restrict_to(["food-truck-admin", "imc-staff-webdev"])
 def admin():
     with client.context():
-        logger.info("Loading admin page...")
         trucks = get_all_registered_trucks()
-    logger.debug("Done.")
     return render_template("food_truck_admin.html", registered=trucks)
 
 
@@ -56,15 +52,11 @@ def admin():
 # @restrict_to(["student-managers", "editors", "imc-staff-webdev"])
 def dashboard():
     with client.context():
-        logger.info("Loading dashboard page...")
         email = request.args.get("login_email")
         uid = request.args.get("login_uid")
         source = request.args.get("login_source")
         google_maps_api_key = GOOGLE_MAP_API
         food_truck_map_id = FOOD_TRUCK_MAPS_ID
-        logger.debug(f"\tlogin_email  = {email}")
-        logger.debug(f"\tlogin_uid    = {uid}")
-        logger.debug(f"\tlogin_source = {source}")
 
         # This does not execute on the first load (since email and uid are undefined)
         # When the page reloads when the user clicks the "Find" button, this executes
@@ -109,7 +101,6 @@ def dashboard():
 @login_required
 @restrict_to(["food-truck-admin", "imc-staff-webdev"])
 def register_truck():
-    logger.info("CALLED — Registering food truck...")
     with client.context():
         name = request.form["name"]
         cuisine = request.form["cuisine"]
@@ -121,7 +112,6 @@ def register_truck():
             name=name, cuisine=cuisine, emoji=emoji, url=url, email=email
         )
 
-    logger.debug("Done.")
     return "Food truck registered", 200
 
 
@@ -130,10 +120,8 @@ def register_truck():
 @login_required
 @restrict_to(["food-truck-admin", "imc-staff-webdev"])
 def deregister_truck(uid):
-    logger.info("CALLED — Deregistering food truck...")
     with client.context():
         if uid.isdigit() and deregister_food_truck(int(uid)):
-            logger.debug("Done.")
             return "Food truck deregistered.", 200
         else:
             logger.error("Failed.")
@@ -145,7 +133,6 @@ def deregister_truck(uid):
 @login_required
 @restrict_to(["food-truck-admin", "imc-staff-webdev"])
 def modify_truck(uid):
-    logger.info("CALLED — Modifying food truck...")
     with client.context():
         name = request.form["name"]
         cuisine = request.form["cuisine"]
@@ -157,7 +144,6 @@ def modify_truck(uid):
             uid=int(uid), name=name, cuisine=cuisine, emoji=emoji, url=url, email=email
         )
 
-    logger.debug("Done.")
     return "Food truck modified", 200
 
 

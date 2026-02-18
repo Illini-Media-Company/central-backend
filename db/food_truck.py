@@ -41,12 +41,10 @@ class foodTruckLocTime(ndb.Model):
 
 # Register a new food truck with the database. Must be done before add
 def register_food_truck(name, cuisine, emoji, url, email):
-    logger.info("Registering new truck...")
-    logger.debug(f"\tName    = {name}")
-    logger.debug(f"\tCuisine = {cuisine}")
-    logger.debug(f"\tEmoji   = {emoji}")
-    logger.debug(f"\tURL     = {url}")
-    logger.debug(f"\tEmail   = {email}")
+    logger.info(f"Registering new truck with name {name}...")
+    logger.debug(
+        f"Name= {name}; Cuisine= {cuisine}; Emoji= {emoji}; URL= {url}; Email= {email};"
+    )
     truck = foodTruck(
         registered_at=datetime.now(ZoneInfo("America/Chicago")).replace(tzinfo=None),
         name=name,
@@ -57,43 +55,33 @@ def register_food_truck(name, cuisine, emoji, url, email):
     )
     truck.put()
 
-    logger.debug(f"Created truck with UID = {truck.uid}.")
+    logger.info(f"Created truck with UID = {truck.uid}.")
     return truck.to_dict()
 
 
 # Deregister a food truck from the system entirely
 def deregister_food_truck(uid):
-    logger.info(f"Deregistering truck with UID = {uid}...")
+    logger.info(f"Deleting truck with UID = {uid}...")
     truck = foodTruck.get_by_id(uid)
 
     if truck is not None:
         truck.key.delete()
-        logger.debug("\tTruck deleted.")
+        logger.info("Truck deleted.")
         return True
     else:
-        logger.warning("\tTruck not found.")
+        logger.info("Truck not found.")
         return False
 
 
 # Modify a truck's registration
 def modify_food_truck(uid, name, cuisine, emoji, url, email):
     logger.info(f"Modifying truck with UID = {uid}")
-    logger.debug(f"\tNew name    = {name}")
-    logger.debug(f"\tNew cuisine = {cuisine}")
-    logger.debug(f"\tNew emoji   = {emoji}")
-    logger.debug(f"\tNew URL     = {url}")
-    logger.debug(f"\tNew email   = {email}")
+    logger.debug(
+        f"Name= {name}; Cuisine= {cuisine}; Emoji= {emoji}; URL= {url}; Email= {email};"
+    )
     truck = foodTruck.get_by_id(uid)
 
     if truck:
-        logger.debug(
-            "\t\tBefore:",
-            truck.name,
-            truck.cuisine,
-            truck.emoji,
-            truck.url,
-            truck.email,
-        )
         truck.name = name
         truck.cuisine = cuisine
         truck.emoji = emoji
@@ -101,10 +89,10 @@ def modify_food_truck(uid, name, cuisine, emoji, url, email):
         truck.email = email
 
         truck.put()
-        logger.debug("\tTruck modified.")
+        logger.info("Truck modified.")
 
     else:
-        logger.warning("\tTruck not found.")
+        logger.info("Truck not found.")
         return None
 
 
@@ -123,14 +111,9 @@ def add_truck_loctime(
     cur_time = datetime.now(ZoneInfo("America/Chicago")).replace(tzinfo=None)
 
     logger.info(f"Creating new loctime for truck with UID = {truck_uid}...")
-    logger.debug(f"\tLat             = {lat}")
-    logger.debug(f"\tLon             = {lon}")
-    logger.debug(f"\tNearest Address = {nearest_address}")
-    logger.debug(f"\tLocation Desc.  = {location_desc}")
-    logger.debug(f"\tStart Time      = {start_time}")
-    logger.debug(f"\tEnd Time        = {end_time}")
-    logger.debug(f"\tReported By     = {reported_by}")
-    logger.debug(f"\tUpdated at      = {cur_time}")
+    logger.debug(
+        f"Lat= {lat}; Lon= {lon}; Nearest Address= {nearest_address}; Location Desc.= {location_desc}; Start Time= {start_time}; End Time= {end_time}; Reported By= {reported_by}; Recurrence ID= {recurrence_id}"
+    )
     loctime = foodTruckLocTime(
         truck_uid=truck_uid,
         updated_at=cur_time,
@@ -145,7 +128,7 @@ def add_truck_loctime(
     )
     loctime.put()
 
-    logger.debug("Done.")
+    logger.info(f"Created loctime with UID = {loctime.uid}.")
     return loctime.to_dict()
 
 
@@ -177,7 +160,7 @@ def add_truck_loctime_repeat(
         `end_date` (`date`): The end date for the recurring series (repeats weekly).
 
     Returns:
-        `bool`: True if all recurring loctimes were created successfully, False if overlap detected.
+        `bool`: `True` if all recurring loctimes were created successfully, `False` if overlap detected.
 
     """
     # check if any objects will overlap
@@ -185,7 +168,7 @@ def add_truck_loctime_repeat(
     end_check = end_time
     while start_check.date() <= end_date:
         if check_existing_loctime(truck_uid, start_check, end_check):
-            logger.warning(f"\tThere is a loctime overlap at {start_check}")
+            logger.warning(f"There is a loctime overlap at {start_check}")
             return False
 
         start_check += timedelta(weeks=1)
@@ -220,10 +203,10 @@ def remove_truck_loctime(uid):
 
     if locTime is not None:
         locTime.key.delete()
-        logger.debug("\tLoctime deleted.")
+        logger.info("Loctime deleted.")
         return True
     else:
-        logger.warning("\tLoctime not found.")
+        logger.info("Loctime not found.")
         return False
 
 
@@ -254,14 +237,9 @@ def modify_truck_loctime(
     cur_time = datetime.now(ZoneInfo("America/Chicago")).replace(tzinfo=None)
 
     logger.info(f"Modifying loctime with UID = {uid}...")
-    logger.debug(f"\tLat             = {lat}")
-    logger.debug(f"\tLon             = {lon}")
-    logger.debug(f"\tNearest Address = {nearest_address}")
-    logger.debug(f"\tLocation Desc.  = {location_desc}")
-    logger.debug(f"\tStart Time      = {start_time}")
-    logger.debug(f"\tEnd Time        = {end_time}")
-    logger.debug(f"\tReported By     = {reported_by}")
-    logger.debug(f"\tUpdated at      = {cur_time}")
+    logger.debug(
+        f"Lat= {lat}; Lon= {lon}; Nearest Address= {nearest_address}; Location Desc.= {location_desc}; Start Time= {start_time}; End Time= {end_time}; Reported By= {reported_by}"
+    )
     locTime = foodTruckLocTime.get_by_id(int(uid))
 
     if locTime:
@@ -275,18 +253,18 @@ def modify_truck_loctime(
         locTime.reported_by = reported_by
 
         locTime.put()
-        logger.debug("\tLoctime modified.")
+        logger.info("Loctime modified.")
 
     else:
-        logger.warning("\tLoctime not found.")
+        logger.info("Loctime not found.")
         return None
 
 
 # Removes any locTimes where the end time has passed
 def remove_old_loc_times():
-    logger.info("Removing expired loctimes...")
+    logger.debug("Removing expired loctimes...")
     cur_time = datetime.now(ZoneInfo("America/Chicago")).replace(tzinfo=None)
-    logger.debug(f"\tCurrent time = {cur_time}")
+    logger.debug(f"Current time = {cur_time}")
 
     expired_loc_times = foodTruckLocTime.query(
         foodTruckLocTime.end_time < cur_time
@@ -294,21 +272,21 @@ def remove_old_loc_times():
 
     ndb.delete_multi([locTime.key for locTime in expired_loc_times])
 
-    logger.debug(f"\tDeleted {len(expired_loc_times)} loctime(s).")
+    logger.debug(f"Deleted {len(expired_loc_times)} loctime(s).")
     return len(expired_loc_times)
 
 
 # Returns true if there is a loctime that overlaps with start_time or end_time (Expects all times in UTC)
 def check_existing_loctime(truck_uid, start_time, end_time):
-    logger.info("Checking for overlapping loctimes...")
-    logger.debug(f"\ttruck_uid  = {truck_uid}")
-    logger.debug(f"\tstart_time = {start_time}")
-    logger.debug(f"\tend_time   = {end_time}")
+    logger.debug("Checking for overlapping loctimes...")
+    logger.debug(f"truck_uid  = {truck_uid}")
+    logger.debug(f"start_time = {start_time}")
+    logger.debug(f"end_time   = {end_time}")
     loctimes = get_all_loctimes_for_truck(int(truck_uid))
-    logger.debug("\tRetrieved all loctimes.")
+    logger.debug("Retrieved all loctimes.")
 
     for loctime in loctimes:
-        logger.debug(f"\tChecking loctime with uid = {loctime['uid']}")
+        logger.debug(f"Checking loctime with uid = {loctime['uid']}")
         exst_start = loctime["start_time"]
         exst_end = loctime["end_time"]
 
@@ -317,39 +295,37 @@ def check_existing_loctime(truck_uid, start_time, end_time):
             or exst_start < end_time < exst_end
             or (start_time < exst_start and exst_end < end_time)
         ):
-            logger.debug("\t\tFound loctime with overlapping times.")
+            logger.debug("Found loctime with overlapping times.")
             return True
 
-    logger.warning("\tDid not find any overlapping loctimes.")
+    logger.debug("Did not find any overlapping loctimes.")
     return False
 
 
 # Returns true if there is a loctime that overlaps with start_time or end_time (Based on locTime's UID) (Expects all times in UTC)
 def check_existing_loctime_notruck(uid, start_time, end_time):
     logger.info("Checking for overlapping loctimes...")
-    logger.debug(f"\tuid        = {uid}")
-    logger.debug(f"\tstart_time = {start_time}")
-    logger.debug(f"\tend_time   = {end_time}")
+    logger.debug(f"uid        = {uid}")
+    logger.debug(f"start_time = {start_time}")
+    logger.debug(f"end_time   = {end_time}")
     loctimes = get_all_loctimes_for_truck(
         foodTruckLocTime.get_by_id(int(uid)).truck_uid
     )
-    logger.debug("\tRetrieved all loctimes.")
+    logger.debug("Retrieved all loctimes.")
 
     for loctime in loctimes:
-        logger.debug(f"\tChecking loctime with uid = {loctime['uid']}")
+        logger.debug(f"Checking loctime with uid = {loctime['uid']}")
         exst_start = loctime["start_time"]
         exst_end = loctime["end_time"]
 
         if exst_start < start_time < exst_end or exst_start < end_time < exst_end:
-            logger.debug("\t\tFound loctime with overlapping times.")
+            logger.debug("Found loctime with overlapping times.")
             if int(loctime["uid"]) != int(uid):
-                logger.debug(
-                    "\t\tConfirmed that this is not the loctime being modified."
-                )
+                logger.debug("Confirmed that this is not the loctime being modified.")
                 return True
-            logger.debug("\t\tThis is the loctime being modified. Skipping...")
+            logger.debug("This is the loctime being modified. Skipping...")
 
-    logger.warning("\tDid not find any overlapping loctimes.")
+    logger.debug("Did not find any overlapping loctimes.")
     return False
 
 
@@ -360,7 +336,7 @@ def get_all_registered_trucks():
         [truck.to_dict() for truck in foodTruck.query().fetch()],
         key=lambda x: x.get("name", "").lower(),
     )
-    logger.debug("\tDone.")
+    logger.debug("Done.")
     return trucks
 
 
@@ -370,25 +346,23 @@ def get_registration_by_id(uid):
     truck = foodTruck.get_by_id(uid)
 
     if truck is not None:
-        logger.debug("\tDone.")
+        logger.debug("Done.")
         return truck.to_dict()
     else:
-        logger.warning("\tNot found.")
+        logger.info("Not found.")
         return None
 
 
 # Get every locTime for all trucks (and clear all expired times)
 def get_all_truck_loctimes():
-    logger.info("Getting all loctimes for all trucks...")
     remove_old_loc_times()
     locTimes = [locTime.to_dict() for locTime in foodTruckLocTime.query().fetch()]
-    logger.debug("\tDone.")
     return locTimes
 
 
 # Get every locTime associated with a specific truck's UID (Sorted by start_time) (and clear all expired times)
 def get_all_loctimes_for_truck(truck_uid):
-    logger.info(f"\tGetting all loctimes for truck with UID = {truck_uid}...")
+    logger.debug(f"Getting all loctimes for truck with UID = {truck_uid}...")
     remove_old_loc_times()
     locTimes = (
         foodTruckLocTime.query(foodTruckLocTime.truck_uid == float(truck_uid))
@@ -396,31 +370,31 @@ def get_all_loctimes_for_truck(truck_uid):
         .fetch()
     )
 
-    logger.debug("\tDone.")
+    logger.debug("Done.")
     return [locTime.to_dict() for locTime in locTimes]
 
 
 # Get a specific loctime from its UID
 def get_loctime_by_id(uid):
-    logger.info(f"Getting loctime with UID = {uid}...")
+    logger.debug(f"Getting loctime with UID = {uid}...")
     loctime = foodTruckLocTime.get_by_id(uid)
 
     if loctime is not None:
-        logger.debug("\tDone.")
+        logger.debug("Done.")
         return loctime.to_dict()
     else:
-        logger.debug("\tFound.")
+        logger.debug("Not found.")
         return None
 
 
 # Get all trucks with every locTime for each truck
 def get_all_trucks_with_loctimes():
-    logger.info("Getting all trucks and loctimes...")
+    logger.debug("Getting all trucks and loctimes...")
     all_trucks = get_all_registered_trucks()
     result = []
 
     for truck in all_trucks:
-        logger.debug(f"\tLoop: Truck with UID = {truck['uid']}")
+        logger.debug(f"Loop: Truck with UID = {truck['uid']}")
         truck_uid = truck.get("uid")
 
         truck["cur_loctime"] = {}
@@ -430,7 +404,7 @@ def get_all_trucks_with_loctimes():
         loctimes = get_all_loctimes_for_truck(truck_uid)
 
         if len(loctimes) >= 2:
-            logger.debug("\t\tTruck has at least 2 loctimes.")
+            logger.debug("Truck has at least 2 loctimes.")
             # Since these are sorted alphabetically, we can just get the first two
             loctime1 = loctimes[0]
             loctime2 = loctimes[1]
@@ -444,17 +418,17 @@ def get_all_trucks_with_loctimes():
                 < datetime.now(ZoneInfo("America/Chicago")).replace(tzinfo=None)
                 < exst_end
             ):
-                logger.debug("\t\tSetting both current and next loctime...")
+                logger.debug("Setting both current and next loctime...")
                 truck["cur_loctime"] = loctime1
                 truck["nxt_loctime"] = loctime2
-                logger.debug("\t\t\tDone.")
+                logger.debug("\Done.")
             else:
-                logger.debug("\t\tSetting next loctime...")
+                logger.debug("Setting next loctime...")
                 truck["nxt_loctime"] = loctime1
-                logger.debug("\t\t\tDone.")
+                logger.debug("Done.")
 
         elif len(loctimes) == 1:
-            logger.debug("\t\tTruck has 1 loctime.")
+            logger.debug("Truck has 1 loctime.")
             loctime1 = loctimes[0]
             exst_start = loctime1["start_time"]
             exst_end = loctime1["end_time"]
@@ -464,16 +438,16 @@ def get_all_trucks_with_loctimes():
                 < datetime.now(ZoneInfo("America/Chicago")).replace(tzinfo=None)
                 < exst_end
             ):
-                logger.debug("\t\tSetting current loctime...")
+                logger.debug("Setting current loctime...")
                 truck["cur_loctime"] = loctime1
-                logger.debug("\t\t\tDone.")
+                logger.debug("Done.")
             else:
-                logger.debug("\t\tSetting next loctime...")
+                logger.debug("Setting next loctime...")
                 truck["nxt_loctime"] = loctime1
-                logger.debug("\t\t\tDone.")
+                logger.debug("Done.")
 
         result.append(truck)
-        logger.debug("\tAdded to list.")
+        logger.debug("Added to list.")
 
     logger.debug("Done.")
     return result
