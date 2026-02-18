@@ -5,6 +5,7 @@ Last modified Feb. 18, 2026
 """
 
 import datetime
+import logging
 import re
 import random
 from util.slackbots._slackbot import app
@@ -21,6 +22,9 @@ from util.discovery_engine import (
 from constants import PUBLIC_BASE_URL, SLACK_BOT_TOKEN
 
 
+logger = logging.getLogger(__name__)
+
+
 def _slack_user_profile(user_id):
     """
     Fetch a Slack user's profile data by user id.
@@ -30,7 +34,7 @@ def _slack_user_profile(user_id):
         res = app.client.users_info(token=SLACK_BOT_TOKEN, user=user_id)
         return res.get("user", {}).get("profile", {})
     except Exception as e:
-        print(f"[ask] users_info failed: {e}")
+        logging.error(f"[ask] users_info failed: {e}")
         return None
 
 
@@ -101,23 +105,24 @@ def _easter_egg_response(question_raw: str):
     """
     q = _normalize_cmd(question_raw)
 
-    greeting_triggers = {"hi", "hello", "hey"}
+    greeting_triggers = {"hi", "hello", "hey", "what's up", "howdy", "yo", "greetings"}
+    joke_triggers = {"tell me a joke", "tell a joke", "make me laugh", "joke"}
 
     greeting_responses = [
         "hello :P",
         "heyyy",
-        "hi there",
-        "what's up",
-        "howdy",
+        "Hi there",
+        "What's up",
+        "Howdy",
         "yo",
-        "hey hey",
-        "bello",
+        "Hey hey",
+        "Bello",
     ]
 
     if q in greeting_triggers:
         return random.choice(greeting_responses)
 
-    if q == "tell me a joke":
+    if q in joke_triggers:
         jokes = [
             "Why don't scientists trust atoms? Because they make up everything.",
             "I told my friend 10 jokes to make him laugh. Sadly, no pun in ten did.",
@@ -178,7 +183,7 @@ def _ask_and_respond(question, access_token, user_id, respond):
                 if search_sources:
                     sources = search_sources
             except Exception as e:
-                print(f"[ask] search fallback error: {e}")
+                logging.error(f"[ask] search fallback error: {e}")
 
         if not answer_text:
             if skipped_reasons:
@@ -219,7 +224,7 @@ def _ask_and_respond(question, access_token, user_id, respond):
 
         respond(blocks=blocks, response_type="in_channel")
     except Exception as e:
-        print(f"[ask] error: {e}")
+        logging.error(f"[ask] error: {e}")
         respond(
             text="Sorry, there was an error answering your question.",
             response_type="ephemeral",

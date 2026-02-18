@@ -17,6 +17,12 @@ GOOGLE_PROJECT_ID = os.environ.get("DATASTORE_PROJECT_ID", None)
 GOOGLE_MAP_API = os.environ.get("GOOGLE_MAP_API", None)
 FOOD_TRUCK_MAPS_ID = os.environ.get("FOOD_TRUCK_MAPS_ID", None)
 
+# Google Analytics information
+IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID = "G-6V6FSKGBDZ"
+IMC_CONSOLE_GOOGLE_ANALYTICS_KEY = os.environ.get(
+    "IMC_CONSOLE_GOOGLE_ANALYTICS_KEY", None
+)
+
 # Discovery Engine (Vertex AI Search) configuration
 DISCOVERY_ENGINE_PROJECT_ID = os.environ.get(
     "DISCOVERY_ENGINE_PROJECT_ID", GOOGLE_PROJECT_ID

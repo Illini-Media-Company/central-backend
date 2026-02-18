@@ -5,9 +5,8 @@ Last modified Feb. 18, 2026
 """
 
 from typing import Dict, List, Optional, Tuple
-
+import logging
 import requests
-
 from constants import (
     DISCOVERY_ENGINE_PROJECT_ID,
     DISCOVERY_ENGINE_LOCATION,
@@ -15,6 +14,11 @@ from constants import (
     DISCOVERY_ENGINE_SERVING_CONFIG,
     DISCOVERY_ENGINE_ENGINE_ID,
 )
+
+from util.google_analytics import send_ga4_event
+from constants import IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID
+
+logger = logging.getLogger(__name__)
 
 
 API_VERSION = "v1alpha"
@@ -81,11 +85,17 @@ def answer_query(
     Call the Discovery Engine answer endpoint for a question.
     Returns the parsed JSON response or raises on API errors.
     """
+    send_ga4_event(
+        "scout_query",
+        IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID,
+        {"utm_source": "Slack"},
+    )
+
     serving_config = _serving_config()
     url = (
         f"https://discoveryengine.googleapis.com/{API_VERSION}/{serving_config}:answer"
     )
-    print(f"[discovery_engine] POST {url}")
+    logging.debug(f"[discovery_engine] POST {url}")
     body = {
         "query": {"text": query},
         "session": _session_path(),
@@ -108,7 +118,9 @@ def answer_query(
         headers["x-goog-user-project"] = DISCOVERY_ENGINE_PROJECT_ID
 
     resp = requests.post(url, json=body, headers=headers, timeout=30)
-    print("[discovery_engine] status=" f"{resp.status_code} body={resp.text[:2000]}")
+    logging.debug(
+        f"[discovery_engine] status={resp.status_code} body={resp.text[:2000]}"
+    )
     if resp.status_code >= 400:
         raise RuntimeError(
             f"Discovery Engine error {resp.status_code}: {resp.text[:500]}"
@@ -130,7 +142,7 @@ def search_query(
     url = (
         f"https://discoveryengine.googleapis.com/{API_VERSION}/{serving_config}:search"
     )
-    print(f"[discovery_engine] POST {url}")
+    logging.debug(f"[discovery_engine] POST {url}")
     body = {
         "query": query,
         "pageSize": page_size,
@@ -152,7 +164,9 @@ def search_query(
         headers["x-goog-user-project"] = DISCOVERY_ENGINE_PROJECT_ID
 
     resp = requests.post(url, json=body, headers=headers, timeout=30)
-    print("[discovery_engine] status=" f"{resp.status_code} body={resp.text[:2000]}")
+    logging.debug(
+        f"[discovery_engine] status={resp.status_code} body={resp.text[:2000]}"
+    )
     if resp.status_code >= 400:
         raise RuntimeError(
             f"Discovery Engine error {resp.status_code}: {resp.text[:500]}"

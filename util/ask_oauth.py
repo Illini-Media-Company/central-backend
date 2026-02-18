@@ -6,12 +6,14 @@ Last modified Feb. 18, 2026
 
 from datetime import datetime, timedelta
 from typing import Optional
-
+import logging
 import requests
 
 from constants import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 from util.security import get_google_provider_cfg
 from db.user import get_user_entity, set_user_ask_oauth_tokens
+
+logger = logging.getLogger(__name__)
 
 
 def refresh_access_token(refresh_token: str) -> dict:
