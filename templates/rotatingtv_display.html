@@ -159,7 +159,7 @@
             {% if show_quad %}
                 <section class="panel">
                     <iframe class="frame"
-                        src="https://www.youtube.com/embed/g_973tJqDe8?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1"
+                        src="{{ quad_url }}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1"
                         title="YouTube: Quad"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                         referrerpolicy="strict-origin-when-cross-origin"
@@ -170,8 +170,19 @@
             {% if show_alma %}
                 <section class="panel">
                     <iframe class="frame"
-                        src="https://www.youtube.com/embed/rpfmExOpfKM?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1"
+                        src="{{ alma_url }}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1"
                         title="YouTube: Alma"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        referrerpolicy="strict-origin-when-cross-origin"
+                        allowfullscreen></iframe>
+                </section>
+            {% endif %}
+
+            {% if show_morrow %}
+                <section class="panel">
+                    <iframe class="frame"
+                        src="{{ morrow_url }}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1"
+                        title="YouTube: Morrow Plots"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                         referrerpolicy="strict-origin-when-cross-origin"
                         allowfullscreen></iframe>
