@@ -513,10 +513,7 @@ def ems_onboarding_complete(emp_id):
             logging.info(
                 f"Employee ID {emp_id} attempted to complete onboarding, but it is already marked as complete."
             )
-            abort(
-                409,
-                description="This employee has already completed onboarding.",
-            )
+            return render_template("/employee_management/ems_onboarding_complete.html")
 
         # Ensure they've logged into Slack & get their ID
         slack_id = _lookup_user_id_by_email(employee["imc_email"])
