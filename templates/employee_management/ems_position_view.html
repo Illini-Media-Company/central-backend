@@ -405,7 +405,7 @@
                             <div class="form-initial-hide">
                                 {{ form.text_input( 
                                     name="google_group",
-                                    label="Google Group",
+                                    label="Google Group Email",
                                     required=false,
                                     initial_val=position.google_group,
                                     placeholder="xxxxx@illinimedia.com",
@@ -430,14 +430,20 @@
                         <div class="position-info-row" title="Slack Channels">
                             <i class="bi bi-slack"></i>
                             <div class="form-initial-show">
-                                <p style="margin-bottom: 0;">{{ position.slack_channels or "—"}}</p>
+                                {% if position.slack_channels %}
+                                    {% for channel in position.slack_channels %}
+                                    <p style="margin-bottom: 0;">{{ channel }}</p>
+                                    {% endfor %}
+                                {% else %}
+                                    <p style="margin-bottom: 0;">—</p>
+                                {% endif %}
                             </div>
                             <div class="form-initial-hide">
                                 {{ form.text_input( 
                                     name="slack_channels",
-                                    label="Slack Channels",
+                                    label="Slack Channel IDs",
                                     required=false,
-                                    initial_val=position.slack_channels,
+                                    initial_val=position.slack_channels | join(', '),
                                     placeholder="Comma-separated list",
                                     class="position-modify-form-row form-row-shrink"
                                 ) }}
