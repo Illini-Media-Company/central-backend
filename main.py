@@ -166,6 +166,7 @@ from views.photo_request import photo_request_routes
 from views.di_social_poster import di_social_poster_routes
 from views.employee_management import ems_routes
 from views.employee_management import get_ems_brand_image_url
+from views.copy_admin_dashboard import copy_admin_dashboard_routes
 
 logging.info("Views imported.")
 
@@ -205,6 +206,7 @@ app.register_blueprint(rotate_tv_routes)
 app.register_blueprint(photo_request_routes)
 app.register_blueprint(di_social_poster_routes)
 app.register_blueprint(ems_routes)
+app.register_blueprint(copy_admin_dashboard_routes)
 logging.info("Done registering blueprints.")
 
 logging.info("Initializing login manager...")
