@@ -86,9 +86,10 @@ def answer_query(
     Returns the parsed JSON response or raises on API errors.
     """
     send_ga4_event(
-        "scout_query",
-        IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID,
-        {"utm_source": "Slack"},
+        name="scout_query",
+        measurement_id=IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID,
+        params={"utm_source": "Slack"},
+        client_id=user_pseudo_id,
     )
 
     serving_config = _serving_config()

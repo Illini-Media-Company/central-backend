@@ -7,7 +7,6 @@ load_dotenv()
 
 
 ENV = os.environ.get("ENV", "dev")
-PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "https://app.dailyillini.com")
 
 # Google API keys and secrets
 ADMIN_EMAIL = "di_admin@illinimedia.com"

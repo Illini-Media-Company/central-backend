@@ -10,6 +10,7 @@ import re
 import random
 from util.slackbots._slackbot import app
 from threading import Thread
+from flask import url_for
 from util.security import csrf
 from db.user import add_user, get_user_entity, check_and_log_query
 from util.ask_oauth import get_valid_access_token
@@ -19,7 +20,7 @@ from util.discovery_engine import (
     extract_search_results,
     search_query,
 )
-from constants import PUBLIC_BASE_URL, SLACK_BOT_TOKEN
+from constants import SLACK_BOT_TOKEN
 
 
 logger = logging.getLogger(__name__)
@@ -278,7 +279,7 @@ def ask_command(ack, body, respond):
 
     access_token = get_valid_access_token(email)
     if not access_token:
-        base = PUBLIC_BASE_URL.rstrip("/") if PUBLIC_BASE_URL else ""
+        base = url_for("login", _external=True, _scheme="https")
         auth_link = f"{base}/login" if base else "/login"
         respond(
             text=(

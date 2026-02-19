@@ -7,7 +7,6 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 from constants import (
     ENV,
-    PUBLIC_BASE_URL,
     SLACK_BOT_TOKEN,
     SLACK_APP_TOKEN,
     SLACK_SIGNING_SECRET,
@@ -346,6 +345,7 @@ IMC_WELCOME_MESSAGE_TEXT = "Welcome to Illini Media Company!"
 
 
 app = App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
+
 
 @app.event("app_mention")
 def handle_mention(event, say):
