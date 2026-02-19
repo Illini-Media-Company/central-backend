@@ -9,9 +9,12 @@ import sys
 import os
 import urllib
 import atexit
+
+from db import client as dbclient
+
 import requests
 from threading import Thread
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from talisman import Talisman
 from oauthlib.oauth2 import WebApplicationClient
@@ -50,6 +53,7 @@ from db.user import (
     get_all_users,
     get_user_favorite_tools,
     get_user_name,
+    set_user_ask_oauth_tokens,
 )
 from db.all_tools import (
     get_all_tools,
@@ -81,6 +85,7 @@ from util.helpers.email_to_slackid import email_to_slackid
 from util.all_tools import format_restricted_groups
 import util.slackbots.employee_agreement_slackbot
 import util.slackbots.photo_request
+import util.slackbots.knowledge_slackbot
 from util.helpers.ap_datetime import (
     ap_datetime,
     ap_date,
@@ -381,8 +386,16 @@ def login():
     request_uri = client.prepare_request_uri(
         authorization_endpoint,
         redirect_uri=request.base_url + "/callback",
-        scope=["openid", "email", "profile"],
+        scope=[
+            "openid",
+            "email",
+            "profile",
+            "https://www.googleapis.com/auth/cloud-platform",
+        ],
         state=state,
+        access_type="offline",
+        include_granted_scopes="true",
+        prompt="consent",
     )
     return redirect(request_uri)
 
@@ -413,7 +426,8 @@ def callback():
     )
 
     # Parse the tokens!
-    client.parse_request_body_response(json.dumps(token_response.json()))
+    token_payload = token_response.json()
+    client.parse_request_body_response(json.dumps(token_payload))
 
     # Now that you have tokens (yay) let's find and hit the URL
     # from Google that gives you the user's profile information,
@@ -431,6 +445,14 @@ def callback():
         user_name = userinfo_response["name"]
         user_picture = userinfo_response["picture"]
         user_domain = userinfo_response.get("hd", "")
+        access_token = token_payload.get("access_token")
+        refresh_token = token_payload.get("refresh_token")
+        expires_in = token_payload.get("expires_in")
+        expiry = (
+            datetime.utcnow() + timedelta(seconds=int(expires_in))
+            if expires_in is not None
+            else None
+        )
 
         # Create or update user in db
         user = get_user(user_email)
@@ -467,6 +489,14 @@ def callback():
                 email=user_email,
                 picture=user_picture,
                 last_login=datetime.now(ZoneInfo("America/Chicago")),
+            )
+
+        if access_token:
+            set_user_ask_oauth_tokens(
+                email=user_email,
+                access_token=access_token,
+                refresh_token=refresh_token,
+                expiry=expiry,
             )
 
         # Create new thread to sync user's group memberships

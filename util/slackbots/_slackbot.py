@@ -1,11 +1,26 @@
+from threading import Thread
+
 from flask import request
 from slack_bolt import App
 import logging
 from slack_bolt.adapter.flask import SlackRequestHandler
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-from constants import ENV, SLACK_BOT_TOKEN, SLACK_APP_TOKEN, SLACK_SIGNING_SECRET
+from constants import (
+    ENV,
+    SLACK_BOT_TOKEN,
+    SLACK_APP_TOKEN,
+    SLACK_SIGNING_SECRET,
+)
 from util.security import csrf
+from db.user import add_user, get_user_entity
+from util.ask_oauth import get_valid_access_token
+from util.discovery_engine import (
+    answer_query,
+    extract_answer_and_citations,
+    extract_search_results,
+    search_query,
+)
 
 from constants import (
     IMC_GENERAL_ID,

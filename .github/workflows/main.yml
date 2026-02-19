@@ -52,6 +52,8 @@ jobs:
             CC_CLIENT_SECRET=${{ secrets.CC_CLIENT_SECRET }}
             RETOOL_API_KEY=${{ secrets.RETOOL_API_KEY }}
             FOOD_TRUCK_MAPS_ID=${{ secrets.FOOD_TRUCK_MAPS_ID }}
+            DISCOVERY_ENGINE_PROJECT_ID=${{ secrets.DISCOVERY_ENGINE_PROJECT_ID }}
+            DISCOVERY_ENGINE_ENGINE_ID=${{ secrets.DISCOVERY_ENGINE_ENGINE_ID }}
             IMC_CONSOLE_GOOGLE_ANALYTICS_KEY=${{ secrets.IMC_CONSOLE_GOOGLE_ANALYTICS_KEY}}
 
   build:

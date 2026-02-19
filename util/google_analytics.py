@@ -9,7 +9,7 @@ import requests
 from constants import IMC_CONSOLE_GOOGLE_ANALYTICS_KEY
 
 
-def send_ga4_event(name: str, measurement_id: str, params: dict):
+def send_ga4_event(name: str, measurement_id: str, params: dict, client_id: str = None):
     """
     Sends a new GA4 event to Google Analytics with given parameters. Useful for server-side event
     tracking of things Google Analytics cannot natively track, like API calls.
@@ -24,7 +24,7 @@ def send_ga4_event(name: str, measurement_id: str, params: dict):
     """
     url = f"https://www.google-analytics.com/mp/collect?measurement_id={measurement_id}&api_secret={IMC_CONSOLE_GOOGLE_ANALYTICS_KEY}"
     payload = {
-        "client_id": request.remote_addr,
+        "client_id": client_id or request.remote_addr,
         "events": [{"name": name, "params": params}],
     }
     requests.post(url, json=payload)

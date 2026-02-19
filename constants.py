@@ -22,6 +22,15 @@ IMC_CONSOLE_GOOGLE_ANALYTICS_KEY = os.environ.get(
     "IMC_CONSOLE_GOOGLE_ANALYTICS_KEY", None
 )
 
+# Discovery Engine (Vertex AI Search) configuration
+DISCOVERY_ENGINE_PROJECT_ID = os.environ.get(
+    "DISCOVERY_ENGINE_PROJECT_ID", GOOGLE_PROJECT_ID
+)
+DISCOVERY_ENGINE_LOCATION = "global"
+DISCOVERY_ENGINE_COLLECTION = "default_collection"
+DISCOVERY_ENGINE_SERVING_CONFIG = "default_search"
+DISCOVERY_ENGINE_ENGINE_ID = os.environ.get("DISCOVERY_ENGINE_ENGINE_ID", None)
+
 APPS_SCRIPT_RUNNER_EMAIL = "apps-script-runner@illinimedia.com"
 CONTEND_DOC_AUD = (
     "906651552672-3vsqi0s6ggr50gs1u7chgcn15hqlgg4e.apps.googleusercontent.com"
