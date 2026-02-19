@@ -127,7 +127,11 @@ SOCIAL_MEDIA_POSTS_CHANNEL_ID = (
     "C0AEFSQT5JA" if ENV == "dev" else None
 )  # Set prod channel ID in env/constants when known
 
-# Optional: Google Calendar ID for social media shift (to tag person on shift). Set when available.
-SOCIAL_MEDIA_GCAL_ID = os.environ.get("SOCIAL_MEDIA_GCAL_ID", None)
+# Google Calendar ID for social media shift (to tag person on shift).
+SOCIAL_MEDIA_GCAL_ID = (
+    "d196066442984ade1c02d80f844d925c1030a7572ea79cbdc59fc5e84fd3c74e@group.calendar.google.com"
+    if ENV == "dev"
+    else None
+)
 # Fallback email when no one is on shift in the socials calendar (e.g. socials chief).
 SOCIALS_CHIEF_EMAIL = "alutz7@illinimedia.com"

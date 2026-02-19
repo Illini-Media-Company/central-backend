@@ -62,6 +62,7 @@ from db.json_store import json_store_set
 
 from util.slackbots.copy_editing import scheduler as copy_scheduler
 from util.map_point import scheduler as map_scheduler
+from util.rss_social_listener import _rss_scheduler
 from util.scheduler import scheduler_to_json, db_to_scheduler
 from util.changelog_parser import parse_changelog
 from apscheduler.triggers.date import DateTrigger
@@ -160,8 +161,10 @@ print("[main] Done registering Jinja filters.")
 def log_scheduler():
     maps = scheduler_to_json(map_scheduler)
     copy = scheduler_to_json(copy_scheduler)
+    rss = scheduler_to_json(_rss_scheduler)
     json_store_set("MAP_JOBS", maps)
     json_store_set("COPY_JOBS", copy)
+    json_store_set("RSS_JOBS", rss)
 
 
 @app.before_request

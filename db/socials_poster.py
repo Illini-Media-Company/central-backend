@@ -1,3 +1,13 @@
+"""
+Database models and functions for DI social stories.
+
+Contains the DiSocialStory model and CRUD operations for tracking social media posts
+across platforms (Instagram, Facebook, Reddit, X, Threads). Handles story creation,
+updates, queries, and posting limits.
+
+Last modified by Aryaa Rathi on Feb 19, 2026
+"""
+
 from datetime import datetime, timedelta
 from google.cloud import ndb
 
@@ -23,7 +33,7 @@ class DiSocialStory(ndb.Model):
 
 def add_social_story(url, name):
     """
-    Create a new social story record.
+    Create a new social story record in the database.
 
     Args:
         url: Story URL
@@ -49,7 +59,7 @@ def add_social_story(url, name):
 
 def update_slack_details(url, message_ts):
     """
-    Update the Slack message ts for a story with the given URL.
+    Update the Slack message timestamp for a story by URL.
 
     Args:
         url: Story URL to update
@@ -71,11 +81,11 @@ def update_slack_details(url, message_ts):
 
 def update_social(url, social_media_name):
     """
-    Update the timestamp for a specific social media platform to datetime.now().
+    Mark a story as posted to a specific social media platform by updating its timestamp.
 
     Args:
         url: Story URL to update
-        social_media_name: Name of social media platform (from SocialMedia enum)
+        social_media_name: Name of social media platform (Instagram, Facebook, Reddit, X, Threads)
 
     Returns:
         dict: Updated story as dictionary, or None if not found
@@ -108,7 +118,7 @@ def update_social(url, social_media_name):
 
 def get_all_stories():
     """
-    Get all social stories.
+    Retrieve all social stories from the database.
 
     Returns:
         list: List of all stories as dictionaries
@@ -120,7 +130,7 @@ def get_all_stories():
 
 def get_recent_stories(count):
     """
-    Get recent social stories ordered by story_posted_timestamp.
+    Get the most recent social stories ordered by posting timestamp.
 
     Args:
         count: Number of recent stories to return
@@ -140,7 +150,7 @@ def get_recent_stories(count):
 
 def get_story_by_url(url):
     """
-    Get a story by its URL.
+    Look up a story by its URL.
 
     Args:
         url: Story URL to find
@@ -159,7 +169,7 @@ def get_story_by_url(url):
 
 def delete_all_stories():
     """
-    Delete all social story records.
+    Delete all social story records from the database.
 
     Returns:
         str: Confirmation message
@@ -171,8 +181,45 @@ def delete_all_stories():
     return "All social stories deleted"
 
 
+SAMPLE_STORIES = [
+    {
+        "story_url": "https://dailyillini.com/2026/02/10/campus-event-celebrates-community/",
+        "story_title": "Campus event celebrates community",
+        "writer_name": "Jane Smith",
+        "photographer_name": "Alex Chen",
+        "image_url": "https://picsum.photos/800/500?random=1",
+    },
+]
+
+
+def post_sample_stories_to_slack():
+    """
+    Post sample stories to the social Slack channel for testing.
+    Adds each to DB if not present, posts to Slack, stores message ts (reactions will work).
+    Returns list of {"story_title": str, "result": dict} for each sample.
+    """
+    from util.slackbots.socials_slackbot import post_story_to_social_channel
+
+    results = []
+    for sample in SAMPLE_STORIES:
+        if get_story_by_url(sample["story_url"]) is None:
+            try:
+                add_social_story(sample["story_url"], sample["story_title"])
+            except Exception:
+                pass
+        result = post_story_to_social_channel(
+            story_url=sample["story_url"],
+            story_title=sample["story_title"],
+            writer_name=sample.get("writer_name"),
+            photographer_name=sample.get("photographer_name"),
+            image_url=sample.get("image_url"),
+        )
+        results.append({"story_title": sample["story_title"], "result": result})
+    return results
+
+
 def _slack_ts_to_datetime(ts):
-    """Convert Slack message ts string to local datetime, or None if invalid."""
+    """Convert Slack message timestamp string to local datetime, or None if invalid."""
     if not ts:
         return None
     try:
@@ -186,7 +233,7 @@ def check_limit(social_media_name, limit, days):
     Check if a social media platform has reached its posting limit within a time window.
 
     Args:
-        social_media_name: Name of social media platform (from SocialMedia enum)
+        social_media_name: Name of social media platform (Instagram, Facebook, Reddit, X, Threads, Slack)
         limit: Maximum number of posts allowed
         days: Number of days to look back
 

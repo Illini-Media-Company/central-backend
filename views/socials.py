@@ -20,29 +20,6 @@ from util.stories import get_title_from_url
 
 socials_routes = Blueprint("socials_routes", __name__, url_prefix="/socials")
 
-# Temporary test route just for RSS fetch check
-from util.rss_social_listener import check_rss_feed
-
-
-@socials_routes.route("/check-rss")
-def check_rss():
-    count, stories = check_rss_feed()
-
-    if count == 0:
-        return "<h3>No new entries</h3>"
-    html = "<h2>temporary RSS feed check</h2><ul>"
-    for s in stories:
-        title = s.get("title", "No Title")
-        link = s.get("link", "#")
-        pub = s.get("pub_date", "Unknown Time")
-        html += (
-            f"<li><b>{title}</b><br>"
-            f"<a href='{link}'>{link}</a><br>"
-            f"<i>{pub}</i></li><br>"
-        )
-    html += "</ul>"
-    return html
-
 
 @socials_routes.route("/dashboard")
 @login_required

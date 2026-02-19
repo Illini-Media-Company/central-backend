@@ -2,15 +2,16 @@
 Flask routes for DI social stories dashboard.
 
 Displays a read-only dashboard showing social media posting status for stories.
+Includes pagination and search functionality.
 
-Created on Jan. 2026
+Last modified by Aryaa Rathi on Feb 19, 2026
 """
 
 from datetime import datetime
 from flask import Blueprint, render_template, request
 from flask_login import login_required
 
-from db.socials_poster import get_all_stories
+from db.socials_poster import get_all_stories, post_sample_stories_to_slack
 
 di_social_poster_routes = Blueprint(
     "di_social_poster_routes", __name__, url_prefix="/di-socials-poster"
@@ -21,8 +22,7 @@ di_social_poster_routes = Blueprint(
 @login_required
 def dashboard():
     """
-    Renders the DI social stories dashboard with pagination.
-
+    Render the DI social stories dashboard with pagination.
     Shows 20 stories per page, ordered by story_posted_timestamp (most recent first).
     """
     # Handle pagination
@@ -52,3 +52,14 @@ def dashboard():
         page=page,
         per_page=PER_PAGE,
     )
+
+
+@di_social_poster_routes.route("/test-post", methods=["POST"])
+@login_required
+def test_post():
+    """
+    Post sample stories to the social Slack channel for testing.
+    Adds stories to DB, posts to Slack, and stores message timestamps.
+    """
+    post_sample_stories_to_slack()
+    return "Sample stories posted.", 200

@@ -1,7 +1,18 @@
-import feedparser
-from datetime import datetime
-import logging
+"""
+RSS feed listener for Daily Illini stories.
 
+Periodically fetches the Daily Illini RSS feed, filters out sponsored content,
+and posts new stories to the social media Slack channel. Runs automatically
+via a background scheduler when the app starts.
+
+Last modified by Aryaa Rathi on Feb 19, 2026
+"""
+
+import feedparser
+import traceback
+from datetime import datetime
+from db.json_store import json_store_set
+from util.scheduler import scheduler_to_json
 import os
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -11,8 +22,7 @@ RSS_URL = "https://dailyillini.com/feed/"
 
 def is_sponsored(entry):
     """
-    Returns True if sponsored post
-    Checks categories and text for keywords
+    Check if an RSS entry is a sponsored post by examining tags and text content.
     """
     # Category tags
     if hasattr(entry, "tags"):
@@ -30,7 +40,7 @@ def is_sponsored(entry):
 
 def parse_date(entry):
     """
-    Parse the date but fall back to UTC if not there
+    Parse publication date from RSS entry, falling back to current UTC time if unavailable.
     """
     try:
         if hasattr(entry, "published"):
@@ -43,19 +53,19 @@ def parse_date(entry):
 
 def fetch_rss():
     """
-    Fetch current RSS feed and return the list of items
+    Fetch and parse the Daily Illini RSS feed, returning all entries.
     """
     try:
         feed = feedparser.parse(RSS_URL)
         return feed.entries
     except Exception as e:
-        logging.error(f"Failed to get RSS feed: {e}")
+        print(f"[rss_listener] Failed to get RSS feed: {e}")
         return []
 
 
 def process_rss_item(entry):
     """
-    RSS item processing to get title/linl/publication date
+    Extract title, link, summary, and publication date from an RSS entry.
     """
     title = entry.title.strip()
     link = entry.link.strip()
@@ -70,40 +80,10 @@ def process_rss_item(entry):
     }
 
 
-def check_rss_feed():
-    """
-    current function used by /socials/check-rss.
-    processes RSS entries
-    """
-    logging.info("Checking RSS feed")
-
-    entries = fetch_rss()
-
-    if not entries:
-        logging.info("No RSS entries found.")
-        return 0, []
-
-    processed_items = []
-    processed_count = 0
-
-    for entry in entries:
-        # sponsored filter
-        if is_sponsored(entry):
-            logging.info(f"Skipping sponsored article: {entry.title}")
-            continue
-        result = process_rss_item(entry)
-        if result:
-            processed_items.append(result)
-            processed_count += 1
-
-    logging.info(f"Completed RSS check — processed {processed_count} stories")
-    return processed_count, processed_items
-
-
 def process_new_stories_to_slack():
     """
-    Fetch RSS, filter sponsored, and for each story not already in DiSocialStory
-    add the story and post to the social media Slack channel.
+    Fetch RSS feed, filter sponsored posts, and post new stories to Slack.
+    Adds new stories to database and notifies the social media channel.
     Returns (number_new_posted, list of story links posted).
     """
     from db.socials_poster import add_social_story, get_story_by_url
@@ -129,7 +109,6 @@ def process_new_stories_to_slack():
         add_social_story(link, title)
         notify_new_story_from_rss(story_url=link, story_title=title)
         posted.append(link)
-        logging.info(f"Posted new story to Slack: {title}")
 
     return len(posted), posted
 
@@ -138,31 +117,30 @@ _rss_scheduler = BackgroundScheduler(timezone="America/Chicago")
 
 
 def _rss_job():
+    """
+    Scheduled job that runs periodically to check RSS feed and post new stories to Slack.
+    """
     try:
-        count, posted = process_new_stories_to_slack()
-        logging.info(f"[rss_listener] ran: new={count}")
+        process_new_stories_to_slack()
     except Exception:
-        logging.exception("[rss_listener] job failed")
+        traceback.print_exc()
 
 
-def start_rss_listener():
-    if getattr(_rss_scheduler, "running", False):
-        return
+_minutes = 45
+_rss_scheduler.add_job(
+    _rss_job,
+    trigger=IntervalTrigger(minutes=_minutes),
+    id="rss_social_listener",
+    replace_existing=True,
+    max_instances=1,
+    coalesce=True,
+)
 
-    minutes = int(os.environ.get("RSS_POLL_MINUTES", "5"))
-
-    _rss_scheduler.add_job(
-        _rss_job,
-        trigger=IntervalTrigger(minutes=minutes),
-        id="rss_social_listener",
-        replace_existing=True,
-        max_instances=1,
-        coalesce=True,
-    )
-    _rss_scheduler.start()
-    logging.info(f"[rss_listener] started (every {minutes} min)")
+_rss_scheduler.start()
+rss_json = scheduler_to_json(_rss_scheduler)
+json_store_set("RSS_JOBS", rss_json, replace=True)
+print(f"[rss_listener] started (every {_minutes} min)")
 
 
 if __name__ == "__main__":
-    count, links = process_new_stories_to_slack()
-    print(f"Posted {count} new stories to Slack: {links}")
+    process_new_stories_to_slack()

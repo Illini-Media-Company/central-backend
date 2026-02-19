@@ -4,23 +4,27 @@ Socials Slack bot — handles DI stories going to the social channel.
 When a new story shows up (e.g. from RSS), we post it to the social media Slack channel
 with title, link, writer, photographer, and photo. Reactions on the message (e.g. :instagram:)
 record which platform it was posted to and we reply with the timestamp.
+
+Last modified by Aryaa Rathi on Feb 19, 2026
 """
 
 from __future__ import annotations
 
 import json
-import re
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
 
+from gcsa.google_calendar import GoogleCalendar
+
 from constants import (
     COURTESY_REQUESTS_CHANNEL_ID,
     SLACK_BOT_TOKEN,
+    SOCIAL_MEDIA_GCAL_ID,
     SOCIAL_MEDIA_POSTS_CHANNEL_ID,
     SOCIALS_CHIEF_EMAIL,
-    ENV,
 )
+from util.security import get_creds
 from util.slackbots._slackbot import app
 from db.socials_poster import client as db_client
 from db.socials_poster import DiSocialStory
@@ -39,27 +43,14 @@ REACTION_TO_PLATFORM = {
     "twitter-x": "X",
 }
 
-
-# @app.event({"type": re.compile(".*")})
-# def _debug_all_events(event, logger):
-#     """Debug: log any event type that reaches this app (for local testing)."""
-#     print(
-#         f"[DEBUG] Event received: type={event.get('type')} keys={list(event.keys())}"
-#     )
-
-
 # Calendar scope for socials shift lookup (same as copy_editing)
 SOCIALS_GCAL_SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
 
 
 def get_socials_on_shift_email() -> Optional[str]:
     """
-    Get the email of the person on shift today from the socials calendar.
-
-    Calendar has one all-day event per day with one person assigned (attendee).
-    Uses same pattern as copy_editing: get_creds, GoogleCalendar, get_events for
-    today in America/Chicago. Returns first attendee's email or None; caller
-    should use SOCIALS_CHIEF_EMAIL as fallback.
+    Get the email of the person on shift today from the socials Google Calendar.
+    Returns first attendee's email or None; caller should use SOCIALS_CHIEF_EMAIL as fallback.
     """
     if not SOCIAL_MEDIA_GCAL_ID:
         return None
@@ -92,14 +83,13 @@ def get_socials_on_shift_email() -> Optional[str]:
 def update_slack_message_ref(
     url: str, channel_id: str, message_ts: str
 ) -> Optional[Dict[str, Any]]:
-    """Save the Slack channel + message ts for this story so we can reply or match reactions later."""
+    """
+    Save the Slack message timestamp for a story so reactions can be matched later.
+    """
     with db_client.context():
         story = DiSocialStory.query().filter(DiSocialStory.story_url == url).get()
         if story:
-            story.slack_channel_id = channel_id
             story.slack_message_ts = message_ts
-            if story.slack_message_timestamp is None:
-                story.slack_message_timestamp = datetime.now()
             story.put()
             return story.to_dict()
     return None
@@ -108,16 +98,15 @@ def update_slack_message_ref(
 def get_story_by_slack_message(
     channel_id: str, message_ts: str
 ) -> Optional[Dict[str, Any]]:
-    """Look up a story by the Slack message (channel + ts). Used when we get a reaction."""
-    if not channel_id or not message_ts:
+    """
+    Look up a story by its Slack message timestamp. Channel must match SOCIAL_MEDIA_POSTS_CHANNEL_ID.
+    """
+    if not message_ts or channel_id != SOCIAL_MEDIA_POSTS_CHANNEL_ID:
         return None
     with db_client.context():
         story = (
             DiSocialStory.query()
-            .filter(
-                DiSocialStory.slack_channel_id == channel_id,
-                DiSocialStory.slack_message_ts == message_ts,
-            )
+            .filter(DiSocialStory.slack_message_ts == message_ts)
             .get()
         )
         return story.to_dict() if story else None
@@ -135,7 +124,10 @@ def build_blocks_from_story(
     social_channel_id: Optional[str] = None,
     social_message_ts: Optional[str] = None,
 ) -> Tuple[List[Dict[str, Any]], str]:
-    """Build Block Kit blocks for one story message. Returns (blocks, fallback text for notifications)."""
+    """
+    Build Slack Block Kit blocks for a story message with optional image and button.
+    Returns (blocks, fallback text for notifications).
+    """
     lines = [f"*<{story_url}|{story_title}>*"]
     if writer_name:
         lines.append(f"Writer: {writer_name}")
@@ -191,17 +183,27 @@ def post_story_to_social_channel(
     writer_name: Optional[str] = None,
     photographer_name: Optional[str] = None,
     image_url: Optional[str] = None,
-    skip_db_update: bool = False,
 ) -> Dict[str, Any]:
     """
-    Post a new story to the social channel. We send a short parent message, then a thread
-    reply with the full details (and image if we have one; if no image, the message contains
-    no image). Unless skip_db_update is True, stores channel/ts on the story so reactions work.
+    Post a new story to the social Slack channel with a parent message and thread reply.
+    Tags the person on shift and stores message timestamp in the database.
     """
     if not SOCIAL_MEDIA_POSTS_CHANNEL_ID:
         return {"ok": False, "error": "SOCIAL_MEDIA_POSTS_CHANNEL_ID not set"}
 
-    short_text = f"New story: {story_title}"
+    # Tag the person on shift today (from socials calendar), or fall back to chief
+    email = get_socials_on_shift_email() or SOCIALS_CHIEF_EMAIL
+    slack_id = None
+    if email:
+        try:
+            slack_id = app.client.users_lookupByEmail(email=email)["user"]["id"]
+        except Exception as e:
+            print(f"[socials_slackbot] users_lookupByEmail({email}) failed: {e}")
+    short_text = (
+        f"<@{slack_id}> New story: {story_title}"
+        if slack_id
+        else f"New story: {story_title}"
+    )
     try:
         res = app.client.chat_postMessage(
             token=SLACK_BOT_TOKEN,
@@ -214,17 +216,17 @@ def post_story_to_social_channel(
         print(f"[socials_slackbot] chat_postMessage failed: {e}")
         return {"ok": False, "error": str(e)}
 
-    include_button = not bool(image_url)
+    # Do not show "Needs Visual" button; if no image, message just has no image.
     thread_blocks, fallback = build_blocks_from_story(
         story_url=story_url,
         story_title=story_title,
         writer_name=writer_name,
         photographer_name=photographer_name,
         image_url=image_url,
-        include_needs_visual_button=include_button,
-        story_url_for_button=story_url if include_button else None,
-        social_channel_id=channel_id if include_button else None,
-        social_message_ts=message_ts if include_button else None,
+        include_needs_visual_button=False,
+        story_url_for_button=None,
+        social_channel_id=None,
+        social_message_ts=None,
     )
     try:
         app.client.chat_postMessage(
@@ -237,8 +239,7 @@ def post_story_to_social_channel(
     except Exception as e:
         print(f"[socials_slackbot] thread reply failed: {e}")
 
-    if not skip_db_update:
-        update_slack_message_ref(story_url, channel_id, message_ts)
+    update_slack_message_ref(story_url, channel_id, message_ts)
     return {"ok": True, "channel": channel_id, "ts": message_ts}
 
 
@@ -248,7 +249,9 @@ def _reply_in_thread(
     text: str,
     blocks: Optional[List[Dict[str, Any]]] = None,
 ) -> bool:
-    """Reply in a thread. Optional blocks (e.g. for an image)."""
+    """
+    Reply to a Slack thread with optional Block Kit blocks (e.g. for an image).
+    """
     try:
         app.client.chat_postMessage(
             token=SLACK_BOT_TOKEN,
@@ -268,6 +271,9 @@ def _reply_in_thread(
 
 @app.action("social_needs_visual")
 def _handle_needs_visual(ack, body, logger):
+    """
+    Handle "Needs Visual" button click: send request to Photo Editors channel. Not in use right now.
+    """
     ack()
     logger.info(body)
     try:
@@ -335,6 +341,9 @@ VISUAL_ADDED_MODAL_CALLBACK = "social_visual_added_modal"
 
 @app.action("social_visual_added")
 def _handle_visual_added(ack, body, logger, client):
+    """
+    Handle "Visual added" button click: open modal to enter image URL. Not in use right now.
+    """
     ack()
     logger.info(body)
     try:
@@ -390,6 +399,9 @@ def _handle_visual_added(ack, body, logger, client):
 
 @app.view(VISUAL_ADDED_MODAL_CALLBACK)
 def _handle_visual_added_modal_submit(ack, body, logger, view):
+    """
+    Handle visual added modal submission: post image to original social thread. Not in use right now.
+    """
     ack()
     try:
         meta = json.loads(view.get("private_metadata") or "{}")
@@ -431,48 +443,27 @@ def _handle_visual_added_modal_submit(ack, body, logger, view):
 
 
 @app.event("reaction_added")
-def _on_reaction_added(body, logger, event):
-    """When someone reacts with e.g. :instagram:, mark that platform as posted and reply in thread."""
-    logger.info(body)
-    print(f"[socials_slackbot] reaction_added: EVENT RECEIVED")
+def _on_reaction_added(event, logger):
+    """
+    Handle reaction added event: when someone reacts with a platform emoji (e.g. :instagram:),
+    mark that platform as posted in the database and reply with timestamp in thread.
+    """
     try:
         item = event.get("item") or {}
-        print(
-            f"[socials_slackbot] reaction_added: item={item}, type={item.get('type')}"
-        )
         if item.get("type") != "message":
-            print(
-                f"[socials_slackbot] reaction_added: not a message reaction, ignoring"
-            )
             return
         channel_id = item.get("channel")
         message_ts = item.get("ts")
         reaction = (event.get("reaction") or "").strip().lower()
-        print(
-            f"[socials_slackbot] reaction_added: channel_id={channel_id}, message_ts={message_ts}, reaction={reaction}"
-        )
         if not channel_id or not message_ts or not reaction:
-            print(
-                f"[socials_slackbot] reaction_added: missing channel_id/message_ts/reaction, returning"
-            )
             return
-
-        print(
-            f"[socials_slackbot] reaction_added: :{reaction}: on channel={channel_id} ts={message_ts}"
-        )
-        platform = REACTION_TO_PLATFORM.get(reaction)
-        if not platform:
-            print(
-                f"[socials_slackbot] reaction_added: :{reaction}: not a known platform, ignoring"
-            )
-            return
-        print(f"[socials_slackbot] reaction_added: :{reaction}: → {platform}")
 
         story = get_story_by_slack_message(channel_id, message_ts)
         if not story:
-            print(
-                f"[socials_slackbot] reaction_added: no story in DB for this message (e.g. test post with skip_db_update)"
-            )
+            return
+
+        platform = REACTION_TO_PLATFORM.get(reaction)
+        if not platform:
             return
 
         story_url = story.get("story_url")
@@ -487,12 +478,8 @@ def _on_reaction_added(body, logger, event):
             message_ts,
             f"This was posted to {platform} at {time_str}.",
         )
-        print(
-            f"[socials_slackbot] reaction_added: updated DB and replied for {platform}"
-        )
     except Exception as e:
         logger.error(f"[socials_slackbot] reaction_added: {e}")
-        print("Exception in reaction_added")
 
 
 def notify_new_story_from_rss(
@@ -502,7 +489,10 @@ def notify_new_story_from_rss(
     photographer_name: Optional[str] = None,
     image_url: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Called when a new (non-sponsored) story is picked up from RSS. Just forwards to post_story_to_social_channel."""
+    """
+    Called when a new (non-sponsored) story is picked up from RSS.
+    Forwards to post_story_to_social_channel to post to Slack.
+    """
     return post_story_to_social_channel(
         story_url=story_url,
         story_title=story_title,
