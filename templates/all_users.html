@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+
+{% block title %}
+All Users
+{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="/static/macros/form.css">
+
+    <style>
+        table {
+            border-collapse: separate;
+            border-spacing: 0 0.5rem;
+            width: 100%;
+            background-color: var(--main-bg-color);
+            border-radius: var(--main-border-radius);
+        }
+
+        tr {
+            border-radius: var(--main-border-radius);
+        }
+
+        tr:hover td {
+            background-color: var(--main-extralight-color);
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            background-color: var(--main-bg-color);
+        }
+
+        td:first-child {
+            border-top-left-radius: var(--main-border-radius);
+            border-bottom-left-radius: var(--main-border-radius);
+        }
+
+        td:last-child {
+            border-top-right-radius: var(--main-border-radius);
+            border-bottom-right-radius: var(--main-border-radius);
+        }
+
+        th {
+            padding: 0.75rem 1rem;
+            white-space: nowrap;
+            border-bottom: 1px solid var(--main-lt-gray-color);
+            align-items: center;
+        }
+
+        .user-profile-photo {
+            height: 2.5rem;
+            width: 2.5rem;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 0.1rem solid var(--main-lt-gray-color);
+        }
+    </style>
+{% endblock %}
+
+{% import "macros/form.html" as form %}
+
+{% block content %}
+
+<section class="section-container" id="users-container">
+    <div class="section-header">
+        <h2 style="margin-bottom: 0">All Users</h2>
+    </div>
+
+    <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+        <div style="display: flex; flex-direction: row; align-items: center;" id="querySearchBar">
+            <i class="bi bi-search"></i>
+            {{ form.text_input( 
+                name="searchQuery",
+                placeholder="Search...",
+                class=""
+            ) }}
+        </div>
+    </div>
+
+    <div style="overflow-x: auto; max-width: 100%; border-radius: var(--main-border-radius); box-shadow: var(--input-box-shadow);">
+        <table>
+            <tr>
+                <th style="padding-right: 0;"></th>
+                <th style="padding-right: 3rem;">
+                    <span><i class="bi bi-caret-up"></i></span> 
+                    Full Name
+                </th>
+                <th>
+                    <span><i class="bi bi-caret-up"></i></span>
+                    Login Email
+                </th>
+                <th>
+                    <span><i class="bi bi-caret-up"></i></span>
+                    Last Login
+                </th>
+                <th>
+                    <span><i class="bi bi-caret-up"></i></span>
+                    Google Groups
+                </th>
+                <th>
+                    <span><i class="bi bi-caret-up"></i></span>
+                    Last Copy Edited
+                </th>
+                <th>
+                    <span><i class="bi bi-caret-up"></i></span>
+                    UID
+                </th>
+            </tr>
+            {% for user in users %}
+                <tr>
+                    <td> 
+                        <img src="{{ user.picture }}" 
+                            alt="{{ user.name }}'s profile photo" 
+                            class="user-profile-photo" 
+                        />
+                    </td>
+                    <td> 
+                        {{ user.name }} 
+                    </td>
+                    <td>
+                        {{ user.email }}
+                    </td>
+                    <td>
+                        {{ user.last_login|ap_datetime }}
+                    </td>
+                    <td>
+                        {{ user.groups|format_restricted_groups }}
+                    </td>
+                    <td>
+                        {% if not user.last_edited %}
+                            Never
+                        {% else %}
+                            {{ user.last_edited|ap_datetime }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ user.uid }}
+                    </td>
+                </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+</section>
+
+<script>
+    window.addEventListener('load', () => {
+        // Event listener to handle search query input and column sorting
+        const searchInput = document.getElementById("searchQuery");
+        const table = document.querySelector("table");
+        const tbody = table.querySelector("tbody");
+        const headers = table.querySelectorAll("th");
+
+        searchInput.addEventListener("input", () => {
+            const query = searchInput.value.toLowerCase().trim();
+
+            Array.from(tbody.querySelectorAll("tr:not(:first-child)")).forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.display = text.includes(query) ? "" : "none";
+            });
+        });
+
+        // Handle column sorting
+        headers.forEach((header, index) => {
+            header.style.cursor = "pointer";
+            const caret = header.querySelector("i");
+            let asc = true;
+
+            header.addEventListener("click", () => {
+                const rows = Array.from(tbody.querySelectorAll("tr:not(:first-child)")).filter(
+                    row => row.style.display !== "none"
+                );
+
+                rows.sort((a, b) => {
+                    const cellA = a.children[index].innerText.trim().toLowerCase();
+                    const cellB = b.children[index].innerText.trim().toLowerCase();
+
+                    const dateA = Date.parse(cellA);
+                    const dateB = Date.parse(cellB);
+
+                    let cmp;
+
+                    if (!isNaN(dateA) && !isNaN(dateB)) {
+                        cmp = dateA - dateB;
+                    } else if (!isNaN(parseFloat(cellA)) && !isNaN(parseFloat(cellB))) {
+                        cmp = Number(cellA) - Number(cellB);
+                    } else {
+                        cmp = cellA.localeCompare(cellB);
+                    }
+
+                    return asc ? cmp : -cmp;
+                });
+
+                rows.forEach(row => tbody.appendChild(row));
+
+                headers.forEach(h => {
+                    const c = h.querySelector("i");
+                    if (c) {
+                        c.className = "bi bi-caret-up";
+                    }
+                });
+
+                if (caret) {
+                    caret.className = asc ? "bi bi-caret-up-fill" : "bi bi-caret-down-fill";
+                }
+
+                asc = !asc;
+            });
+        });
+    });
+</script>
+
+{% endblock %}

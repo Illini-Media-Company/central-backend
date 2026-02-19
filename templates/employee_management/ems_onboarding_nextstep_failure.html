@@ -1,0 +1,62 @@
+{% extends 'employee_management/ems_base.html' %}
+
+{% block ems_title %}
+    Onboarding
+{% endblock %}
+
+{% block ems_extra_head %}
+    <style>
+        .ems-nav-container {
+            display: none;
+        }
+    </style>
+{% endblock %}
+
+{% import "macros/form.html" as form %}
+{% include "partials/loading.html" %}
+{% include "partials/text_alert.html" %}
+{% include "partials/info_bar.html" %}
+
+{% block ems_content %}
+<div style="display: flex; flex-direction: row; gap: 2rem; align-items: center;">
+    <h2>Next Steps</h2>
+</div>
+
+<hr>
+
+<section class="section-container">
+    <div class="inner-container" style="padding: 0.75rem;">
+        <div class="section-header">
+            <h3 style="margin-bottom: 0">Please Wait</h3>
+        </div>
+        <hr style="margin-top: 1rem;">
+              
+        <p>
+            We were unable to automatically create your IMC Google account. Please wait
+            while we manually create it for you. This can take up to 48 hours. 
+        </p>
+        <p>
+            Keep an eye on your Illinois email. You will receive a message from Google 
+            instructing you to finish the setup of your account. This message may get flagged
+            as spam. Please note that the link is only valid for a short period of time, so
+            complete the setup as soon as possible.
+        </p>
+        <p>
+            If you do not receive an email within 48 hours, if your link expires, or if you
+            have any questions or concerns regarding the onboarding process, please email
+            <a href="mailto:helpdesk@illinimedia.com">helpdesk@illinimedia.com</a>
+        </p>
+    </div>
+</section>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const msg = sessionStorage.getItem("infoBarMessage");
+        if (msg) {
+            showInfoBar(msg);
+            sessionStorage.removeItem("infoBarMessage");
+        }
+    });
+</script>
+
+{% endblock %}

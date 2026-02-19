@@ -2,6 +2,7 @@ from threading import Thread
 
 from flask import request
 from slack_bolt import App
+import logging
 from slack_bolt.adapter.flask import SlackRequestHandler
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
@@ -343,6 +344,7 @@ IMC_WELCOME_MESSAGE = [
 
 IMC_WELCOME_MESSAGE_TEXT = "Welcome to Illini Media Company!"
 
+logger = logging.getLogger(__name__)
 
 app = App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
 
@@ -651,6 +653,8 @@ def wpgu_sports_button(ack, body, logger):
 
 
 def start_slack(flask_app):
+    logging.info(f"Initializing Slack app in {ENV} mode.")
+
     if ENV == "prod":
         handler = SlackRequestHandler(app)
 
@@ -659,5 +663,18 @@ def start_slack(flask_app):
         def slack_events():
             return handler.handle(request)
 
+        logger.info("Slack events listener registered at /slack/events")
+
     elif SLACK_APP_TOKEN is not None:
-        SocketModeHandler(app, SLACK_APP_TOKEN).connect()
+        try:
+            handler = SocketModeHandler(app, SLACK_APP_TOKEN)
+            handler.connect()
+
+            logger.info("Slack app connected via Socket Mode (Development only).")
+        except Exception as e:
+            logger.exception(f"Failed to initialize Slack Socket mode: {str(e)}")
+
+    else:
+        logger.warning(
+            "Slack initialization skipped: No App Token found and ENV is not 'prod'."
+        )

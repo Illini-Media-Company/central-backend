@@ -31,3 +31,46 @@ indexes:
       - name: submitterEmail
       - name: submissionTimestamp
         direction: desc
+  - kind: EmployeeCard
+    properties:
+    - name: last_name
+    - name: first_name
+  - kind: PositionCard
+    properties:
+    - name: brand
+    - name: title
+  - kind: PositionCard
+    properties:
+    - name: brand
+    - name: title
+  - kind: PositionCard
+    properties:
+    - name: archived
+    - name: brand
+    - name: title
+  - kind: EmployeePositionRelation
+    properties:
+    - name: employee_id
+    - name: start_date
+      direction: desc
+  - kind: EmployeePositionRelation
+    properties:
+    - name: employee_id
+    - name: end_date
+    - name: start_date
+      direction: desc
+  - kind: EmployeePositionRelation
+    properties:
+    - name: position_id
+    - name: employee_id
+  - kind: EmployeePositionRelation
+    properties:
+    - name: position_id
+    - name: start_date
+      direction: desc
+  - kind: EmployeePositionRelation
+    properties:
+    - name: position_id
+    - name: end_date
+    - name: start_date
+      direction: desc

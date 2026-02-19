@@ -55,7 +55,17 @@
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
 
         {# Custom IMC icons #}
-         <link rel="stylesheet" href="/static/icons/imc_icons.css">
+        <link rel="stylesheet" href="/static/icons/imc_icons.css">
+        
+        {# Google Analytics tag (gtag.js) #}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-6V6FSKGBDZ"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-6V6FSKGBDZ');
+        </script>
 
         {# Allows extra stuff to be added to the head on other pages #}
         {% block extra_head %}
@@ -63,12 +73,12 @@
 
         {# Appends " - IMC Console" to the title of each page #}
         <title>
-            {% block title %}{% endblock %} - IMC Console
+            {% block title %}{% endblock %} | IMC Console
         </title>
 
         {# Default favicon; can be overridden on other pages #}
         {% block favicon %}
-            <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+            <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
         {% endblock %}
     </head>
 
@@ -101,7 +111,9 @@
 
 
                         {% call nav_dropdown('Settings & Tools') %}
-                            {{ nav_dropdown_item('API query', url_for('api_query')) }}
+                            {% if current_user.is_authenticated %}
+                                {{ nav_dropdown_item('API query', url_for('api_query')) }}
+                            {% endif %}
                             {{ nav_dropdown_item('Changelog', url_for('changelog')) }}
                         {% endcall %}
                     </ul>
@@ -110,11 +122,18 @@
                         {% if current_user.is_authenticated %}
                         <li class="navbar-item dropdown">
                             <a class="navbar-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-caret-down-fill me-1 dropdown-caret"></i> {{ current_user.name }} <img src="{{ current_user.picture }}" alt="{{ current_user.name }}'s profile photo" class="navbar-profile-photo" />
+                                <i class="bi bi-caret-down-fill me-1 dropdown-caret"></i> {{ current_user.name }} 
+                                <img src="{{ current_user.picture }}" 
+                                    alt="{{ current_user.name }}'s profile photo" 
+                                    class="navbar-profile-photo" 
+                                />
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" href="{{ url_for('logout') }}">Log out</a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('url_history') }}">URL History</a></li>
+                                {% if is_current_user_in_group(constants.TOOLS_ADMIN_ACCESS_GROUPS) %}
+                                <li><a class="dropdown-item" href="{{ url_for('all_users') }}">All Users</a></li>
+                                {% endif %}
                             </ul>
                         </li>
                         {% else %}
@@ -135,7 +154,7 @@
 
         <footer>
             <span>
-                Illini Media Console || © 2025&nbsp;
+                Illini Media Console || © 2026&nbsp;
 				<a href="http://illinimedia.org/" target="_blank" rel="noopener noreferrer">
 					Illini Media Company
 				</a>

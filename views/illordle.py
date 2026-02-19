@@ -16,6 +16,9 @@ from db.illordle_word import (
 from util.security import restrict_to
 from util.stories import get_title_from_url
 
+from util.google_analytics import send_ga4_event
+from constants import IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID
+
 
 illordle_routes = Blueprint("illordle_routes", __name__, url_prefix="/illordle")
 
@@ -46,6 +49,15 @@ def list_words():
 @illordle_routes.route("/word/today", methods=["GET"])
 @cross_origin()
 def get_todays_word():
+    # Log in Google Analytics
+    utm_source = request.args.get("utm_source", "none")
+    utm_medium = request.args.get("utm_medium", "none")
+    send_ga4_event(
+        "illordle_word_fetch",
+        IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID,
+        {"utm_source": utm_source, "utm_medium": utm_medium},
+    )
+
     today = datetime.now(tz=ZoneInfo("America/Chicago")).date()
     word = get_word(today)
     if word != None:
@@ -74,7 +86,7 @@ def retrieve_word(mm, dd, yyyy):
 
 @illordle_routes.route("/word/<mm>/<dd>/<yyyy>", methods=["POST"])
 @login_required
-@restrict_to(["editors", "di-section-editors"])
+@restrict_to(["editors", "di-section-editors", "webdev"])
 def create_word(mm, dd, yyyy):
     word = request.form["word"].lower()
     story_url = request.form["url"].partition("?")[0]
@@ -85,18 +97,18 @@ def create_word(mm, dd, yyyy):
         day = int(dd)
         date = datetime(year, month, day).date()
     except ValueError:
-        return "ERROR: Invalid date format. Please use MM/DD/YYYY format.", 400
+        return "Invalid date format. Please use MM/DD/YYYY format.", 400
     # if date < datetime.now(tz=ZoneInfo("America/Chicago")).date():
     #     return "ERROR: Date cannot be in the past.", 400
     if len(word) < 5 or len(word) > 6:
-        return "ERROR: Word must be 5 or 6 letters long.", 400
+        return "Word must be 5 or 6 letters long.", 400
     if not word.isalpha():
-        return "ERROR: Word must contain only letters.", 400
+        return "Word must contain only letters.", 400
 
     if story_url != "":
         story_title = get_title_from_url(story_url)
         if story_title is None:
-            return "ERROR: Story cannot be found.", 400
+            return "Story cannot be found.", 400
     else:
         story_title = ""
 
@@ -108,7 +120,7 @@ def create_word(mm, dd, yyyy):
         )
         > 0
     ):
-        return "ERROR: Word cannot be used in the last 180 days.", 400
+        return "Word cannot be used in the last 180 days.", 400
 
     return add_word(
         word=word,
@@ -121,7 +133,7 @@ def create_word(mm, dd, yyyy):
 
 @illordle_routes.route("/delete-all", methods=["POST"])
 @login_required
-@restrict_to(["editors"])
+@restrict_to(["editors", "webdev"])
 def delete_all():
     delete_all_words()
     return "All words deleted."

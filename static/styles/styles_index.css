@@ -55,6 +55,7 @@ hr {
 
     background-color: var(--main-bg-color);
     border-radius: var(--main-border-radius);
+    box-shadow: var(--input-box-shadow);
     padding: 0.75rem;
 }
 

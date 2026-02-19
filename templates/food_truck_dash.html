@@ -209,6 +209,29 @@ Food Truck Tracker (Dashboard)
                             name    = "lon"
                             required
                         >
+                        <div class="form-row">
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    id="repeat"
+                                    name="repeat"
+                                    onchange="toggleRepeatMain()"
+                                >
+                                Repeat weekly
+                            </label>
+                        </div>
+                        
+                        <div class="form-row" id="repeat-end-row" style="display: none;">
+                            <label for="repeat_end">
+                                Repeat until
+                            </label>
+                            <input
+                                type="date"
+                                id="repeat_end"
+                                name="repeat_end"
+                                class="form-control"
+                            >
+                        </div>                      
                     </div>
                         
                     <div>
@@ -347,6 +370,7 @@ Food Truck Tracker (Dashboard)
                                     name    = "lon"
                                     required
                                 >
+                                
                             </div>
                         </div>
                     </form>
@@ -370,6 +394,7 @@ Food Truck Tracker (Dashboard)
             </div>
         {% endif %}
     </div>
+    {% include "partials/button_alert.html" %}
 </div>
 
 <script>
@@ -439,6 +464,8 @@ Food Truck Tracker (Dashboard)
         const lon               = document.getElementById('lon').value;
         const start_time        = document.getElementById('start_time').value;
         const end_time          = document.getElementById('end_time').value;
+        const repeat            = document.getElementById('repeat').checked;
+        const repeatEnd         = document.getElementById('repeat_end').value;
         
         if (loginSource == "admin") {
             reported_by = "admin";
@@ -453,9 +480,19 @@ Food Truck Tracker (Dashboard)
             return;
         }
 
+        if (repeat && !repeatEnd) {
+            alert("Please select a repeat end date.");
+            return;
+        }
+
         if (end_time <= start_time){
             alert("Departure time must be after arrival time.");
             return;
+        }
+        
+        let body = `_csrf_token={{ csrf_token() }}&uid=${truck_uid}&nearest_address=${nearest_address}&location_desc=${location_desc}&lat=${lat}&lon=${lon}&start_time=${start_time}&end_time=${end_time}&reported_by=${reported_by}`;
+        if (repeat) {
+            body += `&repeat=${repeat}&repeat_end=${repeatEnd}`;
         }
 
         const response = await fetch(endpoint, {
@@ -463,8 +500,29 @@ Food Truck Tracker (Dashboard)
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: `_csrf_token={{ csrf_token() }}&uid=${truck_uid}&nearest_address=${nearest_address}&location_desc=${location_desc}&lat=${lat}&lon=${lon}&start_time=${start_time}&end_time=${end_time}&reported_by=${reported_by}`,
+            body: body,
         });
+
+        // // Check if the user wants this location/time to repeat weekly
+        // 
+
+        // // If repeat is enabled, we REQUIRE an end date to avoid infinite recurrence
+        // 
+
+        // // Base payload sent for all loctimes (single or recurring)
+        // let body = `_csrf_token={{ csrf_token() }}&uid=${truck_uid}&nearest_address=${nearest_address}&location_desc=${location_desc}&lat=${lat}&lon=${lon}&start_time=${start_time}&end_time=${end_time}&reported_by=${reported_by}`;
+        
+        // // If repeat is checked, send extra fields expected by backend
+        // 
+
+        // // Submit the loctime (single or recurring)
+        // const response = await fetch(endpoint, {
+        //     method: 'POST',
+        //     headers: {
+        //         'Content-Type': 'application/x-www-form-urlencoded',
+        //     },
+        //     body: body,
+        // });
         
         if (response.status === 200) {
             // Trigger a reload of the window
@@ -520,29 +578,84 @@ Food Truck Tracker (Dashboard)
         const button = document.querySelector(`button[onclick="deleteLoctime('${uid}')"]`);
         button.disabled = true;
         button.innerText = 'Deleting...';
+    
+        //Fetch this loctime to check whether it is recurring.
+        const infoResponse = await fetch(`/food-truck/loctime/${uid}`);
+        if (!infoResponse.ok) {
+            alert("Failed to fetch loctime details.");
+            button.disabled = false;
+            button.innerText = 'Delete'; 
+        return;
+        }
+
+        const loctime = await infoResponse.json();
 
         let endpoint = '/food-truck/loctime-remove/' + uid; 
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: '_csrf_token={{ csrf_token() }}'
-        });
 
-        if (response.ok) {
-            button.innerText = 'Deleted!';
+        let confirmDelete = false;
+        // If this loctime has a recurrence_id, ask whether to delete just this one or the whole series.
+        if (loctime.recurrence_id) {
+            
+            confirmDelete = await showButtonAlert(
+            "Delete event?",
+            "This will permanently delete this event.",          
+            "Delete",
+            "Cancel"
+            );
 
-            console.log("\tRemoved.");
-            window.location.reload();
+            // to see if we should delete singular or all recurring
+            if (confirmDelete) {
+                const deleteSeries = await showButtonAlert(
+                "Delete singular or recurring?",
+                "Singular will delete ONLY this event. Recurring will delete ALL events tied to this recurring schedule",   
+                "Recurring",
+                "Singular"
+                );
+
+                
+                if (deleteSeries) {
+                endpoint = `/food-truck/loctime-remove-series/${loctime.uid}`;  
+                } else {
+                    endpoint = `/food-truck/loctime-remove/${loctime.uid}`;  
+                }
+            } 
+        } else {
+            confirmDelete = await showButtonAlert(
+            "Delete event?",
+            "This will permanently delete this event.",          
+            "Delete",
+            "Cancel"
+            );
+        }
+        
+        // if user confirmed the "delete"
+        if (confirmDelete) {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: '_csrf_token={{ csrf_token() }}'
+            });
+
+            if (response.ok) {
+                button.innerText = 'Deleted!';
+
+                console.log("\tRemoved.");
+                window.location.reload();
+            } else {
+                button.disabled = false;
+                button.innerHTML = 'Delete';
+
+                const message = await response.text();
+                console.error(message);
+                alert("\tError removing locTime: " + message);
+            }
         } else {
             button.disabled = false;
             button.innerHTML = 'Delete';
-
-            const message = await response.text();
-            console.error(message);
-            alert("\tError removing locTime: " + message);
         }
+        
     }
 
     // Function executed when user clicks the cancel button while modifying the truck
@@ -865,7 +978,19 @@ Food Truck Tracker (Dashboard)
         });
         console.log("\t\tDone.");
     }
+    // Shows or hides the "Repeat until" date field
+    function toggleRepeatMain() {
+        const repeatCheckbox = document.getElementById('repeat');
+        const repeatEndRow = document.getElementById('repeat-end-row');
 
+        // Only show end-date picker when repeat is enabled
+        if (repeatCheckbox.checked) {
+            repeatEndRow.style.display = 'block';
+        } else {
+            repeatEndRow.style.display = 'none';
+            document.getElementById('repeat_end').value = "";
+        }
+    }     
 </script>
 
 {% endblock %}

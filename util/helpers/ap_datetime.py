@@ -1,4 +1,10 @@
+#
+#
+# Created by Jacob Slabosz on Sept. 30, 2025
+# Last modified Jan. 16, 2026
+
 from datetime import datetime, date, time
+import calendar
 
 
 # This function properly formats datetimes into AP style. It is also registered as a
@@ -122,3 +128,180 @@ def ap_time(value):
         return f"{hour} {ampm}"
     else:
         return f"{hour}:{value.strftime('%M')} {ampm}"
+
+
+def days_since(date_in: date) -> int | None:
+    """
+    Returns the number of days since the given date.
+    Args:
+        `date_in` (`date`): The date to calculate from.
+    Returns:
+        `int`: The number of days since the date, or `None` if the input is invalid.
+    """
+    if not date_in:
+        return None
+
+    if isinstance(date_in, str):
+        date_in = datetime.fromisoformat(date_in).date()
+
+    if not isinstance(date_in, date):
+        return None
+
+    delta = date.today() - date_in
+    return delta.days
+
+
+def months_since(date_in: date) -> int | None:
+    """
+    Returns the number of months since the given date.
+    Args:
+        `date_in` (`date`): The date to calculate from.
+    Returns:
+        `int`: The number of months since the date, or `None` if the input is invalid.
+    """
+    if not date_in:
+        return None
+
+    if isinstance(date_in, str):
+        date_in = datetime.fromisoformat(date_in).date()
+
+    if not isinstance(date_in, date):
+        return None
+
+    today = date.today()
+    months = (today.year - date_in.year) * 12 + (today.month - date_in.month)
+
+    if today.day < date_in.day:
+        months -= 1
+
+    return months
+
+
+def years_since(date_in: date) -> int | None:
+    """
+    Returns the number of years since the given date.
+    Args:
+        `date_in` (`date`): The date to calculate from.
+    Returns:
+        `int`: The number of years since the date, or `None` if the input is invalid.
+    """
+    if not date_in:
+        return None
+
+    if isinstance(date_in, str):
+        date_in = datetime.fromisoformat(date_in).date()
+
+    if not isinstance(date_in, date):
+        return None
+
+    today = date.today()
+    years = today.year - date_in.year
+
+    if (today.month, today.day) < (date_in.month, date_in.day):
+        years -= 1
+
+    return years
+
+
+def time_since(date_in: date) -> str | None:
+    if not date_in:
+        return None
+
+    if isinstance(date_in, str):
+        date_in = datetime.fromisoformat(date_in).date()
+
+    if not isinstance(date_in, date):
+        return None
+
+    today = date.today()
+
+    # Calculate years
+    years = today.year - date_in.year
+    if (today.month, today.day) < (date_in.month, date_in.day):
+        years -= 1
+
+    # Calculate months
+    if today.month >= date_in.month:
+        months = today.month - date_in.month
+    else:
+        months = 12 + (today.month - date_in.month)
+
+    if today.day < date_in.day:
+        months -= 1
+        # If subtracting a month makes it negative, wrap around to 11
+        if months < 0:
+            months = 11
+
+    last_month_anniversary_year = (
+        today.year if today.month > 1 or months < 11 else today.year - 1
+    )
+
+    temp_date = date_in
+    # Advance temp_date by years and months
+    new_month = (date_in.month + months - 1) % 12 + 1
+    new_year = date_in.year + years + (date_in.month + months - 1) // 12
+
+    # Handle end-of-month edge cases (e.g., Jan 31 -> Feb 28)
+    try:
+        anniversary_date = date(new_year, new_month, date_in.day)
+    except ValueError:
+        _, last_day = calendar.monthrange(new_year, new_month)
+        anniversary_date = date(new_year, new_month, last_day)
+
+    days = (today - anniversary_date).days
+
+    return f"{years}y, {months}m, {days}d"
+
+
+def time_between(date_start: date, date_end: date = None) -> str | None:
+    if not date_start:
+        return None
+
+    if date_end is None:
+        date_end = date.today()
+
+    # Convert strings to date objects if necessary
+    def to_date(d):
+        if isinstance(d, str):
+            return datetime.fromisoformat(d).date()
+        return d
+
+    date_start = to_date(date_start)
+    date_end = to_date(date_end)
+
+    if not isinstance(date_start, date) or not isinstance(date_end, date):
+        return None
+
+    if date_start > date_end:
+        return "0y, 0m, 0d"
+
+    # Calculate years
+    years = date_end.year - date_start.year
+    if (date_end.month, date_end.day) < (date_start.month, date_start.day):
+        years -= 1
+
+    # Calculate months
+    if date_end.month >= date_start.month:
+        months = date_end.month - date_start.month
+    else:
+        months = 12 + (date_end.month - date_start.month)
+
+    if date_end.day < date_start.day:
+        months -= 1
+        if months < 0:
+            months = 11
+
+    # Calculate days using an anniversary date
+    new_month = (date_start.month + months - 1) % 12 + 1
+    new_year = date_start.year + years + (date_start.month + months - 1) // 12
+
+    # Handle end-of-month edge cases (e.g., Jan 31 -> Feb 28)
+    try:
+        anniversary_date = date(new_year, new_month, date_start.day)
+    except ValueError:
+        _, last_day = calendar.monthrange(new_year, new_month)
+        anniversary_date = date(new_year, new_month, last_day)
+
+    days = (date_end - anniversary_date).days
+
+    return f"{years}y, {months}m, {days}d"
