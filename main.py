@@ -121,6 +121,7 @@ from views.rotate_tv import rotate_tv_routes
 from views.photo_request import photo_request_routes
 from views.employee_management import ems_routes
 from views.employee_management import get_ems_brand_image_url
+from views.copy_admin_dashboard import copy_admin_dashboard_routes
 
 ################################################################################
 ############################# IMPORTS COMPLETE #################################
@@ -161,6 +162,7 @@ app.register_blueprint(employee_agreement_routes)
 app.register_blueprint(rotate_tv_routes)
 app.register_blueprint(photo_request_routes)
 app.register_blueprint(ems_routes)
+app.register_blueprint(copy_admin_dashboard_routes)
 logging.info("Done registering blueprints.")
 
 logging.info("Initializing login manager...")
