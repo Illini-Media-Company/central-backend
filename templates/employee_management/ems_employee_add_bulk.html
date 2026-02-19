@@ -1,0 +1,253 @@
+{% extends 'employee_management/ems_base.html' %}
+
+{% block ems_title %}
+    Add Employee
+{% endblock %}
+
+{% block ems_extra_head %}
+    <link rel="stylesheet" href="/static/macros/form.css">
+
+    <style>
+        .employee-file-add-form {
+            display: flex; 
+            flex-direction: row; 
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .column-names-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+            grid-template-rows: auto;
+            row-gap: 1rem;
+            column-gap: 0.5rem;
+        }
+
+        .column-name-description {
+            margin-bottom: 0;
+            font-size: 0.75rem;
+        }
+
+        .inner-container {
+            flex: 1 1;
+        }
+    </style>
+{% endblock %}
+
+{% import "macros/form.html" as form %}
+{% include "partials/loading.html" %}
+{% include "partials/text_alert.html" %}
+{% include "partials/info_bar.html" %}
+
+{% block ems_content %}
+<div style="display: flex; flex-direction: row; gap: 2rem; align-items: center;">
+    <a href="/ems/employees" style="color: inherit; font-size: 2rem;">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <h2>Add Existing Employees</h2>
+</div>
+<p><span style="font-weight: 500;">Note:</span> This page should only be used to add existing employees to the Employee Management System.
+    To onboard a new employee, please use the <a href="/ems/employee/onboard">onboarding page</a>.
+</p>
+
+<hr>
+
+<section class="section-container">
+    <div class="section-header" style="flex-direction: column; align-items: baseline;">
+        <h2 style="margin-bottom: 0">Bulk Employee Upload</h2>
+        <p style="margin-bottom: 0;">Upload multiple existing employees from a .CSV file. This should not be used to onboard new employees.</p>
+    </div>
+    <hr style="margin-top: 1rem;">
+
+
+    {# Input #}
+    <div class="inner-container" style="padding: 0.75rem;">
+        {# Header #}
+        <div class="section-header" style="flex-direction: column; align-items: baseline;">
+            <h3 style="margin-bottom: 0">File Upload</h3>
+        </div>
+        <hr>
+        {# Form #}
+        {% call form.form(id="employeeFileAddForm", class="employee-file-add-form", enctype="multipart/form-data", on_submit="return submitEmployees(event)") %}
+            {{ form.file_input("file_input", ".csv") }}
+            {{ form.submit_button(text="Create Employees", label="submit_button") }}
+        {% endcall %}
+    </div>
+
+    {# Info #}
+    <div class="inner-container" style="padding: 0.75rem;">
+        {# Header #}
+        <div class="section-header">
+            <div>
+                <h3 style="margin-bottom: 0">Columns</h3>
+                <p style="margin-bottom: 0;">This form accepts .csv files with the following columns:</p>
+            </div>
+            <a href="/static/downloadable/BulkEmployeeUpload.csv" download="BulkEmployeeUpload.csv">
+                <button class="button-secondary">
+                    <i class="bi bi-download"></i>&nbsp; Download Template
+                </button>
+            </a>
+        </div>
+        <hr>
+
+        <div class="column-names-container">
+            <div>
+                <h4>last_name <span style="font-weight: 300; color: var(--main-accent-color);">(required)</span></h4>
+                <p class="column-name-description">Employee's last name</p>
+            </div>
+
+            <div>
+                <h4>first_name <span style="font-weight: 300; color: var(--main-accent-color);">(required)</span></h4>
+                <p class="column-name-description">Employee's first name</p>
+            </div>
+
+            <div>
+                <h4>pronouns <span style="font-weight: 300;">(optional)</span></h4>
+                <p class="column-name-description">Must be one of the following:<br>
+                    {{ pronouns }}</p>
+            </div>
+
+            <div>
+                <h4>imc_email <span style="font-weight: 300; color: var(--main-accent-color);">(required)</span></h4>
+                <p class="column-name-description">Must end in @illinimedia.com</p>
+            </div>
+            
+            <div>
+                <h4>personal_email <span style="font-weight: 300; color: var(--main-accent-color);">(optional)</span></h4>
+                <p class="column-name-description">Must not end in @illinimedia.com or @illinois.edu</p>
+            </div>
+
+            <div>
+                <h4>phone_number <span style="font-weight: 300; color: var(--main-accent-color);">(optional)</span></h4>
+                <p class="column-name-description">Must be of the format +# (###) ### - ####</p>
+            </div>
+
+            <div>
+                <h4>permanent_address_1 <span style="font-weight: 300; color: var(--main-accent-color);">(optional)</span></h4>
+                <p class="column-name-description">Line 1 of the employee's permanent address</p>
+            </div>
+
+            <div>
+                <h4>permanent_address_2 <span style="font-weight: 300;">(optional)</span></h4>
+                <p class="column-name-description">Line 2 of the employee's permanent address</p>
+            </div>
+
+            <div>
+                <h4>permanent_city <span style="font-weight: 300; color: var(--main-accent-color);">(optional)</span></h4>
+                <p class="column-name-description">The city of the employee's permanent address</p>
+            </div>
+
+            <div>
+                <h4>permanent_state <span style="font-weight: 300; color: var(--main-accent-color);">(optional)</span></h4>
+                <p class="column-name-description">Two-letter abbreviation, both capitalized</p>
+            </div>
+
+            <div>
+                <h4>permanent_zip <span style="font-weight: 300; color: var(--main-accent-color);">(optional)</span></h4>
+                <p class="column-name-description">5-digit ZIP code</p>
+            </div>
+
+            <div>
+                <h4>birth_date <span style="font-weight: 300;">(optional)</span></h4>
+                <p class="column-name-description">Employee's date of birth (YYYY-MM-DD)</p>
+            </div>
+
+            <div>
+                <h4>payroll_number <span style="font-weight: 300;">(optional)</span></h4>
+                <p class="column-name-description">Employee's ADP payroll number</p>
+            </div>
+
+            <div>
+                <h4>initial_hire_date <span style="font-weight: 300;">(optional)</span></h4>
+                <p class="column-name-description">Date the employee was first hired by IMC (YYYY-MM-DD)</p>
+            </div>
+
+            <div>
+                <h4>status <span style="font-weight: 300; color: var(--main-accent-color);">(required)</span></h4>
+                <p class="column-name-description">Must be one of the following:<br>
+                    {{ statuses }}</p>
+            </div>
+
+            <div>
+                <h4>major <span style="font-weight: 300;">(optional)</span></h4>
+                <p class="column-name-description">Employee's major</p>
+            </div>
+
+            <div>
+                <h4>major_2 <span style="font-weight: 300;">(optional)</span></h4>
+                <p class="column-name-description">Employee's second major</p>
+            </div>
+
+            <div>
+                <h4>major_3 <span style="font-weight: 300;">(optional)</span></h4>
+                <p class="column-name-description">Employee's third major</p>
+            </div>
+
+            <div>
+                <h4>minor <span style="font-weight: 300;">(optional)</span></h4>
+                <p class="column-name-description">Employee's minor</p>
+            </div>
+
+            <div>
+                <h4>minor_2 <span style="font-weight: 300;">(optional)</span></h4>
+                <p class="column-name-description">Employee's second minor</p>
+            </div>
+
+            <div>
+                <h4>minor_3 <span style="font-weight: 300;">(optional)</span></h4>
+                <p class="column-name-description">Employee's third minor</p>
+            </div>
+
+            <div>
+                <h4>graduation <span style="font-weight: 300;">(optional)</span></h4>
+                <p class="column-name-description">Graduation term in the following form:<br>
+                    20## May or 20## Dec.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+    async function submitEmployees(event) {
+        event.preventDefault();
+        console.log("Saving...");
+
+        showLoading("Adding Employees...");
+
+        const formData = new FormData(event.target);
+        formData.append("_csrf_token", "{{ csrf_token() }}");
+
+        // Send the data to the backend endpoint
+        let endpoint = "/ems/api/employee/create/bulk";
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            body: formData,
+        });
+
+        // Check if it was successful
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", "Employees successfully created."); // Safe so we can display after reload
+            window.location.assign("/ems/employees");
+        } else {
+            // Alert of the error
+            console.log("Creating the employees failed!");
+
+            try {
+                const data = await response.json();
+                const message = data.error || "An unknown error occurred.";
+
+                console.error(message);
+                hideLoading();
+                await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            } catch (err) {
+                const fallback = await response.text();
+                hideLoading();
+                await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+            }
+        }
+    }
+</script>
+
+{% endblock %}

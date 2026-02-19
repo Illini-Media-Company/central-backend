@@ -9,7 +9,7 @@ load_dotenv()
 ENV = os.environ.get("ENV", "dev")
 
 # Google API keys and secrets
-ADMIN_EMAIL = "di_admin@illinimedia.com"
+ADMIN_EMAIL = "imc_admin@illinimedia.com"
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", None)
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", None)
 GOOGLE_PROJECT_ID = os.environ.get("DATASTORE_PROJECT_ID", None)
@@ -21,6 +21,15 @@ IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID = "G-6V6FSKGBDZ"
 IMC_CONSOLE_GOOGLE_ANALYTICS_KEY = os.environ.get(
     "IMC_CONSOLE_GOOGLE_ANALYTICS_KEY", None
 )
+
+# Discovery Engine (Vertex AI Search) configuration
+DISCOVERY_ENGINE_PROJECT_ID = os.environ.get(
+    "DISCOVERY_ENGINE_PROJECT_ID", GOOGLE_PROJECT_ID
+)
+DISCOVERY_ENGINE_LOCATION = "global"
+DISCOVERY_ENGINE_COLLECTION = "default_collection"
+DISCOVERY_ENGINE_SERVING_CONFIG = "default_search"
+DISCOVERY_ENGINE_ENGINE_ID = os.environ.get("DISCOVERY_ENGINE_ENGINE_ID", None)
 
 APPS_SCRIPT_RUNNER_EMAIL = "apps-script-runner@illinimedia.com"
 CONTEND_DOC_AUD = (
@@ -82,6 +91,169 @@ WPGU_OFFICE_RESOURCE_GCAL_ID = (
 )
 WPGU_ONAIR_GCAL_ID = "c_b888554deb36a74a61aea32bac28ab500ade0003cd2ae61085354e07c2fa0fa0@group.calendar.google.com"
 
+################################################################################
+### EMPLOYEE MANAGEMENT SYSTEM #################################################
+################################################################################
+
+# Google Groups with admin access to EMS
+EMS_ADMIN_ACCESS_GROUPS = [
+    "webdev",
+    "imc-staff-webdev",
+    "helpdesk@illinimedia.com",
+    "student-managers",
+    "professional-staff",
+]
+
+EMPLOYEE_PRONOUNS = [
+    "He/Him",
+    "She/Her",
+    "They/Them",
+    "Other",
+]
+
+IMC_BRANDS = [
+    "IMC",
+    "The Daily Illini",
+    "WPGU",
+    "Illio",
+    "Chambana Eats",
+    "Illini Content Studio",
+]
+PAY_TYPES = ["Unpaid", "Hourly", "Salary", "Stipend"]
+EMPLOYEE_STATUS_OPTIONS = ["Active", "Inactive", "Onboarding", "Offboarding"]
+DEPART_CATEGORIES = ["Voluntary", "Involuntary", "Administrative"]
+DEPART_REASON_VOL = [
+    "Resigned",
+    "Dissatisfaction",
+    "Did Not Return",
+    "Higher Pay Elsewhere",
+    "Personal Reasons",
+]
+DEPART_REASON_INVOL = [
+    "Terminated for Performance",
+    "Terminated for Misconduct",
+    "Attendance Issue",
+    "Position Eliminated",
+    "Insubordination",
+]
+DEPART_REASON_ADMIN = [
+    "Promoted",
+    "Completed Term",
+    "Graduated",
+    "No Longer Student",
+    "Duplicate Record",
+    "Administrative Error",
+    "Reorganization",
+    "Other/Unknown",
+]
+
+EMPLOYEE_GRAD_YEARS = [
+    "2000 May",
+    "2000 Dec.",
+    "2001 May",
+    "2001 Dec.",
+    "2002 May",
+    "2002 Dec.",
+    "2003 May",
+    "2003 Dec.",
+    "2004 May",
+    "2004 Dec.",
+    "2005 May",
+    "2005 Dec.",
+    "2006 May",
+    "2006 Dec.",
+    "2007 May",
+    "2007 Dec.",
+    "2008 May",
+    "2008 Dec.",
+    "2009 May",
+    "2009 Dec.",
+    "2010 May",
+    "2010 Dec.",
+    "2011 May",
+    "2011 Dec.",
+    "2012 May",
+    "2012 Dec.",
+    "2013 May",
+    "2013 Dec.",
+    "2014 May",
+    "2014 Dec.",
+    "2015 May",
+    "2015 Dec.",
+    "2016 May",
+    "2016 Dec.",
+    "2017 May",
+    "2017 Dec.",
+    "2018 May",
+    "2018 Dec.",
+    "2019 May",
+    "2019 Dec.",
+    "2020 May",
+    "2020 Dec.",
+    "2021 May",
+    "2021 Dec.",
+    "2022 May",
+    "2022 Dec.",
+    "2023 May",
+    "2023 Dec.",
+    "2024 May",
+    "2024 Dec.",
+    "2025 May",
+    "2025 Dec.",
+    "2026 May",
+    "2026 Dec.",
+    "2027 May",
+    "2027 Dec.",
+    "2028 May",
+    "2028 Dec.",
+    "2029 May",
+    "2029 Dec.",
+    "2030 May",
+    "2030 Dec.",
+    "2031 May",
+    "2031 Dec.",
+    "2032 May",
+    "2032 Dec.",
+    "2033 May",
+    "2033 Dec.",
+    "2034 May",
+    "2034 Dec.",
+    "2035 May",
+    "2035 Dec.",
+    "2036 May",
+    "2036 Dec.",
+    "2037 May",
+    "2037 Dec.",
+    "2038 May",
+    "2038 Dec.",
+    "2039 May",
+    "2039 Dec.",
+    "2040 May",
+    "2040 Dec.",
+    "2041 May",
+    "2041 Dec.",
+    "2042 May",
+    "2042 Dec.",
+    "2043 May",
+    "2043 Dec.",
+    "2044 May",
+    "2044 Dec.",
+    "2045 May",
+    "2045 Dec.",
+    "2046 May",
+    "2046 Dec.",
+    "2047 May",
+    "2047 Dec.",
+    "2048 May",
+    "2048 Dec.",
+    "2049 May",
+    "2049 Dec.",
+    "2050 May",
+    "2050 Dec.",
+]
+
+################################################################################
+
 # Lists of Google Groups that control access to APIs
 TOOLS_ADMIN_ACCESS_GROUPS = [
     "webdev",
@@ -135,3 +307,4 @@ SOCIAL_MEDIA_GCAL_ID = (
 )
 # Fallback email when no one is on shift in the socials calendar (e.g. socials chief).
 SOCIALS_CHIEF_EMAIL = "alutz7@illinimedia.com"
+ONBOARDING_EMAIL = "onboarding@illinimedia.com"

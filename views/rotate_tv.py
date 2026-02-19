@@ -11,6 +11,10 @@ from constants import (
     WPGU_ONAIR_GCAL_ID,
 )
 
+QUAD_CAM_URL = "https://www.youtube.com/embed/WyrkXojtRXk?si=z5FBa5yPGEXkfdj-"
+ALMA_CAM_URL = "https://www.youtube.com/embed/0mEf4MbHKDo?si=4eV1SvgyvArvomCA"
+MORROW_CAM_URL = "https://www.youtube.com/embed/4_5srHxIN-4?si=vblJyJKo3Rs2Xe6l"
+
 
 rotate_tv_routes = Blueprint("rotate_tv_routes", __name__, url_prefix="/tv-rotation")
 
@@ -30,6 +34,7 @@ def tv_rotation_screen():
     computer_display = b("computer_display")  # Whether or not to display on a computer
     show_quad = b("show_quad")
     show_alma = b("show_alma")
+    show_morrow = b("show_morrow")
     show_datetime = b("show_datetime")
     show_nc_avail = b("show_nc_avail")  # News conference table availability
     show_bc_avail = b("show_bc_avail")  # Business conference table availability
@@ -75,7 +80,11 @@ def tv_rotation_screen():
         rotate_ms=30000,
         computer_display=computer_display,
         show_quad=show_quad,
+        quad_url=QUAD_CAM_URL,
         show_alma=show_alma,
+        alma_url=ALMA_CAM_URL,
+        show_morrow=show_morrow,
+        morrow_url=MORROW_CAM_URL,
         show_datetime=show_datetime,
         current_date=current_date,
         show_avail=show_avail,

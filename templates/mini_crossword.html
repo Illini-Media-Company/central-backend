@@ -369,7 +369,7 @@ Mini Crossword Admin
             body: JSON.stringify(payload),
         });
 
-        if (response !== 200) {
+        if (response.status !== 200) {
             console.log("Submission failed.")
             const message = await response.text()
             await showTextAlert(

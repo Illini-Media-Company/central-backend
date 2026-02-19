@@ -1,0 +1,1108 @@
+{% extends 'employee_management/ems_base.html' %}
+
+{% macro money_input(name, label, required, class, placeholder, alt_type, pattern, initial_val) %}
+    <div class="form-row {{ class }}" id="formfield-{{ name }}">
+        <div>
+            <label for="{{ name }}" class="field-label">
+                {{ label }}
+                {% if required %}
+                    <span title="Required field" style="color: var(--main-accent-color);">*</span>
+                {% endif %}
+            </label>
+        </div>
+        <div style="display: flex; flex-direction: row; align-items: center; gap: 0.25rem;">
+            $
+            <input 
+                type    = "number"
+                id      = "{{ name }}" 
+                class   = "text-input" 
+                name    = "{{ name }}"
+
+                {% if pattern %}
+                    pattern = "{{ pattern }}"
+                {% endif %}
+
+                {% if placeholder %}
+                    placeholder = "{{ placeholder }}"
+                {% endif %}
+
+                {% if required %}
+                    required
+                {% endif %}
+
+                {% if initial_val %}
+                    value = "{{ initial_val }}"
+                {% endif %}
+            >
+            <span id="{{ name }}_after-text" style="text-wrap: nowrap;"></span>
+        </div>
+    </div>
+{% endmacro %}
+
+{% block ems_title %}
+    {{ position.title }} ({{ position.brand }})
+{% endblock %}
+
+{% block ems_extra_head %}
+    <link rel="stylesheet" href="/static/macros/form.css">
+
+    <style>
+        .position-header-container {
+            display: flex; 
+            flex-direction: row; 
+            gap: 0.5rem;
+        }
+
+        .position-photo {
+            border-radius: var(--main-border-radius); 
+            aspect-ratio: 1 / 1;
+        }
+
+        .form-initial-show {
+            display: block;
+        }
+
+        .form-initial-hide {
+            display: none;
+        }
+
+        .position-modify-form-row {
+            flex-direction: column;
+            align-items: flex-start;
+            flex: 1 1 5rem;
+            gap: 0.25rem;
+        }
+
+        .form-row-shrink {
+            flex: 0 1 auto;
+        }
+
+        .row-container {
+            display: flex; 
+            flex-direction: row; 
+            gap: 0.5rem;
+        }
+
+        .column-container {
+            display: flex; 
+            flex-direction: column;
+            gap: 0.5rem; 
+            min-width: 15%;
+        }
+
+        .position-info-column-container {
+            display: flex; 
+            flex-direction: column; 
+            gap: 0.5rem;
+        }
+
+        .position-info-row {
+            display: flex;
+            flex-direction: row;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .position-info-row .form-initial-hide {
+            flex-grow: 1;
+        }
+
+        .field-label {
+            font-size: 0.75rem;
+        }
+
+        .sup-report-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr;
+            column-gap: 0.5rem;
+            row-gap: 0.5rem;
+        }
+
+        .sup-rep-header {
+            padding: 0; 
+            display: flex; 
+            flex-direction: row; 
+            gap: 0.5rem; 
+            align-items: center; 
+            justify-content: left;
+        }
+
+        .sup-rep-item {
+            border: 2px solid var(--main-md-gray-color); 
+            display: flex;
+            flex-direction: row;
+            gap: 0.75rem;
+            justify-content: space-between;
+        }
+
+        .sup-rep-button-container {
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between; 
+            height: 100%; 
+            gap: 0.25rem;
+        }
+
+        .remove-button {
+            padding: 0;
+            border: none;
+            background-color: inherit;
+            color: inherit;
+        }
+
+        .supervisor-input-container {
+            display: flex; 
+            flex-direction: row; 
+            gap: 1rem; 
+            align-items: end; 
+            margin-top: 0.5rem;
+        }
+
+        .delete-button-container {
+            width: fit-content;
+            align-content: center;
+            align-items: center;
+            text-align: center;
+
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            height: 100%;
+        }
+
+        .employees-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr;
+            column-gap: 0.5rem;
+            row-gap: 0.5rem;
+        }
+
+        .employee-item-container {
+            border: 2px solid var(--main-md-gray-color); 
+            display: flex;
+            flex-direction: row;
+            gap: 0.75rem;
+            justify-content: space-between;
+        }
+
+        .employee-item-button-container {
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between; 
+            height: 100%; 
+            gap: 0.25rem;
+        }
+
+        .employee-item-action-button {
+            padding: 0;
+            border: none;
+            background-color: inherit;
+            color: inherit;
+        }
+
+        @media (max-width: 480px) {
+            .position-header-container {
+                flex-direction: column;
+            }
+
+            .sup-report-container {
+                grid-template-columns: 1fr;
+            }
+
+            .delete-button-container {
+                width: auto;
+                flex-direction: row;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 825px) {
+            .row-container {
+                flex-direction: column;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% import "macros/form.html" as form %}
+{% import "employee_management/ems_macros.html" as ems_macros %}
+{% include "partials/loading.html" %}
+{% include "partials/text_alert.html" %}
+{% include "partials/button_alert.html" %}
+{% include "partials/info_bar.html" %}
+
+{% block ems_content %}
+
+{{ ems_macros.ems_relation_add(
+    employee_id=none, 
+    position_id=position.uid,
+    employee_choices=employee_options,
+    position_choices=[{"value": position.uid, "name": position.brand ~ " — " ~ position.title}],
+    departure_categories=departure_categories,
+    depart_reasons_vol=depart_reasons_vol,
+    depart_reasons_invol=depart_reasons_invol,
+    depart_reasons_admin=depart_reasons_admin,
+) }}
+{{ ems_macros.ems_relation_modify(
+    employee_id=none, 
+    position_id=position.uid,
+    employee_choices=employee_options,
+    position_choices=[{"value": position.uid, "name": position.brand ~ " — " ~ position.title}],
+    departure_categories=departure_categories,
+    depart_reasons_vol=depart_reasons_vol,
+    depart_reasons_invol=depart_reasons_invol,
+    depart_reasons_admin=depart_reasons_admin,
+) }}
+
+{# Header #}
+<div style="display: flex; flex-direction: row; gap: 2rem; align-items: center;">
+    <a href="/ems/positions" style="color: inherit; font-size: 2rem;">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <h2>View/Edit Position</h2>
+</div>
+
+<hr>
+
+<section class="section-container">
+    {% call form.form(id="positionModifyForm", enctype="application/x-www-form-urlencoded", on_submit="return modifyPosition(event)") %}
+        {# Upper Banner #}
+        <div class="position-header-container">
+            {# Image #}
+            <div class="form-initial-show">
+                <img src="{{ position.brand | get_ems_brand_image_url }}"
+                    class="position-photo"
+                >
+            </div>
+            {# Archive/Delete Buttons #}
+            <div class="form-initial-hide">
+                <div class="inner-container delete-button-container">
+                    {% if position.archived %}
+                        <button class="button-secondary" type="button" onclick="restorePosition()" style="width: 100%;">
+                            <i class="bi bi-folder-plus"></i>&nbsp; Restore
+                        </button>
+                    {% else %}
+                        <button class="button-secondary" type="button" onclick="archivePosition()" style="width: 100%;">
+                            <i class="bi bi-archive"></i>&nbsp; Archive
+                        </button>
+                    {% endif %}
+                    <button class="button-secondary" type="button" onclick="deletePosition()" style="text-wrap: nowrap; width: 100%;">
+                        <i class="bi bi-exclamation-triangle"></i>&nbsp; Permanently Delete
+                    </button>
+                </div>
+            </div>
+            {# Title & Brand #}
+            <div class="inner-container" style="padding: 0.75rem;">
+                <div class="form-initial-show">
+                    <h2 style="margin-bottom: 0;">
+                        {{ position.title }}
+                        {% if position.archived %}
+                            <span style="color: var(--main-accent-color); font-size: 1rem;">(Archived)</span>
+                        {% endif %}
+                    </h2>
+                    <P style="margin-bottom: 0;">{{ position.brand }}</P>
+                </div>
+                <div class="form-initial-hide">
+                    <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
+                        {{ form.text_input( 
+                            name="title",
+                            label="Title",
+                            required=true,
+                            initial_val=position.title,
+                            class="position-modify-form-row"
+                        ) }}
+                        {{ form.select_input( 
+                            name="brand",
+                            label="Brand",
+                            options=imc_brands_choices,
+                            required=true,
+                            initial_val=position.brand,
+                            class="position-modify-form-row form-row-shrink"
+                        ) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Row 2 #}
+        <div class="row-container">
+            {# Left Column #}
+            <div class="column-container" style="flex: 0 auto;">
+                {# Buttons #}
+                <div style="text-align: center; display: flex; gap: 0.5rem;">
+                    <button id="modify-button" onclick="showModify()" type="button" class="button-primary" style="width: 100%; flex: 1;">
+                        <i class="bi bi-pen"></i>&nbsp;&nbsp;Modify
+                    </button>
+                    <button id="cancel-button" onclick="hideModify()" type="button" class="button-bg-color" style="display: none;">
+                        <i class="bi bi-x-circle"></i>&nbsp;&nbsp;Cancel
+                    </button>
+                    {{ form.submit_button(text="Save", label="submit_button") }}
+                </div>
+
+                {# Financial #}
+                <div class="inner-container" style="padding: 0.75rem;">
+                    <div class="section-header" style="padding: 0;">
+                        <h4 style="margin-bottom: 0">Financial Information</h4>
+                    </div>
+
+                    <hr style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+
+                    <div class="position-info-column-container">
+                        {# Pay Status #}
+                        <div class="position-info-row" title="Pay Status">
+                            <i class="bi bi-wallet"></i>
+                            <div class="form-initial-show">
+                                <p style="margin-bottom: 0;">{{ position.pay_status }}</p>
+                            </div>
+                            <div class="form-initial-hide">
+                                {{ form.select_input( 
+                                    name="pay_status",
+                                    label="Pay Status",
+                                    options=pay_types_choices,
+                                    required=true,
+                                    initial_val=position.pay_status,
+                                    class="position-modify-form-row"
+                                ) }}
+                            </div>
+                        </div>
+
+                        {# Pay Rate #}
+                        <div class="position-info-row" title="Pay Rate">
+                            <i class="bi bi-cash-coin"></i>
+                            <div class="form-initial-show">
+                                <p style="margin-bottom: 0;">${{ '%0.2f'|format(position.pay_rate) }}<span id="pay_rate_after-text-2"></span></p>
+                            </div>
+                            <div class="form-initial-hide">
+                                {{ money_input( 
+                                    name="pay_rate",
+                                    label="Pay Rate",
+                                    required=true,
+                                    initial_val='%0.2f'|format(position.pay_rate),
+                                    class="position-modify-form-row form-row-shrink"
+                                ) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Google Admin #}
+                <div class="inner-container" style="padding: 0.75rem;">
+                    <div class="section-header" style="padding: 0;">
+                        <h4 style="margin-bottom: 0">Google Admin</h4>
+                    </div>
+
+                    <hr style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+
+                    <div class="position-info-column-container">
+                        {# Google Group #}
+                        <div class="position-info-row" title="Google Group">
+                            <i class="bi bi-people-fill"></i>
+                            <div class="form-initial-show">
+                                <p style="margin-bottom: 0;">{{ position.google_group or "—"}}</p>
+                            </div>
+                            <div class="form-initial-hide">
+                                {{ form.text_input( 
+                                    name="google_group",
+                                    label="Google Group Email",
+                                    required=false,
+                                    initial_val=position.google_group,
+                                    placeholder="xxxxx@illinimedia.com",
+                                    pattern=".*@(illinimedia\.com|illioyearbook\.com)$",
+                                    class="position-modify-form-row form-row-shrink"
+                                ) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Slack #}
+                <div class="inner-container" style="padding: 0.75rem;">
+                    <div class="section-header" style="padding: 0;">
+                        <h4 style="margin-bottom: 0">Slack</h4>
+                    </div>
+
+                    <hr style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+
+                    <div class="position-info-column-container">
+                        {# Slack channels #}
+                        <div class="position-info-row" title="Slack Channels">
+                            <i class="bi bi-slack"></i>
+                            <div class="form-initial-show">
+                                {% if position.slack_channels %}
+                                    {% for channel in position.slack_channels %}
+                                    <p style="margin-bottom: 0;">{{ channel }}</p>
+                                    {% endfor %}
+                                {% else %}
+                                    <p style="margin-bottom: 0;">—</p>
+                                {% endif %}
+                            </div>
+                            <div class="form-initial-hide">
+                                {{ form.text_input( 
+                                    name="slack_channels",
+                                    label="Slack Channel IDs",
+                                    required=false,
+                                    initial_val=position.slack_channels | join(', '),
+                                    placeholder="Comma-separated list",
+                                    class="position-modify-form-row form-row-shrink"
+                                ) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Administrative #}
+                <div class="inner-container" style="padding: 0.75rem;">
+                    <div class="section-header" style="padding: 0;">
+                        <h4 style="margin-bottom: 0">Administrative</h4>
+                    </div>
+
+                    <hr style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+
+                    <div class="position-info-column-container">
+                        {# Creation Date #}
+                        <div class="position-info-row" title="Creation Time">
+                            <i class="bi bi-calendar-plus"></i>
+                            <p style="margin-bottom: 0;">
+                                {{ position.created_at|ap_datetime or "—"}}
+                            </p>
+                        </div>
+
+                        {# Last Modified at #}
+                        <div class="position-info-row" title="Last Modification Time">
+                            <i class="bi bi-pen"></i>
+                            <p style="margin-bottom: 0;">
+                                {{ position.updated_at|ap_datetime or "—"}}
+                            </p>
+                        </div>
+
+                        {# Last Modified by #}
+                        <div class="position-info-row" title="Last Modification User">
+                            <i class="bi bi-pen"></i>
+                            <p style="margin-bottom: 0;">
+                                {{ position.updated_by|to_user_name or "System"}}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# Right Column #}
+            <div class="column-container" style="flex: 1 auto;">
+                {# Inner Row 1 #}
+                <div class="row-container">
+                    {# Currently Held #}
+                    <div class="inner-container" style="padding: 0.75rem;">
+                        {# Header #}
+                        <div class="section-header" style="padding: 0;">
+                            <div class="sup-rep-header">
+                                <h3 style="margin-bottom: 0">Currently Held By</h3>
+                                <h4 style="margin-bottom: 0">({{ position.current_employees | length }})</h4>
+                            </div>
+                            <button class="button-secondary" type="button" onclick="emsRelationAddShowForm()">
+                                Assign Employee
+                            </button>
+                        </div>
+
+                        <hr style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+
+                        <div class="employees-container" id="current-employees-container">
+                            {% for emp in position.current_employees %}
+                                <div class="inner-container employee-item-container" 
+                                    id="position-relation-{{ emp.relation_uid }}"
+                                    {% if loop.index0 > 2 %}style="display: none;"{% endif %}
+                                >
+                                    <div>
+                                        <h4>
+                                            {{ emp.first_name }} {{ emp.last_name }}
+                                        </h4>
+                                        <p style="margin-bottom: 0;">
+                                            Since {{ emp.start_date | ap_date }}
+                                            <span style="font-size: 0.75rem;">({{ emp.start_date | time_since }})</span>
+                                        </p>
+                                    </div>
+                                    {# Buttons #}
+                                    <div class="employee-item-button-container">
+                                        <button class="employee-item-action-button form-initial-hide" type="button" title="Modify Assignment" onclick="emsRelationModifyShowForm('{{ emp.relation_uid }}')">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                        <a href="/ems/employee/view/{{ emp.employee_uid }}" target="_blank">
+                                            <button class="employee-item-action-button" type="button" title="View/Edit Employee" style="color: var(--main-accent-color);">
+                                                <i class="bi bi-person-badge"></i>
+                                            </button>
+                                        </a>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        {# Only display "see more" button when >3 employees #}
+                        {% if position.current_employees | length > 3 %}
+                            <hr style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+                            
+                            {# See more & less buttons #}
+                            <div style="text-align: center;">
+                                <button id ="btn-show-more" class="button-secondary" type="button" onclick="toggleEmployees('more')">
+                                    <i class="bi bi-plus-lg"></i> Show More
+                                </button>
+                                <button id ="btn-show-less" class="button-secondary" type="button" onclick="toggleEmployees('less')" style="display: none;">
+                                    <i class="bi bi-dash-lg"></i> Show Less
+                                </button>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    {# Job Description #}
+                    <div class="inner-container" style="padding: 0.75rem;">
+                        <div class="section-header" style="padding: 0;">
+                            <h3 style="margin-bottom: 0">Job Description</h3>
+                        </div>
+
+                        <hr style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+
+                        <div class="form-initial-show">
+                            <p>{{ position.job_description }}</p>
+                        </div>
+                        <div class="form-initial-hide">
+                            {{ form.textarea_input( 
+                                name="job_description",
+                                label="Job Description",
+                                required=false,
+                                initial_val=position.job_description,
+                                class="position-modify-form-row"
+                            ) }}
+                        </div>
+                    </div>
+                </div>
+
+                {# Direct Reports & Supervisors #}
+                <div class="row-container">
+                    {# Supervisor(s) #}
+                    <div class="inner-container" style="padding: 0.75rem; height: fit-content;">
+                        <div class="section-header sup-rep-header">
+                            <h3 style="margin-bottom: 0">Supervisors</h3>
+                            <h4 style="margin-bottom: 0">({{ position.supervisors | length }})</h4>
+                        </div>
+
+                        <hr style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+
+                        <div class="sup-report-container" id="supervisors-container">
+                            {% for sup in position.supervisors %}
+                                <div class="inner-container sup-rep-item" id="sup-{{ sup.uid }}">
+                                    <div>
+                                        <h4>{{ sup.title }}</h4>
+                                        <p style="margin-bottom: 0;">{{ sup.brand }}</p>
+                                    </div>
+                                    <div class="sup-rep-button-container">
+                                        <button class="remove-button form-initial-hide" type="button" title="Remove Supervisor" onclick="removeSupervisor('{{ sup.uid }}')">
+                                            <i class="bi bi-dash-circle"></i>
+                                        </button>
+                                        <a href="/ems/position/view/{{ sup.uid }}" target="_blank">
+                                            <button class="remove-button" type="button" title="View/Edit Position" style="color: var(--main-accent-color);">
+                                                <i class="bi bi-briefcase"></i>
+                                            </button>
+                                        </a>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <div class="form-initial-hide">
+                            <hr>
+                            {% if not position.archived %}
+                            <div class="supervisor-input-container">
+                                {{ form.select_input( 
+                                    name="supervisor",
+                                    label="Add Supervisor",
+                                    options=position_options,
+                                    no_default=true,
+                                    required=false,
+                                    class="position-modify-form-row"
+                                ) }}
+                                <div>
+                                    <button class="button-primary" type="button" onclick="addSupervisor()" style="padding: 0.25rem; margin-bottom: 0.313rem;">
+                                        <i class="bi bi-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            {% else %}
+                                <p style="margin: 0;">
+                                    You cannot add a new supervisor to an archived position. 
+                                    Restore the position to add a new supervisor.
+                                </p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {# Direct Report(s) #}
+                    <div class="inner-container" style="padding: 0.75rem; height: fit-content;">
+                        <div class="section-header sup-rep-header">
+                            <h3 style="margin-bottom: 0">Direct Reports</h3>
+                            <h4 style="margin-bottom: 0">({{ position.direct_reports | length }})</h4>
+                        </div>
+
+                        <hr style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+
+                        {% if position.direct_reports %}
+                            <div class="sup-report-container">
+                                {% for rep in position.direct_reports %}
+                                    <div class="inner-container sup-rep-item" id="rep-{{ rep.uid }}">
+                                        <div>
+                                            <h4>{{ rep.title }}</h4>
+                                            <p style="margin-bottom: 0;">{{ rep.brand }}</p>
+                                        </div>
+                                        <div class="sup-rep-button-container">
+                                            <a href="/ems/position/view/{{ rep.uid }}" target="_blank">
+                                                <button class="remove-button" type="button" title="View/Edit Position" style="color: var(--main-accent-color);">
+                                                    <i class="bi bi-briefcase"></i>
+                                                </button>
+                                            </a>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <hr>
+                            <p style="margin: 0;">
+                                To remove a direct report, modify that position to remove this position as a supervisor.
+                            </p>
+                        {% else %}
+                            <div>
+                                <p style="margin-bottom: 0; text-align: center;">
+                                    This position does not have any direct reports. To add a direct report, 
+                                    edit the position that reports to this one and add a new supervisor.
+                                </p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endcall %}
+</section>
+
+<script>
+    let SUPS = []
+
+    // Number of current employees to show
+    let currentVisibleLimit = 3;
+
+    window.addEventListener('load', () => {
+        const msg = sessionStorage.getItem("infoBarMessage");
+        if (msg) {
+            showInfoBar(msg);
+            sessionStorage.removeItem("infoBarMessage"); // Clear it after showing
+        }
+
+        // Fix weird styling issue
+        let sup = document.getElementById("formfield-supervisor");
+        if (sup) {
+            sup.style.flex = "0 1 auto";
+        }
+
+        let submit_button = document.getElementById("submit_button");
+        submit_button.style.display = "none";
+        submit_button.style.flex = "1";
+
+        const statusSelect = document.getElementById("pay_status");
+
+        function updatePayLabel() {
+            const afterText = document.getElementById("pay_rate_after-text");
+            const afterText2 = document.getElementById("pay_rate_after-text-2");
+            const payRate = document.getElementById("pay_rate");
+
+            if (statusSelect.value == 'Unpaid') {
+                payRate.value = 0;
+                payRate.readOnly = true;
+                afterText.innerHTML = ``;
+                afterText2.innerHTML = ``;
+            } else if (statusSelect.value == 'Hourly') {
+                afterText.innerHTML = `/ Hour`;
+                afterText2.innerHTML = ` / Hour`;
+                payRate.readOnly = false;
+            } else if (statusSelect.value == 'Stipend') {
+                afterText.innerHTML = `/ Pay Period`;
+                afterText2.innerHTML = ` / Pay Period`;
+                payRate.readOnly = false;
+            } else if (statusSelect.value == 'Salary') {
+                afterText.innerHTML = `/ Year`;
+                afterText2.innerHTML = ` / Year`;
+                payRate.readOnly = false;
+            }
+        }
+        statusSelect.addEventListener("input", updatePayLabel);
+        updatePayLabel();
+
+        // Get the supervisors list
+        const container = document.getElementById("supervisors-container")
+
+        SUPS = Array.from(container.querySelectorAll('.sup-rep-item')).map(item => {
+            return parseInt(item.id.split('-')[1]); 
+        });
+
+    });
+
+    // Show the modification form options
+    function showModify() {
+        const initial_show = document.querySelectorAll(".form-initial-show");
+        const initial_hide = document.querySelectorAll(".form-initial-hide");
+
+        let modify_button = document.getElementById("modify-button");
+        let cancel_button = document.getElementById("cancel-button");
+        let submit_button = document.getElementById("submit_button");
+
+        modify_button.style.display = "none";
+        cancel_button.style.display = "inline-block";
+        submit_button.style.display = "inline-block";
+
+        initial_show.forEach(elem => {
+            elem.style.display = "none";
+        });
+
+        initial_hide.forEach(elem => {
+            elem.style.display = "block";
+        });
+    }
+
+    // Hide the modification form options
+    function hideModify() {
+        const initial_show = document.querySelectorAll(".form-initial-show");
+        const initial_hide = document.querySelectorAll(".form-initial-hide");
+
+        let modify_button = document.getElementById("modify-button");
+        let cancel_button = document.getElementById("cancel-button");
+        let submit_button = document.getElementById("submit_button");
+
+        modify_button.style.display = "inline-block";
+        cancel_button.style.display = "none";
+        submit_button.style.display = "none";
+
+        initial_show.forEach(elem => {
+            elem.style.display = "block";
+        });
+
+        initial_hide.forEach(elem => {
+            elem.style.display = "none";
+        });
+    }
+
+    // Add a new supervisor (DOES NOT save automatically)
+    function addSupervisor() {
+        const container = document.getElementById("supervisors-container")
+        const selectSup = document.getElementById("supervisor")
+
+        const selectedIndex = selectSup.selectedIndex;
+        const selectedText = selectSup.options[selectedIndex].text;
+        const newID = selectSup.value;
+
+        if (!newID || selectedText === "") {
+            return;
+        }
+
+        if (document.getElementById(`sup-${newID}`)) {
+            showTextAlert(
+                "Error", 
+                "This position is already added as a supervisor.",
+                "Dismiss"
+            );
+            return;
+        }
+
+        // Extract the information for the sup to add
+        const newBrand = selectedText.split(' — ')[0];
+        const newTitle = selectedText.split(' — ')[1];
+
+        const newItem = `
+            <div class="inner-container sup-rep-item" id="sup-${newID}">
+                <div>
+                    <h4>${newTitle}</h4>
+                    <p style="margin-bottom: 0;">${newBrand}</p>
+                </div>
+                <div class="sup-rep-button-container">
+                    <button class="remove-button form-initial-hide" type="button" title="Remove Supervisor" onclick="removeSupervisor('${newID}')">
+                        <i class="bi bi-dash-circle"></i>
+                    </button>
+                    <a href="/ems/position/view/${newID}" target="_blank">
+                        <button class="remove-button" type="button" title="View/Edit Position" style="color: var(--main-accent-color);">
+                            <i class="bi bi-briefcase"></i>
+                        </button>
+                    </a>
+                </div>
+            </div>
+        `
+
+        container.insertAdjacentHTML("beforeend", newItem);
+
+        // Make sure the remove button appears on the new one
+        showModify();
+
+        selectSup.selectedIndex = 0;
+        SUPS.push(newID);
+    }
+
+    // Remove a supervisor (DOES NOT save automatically)
+    function removeSupervisor(uid) {
+        const supItem = document.getElementById(`sup-${uid}`);
+
+        if (!supItem) {
+            return;
+        }
+
+        // Delete the item from HTML and the list
+        supItem.remove();
+        SUPS = SUPS.filter(item => item != uid);
+    } 
+
+    // Show more employees
+    function toggleEmployees(action) {
+        const rows = document.querySelectorAll('.employee-item-container');
+        const btnMore = document.getElementById('btn-show-more');
+        const btnLess = document.getElementById('btn-show-less');
+        const total = rows.length;
+
+        if (action === 'more') {
+            currentVisibleLimit += 3;
+        } else {
+            currentVisibleLimit = 3;
+        }
+
+        // Loop through all rows and decide visibility
+        rows.forEach((row, index) => {
+            if (index < currentVisibleLimit) {
+                row.style.display = "flex";
+            } else {
+                row.style.display = "none";
+            }
+        });
+
+        // Handle Button Visibility
+        if (currentVisibleLimit >= total) {
+            btnMore.style.display = "none";
+            btnLess.style.display = "inline-block";
+        } else {
+            btnMore.style.display = "inline-block";
+            btnLess.style.display = "none";
+        }
+
+        // Reset limit if they clicked 'less'
+        if (action === 'less') {
+            btnMore.style.display = "inline-block";
+            btnLess.style.display = "none";
+        }
+    }
+
+    // Submit to API
+    async function modifyPosition(event) {
+        event.preventDefault();
+        console.log("Saving...");
+
+        showLoading("Modifying Position...");
+
+        const formData = new FormData(event.target);
+
+        const formEntries = Object.fromEntries(
+            // Array.from(formData.entries()).filter(([key, value]) => value !== "")
+            Array.from(formData.entries())
+        );
+
+        // Load in the supervisors from the variable
+        formEntries.supervisors = SUPS;
+
+        // Delete the input from the form that does not exist in the DB
+        delete formEntries.supervisor;
+
+        // Send the data to the backend endpoint
+        let endpoint = "/ems/api/position/{{ position.uid }}/modify";
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+            ...formEntries,
+        };
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        // Check if it was successful
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", "Position successfully modified."); // Safe so we can display after reload
+            window.location.reload();
+        } else {
+            // Alert of the error
+            console.log("Modifying the position failed!");
+
+            try {
+                const data = await response.json();
+                const message = data.error || "An unknown error occurred.";
+
+                console.error(message);
+                hideLoading();
+                await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            } catch (err) {
+                const fallback = await response.text();
+                hideLoading();
+                await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+            }
+        }
+    }
+
+    async function archivePosition() {
+        console.log("Archiving...");
+
+        result = await showButtonAlert(
+            header="Archive Position?", 
+            body="Are you sure you want to archive this position? This action is reversible if you make a mistake.", 
+            alertButtonText="Yes, archive", 
+            cancelButtonText="Cancel"
+        )
+
+        if (!result) {
+            hideLoading();
+            return;
+        }
+
+        showLoading("Modifying Position...");
+
+        // Send the data to the backend endpoint
+        let endpoint = "/ems/api/position/{{ position.uid }}/archive";
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        // Check if it was successful
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", `"{{ position.title }} ({{ position.brand }})" successfully archived.`); // Safe so we can display after reload
+            window.location.reload();
+        } else {
+            // Alert of the error
+            console.log("Archiving the position failed!");
+
+            try {
+                const data = await response.json();
+                const message = data.error || "An unknown error occurred.";
+
+                console.error(message);
+                hideLoading();
+                await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            } catch (err) {
+                const fallback = await response.text();
+                hideLoading();
+                await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+            }
+        }
+    }
+
+    async function deletePosition() {
+        console.log("Deleting...");
+
+        result = await showButtonAlert(
+            header="WARNING: Delete Position?", 
+            body="Are you sure you want to permanently delete this position? \
+            This action cannot be undone.\n\nIf the position no longer exists, \
+            archive it instead.", 
+            alertButtonText="Yes, permanently delete", 
+            cancelButtonText="Cancel"
+        )
+
+        if (!result) {
+            hideLoading();
+            return;
+        }
+
+        showLoading("Deleting Position...");
+
+        // Send the data to the backend endpoint
+        let endpoint = "/ems/api/position/{{ position.uid }}/delete";
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        // Check if it was successful
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", `"{{ position.title }} ({{ position.brand }})" successfully deleted.`); // Save so we can display after reload
+            window.location.assign("/ems/positions");
+        } else {
+            // Alert of the error
+            console.log("Archiving the position failed!");
+
+            try {
+                const data = await response.json();
+                const message = data.error || "An unknown error occurred.";
+
+                console.error(message);
+                hideLoading();
+                await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            } catch (err) {
+                const fallback = await response.text();
+                hideLoading();
+                await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+            }
+        }
+    }
+
+    async function restorePosition() {
+        console.log("Restoring...");
+
+        showLoading("Restoring Position...");
+
+        // Send the data to the backend endpoint
+        let endpoint = "/ems/api/position/{{ position.uid }}/restore";
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+        };
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        // Check if it was successful
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", `"{{ position.title }} ({{ position.brand }})" successfully restored.`); // Save so we can display after reload
+            window.location.reload();
+        } else {
+            // Alert of the error
+            console.log("Restoring the position failed!");
+
+            try {
+                const data = await response.json();
+                const message = data.error || "An unknown error occurred.";
+
+                console.error(message);
+                hideLoading();
+                await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            } catch (err) {
+                const fallback = await response.text();
+                hideLoading();
+                await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+            }
+        }
+    }
+</script>
+
+{% endblock %}

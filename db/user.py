@@ -1,23 +1,44 @@
-# Stores information about a user.
+"""
+Stores information about a user.
 
-# Created
-# Last modified Oct. 5, 2025
+Created
+Last modified Feb. 11, 2026
+"""
 
 from flask_login import UserMixin
 from google.cloud import ndb
+from datetime import datetime
 from zoneinfo import ZoneInfo
+import datetime
 
 from . import client
 
 
 class User(ndb.Model):
+    #
+    uid = ndb.ComputedProperty(
+        lambda self: self.key.id() if self.key else None, indexed=False
+    )
+    #
     sub = ndb.StringProperty()
+    # Full name
     name = ndb.StringProperty()
+    # IMC email address
     email = ndb.StringProperty()
+    # Google profile photo link
     picture = ndb.StringProperty()
+    # Google Groups the user is in
     groups = ndb.JsonProperty()
-    last_edited = ndb.DateTimeProperty()
+    # Time the user last copy edited a story (DI)
+    last_edited = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
+    # Time the user last logged into the IMC console
+    last_login = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
+    # ID's of favorite tools to display on the index page
     fav_tools = ndb.IntegerProperty(repeated=True)
+    ask_oauth_access_token = ndb.TextProperty()
+    ask_oauth_refresh_token = ndb.TextProperty()
+    ask_oauth_expiry = ndb.DateTimeProperty()
+    query_history = ndb.DateTimeProperty(repeated=True)
 
 
 class LoginUser(UserMixin):
@@ -30,9 +51,14 @@ class LoginUser(UserMixin):
         self.groups = db_user.groups
         self.fav_tools = db_user.fav_tools
         self.last_edited = db_user.last_edited
+        self.query_history = db_user.query_history
 
 
-def add_user(sub, name, email, picture=None, groups=[], last_edited=None):
+def add_user(
+    sub, name, email, picture=None, groups=[], last_edited=None, last_login=None
+):
+    from db.employee_management import tie_employee_to_user
+
     with client.context():
         user = User.query().filter(User.email == email).get()
         if user is not None:
@@ -42,6 +68,7 @@ def add_user(sub, name, email, picture=None, groups=[], last_edited=None):
             user.picture = picture
             user.groups = groups
             user.last_edited = last_edited
+            user.last_login = last_login
         else:
             user = User(
                 sub=sub,
@@ -50,14 +77,29 @@ def add_user(sub, name, email, picture=None, groups=[], last_edited=None):
                 picture=picture,
                 groups=groups,
                 fav_tools=[],
+                query_history=[],
                 last_edited=last_edited,
+                last_login=last_login,
             )
         user.put()
+        tie_employee_to_user(user_uid=user.uid)
     return LoginUser(user)
 
+#Update a users query history, used for knwoledge slackbot to keep track of how many queries a user has made in the past 24 hours
+def update_user_entity(email, data):
+    with client.context():
+        user = User.query().filter(User.email == email).get()
+        if user is not None:
+            for key, value in data.items():
+                setattr(user, key, value)
+            user.put()
+            return True
+    return False
 
 # Update either a user's name, email or picture that already exists in the database
-def update_user(name, email, picture):
+def update_user(name, email, picture, last_login=None):
+    from db.employee_management import tie_employee_to_user
+
     with client.context():
         user = User.query().filter(User.email == email).get()
         if user is not None:
@@ -67,7 +109,9 @@ def update_user(name, email, picture):
                 user.email = email
             if picture is not None:
                 user.picture = picture
+            user.last_login = last_login or datetime.now(ZoneInfo("America/Chicago"))
             user.put()
+            tie_employee_to_user(user_uid=user.uid)
     return LoginUser(user)
 
 
@@ -81,10 +125,43 @@ def get_user(email):
     return LoginUser(user)
 
 
+def get_user_entity(email):
+    if email is None:
+        return None
+    with client.context():
+        user = User.query().filter(User.email == email).get()
+    return user
+
+
 def get_all_users():
     with client.context():
-        users = [user.to_dict() for user in User.query().fetch()]
+        users = []
+        for user in User.query().fetch():
+            user_dict = user.to_dict()
+            user_dict.pop("ask_oauth_access_token", None)
+            user_dict.pop("ask_oauth_refresh_token", None)
+            user_dict.pop("ask_oauth_expiry", None)
+            users.append(user_dict)
     return users
+
+
+def set_user_ask_oauth_tokens(
+    email, access_token=None, refresh_token=None, expiry=None
+):
+    if email is None:
+        return None
+    with client.context():
+        user = User.query().filter(User.email == email).get()
+        if user is None:
+            return None
+        if access_token is not None:
+            user.ask_oauth_access_token = access_token
+        if refresh_token is not None:
+            user.ask_oauth_refresh_token = refresh_token
+        if expiry is not None:
+            user.ask_oauth_expiry = expiry
+        user.put()
+    return user
 
 
 def get_user_name(email: str):
@@ -156,3 +233,41 @@ def get_user_favorite_tools(email):
             return user.fav_tools
         else:
             return False
+
+def check_and_log_query(email, limit=10, hours=24):
+    with client.context():
+        user = User.query().filter(User.email == email).get()
+        if user is None:
+            return False
+
+        now = datetime.datetime.now()
+        cutoff = now - datetime.timedelta(hours=hours)
+        current_history = user.query_history if user.query_history else []
+        recent_queries = [t for t in current_history if t > cutoff]
+
+        if len(recent_queries) >= limit:
+            return False
+        
+        recent_queries.append(now)
+        user.query_history = recent_queries
+        user.put()
+        return True
+
+def get_user_profile_photo(uid):
+    """
+    Returns the profile photo URL of the user with the given UID.
+
+    Arguments:
+        `uid` (`int`): The UID of the user.
+
+    Returns:
+        `str | None`: The profile photo URL of the user, or `None` if the user is not found.
+
+    """
+    with client.context():
+        user = User.get_by_id(uid)
+
+        if user is not None:
+            return user.picture
+        else:
+            return None

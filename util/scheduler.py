@@ -129,5 +129,4 @@ def scheduler_to_json(scheduler):
 
 
 def db_to_scheduler(scheduler, key):
-    print(key)
     scheduler.import_from_db(key)

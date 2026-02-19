@@ -1,5 +1,5 @@
 .page-content {
-    margin-top: 5rem; /* Leave room for the sticky header on each page + a margin */
+    margin-top: 4.25rem; /* Leave room for the sticky header on each page + a margin */
     margin-bottom: 1rem;
     width: 80%;
     margin-left: auto;
@@ -33,6 +33,7 @@
 .inner-container {
     border-radius: var(--main-border-radius);
     background-color: var(--main-bg-color);
+    box-shadow: var(--input-box-shadow);
     padding: 0.5rem;
     width: 100%
 }
@@ -74,6 +75,7 @@
     align-items: center;
 
     border: 0.15rem solid var(--main-bg-color);
+    box-shadow: var(--input-box-shadow);
 
     transition: border-color .15s ease-in-out;
 }

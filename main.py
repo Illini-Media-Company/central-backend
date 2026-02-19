@@ -1,13 +1,24 @@
+"""
+
+Last modified Feb. 11, 2026
+"""
+
 import json
 import logging
+import sys
 import os
-from threading import Thread
 import urllib
 import atexit
-from datetime import datetime
 
 from db import client as dbclient
 
+import requests
+from threading import Thread
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+from talisman import Talisman
+from oauthlib.oauth2 import WebApplicationClient
+from apscheduler.triggers.date import DateTrigger
 from flask import (
     Flask,
     redirect,
@@ -23,54 +34,77 @@ from flask_login import (
     login_user,
     logout_user,
 )
-from oauthlib.oauth2 import WebApplicationClient
-import requests
-from talisman import Talisman
 
-# Local imports
 import constants
 from constants import (
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
     TOOLS_ADMIN_ACCESS_GROUPS,
 )
+
+################################################################################
+# DB IMPORTS ###################################################################
+
+from db import client as dbclient
 from db.user import (
     add_user,
     update_user,
     get_user,
+    get_all_users,
     get_user_favorite_tools,
     get_user_name,
+    set_user_ask_oauth_tokens,
 )
-from util.security import (
-    csrf,
-    get_google_provider_cfg,
-    is_user_in_group,
-    update_groups,
-)
-
 from db.all_tools import (
     get_all_tools,
     get_all_tools_restricted,
     get_tool_by_uid,
 )
-
-from util.map_point import remove_point
 from db.map_point import get_all_points
-from util.gcal import get_allstaff_events
-
 from db.json_store import json_store_set
+from db.employee_management import initialize_ems_settings
 
+################################################################################
+# UTIL IMPORTS #################################################################
+
+from util.security import (
+    csrf,
+    get_google_provider_cfg,
+    is_user_in_group,
+    update_groups,
+    restrict_to,
+)
+from util.map_point import remove_point
+from util.gcal import get_allstaff_events
 from util.slackbots.copy_editing import scheduler as copy_scheduler
 from util.map_point import scheduler as map_scheduler
 from util.rss_social_listener import _rss_scheduler
 from util.scheduler import scheduler_to_json, db_to_scheduler
 from util.changelog_parser import parse_changelog
-from apscheduler.triggers.date import DateTrigger
-
 from util.slackbots._slackbot import start_slack
+from util.helpers.email_to_slackid import email_to_slackid
+from util.all_tools import format_restricted_groups
+import util.rss_social_listener
 import util.slackbots.employee_agreement_slackbot
 import util.slackbots.photo_request
 import util.slackbots.socials_slackbot
+import util.slackbots.knowledge_slackbot
+from util.helpers.ap_datetime import (
+    ap_datetime,
+    ap_date,
+    ap_time,
+    ap_daydate,
+    ap_daydatetime,
+    days_since,
+    months_since,
+    years_since,
+    time_since,
+    time_between,
+)
+
+################################################################################
+# VIEWS IMPORTS #################################################################
+
 from views.all_tools import tools_routes
 from views.content_doc import content_doc_routes
 from views.constant_contact import constant_contact_routes
@@ -89,19 +123,18 @@ from views.employee_agreement import employee_agreement_routes
 from views.rotate_tv import rotate_tv_routes
 from views.photo_request import photo_request_routes
 from views.di_social_poster import di_social_poster_routes
-import util.rss_social_listener
+from views.employee_management import ems_routes
+from views.employee_management import get_ems_brand_image_url
 
-from util.helpers.ap_datetime import (
-    ap_datetime,
-    ap_date,
-    ap_time,
-    ap_daydate,
-    ap_daydatetime,
-)
-from util.helpers.email_to_slackid import email_to_slackid
+################################################################################
+############################# IMPORTS COMPLETE #################################
+################################################################################
 
-from util.all_tools import format_restricted_groups
+# CONFIGURE LOGGING
+LOG_FORMAT = "%(levelname)s | %(filename)s:%(lineno)d | %(funcName)s() | %(message)s"
+logging.basicConfig(stream=sys.stdout, level=logging.INFO, format=LOG_FORMAT)
 
+logging.info("Initializing Flask...")
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 
@@ -111,8 +144,9 @@ app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 #
 Talisman(app, content_security_policy=[])
 csrf.init_app(app)
+logging.info("Done initializing Flask.")
 
-print("[main] Registering blueprints...")
+logging.info("Registering blueprints...")
 app.register_blueprint(tools_routes)
 app.register_blueprint(content_doc_routes)
 app.register_blueprint(constant_contact_routes)
@@ -131,21 +165,22 @@ app.register_blueprint(employee_agreement_routes)
 app.register_blueprint(rotate_tv_routes)
 app.register_blueprint(photo_request_routes)
 app.register_blueprint(di_social_poster_routes)
-print("[main] Done registering blueprints.")
+app.register_blueprint(ems_routes)
+logging.info("Done registering blueprints.")
 
-print("[main] Initializing login manager...")
+logging.info("Initializing login manager...")
 login_manager = LoginManager()
 login_manager.init_app(app)
-print("[main] Initialized login manager.")
+logging.info("Initialized login manager.")
 
 client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
-print("[main] Starting Slack app...")
+logging.info("Starting Slack app...")
 start_slack(app)
-print("[main] Slack app started.")
+logging.info("Slack app started.")
 
 # Register filters with Jinja
-print("[main] Registering Jinja filters...")
+logging.info("Registering Jinja filters...")
 app.jinja_env.filters["ap_datetime"] = ap_datetime
 app.jinja_env.filters["ap_date"] = ap_date
 app.jinja_env.filters["ap_time"] = ap_time
@@ -154,7 +189,13 @@ app.jinja_env.filters["ap_daydatetime"] = ap_daydatetime
 app.jinja_env.filters["email_to_slackid"] = email_to_slackid
 app.jinja_env.filters["format_restricted_groups"] = format_restricted_groups
 app.jinja_env.filters["to_user_name"] = get_user_name
-print("[main] Done registering Jinja filters.")
+app.jinja_env.filters["days_since"] = days_since
+app.jinja_env.filters["months_since"] = months_since
+app.jinja_env.filters["years_since"] = years_since
+app.jinja_env.filters["time_since"] = time_since
+app.jinja_env.filters["time_between"] = time_between
+app.jinja_env.filters["get_ems_brand_image_url"] = get_ems_brand_image_url
+logging.info("Done registering Jinja filters.")
 
 
 @atexit.register
@@ -165,6 +206,68 @@ def log_scheduler():
     json_store_set("MAP_JOBS", maps)
     json_store_set("COPY_JOBS", copy)
     json_store_set("RSS_JOBS", rss)
+
+
+################################################################################
+############################ BEGIN ERROR HANDLERS ##############################
+################################################################################
+
+
+@app.errorhandler(404)
+def page_not_found(e):
+    """
+    Error handler for 404 errors (Page not found). Can be manually shown through an API by calling:
+    `abort(404, description="Your string here")`
+    """
+    # Use the string provided from abort(), otherwise default
+    default_error = "That link is not valid! Please check that it is correct then try again. If the issue persists, notify a developer."
+    generic_default = "The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again."
+
+    error_message = (
+        e.description
+        if hasattr(e, "description") and e.description != generic_default
+        else default_error
+    )
+
+    return (
+        render_template(
+            "error.html",
+            code="404",
+            error=error_message,
+        ),
+        404,
+    )
+
+
+@app.errorhandler(403)
+def access_forbidden(e):
+    """
+    Error handler for 403 errors (Forbidden). Can be manually shown through an API by calling:
+    `abort(403, description="Your string here")`
+    """
+    # Use the string provided from abort(), otherwise default
+    default_error = "You do not have permission to access this resource. If you believe this is an error, please contact a system administrator."
+    generic_default = "You don't have the permission to access the requested resource. It is either read-protected or not readable by the server."
+
+    error_message = (
+        e.description
+        if hasattr(e, "description") and e.description != generic_default
+        else default_error
+    )
+
+    return (
+        render_template(
+            "error.html",
+            code="403",
+            error=error_message,
+        ),
+        403,
+    )
+
+
+################################################################################
+############################# END ERROR HANDLERS ###############################
+################################################################################
 
 
 @app.before_request
@@ -290,8 +393,16 @@ def login():
     request_uri = client.prepare_request_uri(
         authorization_endpoint,
         redirect_uri=request.base_url + "/callback",
-        scope=["openid", "email", "profile"],
+        scope=[
+            "openid",
+            "email",
+            "profile",
+            "https://www.googleapis.com/auth/cloud-platform",
+        ],
         state=state,
+        access_type="offline",
+        include_granted_scopes="true",
+        prompt="consent",
     )
     return redirect(request_uri)
 
@@ -322,7 +433,8 @@ def callback():
     )
 
     # Parse the tokens!
-    client.parse_request_body_response(json.dumps(token_response.json()))
+    token_payload = token_response.json()
+    client.parse_request_body_response(json.dumps(token_payload))
 
     # Now that you have tokens (yay) let's find and hit the URL
     # from Google that gives you the user's profile information,
@@ -340,6 +452,14 @@ def callback():
         user_name = userinfo_response["name"]
         user_picture = userinfo_response["picture"]
         user_domain = userinfo_response.get("hd", "")
+        access_token = token_payload.get("access_token")
+        refresh_token = token_payload.get("refresh_token")
+        expires_in = token_payload.get("expires_in")
+        expiry = (
+            datetime.utcnow() + timedelta(seconds=int(expires_in))
+            if expires_in is not None
+            else None
+        )
 
         # Create or update user in db
         user = get_user(user_email)
@@ -351,6 +471,7 @@ def callback():
                     name=user_name,
                     email=user_email,
                     picture=user_picture,
+                    last_login=datetime.now(ZoneInfo("America/Chicago")),
                     groups=[],
                 )
             else:
@@ -365,6 +486,7 @@ def callback():
                 name=user_name,
                 email=user_email,
                 picture=user_picture,
+                last_login=datetime.now(ZoneInfo("America/Chicago")),
                 groups=[],
             )
         # Otherwise, make sure we have the most recent name and email
@@ -373,6 +495,15 @@ def callback():
                 name=user_name,
                 email=user_email,
                 picture=user_picture,
+                last_login=datetime.now(ZoneInfo("America/Chicago")),
+            )
+
+        if access_token:
+            set_user_ask_oauth_tokens(
+                email=user_email,
+                access_token=access_token,
+                refresh_token=refresh_token,
+                expiry=expiry,
             )
 
         # Create new thread to sync user's group memberships
@@ -393,6 +524,14 @@ def callback():
         return redirect(url_for("index"))
     else:
         return "User email not available or not verified by Google.", 400
+
+
+@app.route("/all-users")
+@login_required
+@restrict_to(TOOLS_ADMIN_ACCESS_GROUPS)
+def all_users():
+    users = get_all_users()
+    return render_template("all_users.html", users=users)
 
 
 @app.route("/url-history")
@@ -434,6 +573,10 @@ def yurr():
     return render_template("yurr.html")
 
 
+logging.info("Initializing EMS settings...")
+initialize_ems_settings()
+logging.info("Done initializing EMS settings.")
+
 if __name__ == "__main__":
     if os.environ.get("DATASTORE_EMULATOR_HOST") is None:
         logging.fatal("DATASTORE_EMULATOR_HOST environment variable must be set!")
@@ -441,9 +584,25 @@ if __name__ == "__main__":
     app.jinja_env.auto_reload = True
     app.config["TEMPLATES_AUTO_RELOAD"] = True
     try:
+        logging.info("Loading schedulers...")
         db_to_scheduler(map_scheduler, "MAP_JOBS")
         db_to_scheduler(copy_scheduler, "COPY_JOBS")
+        logging.info("Done loading schedulers.")
     except Exception as e:
-        print(f"{e} no jobs to import")
-    print("[main] Starting Flask app...")
-    app.run(port=5001, ssl_context="adhoc")
+        logging.exception(f"[scheduling] No logs to import: {str(e)}")
+
+    development_mode = (
+        os.environ.get("FLASK_DEBUG_POTENTIAL_SECURITY_RISK_DEV_ONLY", "False").lower()
+        == "true"
+    )
+    if development_mode:
+        logging.warning(
+            "Flask will run in Debug Mode, which can potentially pose security risks to your machine."
+        )
+        logging.warning("Debug mode should only be run on a development server.")
+        logging.warning(
+            "Under no circumstances should you expose your local server to the internet."
+        )
+
+    logging.info("Starting Flask application.")
+    app.run(port=5001, ssl_context="adhoc", debug=development_mode)

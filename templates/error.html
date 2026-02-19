@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {{ code }} Error
+{% endblock %}
+
+{% block extra_head %}
+    <style>
+        .main-container {
+            display: flex;
+            height: 100%;
+            justify-content: center;
+        }
+
+        #main-error-container {
+            height: 100%;
+            max-width: 60%;
+            align-content: center;
+            text-align: center;
+        }
+
+        #main-error-image {
+            color: var(--main-accent-color);
+            margin-bottom: 2rem;
+        }
+
+        #main-error-code {
+            width: auto;
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        h1 {
+            font-size: 8rem;
+        }
+
+        #main-error-header {
+            width: auto;
+            text-align: center;
+        }
+
+        #main-error-body {
+            width: auto;
+            text-align: center;
+        }
+
+        @media (max-width: 480px) {
+            #main-error-container {
+                max-width: 90%;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <div id="main-error-container">
+        <h1 id="main-error-code"><i class="imc imc-mark" id="main-error-image"></i> {{ code }}</h1>
+        <h2 id="main-error-header">Uh oh! There was an error:</h2>
+        <br>
+        <p id="main-error-body">{{ error }}</p>
+        <a href="javascript:window.history.back()" style="text-decoration: none;">
+            <button class="button-primary">
+                Go Back
+            </button>
+        </a>
+        <a href="{{ url_for('index') }}" style="text-decoration: none;">
+            <button class="button-primary">
+                Return Home
+            </button>
+        </a>
+    </div>
+</div>
+{% endblock %}

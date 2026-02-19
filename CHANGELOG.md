@@ -1,5 +1,41 @@
 # Changelog
 
+## [2.5.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.4.1...v2.5.0) (2026-02-17)
+
+
+### Features
+
+* [EMS] Account creation failure messages now send as broadcast and includes error ([e9fd74e](https://github.com/Illini-Media-Company/central-backend/commit/e9fd74e6a043df6f1111661e3834214fdc0a5f2c))
+* [EMS] Account creation failure messages now send as broadcast and includes error ([681e6af](https://github.com/Illini-Media-Company/central-backend/commit/681e6af507ef1efa53dad1b37199cd19aa04eeba))
+* [EMS] Add onboarding override button ([d57807f](https://github.com/Illini-Media-Company/central-backend/commit/d57807fde705ac1a2e0c7700738aaee638f48f41))
+* Google Cloud Console version numbers now match application version ([b43ce00](https://github.com/Illini-Media-Company/central-backend/commit/b43ce00e7211cd33553b6ffab913978edc56cb10))
+* Minor global style updates ([255dbb4](https://github.com/Illini-Media-Company/central-backend/commit/255dbb409f41e6678e9e98c1f3ed8db7754b2ce5))
+
+
+### Bug Fixes
+
+* [EMS] Emails all stored in lowercase and NetID is properly validated ([4228d0e](https://github.com/Illini-Media-Company/central-backend/commit/4228d0ed3fcccce4607437cb294a271cbebf60a8))
+* [EMS] Onboarded users can reuse existing link to re-access next steps. ([49d5d1f](https://github.com/Illini-Media-Company/central-backend/commit/49d5d1f4862bcab840f388c69b422a58d9cb105b))
+* [EMS] Positions with multiple Slack channels now display properly ([a2777e1](https://github.com/Illini-Media-Company/central-backend/commit/a2777e15fd1fce87fb44ef61a3b50a4e6bf82eed))
+* Resolve internal server error for /all-users ([9a19917](https://github.com/Illini-Media-Company/central-backend/commit/9a199173097fd241cd06c834b35f06648efec6ff))
+
+## [2.4.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.4.0...v2.4.1) (2026-02-15)
+
+
+### Bug Fixes
+
+* All users page properly displays correct profile photos ([7815189](https://github.com/Illini-Media-Company/central-backend/commit/78151893ee797edcfdf9073c6ce99f76751f283e))
+* Employees can view and modify their own EmployeeCard at /ems/employee/view/me ([9cfee48](https://github.com/Illini-Media-Company/central-backend/commit/9cfee4826baa5a442aac4cfdefcda9fd492a469a))
+* EMS bulk employee upload now requires less fields ([dc1e348](https://github.com/Illini-Media-Company/central-backend/commit/dc1e348a27b2981183972b883372606144c356c5))
+
+## [2.4.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.3.0...v2.4.0) (2026-02-13)
+
+
+### Features
+
+* Add Employee Management System (EMS) ([#65](https://github.com/Illini-Media-Company/central-backend/issues/65)) ([776ebe9](https://github.com/Illini-Media-Company/central-backend/commit/776ebe9103ec76f03711fe92740105838b9de721))
+* Add Google Analytics tracking ([ee2a3b3](https://github.com/Illini-Media-Company/central-backend/commit/ee2a3b36451fde24813b84799596c206808cb0d5))
+
 ## [2.3.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.2.2...v2.3.0) (2025-11-26)
 
 
