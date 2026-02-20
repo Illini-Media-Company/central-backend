@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.6.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.5.0...v2.6.0) (2026-02-20)
+
+
+### Features
+
+* [EMS] Add ability to search employees by phone number and ZIP code ([dee090f](https://github.com/Illini-Media-Company/central-backend/commit/dee090f4759f26d3fff5a0883dfe4ad4924d6189))
+* [EMS] All positions view shows number of employees who hold position ([70180bd](https://github.com/Illini-Media-Company/central-backend/commit/70180bda9a8a6296e138a89d31bd9d0fbfc210b5))
+* [Food Truck Tracker] Add ability to have locations/times repeat weekly ([#67](https://github.com/Illini-Media-Company/central-backend/issues/67)) ([af59012](https://github.com/Illini-Media-Company/central-backend/commit/af590123f77c70b3cec118d9719aa64807ecf81d))
+* [ILLordle] Update general styling ([29e5330](https://github.com/Illini-Media-Company/central-backend/commit/29e5330fc39707edbffaebe8a43f5ae2d42da9ee))
+* [TV-Display] Add Morrow Plots Cam to display options ([1e2da66](https://github.com/Illini-Media-Company/central-backend/commit/1e2da662ee80a19b5211175b16d3f2a5830e5df0))
+* Add /ask command for Scout to search with Vertex AI ([#70](https://github.com/Illini-Media-Company/central-backend/issues/70)) ([dc85b1a](https://github.com/Illini-Media-Company/central-backend/commit/dc85b1aee22c83afe3b539fe86c69e82ab63e0fe))
+* Add automated DI socials posting notifications ([#72](https://github.com/Illini-Media-Company/central-backend/issues/72)) ([b02dc21](https://github.com/Illini-Media-Company/central-backend/commit/b02dc2194a64b9a5af28426dd325228872724726))
+
+
+### Bug Fixes
+
+* [EMS] Allow helpdesk@illinimedia.com to access admin features ([54d71dc](https://github.com/Illini-Media-Company/central-backend/commit/54d71dc62a67784209528fb9b868da8dd04411ce))
+* [EMS] Automated onboarding messages from Scout no longer have line breaks ([0ef0de9](https://github.com/Illini-Media-Company/central-backend/commit/0ef0de92d9f905dfecf353cd10c0ca85ef309fb2))
+* [EMS] Fix issue with Slack channels displaying improperly on position pages ([2baf6cd](https://github.com/Illini-Media-Company/central-backend/commit/2baf6cdd4818781d196091b0a4ab75a20dd88758))
+* [EMS] Fix issue with Slack channels displaying improperly on position pages ([6b83442](https://github.com/Illini-Media-Company/central-backend/commit/6b8344288a3f5520e3a5e15d55768110b6db0933))
+* [EMS] Fix sorting by user account on All Employees page ([fd2f69e](https://github.com/Illini-Media-Company/central-backend/commit/fd2f69eec3e47b721800965e8febaa6c16015fc3))
+* [EMS] Update body copy for onboarding process ([d115865](https://github.com/Illini-Media-Company/central-backend/commit/d115865c513f1bd4fd00be4c72d2f040417728cd))
+* Mini Crossword admin page no longer displays error on success ([c98c8ed](https://github.com/Illini-Media-Company/central-backend/commit/c98c8ed153a2950d1d2c71fef72f7305e3976214))
+
 ## [2.5.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.4.1...v2.5.0) (2026-02-17)
 
 
