@@ -378,6 +378,10 @@
                         <span><i class="bi bi-caret-up"></i></span> 
                         Title
                     </th>
+                    <th onclick="handleSort(this, 'current_employee_count')">
+                        <span><i class="bi bi-caret-up"></i></span> 
+                        # Employees
+                    </th>
                     <th onclick="handleSort(this, 'pay_status')">
                         <span><i class="bi bi-caret-up"></i></span>
                         Pay Status
@@ -470,6 +474,9 @@
                     ${pos.title}
                     <br>
                     (${pos.brand})
+                </td>
+                <td>
+                    ${pos.current_employee_count}
                 </td>
                 <td>
                     ${pos.pay_status}
