@@ -25,7 +25,7 @@ Last modified Nov. 16, 2025
 <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: baseline;">
     <div style="width: 6rem;">
         {% if page > 1 %}
-            <a href="?{{ param }}={{ page - 1 }}" class="button-secondary">
+            <a href="?{{ param }}={{ page - 1 }}" class="button-bg-color" style="text-decoration: none;">
                 <i class="bi bi-arrow-left-short"></i>Prev.
             </a>
         {% endif %}
@@ -37,7 +37,7 @@ Last modified Nov. 16, 2025
 
     <div style="width: 6rem; text-align: right;">
         {% if page * per_page < total %}
-            <a href="?{{ param }}={{ page + 1 }}" class="button-secondary">
+            <a href="?{{ param }}={{ page + 1 }}" class="button-bg-color" style="text-decoration: none;">
                 Next<i class="bi bi-arrow-right-short"></i>
             </a>
         {% endif %}

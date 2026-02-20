@@ -78,6 +78,7 @@ from util.map_point import remove_point
 from util.gcal import get_allstaff_events
 from util.slackbots.copy_editing import scheduler as copy_scheduler
 from util.map_point import scheduler as map_scheduler
+from util.rss_social_listener import rss_scheduler
 from util.scheduler import scheduler_to_json, db_to_scheduler
 from util.changelog_parser import parse_changelog
 from util.slackbots._slackbot import start_slack
@@ -85,6 +86,7 @@ from util.helpers.email_to_slackid import email_to_slackid
 from util.all_tools import format_restricted_groups
 import util.slackbots.employee_agreement_slackbot
 import util.slackbots.photo_request
+import util.slackbots.socials_slackbot
 import util.slackbots.knowledge_slackbot
 from util.helpers.ap_datetime import (
     ap_datetime,
@@ -119,6 +121,7 @@ from views.food_truck import food_truck_routes
 from views.employee_agreement import employee_agreement_routes
 from views.rotate_tv import rotate_tv_routes
 from views.photo_request import photo_request_routes
+from views.di_social_poster import di_social_poster_routes
 from views.employee_management import ems_routes
 from views.employee_management import get_ems_brand_image_url
 
@@ -160,6 +163,7 @@ app.register_blueprint(food_truck_routes)
 app.register_blueprint(employee_agreement_routes)
 app.register_blueprint(rotate_tv_routes)
 app.register_blueprint(photo_request_routes)
+app.register_blueprint(di_social_poster_routes)
 app.register_blueprint(ems_routes)
 logging.info("Done registering blueprints.")
 
@@ -197,8 +201,10 @@ logging.info("Done registering Jinja filters.")
 def log_scheduler():
     maps = scheduler_to_json(map_scheduler)
     copy = scheduler_to_json(copy_scheduler)
+    rss = scheduler_to_json(rss_scheduler)
     json_store_set("MAP_JOBS", maps)
     json_store_set("COPY_JOBS", copy)
+    json_store_set("RSS_JOBS", rss)
 
 
 ################################################################################

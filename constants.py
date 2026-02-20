@@ -295,4 +295,14 @@ COURTESY_REQUESTS_CHANNEL_ID = (
     "C09R16GJZBP" if ENV == "dev" else "C09SG769Y6L"
 )  # #imc_courtesy-photos — Channel that all courtesy photo requests get sent to
 
+SOCIAL_MEDIA_POSTS_CHANNEL_ID = (
+    "C0AEFSQT5JA" if ENV == "dev" else "C068R224L10"
+)  # Set prod channel ID in env/constants when known
+
+# Google Calendar ID for social media shift (to tag person on shift).
+SOCIAL_MEDIA_GCAL_ID = (
+    "d196066442984ade1c02d80f844d925c1030a7572ea79cbdc59fc5e84fd3c74e@group.calendar.google.com"
+    if ENV == "dev"
+    else "c_d8a24ec91409fb265af98492cb51c1a19b396c15adc55ed4cad9a8c10f50633a@group.calendar.google.com"
+)
 ONBOARDING_EMAIL = "onboarding@illinimedia.com"
