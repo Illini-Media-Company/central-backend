@@ -9,7 +9,7 @@ Last modified by Aryaa Rathi on Feb 19, 2026
 """
 
 from __future__ import annotations
-
+import logging
 import json
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
@@ -25,10 +25,20 @@ from constants import (
 )
 from util.security import get_creds
 from util.slackbots._slackbot import app
-from db.socials_poster import client as db_client
-from db.socials_poster import DiSocialStory
-from db.socials_poster import update_social
+from util.slackbots.general import (
+    _lookup_user_id_by_email,
+    dm_channel_by_id,
+    reply_to_slack_message,
+)
+from db.socials_poster import (
+    update_social,
+    update_slack_details,
+    get_story_by_slack_message,
+)
 from util.helpers.ap_datetime import ap_datetime
+from util.social_posts import post_to_reddit, post_to_twitter
+
+logger = logging.getLogger(__name__)
 
 # Map Slack reaction names to our platform names (for update_social)
 # Slack emoji names (without colons; from reaction_added event) → platform for DB
@@ -37,8 +47,6 @@ REACTION_TO_PLATFORM = {
     "facebook": "Facebook",
     "reddit": "Reddit",
     "threads": "Threads",
-    "twitter": "X",
-    "x": "X",
     "twitter-x": "X",
 }
 
@@ -57,7 +65,7 @@ def get_socials_on_shift_email() -> Optional[str]:
         creds = get_creds(SOCIALS_GCAL_SCOPES)
         gc = GoogleCalendar(SOCIAL_MEDIA_GCAL_ID, credentials=creds)
     except Exception as e:
-        print(f"[socials_slackbot] get_creds/GoogleCalendar failed: {e}")
+        logger.error(f"Failed to get Google Calendar credentials: {str(e)}")
         return None
     current_time = datetime.now(tz=ZoneInfo("America/Chicago"))
     today = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -67,7 +75,7 @@ def get_socials_on_shift_email() -> Optional[str]:
             today, tomorrow, single_events=True, order_by="startTime"
         )
     except Exception as e:
-        print(f"[socials_slackbot] get_events failed: {e}")
+        logger.error(f"Failed to get Google Calendar events: {str(e)}")
         return None
     for event in events:
         if not getattr(event, "attendees", None):
@@ -79,44 +87,13 @@ def get_socials_on_shift_email() -> Optional[str]:
     return None
 
 
-def update_slack_message_ref(
-    url: str, channel_id: str, message_ts: str
-) -> Optional[Dict[str, Any]]:
-    """
-    Save the Slack message timestamp for a story so reactions can be matched later.
-    """
-    with db_client.context():
-        story = DiSocialStory.query().filter(DiSocialStory.story_url == url).get()
-        if story:
-            story.slack_message_ts = message_ts
-            story.put()
-            return story.to_dict()
-    return None
-
-
-def get_story_by_slack_message(
-    channel_id: str, message_ts: str
-) -> Optional[Dict[str, Any]]:
-    """
-    Look up a story by its Slack message timestamp. Channel must match SOCIAL_MEDIA_POSTS_CHANNEL_ID.
-    """
-    if not message_ts or channel_id != SOCIAL_MEDIA_POSTS_CHANNEL_ID:
-        return None
-    with db_client.context():
-        story = (
-            DiSocialStory.query()
-            .filter(DiSocialStory.slack_message_ts == message_ts)
-            .get()
-        )
-        return story.to_dict() if story else None
-
-
 def build_blocks_from_story(
     *,
     story_url: str,
     story_title: str,
     writer_name: Optional[str] = None,
     photographer_name: Optional[str] = None,
+    post_date: Optional[str] = None,
     image_url: Optional[str] = None,
     include_needs_visual_button: bool = False,
     story_url_for_button: Optional[str] = None,
@@ -128,6 +105,8 @@ def build_blocks_from_story(
     Returns (blocks, fallback text for notifications).
     """
     lines = [f"*<{story_url}|{story_title}>*"]
+    if post_date:
+        lines.append(f"Posted to website {post_date}")
     if writer_name:
         lines.append(f"Writer: {writer_name}")
     if photographer_name:
@@ -177,6 +156,7 @@ def build_blocks_from_story(
 
 def post_story_to_social_channel(
     *,
+    post_date: Optional[str] = None,
     story_url: str,
     story_title: str,
     writer_name: Optional[str] = None,
@@ -195,28 +175,29 @@ def post_story_to_social_channel(
     slack_id = None
     if email:
         try:
-            slack_id = app.client.users_lookupByEmail(email=email)["user"]["id"]
+            slack_id = _lookup_user_id_by_email(email)
         except Exception as e:
-            print(f"[socials_slackbot] users_lookupByEmail({email}) failed: {e}")
+            logger.error(f"Failed to look up Slack ID for email {email}: {str(e)}")
     short_text = (
         f"<@{slack_id}> New story: {story_title}"
         if slack_id
         else f"New story: {story_title}"
     )
+    channel_id = None
+    message_ts = None
     try:
-        res = app.client.chat_postMessage(
-            token=SLACK_BOT_TOKEN,
-            channel=SOCIAL_MEDIA_POSTS_CHANNEL_ID,
-            text=short_text,
+        res = dm_channel_by_id(
+            channel_id=SOCIAL_MEDIA_POSTS_CHANNEL_ID, text=short_text, blocks=None
         )
         channel_id = res["channel"]
         message_ts = res["ts"]
     except Exception as e:
-        print(f"[socials_slackbot] chat_postMessage failed: {e}")
+        logger.error(f"Failed to send Slack message: {str(e)}")
         return {"ok": False, "error": str(e)}
 
     # Do not show "Needs Visual" button; if no image, message just has no image.
     thread_blocks, fallback = build_blocks_from_story(
+        post_date=post_date,
         story_url=story_url,
         story_title=story_title,
         writer_name=writer_name,
@@ -228,41 +209,18 @@ def post_story_to_social_channel(
         social_message_ts=None,
     )
     try:
-        app.client.chat_postMessage(
-            token=SLACK_BOT_TOKEN,
-            channel=channel_id,
+        res = reply_to_slack_message(
+            channel_id=channel_id,
             thread_ts=message_ts,
             text=fallback,
             blocks=thread_blocks,
+            reply_broadcast=False,
         )
     except Exception as e:
-        print(f"[socials_slackbot] thread reply failed: {e}")
+        logger.error(f"Failed to send threaded reply: {str(e)}")
 
-    update_slack_message_ref(story_url, channel_id, message_ts)
+    update_slack_details(story_url, message_ts)
     return {"ok": True, "channel": channel_id, "ts": message_ts}
-
-
-def _reply_in_thread(
-    channel_id: str,
-    thread_ts: str,
-    text: str,
-    blocks: Optional[List[Dict[str, Any]]] = None,
-) -> bool:
-    """
-    Reply to a Slack thread with optional Block Kit blocks (e.g. for an image).
-    """
-    try:
-        app.client.chat_postMessage(
-            token=SLACK_BOT_TOKEN,
-            channel=channel_id,
-            thread_ts=thread_ts,
-            text=text,
-            blocks=blocks,
-        )
-        return True
-    except Exception as e:
-        print(f"[socials_slackbot] reply failed: {e}")
-        return False
 
 
 # --- Needs Visual button: send to Photo Editors channel ---
@@ -422,17 +380,18 @@ def _handle_visual_added_modal_submit(ack, body, logger, view):
                 },
                 {"type": "image", "image_url": image_url, "alt_text": "Story visual"},
             ]
-            _reply_in_thread(
-                social_channel_id,
-                social_message_ts,
-                "Visual added by photo team.",
+            reply_to_slack_message(
+                channel_id=social_channel_id,
+                thread_ts=social_message_ts,
+                text="Visual added by photo team.",
                 blocks=blocks,
             )
         else:
-            _reply_in_thread(
-                social_channel_id,
-                social_message_ts,
-                "Visual added by photo team. (No image URL provided.)",
+            reply_to_slack_message(
+                channel_id=social_channel_id,
+                thread_ts=social_message_ts,
+                text="Visual added by photo team. (No image URL provided.)",
+                blocks=None,
             )
     except Exception as e:
         logger.error(f"[social_visual_added_modal] {e}")
@@ -442,48 +401,120 @@ def _handle_visual_added_modal_submit(ack, body, logger, view):
 
 
 @app.event("reaction_added")
-def _on_reaction_added(event, logger):
+def _on_reaction_added(event):
     """
     Handle reaction added event: when someone reacts with a platform emoji (e.g. :instagram:),
     mark that platform as posted in the database and reply with timestamp in thread.
     """
+    logger.debug(f"Reaction added event: {event}")
     try:
         item = event.get("item") or {}
         if item.get("type") != "message":
+            logger.debug("Reaction added to non-message item, ignoring.")
             return
         channel_id = item.get("channel")
         message_ts = item.get("ts")
         reaction = (event.get("reaction") or "").strip().lower()
+        platform = REACTION_TO_PLATFORM.get(reaction)
+        if not platform:
+            logger.debug(
+                f"Reaction '{reaction}' is not a recognized platform emoji, ignoring."
+            )
+            return
         if not channel_id or not message_ts or not reaction:
+            logger.debug(
+                "Missing channel_id, message_ts, or reaction in event, ignoring."
+            )
             return
 
         story = get_story_by_slack_message(channel_id, message_ts)
         if not story:
-            return
-
-        platform = REACTION_TO_PLATFORM.get(reaction)
-        if not platform:
+            logger.debug(
+                f"No story found for message {channel_id}:{message_ts}, ignoring reaction."
+            )
             return
 
         story_url = story.get("story_url")
         if not story_url:
+            logger.debug(
+                f"Story for message {channel_id}:{message_ts} has no URL, cannot update, ignoring."
+            )
             return
 
-        update_social(story_url, platform)
         now = datetime.now(ZoneInfo("America/Chicago"))
         time_str = ap_datetime(now)
-        _reply_in_thread(
-            channel_id,
-            message_ts,
-            f"This was posted to {platform} at {time_str}.",
-        )
+
+        # See if we need to post this to Reddit or X
+        if platform in ["Reddit", "X"]:
+            logger.info(
+                f"Reaction '{reaction}' added to story {story_url}, automatically posting to {platform}"
+            )
+
+            story_name = story.get("story_name")
+            social_url = None
+            if platform == "Reddit":
+                try:
+                    social_url, _ = post_to_reddit(title=story_name, url=story_url)
+                except Exception:
+                    pass
+            elif platform == "X":
+                try:
+                    social_url, _ = post_to_twitter(title=story_name, url=story_url)
+                except Exception:
+                    pass
+
+            if social_url:
+                update_social(story_url, platform)
+
+                # Send Slack message in thread confirming the update
+                reply_to_slack_message(
+                    channel_id=channel_id,
+                    thread_ts=message_ts,
+                    text=f"Automatically posted to {platform} at {time_str}.",
+                    blocks=[
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": f"Automatically posted to <{social_url}|{platform}> at {time_str}.",
+                            },
+                        }
+                    ],
+                )
+            else:
+                logger.error(
+                    f"Failed to automatically post story {story_url} to {platform} after reaction."
+                )
+                reply_to_slack_message(
+                    channel_id=channel_id,
+                    thread_ts=message_ts,
+                    text=f"Failed to automatically post to {platform} at {time_str}.",
+                    blocks=None,
+                )
+
+        # Otherwise just notify that it was posted manually
+        else:
+            logger.info(
+                f"Reaction '{reaction}' added to story {story_url}, marking as posted to {platform}"
+            )
+
+            update_social(story_url, platform)
+
+            # Send Slack message in thread confirming the update
+            reply_to_slack_message(
+                channel_id=channel_id,
+                thread_ts=message_ts,
+                text=f"Posted to {platform} at {time_str}.",
+                blocks=None,
+            )
     except Exception as e:
-        logger.error(f"[socials_slackbot] reaction_added: {e}")
+        logger.error(f"Failed to send reaction added message: {str(e)}")
 
 
 def notify_new_story_from_rss(
     story_url: str,
     story_title: str,
+    post_date: Optional[str] = None,
     writer_name: Optional[str] = None,
     photographer_name: Optional[str] = None,
     image_url: Optional[str] = None,
@@ -493,6 +524,7 @@ def notify_new_story_from_rss(
     Forwards to post_story_to_social_channel to post to Slack.
     """
     return post_story_to_social_channel(
+        post_date=post_date,
         story_url=story_url,
         story_title=story_title,
         writer_name=writer_name,

@@ -11,7 +11,8 @@ from datetime import datetime
 from flask import Blueprint, render_template, request
 from flask_login import login_required
 
-from db.socials_poster import get_all_stories, post_sample_stories_to_slack
+from db.socials_poster import get_all_stories
+from util.security import restrict_to
 
 di_social_poster_routes = Blueprint(
     "di_social_poster_routes", __name__, url_prefix="/di-socials-poster"
@@ -20,6 +21,7 @@ di_social_poster_routes = Blueprint(
 
 @di_social_poster_routes.route("/dashboard", methods=["GET"])
 @login_required
+@restrict_to(["di-staff-socials", "imc-staff-webdev"])
 def dashboard():
     """
     Render the DI social stories dashboard with pagination.
@@ -54,12 +56,12 @@ def dashboard():
     )
 
 
-@di_social_poster_routes.route("/test-post", methods=["POST"])
-@login_required
-def test_post():
-    """
-    Post sample stories to the social Slack channel for testing.
-    Adds stories to DB, posts to Slack, and stores message timestamps.
-    """
-    post_sample_stories_to_slack()
-    return "Sample stories posted.", 200
+# @di_social_poster_routes.route("/test-post", methods=["POST"])
+# @login_required
+# def test_post():
+#     """
+#     Post sample stories to the social Slack channel for testing.
+#     Adds stories to DB, posts to Slack, and stores message timestamps.
+#     """
+#     post_sample_stories_to_slack()
+#     return "Sample stories posted.", 200

@@ -8,14 +8,20 @@ via a background scheduler when the app starts.
 Last modified by Aryaa Rathi on Feb 19, 2026
 """
 
+from zoneinfo import ZoneInfo
+
 import feedparser
 import traceback
-from datetime import datetime
+import logging
+from datetime import datetime, timezone
 from db.json_store import json_store_set
+from util.helpers.ap_datetime import ap_daydatetime
 from util.scheduler import scheduler_to_json
 import os
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+
+logger = logging.getLogger(__name__)
 
 RSS_URL = "https://dailyillini.com/feed/"
 
@@ -44,11 +50,12 @@ def parse_date(entry):
     """
     try:
         if hasattr(entry, "published"):
-            return datetime(*entry.published_parsed[:6])
+            dt_utc = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
+            return dt_utc.astimezone(ZoneInfo("America/Chicago"))
     except Exception:
         pass
 
-    return datetime.utcnow()
+    return datetime.now(ZoneInfo("America/Chicago"))
 
 
 def fetch_rss():
@@ -56,10 +63,11 @@ def fetch_rss():
     Fetch and parse the Daily Illini RSS feed, returning all entries.
     """
     try:
+        logger.info(f"Fetching RSS feed from {RSS_URL}")
         feed = feedparser.parse(RSS_URL)
         return feed.entries
     except Exception as e:
-        print(f"[rss_listener] Failed to get RSS feed: {e}")
+        logger.error(f"Failed to get RSS feed: {str(e)}")
         return []
 
 
@@ -76,7 +84,7 @@ def process_rss_item(entry):
         "title": title,
         "link": link,
         "summary": summary,
-        "pub_date": pub_date.isoformat(),
+        "pub_date": pub_date,
     }
 
 
@@ -102,18 +110,22 @@ def process_new_stories_to_slack():
             continue
         link = result.get("link", "").strip()
         title = result.get("title", "").strip()
+        date = result.get("pub_date", "")
         if not link or not title:
             continue
         if get_story_by_url(link) is not None:
             continue
-        add_social_story(link, title)
-        notify_new_story_from_rss(story_url=link, story_title=title)
+        add_social_story(link, title, date)
+        notify_new_story_from_rss(
+            story_url=link, story_title=title, post_date=ap_daydatetime(date)
+        )
         posted.append(link)
 
+    logger.info(f"RSS processing complete: {len(posted)} new stories posted to Slack")
     return len(posted), posted
 
 
-_rss_scheduler = BackgroundScheduler(timezone="America/Chicago")
+rss_scheduler = BackgroundScheduler(timezone="America/Chicago")
 
 
 def _rss_job():
@@ -126,8 +138,8 @@ def _rss_job():
         traceback.print_exc()
 
 
-_minutes = 45
-_rss_scheduler.add_job(
+_minutes = 30
+rss_scheduler.add_job(
     _rss_job,
     trigger=IntervalTrigger(minutes=_minutes),
     id="rss_social_listener",
@@ -136,10 +148,10 @@ _rss_scheduler.add_job(
     coalesce=True,
 )
 
-_rss_scheduler.start()
-rss_json = scheduler_to_json(_rss_scheduler)
+rss_scheduler.start()
+rss_json = scheduler_to_json(rss_scheduler)
 json_store_set("RSS_JOBS", rss_json, replace=True)
-print(f"[rss_listener] started (every {_minutes} min)")
+logger.info(f"RSS listener started (every {_minutes} min)")
 
 
 if __name__ == "__main__":

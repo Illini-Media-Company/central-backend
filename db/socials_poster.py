@@ -9,7 +9,10 @@ Last modified by Aryaa Rathi on Feb 19, 2026
 """
 
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from google.cloud import ndb
+from typing import Any, Optional
+from constants import SOCIAL_MEDIA_POSTS_CHANNEL_ID
 
 from . import client
 
@@ -20,33 +23,36 @@ class DiSocialStory(ndb.Model):
     )
     story_url = ndb.StringProperty()
     story_name = ndb.StringProperty()
-    story_posted_timestamp = ndb.DateTimeProperty()
+    story_posted_timestamp = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
     slack_message_ts = (
         ndb.StringProperty()
     )  # Slack message ts (Unix); used for reaction lookup and "when posted"
-    instagram_timestamp = ndb.DateTimeProperty()
-    facebook_timestamp = ndb.DateTimeProperty()
-    reddit_timestamp = ndb.DateTimeProperty()
-    x_timestamp = ndb.DateTimeProperty()
-    threads_timestamp = ndb.DateTimeProperty()
+    instagram_timestamp = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
+    facebook_timestamp = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
+    reddit_timestamp = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
+    x_timestamp = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
+    threads_timestamp = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
 
 
-def add_social_story(url, name):
+def add_social_story(url, name, date=None):
     """
     Create a new social story record in the database.
 
     Args:
-        url: Story URL
-        name: Story name
+        `url`: Story URL
+        `name`: Story name
+        `date`: Optional datetime for when the story was posted (defaults to now if not provided)
 
     Returns:
-        dict: The created story as a dictionary
+        `dict`: The created story as a dictionary
     """
     with client.context():
         story = DiSocialStory(
             story_url=url,
             story_name=name,
-            story_posted_timestamp=datetime.now(),
+            story_posted_timestamp=datetime.now(ZoneInfo("America/Chicago"))
+            if date is None
+            else date,
             instagram_timestamp=None,
             facebook_timestamp=None,
             reddit_timestamp=None,
@@ -94,9 +100,9 @@ def update_social(url, social_media_name):
         query = DiSocialStory.query().filter(DiSocialStory.story_url == url)
         story = query.get()
         if story:
-            now = datetime.now()
+            now = datetime.now(ZoneInfo("America/Chicago"))
             if social_media_name == "Slack":
-                # Slack "posted" time is set when the slackbot calls update_slack_message_ref with message_ts
+                # Slack "posted" time is set when the slackbot calls update_slack_details with message_ts
                 pass
             elif social_media_name == "Instagram":
                 story.instagram_timestamp = now
@@ -167,6 +173,23 @@ def get_story_by_url(url):
             return None
 
 
+def get_story_by_slack_message(
+    channel_id: str, message_ts: str
+) -> Optional[dict[str, Any]]:
+    """
+    Look up a story by its Slack message timestamp. Channel must match SOCIAL_MEDIA_POSTS_CHANNEL_ID.
+    """
+    if not message_ts or channel_id != SOCIAL_MEDIA_POSTS_CHANNEL_ID:
+        return None
+    with client.context():
+        story = (
+            DiSocialStory.query()
+            .filter(DiSocialStory.slack_message_ts == message_ts)
+            .get()
+        )
+        return story.to_dict() if story else None
+
+
 def delete_all_stories():
     """
     Delete all social story records from the database.
@@ -181,41 +204,41 @@ def delete_all_stories():
     return "All social stories deleted"
 
 
-SAMPLE_STORIES = [
-    {
-        "story_url": "https://dailyillini.com/2026/02/10/campus-event-celebrates-community/",
-        "story_title": "Campus event celebrates community",
-        "writer_name": "Jane Smith",
-        "photographer_name": "Alex Chen",
-        "image_url": "https://picsum.photos/800/500?random=1",
-    },
-]
+# SAMPLE_STORIES = [
+#     {
+#         "story_url": "https://dailyillini.com/2026/02/10/campus-event-celebrates-community/",
+#         "story_title": "Campus event celebrates community",
+#         "writer_name": "Jane Smith",
+#         "photographer_name": "Alex Chen",
+#         "image_url": "https://picsum.photos/800/500?random=1",
+#     },
+# ]
 
 
-def post_sample_stories_to_slack():
-    """
-    Post sample stories to the social Slack channel for testing.
-    Adds each to DB if not present, posts to Slack, stores message ts (reactions will work).
-    Returns list of {"story_title": str, "result": dict} for each sample.
-    """
-    from util.slackbots.socials_slackbot import post_story_to_social_channel
+# def post_sample_stories_to_slack():
+#     """
+#     Post sample stories to the social Slack channel for testing.
+#     Adds each to DB if not present, posts to Slack, stores message ts (reactions will work).
+#     Returns list of {"story_title": str, "result": dict} for each sample.
+#     """
+#     from util.slackbots.socials_slackbot import post_story_to_social_channel
 
-    results = []
-    for sample in SAMPLE_STORIES:
-        if get_story_by_url(sample["story_url"]) is None:
-            try:
-                add_social_story(sample["story_url"], sample["story_title"])
-            except Exception:
-                pass
-        result = post_story_to_social_channel(
-            story_url=sample["story_url"],
-            story_title=sample["story_title"],
-            writer_name=sample.get("writer_name"),
-            photographer_name=sample.get("photographer_name"),
-            image_url=sample.get("image_url"),
-        )
-        results.append({"story_title": sample["story_title"], "result": result})
-    return results
+#     results = []
+#     for sample in SAMPLE_STORIES:
+#         if get_story_by_url(sample["story_url"]) is None:
+#             try:
+#                 add_social_story(sample["story_url"], sample["story_title"])
+#             except Exception:
+#                 pass
+#         result = post_story_to_social_channel(
+#             story_url=sample["story_url"],
+#             story_title=sample["story_title"],
+#             writer_name=sample.get("writer_name"),
+#             photographer_name=sample.get("photographer_name"),
+#             image_url=sample.get("image_url"),
+#         )
+#         results.append({"story_title": sample["story_title"], "result": result})
+#     return results
 
 
 def _slack_ts_to_datetime(ts):
@@ -241,7 +264,7 @@ def check_limit(social_media_name, limit, days):
         bool: True if limit reached, False otherwise
     """
     with client.context():
-        current_datetime = datetime.now()
+        current_datetime = datetime.now(ZoneInfo("America/Chicago"))
         start_datetime = current_datetime - timedelta(days=days)
 
         if social_media_name == "Slack":
