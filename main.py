@@ -587,7 +587,6 @@ if __name__ == "__main__":
         logging.info("Loading schedulers...")
         db_to_scheduler(map_scheduler, "MAP_JOBS")
         db_to_scheduler(copy_scheduler, "COPY_JOBS")
-        db_to_scheduler(_rss_scheduler, "RSS_JOBS")
         logging.info("Done loading schedulers.")
     except Exception as e:
         logging.exception(f"[scheduling] No logs to import: {str(e)}")
