@@ -778,15 +778,19 @@
             // SEARCHING
             if (query) {
                 const fullName = `${emp.first_name} ${emp.last_name}`.toLowerCase();
+                const rawPhoneNumber = `${emp.phone_number}`.replace(/\D/g, '');
                 const fullAddress = `${emp.permanent_address_1 || ""} ${emp.permanent_address_2 || ""}`.toLowerCase();
                 const allMajors = `${emp.major || ""} ${emp.major_2 || ""} ${emp.major_3 || ""}`.toLowerCase();
                 const allMinors = `${emp.minor || ""} ${emp.minor_2 || ""} ${emp.minor_3 || ""}`.toLowerCase();
                 const matchesSearch = (
                     (fullName.includes(query)) || 
                     (emp.imc_email && emp.imc_email.toLowerCase().includes(query)) ||
+                    (emp.phone_number && emp.phone_number.includes(query)) ||
+                    (rawPhoneNumber.includes(query)) ||
                     (emp.payroll_number && emp.payroll_number.toString().toLowerCase().includes(query)) ||
                     (fullAddress.includes(query)) ||
                     (emp.permanent_city && emp.permanent_city.toLowerCase().includes(query)) ||
+                    (emp.permanent_zip && emp.permanent_zip.includes(query)) ||
                     (allMajors.includes(query)) || 
                     (allMinors.includes(query))
                 );
