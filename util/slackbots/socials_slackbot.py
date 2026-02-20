@@ -22,7 +22,6 @@ from constants import (
     SLACK_BOT_TOKEN,
     SOCIAL_MEDIA_GCAL_ID,
     SOCIAL_MEDIA_POSTS_CHANNEL_ID,
-    SOCIALS_CHIEF_EMAIL,
 )
 from util.security import get_creds
 from util.slackbots._slackbot import app
@@ -50,7 +49,7 @@ SOCIALS_GCAL_SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
 def get_socials_on_shift_email() -> Optional[str]:
     """
     Get the email of the person on shift today from the socials Google Calendar.
-    Returns first attendee's email or None; caller should use SOCIALS_CHIEF_EMAIL as fallback.
+    Returns first attendee's email or None;
     """
     if not SOCIAL_MEDIA_GCAL_ID:
         return None
@@ -191,8 +190,8 @@ def post_story_to_social_channel(
     if not SOCIAL_MEDIA_POSTS_CHANNEL_ID:
         return {"ok": False, "error": "SOCIAL_MEDIA_POSTS_CHANNEL_ID not set"}
 
-    # Tag the person on shift today (from socials calendar), or fall back to chief
-    email = get_socials_on_shift_email() or SOCIALS_CHIEF_EMAIL
+    # Tag the person on shift today (from socials calendar), or fall back to default message
+    email = get_socials_on_shift_email()
     slack_id = None
     if email:
         try:
