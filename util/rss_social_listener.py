@@ -1,25 +1,21 @@
 """
 RSS feed listener for Daily Illini stories.
 
-Periodically fetches the Daily Illini RSS feed, filters out sponsored content,
-and posts new stories to the social media Slack channel. Runs automatically
-via a background scheduler when the app starts.
+Fetches the Daily Illini RSS feed, filters out sponsored content,
+and posts new stories to the social media Slack channel. 
 
-Last modified by Aryaa Rathi on Feb 19, 2026
+Designed to be triggered via HTTP endpoint by Google Cloud Scheduler
+to avoid duplicate runs across multiple App Engine instances.
+
+Last modified by Jacob Slabosz on Feb 21, 2026
 """
 
 from zoneinfo import ZoneInfo
 
 import feedparser
-import traceback
 import logging
 from datetime import datetime, timezone
-from db.json_store import json_store_set
 from util.helpers.ap_datetime import ap_daydatetime
-from util.scheduler import scheduler_to_json
-import os
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
 
 logger = logging.getLogger(__name__)
 
@@ -123,35 +119,6 @@ def process_new_stories_to_slack():
 
     logger.info(f"RSS processing complete: {len(posted)} new stories posted to Slack")
     return len(posted), posted
-
-
-rss_scheduler = BackgroundScheduler(timezone="America/Chicago")
-
-
-def _rss_job():
-    """
-    Scheduled job that runs periodically to check RSS feed and post new stories to Slack.
-    """
-    try:
-        process_new_stories_to_slack()
-    except Exception:
-        traceback.print_exc()
-
-
-_minutes = 30
-rss_scheduler.add_job(
-    _rss_job,
-    trigger=IntervalTrigger(minutes=_minutes),
-    id="rss_social_listener",
-    replace_existing=True,
-    max_instances=1,
-    coalesce=True,
-)
-
-rss_scheduler.start()
-rss_json = scheduler_to_json(rss_scheduler)
-json_store_set("RSS_JOBS", rss_json, replace=True)
-logger.info(f"RSS listener started (every {_minutes} min)")
 
 
 if __name__ == "__main__":

@@ -58,10 +58,19 @@
 
 {% import "macros/form.html" as form %}
 {% import "macros/pagination.html" as pagination %}
+{% include "partials/loading.html" %}
+{% include "partials/text_alert.html" %}
+{% include "partials/info_bar.html" %}
 
 {% block content %}
 <h1>DI Socials Posts</h1>
 
+<p>
+    Automatically checks for new stories every 30 minutes. Clicking the button below will manually run the check.
+</p>
+<button class="button-secondary" onclick="runListener()">
+    Check for New Stories
+</button>
 <hr style="margin-bottom: 2rem;">
 
 <section class="section-container" id="stories-container">
@@ -158,6 +167,12 @@
 
 <script>
     window.addEventListener('load', () => {
+        const msg = sessionStorage.getItem("infoBarMessage");
+        if (msg) {
+            showInfoBar(msg);
+            sessionStorage.removeItem("infoBarMessage"); // Clear it after showing
+        }
+
         // Event listener to handle search query input
         const searchInput = document.getElementById("searchQuery");
         const table = document.querySelector("table");
@@ -175,6 +190,49 @@
             });
         }
     });
+
+    async function runListener() {
+        console.log("Running...");
+
+        showLoading("Running...");
+
+        // Send the data to the backend endpoint
+        let endpoint = "/cron/socials-rss-listener";
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        // Check if it was successful
+        if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", `Successfully checked for stories.`); // Save so we can display after reload
+            window.location.reload();
+        } else {
+            // Alert of the error
+            console.log("Checking for stories failed!");
+
+            try {
+                const data = await response.json();
+                const message = data.error || "An unknown error occurred.";
+
+                console.error(message);
+                hideLoading();
+                await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            } catch (err) {
+                const fallback = await response.text();
+                hideLoading();
+                await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
+            }
+        }
+    }
 </script>
 
 {% endblock %}

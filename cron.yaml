@@ -1,0 +1,6 @@
+cron:
+- description: "Check RSS feed for new Daily Illini stories"
+  url: /cron/socials-rss-listener
+  schedule: every 30 minutes
+  timezone: America/Chicago
+  target: default

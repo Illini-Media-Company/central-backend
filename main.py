@@ -78,7 +78,7 @@ from util.map_point import remove_point
 from util.gcal import get_allstaff_events
 from util.slackbots.copy_editing import scheduler as copy_scheduler
 from util.map_point import scheduler as map_scheduler
-from util.rss_social_listener import rss_scheduler
+from util.rss_social_listener import process_new_stories_to_slack
 from util.scheduler import scheduler_to_json, db_to_scheduler
 from util.changelog_parser import parse_changelog
 from util.slackbots._slackbot import start_slack
@@ -201,10 +201,8 @@ logging.info("Done registering Jinja filters.")
 def log_scheduler():
     maps = scheduler_to_json(map_scheduler)
     copy = scheduler_to_json(copy_scheduler)
-    rss = scheduler_to_json(rss_scheduler)
     json_store_set("MAP_JOBS", maps)
     json_store_set("COPY_JOBS", copy)
-    json_store_set("RSS_JOBS", rss)
 
 
 ################################################################################
@@ -335,6 +333,55 @@ def schedulers():
                 func=remove_point, args=[int(point["uid"])], trigger=trigger
             )
     return "Schedulers updated", 200
+
+
+################################################################################
+############################## BEGIN CRON JOBS #################################
+################################################################################
+# All endpoints beginning with /cron/ are called by the Google Cloud Scheduler
+# from jobs defined in cron.yaml
+
+
+@app.route("/cron/socials-rss-listener", methods=["GET", "POST"])
+def cron_rss_listener():
+    """
+    Endpoint for Google Cloud Scheduler to trigger RSS feed checking.
+    Secured by verifying the X-Appengine-Cron header (automatically added by App Engine Cron).
+    Can also be manually triggered by authenticated users in the socials or webdev groups.
+    """
+    # Check if request is from App Engine Cron/Cloud Scheduler
+    if request.headers.get("X-Appengine-Cron") == "true":
+        logging.info("RSS listener triggered by Cloud Scheduler")
+    else:
+        # Manual trigger - require authentication and group membership
+        if not current_user.is_authenticated:
+            logging.warning(
+                "Unauthorized RSS listener trigger attempt - not authenticated"
+            )
+            return "Unauthorized - please log in", 403
+
+        if not is_user_in_group(
+            current_user, ["di-staff-socials", "imc-staff-webdev", "di-section-editors"]
+        ):
+            logging.warning(
+                f"Unauthorized RSS listener trigger attempt by {current_user.email}"
+            )
+            return "Unauthorized - insufficient permissions", 403
+
+        logging.info(f"RSS listener manually triggered by {current_user.email}")
+
+    try:
+        count, links = process_new_stories_to_slack()
+        logging.info(f"RSS cron job completed: {count} new stories posted")
+        return {"success": True, "stories_posted": count, "links": links}, 200
+    except Exception as e:
+        logging.exception("RSS cron job failed")
+        return {"success": False, "error": str(e)}, 500
+
+
+################################################################################
+############################### END CRON JOBS ##################################
+################################################################################
 
 
 # Consider this to client-side fetching so that the page loads faster.
