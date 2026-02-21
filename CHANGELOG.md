@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.6.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.6.0...v2.6.1) (2026-02-21)
+
+
+### Bug Fixes
+
+* [/ask] Fix context error ([d65340f](https://github.com/Illini-Media-Company/central-backend/commit/d65340f41996bbc16b5a2ff46a387e4587fa95fb))
+* [DI-Socials] Update scheduler logic to Cloud Scheduler, fix duplicate job triggers ([9a9ac5f](https://github.com/Illini-Media-Company/central-backend/commit/9a9ac5f6720d7a298deec8bd30d41a099a6236ee))
+
 ## [2.6.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.5.0...v2.6.0) (2026-02-20)
 
 
