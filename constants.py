@@ -8,6 +8,8 @@ load_dotenv()
 
 ENV = os.environ.get("ENV", "dev")
 
+BASE_URL = "https://app.dailyillini.com" if ENV == "prod" else "http://127.0.0.1:5001"
+
 # Google API keys and secrets
 ADMIN_EMAIL = "imc_admin@illinimedia.com"
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", None)
