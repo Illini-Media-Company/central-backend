@@ -32,6 +32,7 @@ jobs:
         uses: 'google-github-actions/deploy-appengine@v1'
         with:
           version: ${{ steps.format_version.outputs.version }}
+          deliverables: 'app.yaml cron.yaml index.yaml'
           env_vars: |-
             ENV=prod
             SECRET_KEY=${{ secrets.SECRET_KEY }}
