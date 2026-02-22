@@ -78,7 +78,7 @@ def post_to_reddit(title, url):
             return None, (str(e), 500)
 
     try:
-        if current_user.is_authenticated:
+        if current_user and current_user.is_authenticated:
             created_by = current_user.name
         else:
             created_by = "System (Scout)"
@@ -127,7 +127,7 @@ def post_to_twitter(title, url):
             return None, (str(e), 500)
 
     try:
-        if current_user.is_authenticated:
+        if current_user and current_user.is_authenticated:
             created_by = current_user.name
         else:
             created_by = "System (Scout)"

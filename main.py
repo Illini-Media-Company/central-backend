@@ -269,6 +269,10 @@ def access_forbidden(e):
 
 @app.before_request
 def track_url():
+    # Exempt cron jobs
+    if request.headers.get("X-Appengine-Cron") == "true":
+        return
+
     current_url = request.url.removeprefix("https://app.dailyillini.com")
 
     url_prefix_ignore = ["/static", "/login", "/favicon.ico"]
