@@ -15,7 +15,7 @@ praw ~= 7.0
 python-dotenv
 requests ~= 2.0
 slack-bolt ~= 1.0
-talisman
+flask-talisman
 requests_oauthlib
 apscheduler
 markdown

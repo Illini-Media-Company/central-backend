@@ -16,7 +16,7 @@ import requests
 from threading import Thread
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from talisman import Talisman
+from flask_talisman import Talisman
 from oauthlib.oauth2 import WebApplicationClient
 from apscheduler.triggers.date import DateTrigger
 from flask import (
@@ -141,7 +141,7 @@ app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 #     'default-src': '*'
 # }
 #
-Talisman(app, content_security_policy=[])
+talisman = Talisman(app, content_security_policy=[])
 csrf.init_app(app)
 logging.info("Done initializing Flask.")
 
@@ -348,7 +348,7 @@ def schedulers():
 
 @app.route("/cron/socials-rss-listener", methods=["GET", "POST"])
 @csrf.exempt
-@Talisman(force_https=False)
+@talisman(force_https=False)
 def cron_rss_listener():
     """
     Endpoint for Google Cloud Scheduler to trigger RSS feed checking.
