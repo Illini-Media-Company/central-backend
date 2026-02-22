@@ -347,6 +347,7 @@ def schedulers():
 
 
 @app.route("/cron/socials-rss-listener", methods=["GET", "POST"])
+@csrf.exempt
 def cron_rss_listener():
     """
     Endpoint for Google Cloud Scheduler to trigger RSS feed checking.
