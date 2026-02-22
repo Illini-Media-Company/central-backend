@@ -5,3 +5,9 @@ instance_class: F4
 automatic_scaling:
   min_instances: 1
   max_instances: 1
+
+# Exempt Cron routes from HTTPS 
+handlers:
+- url: /cron/.*
+  script: auto
+  secure: optional

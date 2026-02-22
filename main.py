@@ -141,7 +141,19 @@ app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 #     'default-src': '*'
 # }
 #
-Talisman(app, content_security_policy=[])
+
+
+# Exempt Cron jobs from HTTPS
+def skip_https_for_cron():
+    return request.headers.get("X-Appengine-Cron") == "true"
+
+
+Talisman(
+    app,
+    content_security_policy=[],
+    force_https_proxy=True,
+    force_https_expectation=lambda: not skip_https_for_cron(),
+)
 csrf.init_app(app)
 logging.info("Done initializing Flask.")
 
