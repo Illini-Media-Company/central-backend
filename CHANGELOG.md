@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.6.2](https://github.com/Illini-Media-Company/central-backend/compare/v2.6.1...v2.6.2) (2026-02-22)
+
+
+### Bug Fixes
+
+* [DI-Socials] Fix cron scheduling and Reddit/X autoposting ([508b357](https://github.com/Illini-Media-Company/central-backend/commit/508b3573c9feeee330fcf63a40b88230f8e0f1e0))
+
 ## [2.6.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.6.0...v2.6.1) (2026-02-21)
 
 
