@@ -5,5 +5,33 @@
 </head>
 <body>
     <h1> Copy Editor Admin Dashboard</h1>
+
+    <h2>Editors</h2>
+    <ul>
+        {% for editor in editors %}
+            <li>
+                {{editor.name}} - {{editor.email}}
+                 <form action="/copy-admin-dashboard/admin/editor/{{ editor.uid }}/delete" method="POST">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit">Delete</button>
+                </form>
+
+                <form action="/copy-admin-dashboard/admin/editor/{{ editor.uid }}/update" method="POST">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                    <input type="text" name="name" value="{{ editor.name }}" required>
+                    <input type="email" name="email" value="{{ editor.email }}" required>
+                    <button type="submit">Update</button>
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <h2> Add Editor</h2>
+    <form action="/copy-admin-dashboard/admin/editor" method="POST">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <input type="text" name="name" placeholder="Name" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <button type="submit">Add</button>
+    </form>
 </body>
 </html>
