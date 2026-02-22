@@ -141,19 +141,7 @@ app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 #     'default-src': '*'
 # }
 #
-
-
-# Exempt Cron jobs from HTTPS
-def skip_https_for_cron():
-    return request.headers.get("X-Appengine-Cron") == "true"
-
-
-Talisman(
-    app,
-    content_security_policy=[],
-    force_https_proxy=True,
-    force_https_expectation=lambda: not skip_https_for_cron(),
-)
+Talisman(app, content_security_policy=[])
 csrf.init_app(app)
 logging.info("Done initializing Flask.")
 
@@ -360,6 +348,7 @@ def schedulers():
 
 @app.route("/cron/socials-rss-listener", methods=["GET", "POST"])
 @csrf.exempt
+@Talisman(force_https=False)
 def cron_rss_listener():
     """
     Endpoint for Google Cloud Scheduler to trigger RSS feed checking.
