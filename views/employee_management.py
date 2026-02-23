@@ -1278,12 +1278,19 @@ def ems_api_onboarding_override(emp_id):
                     400,
                 )
 
+            slack_id = _lookup_user_id_by_email(employee["imc_email"])
+            if not slack_id:
+                logging.info(
+                    f"Employee ID {emp_id} with email {employee['imc_email']} has not logged into Slack or could not be found in Slack. Proceeding."
+                )
+
             # Save the employee's Slack ID
             modify_employee_card(
                 uid=employee["uid"],
                 onboarding_form_done=True,
                 onboarding_complete=True,
                 status="Active",
+                slack_id=slack_id,
             )
             logging.debug(f"Employee ID {emp_id} marked as onboarding complete.")
 
@@ -1298,7 +1305,7 @@ def ems_api_onboarding_override(emp_id):
                 channel_id=slack_channel,
                 thread_ts=slack_ts,
                 employee_name=full_name,
-                slack_id=None,
+                slack_id=slack_id,
                 ems_url=ems_url,
             )
             if not isinstance(res, dict):
