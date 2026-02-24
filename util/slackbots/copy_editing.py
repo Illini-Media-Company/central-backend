@@ -117,7 +117,6 @@ def notify_copy_editor(story_url, is_breaking, copy_chief_email=None, call=False
     slack_id = app.client.users_lookupByEmail(email=email)["user"]["id"]
     app.client.chat_postMessage(
         token=SLACK_BOT_TOKEN,
-        username="IMC Notification Bot",
         channel=DI_COPY_TAG_CHANNEL_ID,
         text=f"<@{slack_id}> A new story is ready to be copy edited.\n {story_url}",
     )
@@ -258,7 +257,6 @@ def test():
 def post_test_message():
     app.client.chat_postMessage(
         token=SLACK_BOT_TOKEN,
-        username="IMC Notification Bot",
         channel=DI_SCHED_CHANNEL_ID,
         text="Scheduling test testing",
     )

@@ -112,7 +112,6 @@ def post_message():
     story_title = get_title_from_url(story_url)
     result = app.client.chat_postMessage(
         token=SLACK_BOT_TOKEN,
-        username="IMC Notification Bot",
         channel=DI_COPYING_ID,
         blocks=COPYING_MESSAGE,
         text="BREAKING NEWS ALERT",
