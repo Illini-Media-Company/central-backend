@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.6.3](https://github.com/Illini-Media-Company/central-backend/compare/v2.6.2...v2.6.3) (2026-02-24)
+
+
+### Bug Fixes
+
+* [EMS] Fix issue of manually overridden employees not being added to Slack channels ([a9fd554](https://github.com/Illini-Media-Company/central-backend/commit/a9fd554c5a33d1ba05e020a589cf85e826f920e5))
+
 ## [2.6.2](https://github.com/Illini-Media-Company/central-backend/compare/v2.6.1...v2.6.2) (2026-02-22)
 
 
