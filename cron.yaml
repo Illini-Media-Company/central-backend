@@ -4,3 +4,7 @@ cron:
   schedule: every 30 minutes
   timezone: America/Chicago
   target: default
+
+- description: "Daily cleanup of expired CU Calendar events"
+  url: /admin/cu-calendar/cleanup  
+  schedule: every 24 hours

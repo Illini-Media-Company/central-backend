@@ -8,8 +8,8 @@ from db.cu_calender import (
     add_event,
     remove_event,
     get_pending_events,
-    accept_event
-)
+    accept_event,
+    delete_expired_events)
 
 
 from util.security import restrict_to, csrf
@@ -32,6 +32,11 @@ def list_public_events():
 def get_map_center():
     center = center_val()
     return jsonify({"lat": center[0], "long": center[1]}), 200
+
+@admin_calendar_routes.route("/cleanup", methods=["GET"])
+def cleanup_expired_events():
+    delete_expired_events()
+    return jsonify({"message": "Expired events deleted successfully."}), 200
 
 
 #admin routes 
