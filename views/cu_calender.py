@@ -9,7 +9,11 @@ from db.cu_calender import (
     remove_event,
     get_pending_events,
     accept_event,
-    delete_expired_events)
+    delete_expired_events,
+    get_event_by_id)
+
+from util.cu_calendar import geocode_address
+
 
 
 from util.security import restrict_to, csrf
@@ -51,8 +55,23 @@ def list_pending_events():
 def accept_pending_event(uid):
     if not uid:
         return jsonify({"error": "Invalid Event ID format."}), 400
-    success = accept_event(uid)
+    
 
+    event = get_event_by_id(uid)
+    if not event:
+        return jsonify({"error": "Event not found."}), 404
+    
+    address = event.get("address")
+
+    coords = geocode_address(address)
+    if not coords:
+        return jsonify({"error": "Failed to geocode address."}), 400
+    
+    lat, lng = coords
+
+
+
+    success = accept_event(uid, lat, lng)
     if not success:
         return jsonify({"error": "Event not found or already accepted."}), 404
     

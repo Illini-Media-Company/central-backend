@@ -27,22 +27,6 @@ class CalendarObject(ndb.Model):
 #Adds a new event along with jitter for duplicate lat-long values
 def add_event(title, lat, long, url, start_date, end_date, image, address, event_type, description, company_name):
     with client.context():
-        existing = CalendarObject.query(CalendarObject.lat == lat, CalendarObject.long == long).get()
-
-        if existing:
-            # Apply small random offset until its lat-long is unique
-            # This helps avoid overlapping points on the actual map display
-            while True:
-                lat_jitter = lat + random.uniform(-0.0001, 0.0001)
-                long_jitter = long + random.uniform(-0.0001, 0.0001)
-
-                duplicate = CalendarObject.query(
-                    CalendarObject.lat == lat_jitter, CalendarObject.long == long_jitter
-                ).get()
-
-                if not duplicate:
-                    lat, long = lat_jitter, long_jitter
-                    break
 
         new_event = CalendarObject(
             title=title,
@@ -168,11 +152,30 @@ def get_pending_events():
         return [event.to_dict() for event in query.fetch()]
 
 #accept an event
-def accept_event(uid):
+def accept_event(uid, lat, long):
     with client.context():
         point = CalendarObject.get_by_id(int(uid))
 
         if point is not None:
+            existing = CalendarObject.query(CalendarObject.lat == lat, CalendarObject.long == long).get()
+
+            if existing and existing.uid != int(uid):
+                # Apply small random offset until its lat-long is unique
+                # This helps avoid overlapping points on the actual map display
+                while True:
+                    lat_jitter = lat + random.uniform(-0.0001, 0.0001)
+                    long_jitter = long + random.uniform(-0.0001, 0.0001)
+
+                    duplicate = CalendarObject.query(
+                        CalendarObject.lat == lat_jitter, CalendarObject.long == long_jitter
+                    ).get()
+
+                    if not duplicate:
+                        lat, long = lat_jitter, long_jitter
+                        break
+
+            point.lat = lat
+            point.long = long
             point.is_accepted = True
             point.put()
             return True
