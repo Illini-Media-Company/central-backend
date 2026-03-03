@@ -1,5 +1,6 @@
 import os
 import googlemaps
+from db.cu_calender import add_event
 
 def geocode_address(address):
     api_key = os.getenv('FLASK_GEOCODING_API_KEY')
@@ -21,4 +22,10 @@ def geocode_address(address):
     except Exception as e:
         print(f"Error geocoding address: {e}")
         return None
+    
+
+def gcal_to_events(gcal_url):
+    #todo
+    
+    return []
     

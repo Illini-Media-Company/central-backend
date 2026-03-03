@@ -4,7 +4,6 @@ import random
 
 from . import client
 
-
 class CalendarObject(ndb.Model):
     uid = ndb.ComputedProperty(
         lambda self: self.key.id() if self.key else None, indexed=False
@@ -24,8 +23,11 @@ class CalendarObject(ndb.Model):
     is_accepted = ndb.BooleanProperty()
 
 
+
+
+
 #Adds a new event along with jitter for duplicate lat-long values
-def add_event(title, lat, long, url, start_date, end_date, image, address, event_type, description, company_name):
+def add_event(title, lat, long, url, start_date, end_date, image, address, event_type, description, company_name, is_accepted=False):
     with client.context():
 
         new_event = CalendarObject(
@@ -41,7 +43,7 @@ def add_event(title, lat, long, url, start_date, end_date, image, address, event
             event_type=event_type,
             description=description,
             company_name=company_name,
-            is_accepted=False,  
+            is_accepted=is_accepted,  
         )
         new_event.put()
 
@@ -187,3 +189,45 @@ def get_event_by_id(uid):
     with client.context():
         event = CalendarObject.get_by_id(int(uid))
         return event.to_dict() if event else None
+    
+
+
+
+#old Gcal Link logic, keeping for now in case something chnages 
+
+# def add_source(gcal_url, submitter_email):
+#     with client.context():
+#         new_source = CalendarSource(
+#             gcal_url=gcal_url,
+#             submitter_email=submitter_email,
+#             is_accepted=False,  
+#         )
+#         new_source.put()
+
+#         return new_source.to_dict()
+###
+
+# #get all GCal sources pending approval 
+# def get_pending_sources():
+#     with client.context():
+#         query = CalendarSource.query(CalendarSource.is_accepted == False)
+#         return [source.to_dict() for source in query.fetch()]
+
+# #get a GCal source by uid
+# def get_source_by_id(uid):
+#     with client.context():
+#         source = CalendarSource.get_by_id(int(uid))
+#         return source.to_dict() if source else None
+
+# def accept_source_in_db(uid):
+#     with client.context():
+#         source = CalendarSource.get_by_id(int(uid))
+
+#         if source is not None:
+#             source.is_accepted = True
+#             source.put()
+#             return True
+#         else:
+#             return False
+
+###
