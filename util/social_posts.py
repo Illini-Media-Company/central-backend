@@ -60,6 +60,9 @@ def send_illinois_app_notification(title, url):
 def post_to_reddit(title, url):
     logger.info(f"Attempting to post to Reddit: {title} - {url}")
     if ENV == "dev" and REDDIT_CLIENT_SECRET is None:
+        logger.warning(
+            "Environment is 'dev' and REDDIT_CLIENT_SECRET is missing. Skipping actual Reddit API call."
+        )
         reddit_url = ""
     else:
         try:
@@ -72,40 +75,48 @@ def post_to_reddit(title, url):
             )
             subreddit = reddit.subreddit(SUBREDDIT)
             submission = subreddit.submit(title, url=url, flair_id=FLAIR_ID)
-            post_url = "https://www.reddit.com" + submission.permalink
+            reddit_url = "https://www.reddit.com" + submission.permalink
         except Exception as e:
-            logger.error(f"Error posting to Reddit: {e}")
+            logger.exception(f"Error posting to Reddit: {e}")
             return None, (str(e), 500)
 
     try:
         if current_user and current_user.is_authenticated:
+            logger.info(f"Current user is authenticated: {current_user.name}")
             created_by = current_user.name
         else:
+            logger.info(
+                "No authenticated user found. Defaulting created_by to 'System (Scout)'."
+            )
             created_by = "System (Scout)"
 
         add_post(
             title=title,
-            url=post_url,
+            url=reddit_url,
             platform=SocialPlatform.REDDIT,
             created_by=created_by,
         )
         logger.debug(
-            f"Successfully created SocialPost object for Reddit post: {title} - {post_url}"
+            f"Successfully created SocialPost object for Reddit post: {title} - {reddit_url}"
         )
     except Exception as e:
-        logger.error(f"Error adding post to database: {e}")
+        logger.exception(f"Error adding post to database: {e}")
         return None, (str(e), 500)
 
-    return post_url, None
+    return reddit_url, None
 
 
 def post_to_twitter(title, url):
     logger.info(f"Attempting to post to Twitter: {title} - {url}")
     if ENV == "dev" and TWITTER_API_KEY_SECRET is None:
+        logger.warning(
+            "Environment is 'dev' and TWITTER_API_KEY_SECRET is missing. Skipping actual Twitter API call."
+        )
         tweet_url = ""
     else:
         try:
             # Setup OAuth1 authentication
+            logger.debug("Setting up OAuth1 authentication.")
             oauth = OAuth1(
                 TWITTER_API_KEY,
                 TWITTER_API_KEY_SECRET,
@@ -113,23 +124,32 @@ def post_to_twitter(title, url):
                 TWITTER_ACCESS_TOKEN_SECRET,
             )
             tweet_text = f"{title}\n\n📲 Click the link to read more: {url}"
+
+            logger.info(f"Sending POST request to Twitter API with text: {tweet_text}")
             response = requests.post(
                 TWITTER_API_URL, json={"text": tweet_text}, auth=oauth
             )
             if response.status_code != 201:
+                logger.error(
+                    f"Twitter API error: {response.status_code} - {response.text}"
+                )
                 return None, (response.text, 500)
 
             tweet_data = response.json()
             tweet_id = tweet_data["data"]["id"]
             tweet_url = f"https://twitter.com/user/status/{tweet_id}"
         except Exception as e:
-            logger.error(f"Error posting to Twitter: {e}")
+            logger.exception(f"Error posting to Twitter: {e}")
             return None, (str(e), 500)
 
     try:
         if current_user and current_user.is_authenticated:
+            logger.info(f"Current user is authenticated: {current_user.name}")
             created_by = current_user.name
         else:
+            logger.info(
+                "No authenticated user found. Defaulting created_by to 'System (Scout)'."
+            )
             created_by = "System (Scout)"
 
         add_post(
@@ -142,7 +162,7 @@ def post_to_twitter(title, url):
             f"Successfully created SocialPost object for Twitter post: {title} - {tweet_url}"
         )
     except Exception as e:
-        logger.error(f"Error adding post to database: {e}")
+        logger.exception(f"Error adding post to database: {e}")
         return None, (str(e), 500)
 
     return tweet_url, None
