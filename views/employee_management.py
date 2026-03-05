@@ -14,8 +14,6 @@ from datetime import datetime
 from flask import request, jsonify, url_for
 from util.employee_management import send_onboarding_email
 
-from constants import EMS_ADMIN_ACCESS_GROUPS
-
 from db.user import get_user_profile_photo
 
 from util.employee_management import (
@@ -95,7 +93,7 @@ ems_routes = Blueprint("ems_routes", __name__, url_prefix="/ems")
 # TEMPLATE
 @ems_routes.route("/", methods=["GET"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin"])
 def ems_dashboard():
     """
     Renders the Employee Management System dashboard.
@@ -106,6 +104,7 @@ def ems_dashboard():
 # TEMPLATE
 @ems_routes.route("/org-chart", methods=["GET"])
 @login_required
+@restrict_to(["ems-super-admin"])
 def ems_org_chart():
     """
     Renders the Org Chart dashboard.
@@ -118,7 +117,7 @@ def ems_org_chart():
 # TEMPLATE
 @ems_routes.route("/settings", methods=["GET"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin"])
 def ems_settings():
     """
     Renders the Employee Management System settings page.
@@ -142,7 +141,7 @@ def ems_settings():
 # TEMPLATE — employees
 @ems_routes.route("/employees", methods=["GET"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin"])
 def ems_employees():
     """
     Renders the Employee Management System employees page.
@@ -188,7 +187,7 @@ def ems_employees():
 # TEMPLATE — employee_add
 @ems_routes.route("/employee/add", methods=["GET"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin", "ems-onboarding-admins"])
 def ems_employee_add():
     """
     Renders the add employee page.
@@ -205,7 +204,7 @@ def ems_employee_add():
 # TEMPLATE — employee_add_bulk
 @ems_routes.route("/employee/add/bulk", methods=["GET"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin", "ems-onboarding-admins"])
 def ems_employee_add_bulk():
     """
     Renders the file upload page to upload multiple employees.
@@ -239,8 +238,7 @@ def ems_employee_view(emp_id):
         )
 
     # Validate access
-    # if is_user_in_group(current_user, EMS_ADMIN_ACCESS_GROUPS):
-    if is_user_in_group(current_user, EMS_ADMIN_ACCESS_GROUPS):
+    if is_user_in_group(current_user, ["ems-super-admin"]):
         logging.info(
             f"User {current_user.email} has admin access to employee ID {emp_id}."
         )
@@ -364,7 +362,7 @@ def ems_employee_view_me():
 # TEMPLATE — employee_onboard
 @ems_routes.route("/employee/onboard", methods=["GET"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin", "ems-onboarding-admins"])
 def ems_employee_onboard():
     """
     Renders the employee onboarding (send invite) page.
@@ -578,7 +576,7 @@ def ems_onboarding_complete(emp_id):
 # API
 @ems_routes.route("/api/employee/create", methods=["POST"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin", "ems-onboarding-admins"])
 def ems_api_employee_create():
     """
     API endpoint to create a new employee.
@@ -666,7 +664,7 @@ def ems_api_employee_create():
 # API
 @ems_routes.route("/api/employee/create/bulk", methods=["POST"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin", "ems-onboarding-admins"])
 def ems_api_employee_create_all():
     import pandas as pd
 
@@ -743,7 +741,7 @@ def ems_api_employee_modify(uid):
 
     if data:
         # Validate access
-        if is_user_in_group(current_user, EMS_ADMIN_ACCESS_GROUPS):
+        if is_user_in_group(current_user, ["ems-super-admin"]):
             logging.info(
                 f"User {current_user.email} has admin access to modify employee ID {uid}."
             )
@@ -828,7 +826,7 @@ def ems_api_employee_modify(uid):
 # API
 @ems_routes.route("/api/employee/get/all", methods=["GET"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin"])
 def ems_api_employee_get_all():
     """
     API endpoint to get all employees.
@@ -843,7 +841,7 @@ def ems_api_employee_get_all():
 # API
 @ems_routes.route("/api/employee/<int:uid>/delete", methods=["POST"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin"])
 def ems_api_employee_delete(uid):
     """
     API endpoint to delete an employee.
@@ -878,7 +876,7 @@ def ems_api_employee_delete(uid):
 # API
 @ems_routes.route("/api/employee/onboard/send", methods=["POST"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin", "ems-onboarding-admins"])
 def ems_api_employee_onboard_send():
     """
     Admin-only endpoint: validates invitee input, creates a provisional
@@ -1247,7 +1245,7 @@ def ems_api_onboarding_submit(emp_id):
 # API
 @ems_routes.route("/api/onboarding/<int:emp_id>/override", methods=["POST"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin", "ems-onboarding-admins"])
 def ems_api_onboarding_override(emp_id):
     """
     Manually override onboarding completion for an employee. This is intended for use in exceptional
@@ -1364,7 +1362,7 @@ def ems_api_onboarding_override(emp_id):
 # TEMPLATE
 @ems_routes.route("/positions", methods=["GET"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin"])
 def ems_positions():
     """
     Renders the Employee Management System positions page.
@@ -1388,7 +1386,7 @@ def ems_positions():
 # TEMPLATE
 @ems_routes.route("/position/add", methods=["GET"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin"])
 def ems_position_add():
     """
     Renders the add position page.
@@ -1412,7 +1410,7 @@ def ems_position_add():
 # TEMPLATE
 @ems_routes.route("/position/view/<int:pos_id>", methods=["GET"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin"])
 def ems_position_view(pos_id):
     """
     Renders the view position page.
@@ -1535,7 +1533,7 @@ def ems_position_view(pos_id):
 # API
 @ems_routes.route("/api/position/create", methods=["POST"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin"])
 def ems_api_position_create():
     """
     API endpoint to create a new position.
@@ -1630,7 +1628,7 @@ def ems_api_position_create():
 # API
 @ems_routes.route("/api/position/<int:uid>/modify", methods=["POST"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin"])
 def ems_api_position_modify(uid):
     """
     API endpoint to modify an existing employee.
@@ -1768,7 +1766,7 @@ def ems_api_position_modify(uid):
 # API
 @ems_routes.route("/api/position/get/all", methods=["GET"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin"])
 def ems_api_position_get_all():
     """
     API endpoint to get all positions.
@@ -1783,7 +1781,7 @@ def ems_api_position_get_all():
 # API
 @ems_routes.route("/api/position/<int:uid>/delete", methods=["POST"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin"])
 def ems_api_position_delete(uid):
     """
     API endpoint to delete a position.
@@ -1818,7 +1816,7 @@ def ems_api_position_delete(uid):
 # API
 @ems_routes.route("/api/position/<int:uid>/archive", methods=["POST"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin"])
 def ems_api_position_archive(uid):
     """
     API endpoint to archive a position.
@@ -1868,7 +1866,7 @@ def ems_api_position_archive(uid):
 # API
 @ems_routes.route("/api/position/<int:uid>/restore", methods=["POST"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin"])
 def ems_api_position_restore(uid):
     """
     API endpoint to restore an archived position.
@@ -1916,7 +1914,7 @@ def ems_api_position_restore(uid):
 # API
 @ems_routes.route("/api/relation/create", methods=["POST"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin"])
 def ems_api_relation_create():
     """
     API endpoint to create a new employee-position relation.
@@ -2037,7 +2035,7 @@ def ems_api_relation_create():
 # API
 @ems_routes.route("/api/relation/<int:uid>/modify", methods=["POST"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin"])
 def ems_api_relation_modify(uid):
     """
     API endpoint to modify an existing employee-position relation.
@@ -2143,7 +2141,7 @@ def ems_api_relation_modify(uid):
 # API
 @ems_routes.route("/api/relation/get/all", methods=["GET"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin"])
 def ems_api_relation_get_all():
     """
     API endpoint to get all employee-position relations.
@@ -2158,7 +2156,7 @@ def ems_api_relation_get_all():
 # API
 @ems_routes.route("/api/relation/<int:uid>/get", methods=["GET"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin"])
 def ems_api_relation_get_by_id(uid):
     """
     API endpoint to get an employee-position relation by its unique ID.
@@ -2188,7 +2186,7 @@ def ems_api_relation_get_by_id(uid):
 # API
 @ems_routes.route("api/relation/<int:uid>/delete", methods=["POST"])
 @login_required
-@restrict_to(EMS_ADMIN_ACCESS_GROUPS)
+@restrict_to(["ems-super-admin"])
 def ems_api_relation_delete(uid):
     """
     API endpoint to delete an employee-position relation.
