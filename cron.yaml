@@ -6,5 +6,7 @@ cron:
   target: default
 
 - description: "Daily cleanup of expired CU Calendar events"
-  url: /admin/cu-calendar/cleanup  
+  url: "/cron/delete-expired-events"  
   schedule: every 24 hours
+  timezone: America/Chicago
+  target: default

@@ -63,6 +63,7 @@ from db.all_tools import (
 from db.map_point import get_all_points
 from db.json_store import json_store_set
 from db.employee_management import initialize_ems_settings
+from db.cu_calender import delete_expired_events
 
 ################################################################################
 # UTIL IMPORTS #################################################################
@@ -347,6 +348,25 @@ def schedulers():
 ################################################################################
 # All endpoints beginning with /cron/ are called by the Google Cloud Scheduler
 # from jobs defined in cron.yaml
+
+#add cron job for 
+#import regular function and run it 
+@app.route("/cron/delete-expired-events", methods=["GET", "POST"])
+@csrf.exempt
+@talisman(force_https=False)
+def cron_delete_expired_events():
+    if request.headers.get("X-Appengine-Cron") != "false":
+        logging.warning(
+            "Unauthorized attempt to trigger delete_expired_events cron job"
+        )
+        return "Unauthorized", 403
+    try:
+        delete_expired_events()
+        logging.info("delete_expired_events cron job completed successfully")
+        return {"success": True}, 200
+    except Exception as e:
+        logging.exception("delete_expired_events cron job failed")
+        return {"success": False, "error": str(e)}, 500
 
 
 @app.route("/cron/socials-rss-listener", methods=["GET", "POST"])

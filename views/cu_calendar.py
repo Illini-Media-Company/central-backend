@@ -37,10 +37,6 @@ def get_map_center():
     center = center_val()
     return jsonify({"lat": center[0], "long": center[1]}), 200
 
-@admin_calendar_routes.route("/cleanup", methods=["GET"])
-def cleanup_expired_events():
-    delete_expired_events()
-    return jsonify({"message": "Expired events deleted successfully."}), 200
 
 #get individual events from form 
 @calendar_routes.route("/submit", methods=["POST"])
