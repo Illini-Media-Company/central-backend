@@ -111,6 +111,18 @@ def add_and_process_source():
     return jsonify({"message": f"Successfully imported events!"}), 200
 
 
+@admin_calendar_routes.route("/<uid>/highlight", methods=["POST"])
+@login_required
+def highlight_event(uid):
+    if not uid:
+        return jsonify({"error": "Invalid Event ID format."}), 400
+    
+    success = highlight_event(uid) 
+    
+    if not success:
+        return jsonify({"error": "Event not found."}), 404
+    
+    return jsonify({"message": "Event highlighted successfully!"}), 200
 
 @admin_calendar_routes.route("/<uid>/accept", methods=["POST"])
 @login_required

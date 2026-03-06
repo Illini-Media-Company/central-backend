@@ -21,13 +21,14 @@ class CalendarObject(ndb.Model):
     description = ndb.StringProperty()
     company_name = ndb.StringProperty()
     is_accepted = ndb.BooleanProperty()
+    highlight = ndb.BooleanProperty(default=False)  
 
 
 
 
 
 #Adds a new event along with jitter for duplicate lat-long values
-def add_event(title, lat, long, url, start_date, end_date, image, address, event_type, description, company_name, is_accepted=False):
+def add_event(title, lat, long, url, start_date, end_date, image, address, event_type, description, company_name, is_accepted=False, highlight=False):
     with client.context():
 
         new_event = CalendarObject(
@@ -43,7 +44,8 @@ def add_event(title, lat, long, url, start_date, end_date, image, address, event
             event_type=event_type,
             description=description,
             company_name=company_name,
-            is_accepted=is_accepted,  
+            is_accepted=is_accepted, 
+            highlight=highlight
         )
         new_event.put()
 
@@ -95,6 +97,7 @@ def change_event(uid, title, lat, long, url, start_date, end_date, image, addres
             point.description = description
             point.company_name = company_name
             point.is_accepted = False  
+            point.highlight = False
             point.put()
             return True
         else:
@@ -191,7 +194,17 @@ def get_event_by_id(uid):
         return event.to_dict() if event else None
     
 
+def highlight_event(uid):
+    with client.context():
+        event = CalendarObject.get_by_id(int(uid))
 
+        if event is not None:
+            event.highlight = True
+            event.is_accepted = True
+            event.put()
+            return True
+        else:
+            return False
 
 #old Gcal Link logic, keeping for now in case something chnages 
 
