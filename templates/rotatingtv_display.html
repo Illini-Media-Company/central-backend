@@ -9,17 +9,28 @@
         height: 100vh; 
         width: 100vw; 
         background: var(--main-bg-color); 
-        color: var(--main-dk-gray-color); 
+        color: var(--main-dk-gray-color);
+        position: relative;
+        overflow: hidden;
     }
 
     .panel { 
-        display: none; 
+        display: flex;
+        position: absolute;
+        top: 0;
+        left: 0;
         height: 100%; 
-        width: 100%; 
+        width: 100%;
+        opacity: 0;
+        pointer-events: none;
+        z-index: -1;
+        transition: opacity 0.5s ease-in-out;
     }
 
     .panel.active { 
-        display: flex;
+        opacity: 1;
+        pointer-events: auto;
+        z-index: 1
     }
 
     .frame { 
@@ -158,10 +169,11 @@
 
             {% if show_quad %}
                 <section class="panel">
-                    <iframe class="frame"
-                        src="{{ quad_url }}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1"
-                        title="YouTube: Quad"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    <iframe class="frame yt-player-iframe"
+                        id="quad-iframe"
+                        src="{{ quad_url }}?autoplay=0&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1"
+                        title="YouTube: Main Quad"
+                        allow="autoplay; accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                         referrerpolicy="strict-origin-when-cross-origin"
                         allowfullscreen></iframe>
                 </section>
@@ -169,10 +181,11 @@
 
             {% if show_alma %}
                 <section class="panel">
-                    <iframe class="frame"
-                        src="{{ alma_url }}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1"
-                        title="YouTube: Alma"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    <iframe class="frame yt-player-iframe"
+                        id="alma-iframe"
+                        src="{{ alma_url }}?autoplay=0&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1"
+                        title="YouTube: Alma Mater"
+                        allow="autoplay; accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                         referrerpolicy="strict-origin-when-cross-origin"
                         allowfullscreen></iframe>
                 </section>
@@ -180,10 +193,11 @@
 
             {% if show_morrow %}
                 <section class="panel">
-                    <iframe class="frame"
-                        src="{{ morrow_url }}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1"
+                    <iframe class="frame yt-player-iframe"
+                        id="morrow-iframe"
+                        src="{{ morrow_url }}?autoplay=0&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1"
                         title="YouTube: Morrow Plots"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allow="autoplay; accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                         referrerpolicy="strict-origin-when-cross-origin"
                         allowfullscreen></iframe>
                 </section>
@@ -372,28 +386,64 @@
     })();
 
     // --- rotation (uses only rendered panels) ---
+    let ytPlayers = {};
+
+    // Youtube API
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    // on load
+    function onYouTubeIframeAPIReady() {
+        const iframes = document.querySelectorAll('.yt-player-iframe');
+        
+        iframes.forEach(iframe => {
+            ytPlayers[iframe.id] = new YT.Player(iframe.id, {
+                events: {
+                    'onReady': (event) => {
+                        // If this video is in the panel that happens to be active on initial load, play it
+                        if (iframe.closest('.panel').classList.contains('active')) {
+                            event.target.playVideo();
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    // Rotation logic
     (function rotatePanels() {
         const root = document.getElementById('rotator');
-
-        if (!root) 
-            return;
+        if (!root) return;
         
         const interval = parseInt(root.dataset.intervalMs || '30000', 10);
-
         const panels = Array.from(root.querySelectorAll('.panel'));
-        if (panels.length === 0) 
-            return;
+        
+        if (panels.length === 0) return;
 
         let i = 0;
         panels[i].classList.add('active');
 
-        if (panels.length === 1) 
-            return;
+        if (panels.length === 1) return;
 
         setInterval(() => {
+            // -- PAUSE the outgoing panel's video --
+            const currentIframe = panels[i].querySelector('.yt-player-iframe');
+            if (currentIframe && ytPlayers[currentIframe.id] && typeof ytPlayers[currentIframe.id].pauseVideo === 'function') {
+                ytPlayers[currentIframe.id].pauseVideo();
+            }
+
+            // Rotate classes
             panels[i].classList.remove('active');
             i = (i + 1) % panels.length;
             panels[i].classList.add('active');
+
+            // -- PLAY the incoming panel's video --
+            const nextIframe = panels[i].querySelector('.yt-player-iframe');
+            if (nextIframe && ytPlayers[nextIframe.id] && typeof ytPlayers[nextIframe.id].playVideo === 'function') {
+                ytPlayers[nextIframe.id].playVideo();
+            }
         }, interval);
     })();
 
