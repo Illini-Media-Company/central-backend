@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.6.4](https://github.com/Illini-Media-Company/central-backend/compare/v2.6.3...v2.6.4) (2026-03-06)
+
+
+### Bug Fixes
+
+* [EMS] Update access to use explicit Google Groups ([b51291a](https://github.com/Illini-Media-Company/central-backend/commit/b51291ac8be165aea9959c3eb2be464b3980b627))
+* [TV-Display] Change on-air calendar to match WPGU branding ([c44436b](https://github.com/Illini-Media-Company/central-backend/commit/c44436bb91c71fa1252c1ca8e5828f0bd626676f))
+* [TV-Display] Fix autoplay issues with Youtube players ([52796a9](https://github.com/Illini-Media-Company/central-backend/commit/52796a95ac4107c5a14027ac4dcfcd098f85d25a))
+
 ## [2.6.3](https://github.com/Illini-Media-Company/central-backend/compare/v2.6.2...v2.6.3) (2026-03-03)
 
 
