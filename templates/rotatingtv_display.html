@@ -243,9 +243,9 @@
             {% endif %}
 
             {% if show_onair %}
-            <section class="panel" style="justify-content: center; align-items: center;">
+            <section class="panel" style="justify-content: center; align-items: center; color: var(--gray-900);">
                 <div class="section-container" style="flex-direction: row; position: relative; height: calc(100% - 4rem); width: calc(100% - 4rem)">
-                    <div class="inner-container" style="width: 60%; justify-content: center; display: flex; flex-direction: column; {% if computer_display %} gap: 15%; {% else %} gap: 5%; {% endif %} justify-content: flex-start;">
+                    <div class="inner-container" style="width: 60%; justify-content: center; display: flex; flex-direction: column; {% if computer_display %} gap: 15%; {% else %} gap: 5%; {% endif %} justify-content: space-between;">
                             <div style="margin-bottom: 0.5rem;">
                                 <h1 style="text-align: center; margin-bottom: 0; font-size: 3.5rem;">On-Air</h1>
                                 <h3 style="text-align: center; margin-top: 0; font-size: 2.5rem;">{{ current_date }}</h3>
@@ -257,6 +257,12 @@
                                     <h3 id="current-seconds" style="{% if computer_display %}font-size: 3rem; {% else %} font-size: 2rem; {% endif %}  margin-bottom: 0; margin-top: 0;">——</h3>
                                 </div>
                                 <h3 style="{% if computer_display %}font-size: 3rem; {% else %} font-size: 2rem; {% endif %} text-align: center; margin-bottom: 0; margin-top: 0;">{{ current_date }}</h3>
+                            </div>
+
+                            <div style="text-align: center; margin-bottom: 3rem;">
+                                <img src="/static/brandmarks/logos/WPGU_Logo.png"
+                                    style="width: 50%;"
+                                >
                             </div>
 
                         </div>
@@ -286,7 +292,7 @@
                         <div class="time-marker" style="top: 91.66%"></div>
 
                         {% for event in onair_events1 %}
-                            <div class="event" style="top: {{ event.start_percent + 0.25 }}%; height: {{ event.duration_percent - 0.25 }}%;">
+                            <div class="event" style="top: {{ event.start_percent + 0.25 }}%; height: {{ event.duration_percent - 0.25 }}%; background-color: var(--wpgu-green-500);">
                                 <h3 class="event-title">{{ event.title }}<span class="event-time">{{ event.start }} – {{ event.end }}</span></h3>
                             </div>
                         {% endfor %}
@@ -317,7 +323,7 @@
                         <div class="time-marker" style="top: 91.66%"></div>
 
                         {% for event in onair_events2 %}
-                            <div class="event" style="top: {{ event.start_percent + 0.25 }}%; height: {{ event.duration_percent - 0.25 }}%;">
+                            <div class="event" style="top: {{ event.start_percent + 0.25 }}%; height: {{ event.duration_percent - 0.25 }}%; background-color: var(--wpgu-green-500);">
                                 <h3 class="event-title">{{ event.title }}<span class="event-time">{{ event.start }} – {{ event.end }}</span></h3>
                             </div>
                         {% endfor %}
