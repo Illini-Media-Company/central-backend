@@ -210,6 +210,58 @@ def log_scheduler():
 ################################################################################
 
 
+@app.errorhandler(401)
+def unauthorized(e):
+    """
+    Error handler for 401 errors (Unauthorized). Can be manually shown through an API by calling:
+    `abort(401, description="Your string here")`
+    """
+    # Use the string provided from abort(), otherwise default
+    default_error = "You must be authenticated to access this resource. Please log in and try again."
+    generic_default = "You must be authenticated (logged in) to access this resource. You either are not logged in, supplied the wrong credentials (e.g. a bad password), or your browser doesn't understand how to supply the credentials required."
+
+    error_message = (
+        e.description
+        if hasattr(e, "description") and e.description != generic_default
+        else default_error
+    )
+
+    return (
+        render_template(
+            "error.html",
+            code="401",
+            error=error_message,
+        ),
+        401,
+    )
+
+
+@app.errorhandler(403)
+def access_forbidden(e):
+    """
+    Error handler for 403 errors (Forbidden). Can be manually shown through an API by calling:
+    `abort(403, description="Your string here")`
+    """
+    # Use the string provided from abort(), otherwise default
+    default_error = "You do not have permission to access this resource. If you believe this is an error, please contact a system administrator."
+    generic_default = "You don't have the permission to access the requested resource. Alternatively, it is either read-protected or not readable by the server."
+
+    error_message = (
+        e.description
+        if hasattr(e, "description") and e.description != generic_default
+        else default_error
+    )
+
+    return (
+        render_template(
+            "error.html",
+            code="403",
+            error=error_message,
+        ),
+        403,
+    )
+
+
 @app.errorhandler(404)
 def page_not_found(e):
     """
@@ -233,32 +285,6 @@ def page_not_found(e):
             error=error_message,
         ),
         404,
-    )
-
-
-@app.errorhandler(403)
-def access_forbidden(e):
-    """
-    Error handler for 403 errors (Forbidden). Can be manually shown through an API by calling:
-    `abort(403, description="Your string here")`
-    """
-    # Use the string provided from abort(), otherwise default
-    default_error = "You do not have permission to access this resource. If you believe this is an error, please contact a system administrator."
-    generic_default = "You don't have the permission to access the requested resource. It is either read-protected or not readable by the server."
-
-    error_message = (
-        e.description
-        if hasattr(e, "description") and e.description != generic_default
-        else default_error
-    )
-
-    return (
-        render_template(
-            "error.html",
-            code="403",
-            error=error_message,
-        ),
-        403,
     )
 
 
