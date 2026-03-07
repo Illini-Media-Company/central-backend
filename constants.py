@@ -75,6 +75,9 @@ OV_ENDPOINT = os.environ.get("OV_ENDPOINT", None)
 
 RETOOL_API_KEY = os.environ.get("RETOOL_API_KEY", None)
 
+#GSC Budket ID
+GSC_BUCKET_ID = "cu-calendar-images"
+
 # Google Calendar IDs
 MAIN_IMC_GCAL_ID = (
     "illinimedia.com_8cati95103kg5o3h8i11hmu0lo@group.calendar.google.com"

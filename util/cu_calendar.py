@@ -1,22 +1,81 @@
 """
 Utility functions for the CU Calendar feature.
 
-Includes geocoding addresses and parsing Google Calendar URLs to fetch events.
-Last modified by Aryaa Rathi on Feb 19, 2026
+Includes geocoding addresses, Google Cloud Storage logic, and parsing Google Calendar URLs.
 """
 
 import os
-from datetime import date, datetime, timedelta, timezone
-from typing import List, Optional
-from urllib.parse import parse_qs, unquote, urlparse
+import uuid 
+from datetime import date, datetime, timedelta, timezone 
+from typing import List, Optional 
+from urllib.parse import parse_qs, unquote, urlparse 
 from zoneinfo import ZoneInfo
 
 import googlemaps
-from gcsa.google_calendar import GoogleCalendar
+from google.cloud import storage 
+from gcsa.google_calendar import GoogleCalendar 
 
-from util.security import get_creds
+from db.cu_calender import add_event
+from constants import GCS_BUCKET_NAME 
+from util.security import get_creds 
+
 
 GCAL_SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
+
+
+def geocode_address(address):
+    api_key = os.getenv('FLASK_GEOCODING_API_KEY')
+    if not api_key:
+        print("Error: Google API key not found.")
+        return None
+   
+    gmaps = googlemaps.Client(key=api_key)
+    try:
+        geocode_result = gmaps.geocode(address)
+        if geocode_result:
+            location = geocode_result[0]['geometry']['location']
+            return location['lat'], location['lng']
+        else:
+            return None
+    except Exception as e:
+        print(f"Error geocoding address: {e}")
+        return None
+
+
+def upload_images_to_gcs(files):
+    if not files:
+        return []
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(GCS_BUCKET_NAME)
+    uploaded_urls = []
+    for file in files:
+        if file.filename == '':
+            continue
+       
+        ext = file.filename.rsplit('.',1)[1].lower() if '.' in file.filename else 'jpg'
+        unique_filename = f"{uuid.uuid4()}.{ext}"
+        blob = bucket.blob(unique_filename)
+        blob.upload_from_file(file)
+        uploaded_urls.append(blob.public_url)
+    return uploaded_urls
+
+
+
+def delete_images_from_gcs(image_urls):
+    if not image_urls:
+        return
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(GCS_BUCKET_NAME)
+    for url in image_urls:
+        try:
+            blob_name = url.split(f"{GCS_BUCKET_NAME}/")[-1]
+            blob = bucket.blob(blob_name)
+            if blob.exists():
+                blob.delete()
+                print(f"Deleted image from GCS: {blob_name}")
+        except Exception as e:
+            print(f"Error deleting image {url} from GCS: {e}")
+
 
 
 def _parse_calendar_id_from_url(gcal_url: str) -> Optional[str]:
@@ -43,6 +102,7 @@ def _parse_calendar_id_from_url(gcal_url: str) -> Optional[str]:
         if parts[0]:
             return unquote(parts[0].strip())
     return None
+
 
 
 def gcal_to_events(gcal_url: str, future_days: int = 365) -> Optional[List[dict]]:
@@ -102,6 +162,7 @@ def gcal_to_events(gcal_url: str, future_days: int = 365) -> Optional[List[dict]
     return result
 
 
+
 def sync_cu_calendar_sources() -> int:
     """
     Sync all stored Google Calendar sources: fetch events from each gcal URL,
@@ -143,7 +204,7 @@ def sync_cu_calendar_sources() -> int:
                 url=gcal_url,
                 start_date=event.get("start_date"),
                 end_date=event.get("end_date"),
-                image=None,
+                images=[], 
                 address=event.get("address", ""),
                 event_type="Imported",
                 description=event.get("description", ""),
@@ -153,25 +214,3 @@ def sync_cu_calendar_sources() -> int:
             total_added += 1
 
     return total_added
-
-
-def geocode_address(address):
-    api_key = os.getenv("FLASK_GEOCODING_API_KEY")
-
-    if not api_key:
-        print("Error: Google API key not found.")
-        return None
-
-    gmaps = googlemaps.Client(key=api_key)
-
-    try:
-        geocode_result = gmaps.geocode(address)
-
-        if geocode_result:
-            location = geocode_result[0]["geometry"]["location"]
-            return location["lat"], location["lng"]
-        else:
-            return None
-    except Exception as e:
-        print(f"Error geocoding address: {e}")
-        return None
