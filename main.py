@@ -125,7 +125,7 @@ from views.photo_request import photo_request_routes
 from views.di_social_poster import di_social_poster_routes
 from views.employee_management import ems_routes
 from views.employee_management import get_ems_brand_image_url
-from views.cu_calender import calendar_routes, admin_calendar_routes
+from views.cu_calendar import calendar_routes, admin_calendar_routes
 
 ################################################################################
 ############################# IMPORTS COMPLETE #################################

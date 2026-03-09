@@ -15,8 +15,7 @@ import googlemaps
 from google.cloud import storage 
 from gcsa.google_calendar import GoogleCalendar 
 
-from db.cu_calender import add_event
-from constants import GCS_BUCKET_NAME 
+from constants import GCS_BUCKET_NAME, BACKEND_GOOGLE_MAP_API
 from util.security import get_creds 
 
 
@@ -24,7 +23,7 @@ GCAL_SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
 
 
 def geocode_address(address):
-    api_key = os.getenv('FLASK_GEOCODING_API_KEY')
+    api_key = BACKEND_GOOGLE_MAP_API
     if not api_key:
         print("Error: Google API key not found.")
         return None
@@ -56,6 +55,8 @@ def upload_images_to_gcs(files):
         unique_filename = f"{uuid.uuid4()}.{ext}"
         blob = bucket.blob(unique_filename)
         blob.upload_from_file(file)
+        blob.make_public()
+
         uploaded_urls.append(blob.public_url)
     return uploaded_urls
 

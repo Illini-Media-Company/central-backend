@@ -42,7 +42,7 @@ def add_event(title, lat, long, url, start_date, end_date, images, address, even
             lat=lat,
             long=long,
             url=url,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(timezone.utc).replace(tzinfo=None),
             start_date=start_date,
             end_date=end_date,
             images=images or [], 
@@ -113,7 +113,7 @@ def change_event(uid, title, lat, long, url, start_date, end_date, images, addre
  
 # get only accepted events that are in the future, sorted by start date
 def get_future_public_events():
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     with client.context():
         query = (
             CalendarObject.query(CalendarObject.is_accepted == True)
@@ -142,7 +142,7 @@ def center_val():
 # remove any events that have passed
 def delete_expired_events():
     with client.context():
-        now = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         query = CalendarObject.query(CalendarObject.end_date < now)
         keys_to_delete = [event.key for event in query.fetch()]
         if keys_to_delete:
@@ -218,7 +218,7 @@ def add_calendar_source(gcal_url, company_name=""):
         source = CalendarSource(
             gcal_url=gcal_url.strip(),
             company_name=(company_name or "").strip(),
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(timezone.utc).replace(tzinfo=None),
         )
         source.put()
         return source.to_dict()

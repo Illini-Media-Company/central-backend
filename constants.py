@@ -17,6 +17,7 @@ GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", None)
 GOOGLE_PROJECT_ID = os.environ.get("DATASTORE_PROJECT_ID", None)
 GOOGLE_MAP_API = os.environ.get("GOOGLE_MAP_API", None)
 FOOD_TRUCK_MAPS_ID = os.environ.get("FOOD_TRUCK_MAPS_ID", None)
+BACKEND_GOOGLE_MAP_API = os.environ.get("BACKEND_GOOGLE_MAP_API", None)
 
 # Google Analytics information
 IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID = "G-6V6FSKGBDZ"
@@ -76,7 +77,7 @@ OV_ENDPOINT = os.environ.get("OV_ENDPOINT", None)
 RETOOL_API_KEY = os.environ.get("RETOOL_API_KEY", None)
 
 #GSC Budket ID
-GSC_BUCKET_ID = "cu-calendar-images"
+GCS_BUCKET_NAME = "cu-calendar-images"
 
 # Google Calendar IDs
 MAIN_IMC_GCAL_ID = (
