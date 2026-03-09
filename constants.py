@@ -299,3 +299,24 @@ SOCIAL_MEDIA_GCAL_ID = (
     else "c_d8a24ec91409fb265af98492cb51c1a19b396c15adc55ed4cad9a8c10f50633a@group.calendar.google.com"
 )
 ONBOARDING_EMAIL = "onboarding@illinimedia.com"
+
+# Google Groups for shift scheduler access control
+COPY_EDITOR_GROUPS = ["copy-editors"]
+SENIOR_COPY_EDITOR_GROUPS = ["senior-copy-editors"]
+COPY_CHIEF_GROUPS = ["copy-chief"]
+
+ALL_SCHEDULER_GROUPS = (
+    COPY_EDITOR_GROUPS
+    + SENIOR_COPY_EDITOR_GROUPS
+    + COPY_CHIEF_GROUPS
+    + ["webdev", "imc-staff-webdev"]
+)
+
+SHIFT_REQUIREMENTS = {
+    "copy_editor": 2,
+    "senior_copy_editor": 8,
+    "copy_chief": 0,  # copy chief may not need to sign up for shifts
+}
+
+WEEKEND_SHIFT_REDUCTION = 1
+SCHEDULER_TIMEZONE = "America/Chicago"

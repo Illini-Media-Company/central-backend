@@ -167,6 +167,7 @@ from views.di_social_poster import di_social_poster_routes
 from views.employee_management import ems_routes
 from views.employee_management import get_ems_brand_image_url
 from views.copy_admin_dashboard import copy_admin_dashboard_routes
+from views.shift_scheduler import shift_scheduler_routes
 
 logging.info("Views imported.")
 
@@ -185,6 +186,17 @@ app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 talisman = Talisman(app, content_security_policy=[])
 csrf.init_app(app)
 logging.info("Done initializing Flask.")
+
+from seed_shifts import seed_dummy_shifts
+
+
+@app.route("/seed-shifts")
+@login_required
+@restrict_to(TOOLS_ADMIN_ACCESS_GROUPS)
+def seed_shifts():
+    seed_dummy_shifts()
+    return "Seeded!", 200
+
 
 logging.info("Registering blueprints...")
 app.register_blueprint(tools_routes)
@@ -207,6 +219,7 @@ app.register_blueprint(photo_request_routes)
 app.register_blueprint(di_social_poster_routes)
 app.register_blueprint(ems_routes)
 app.register_blueprint(copy_admin_dashboard_routes)
+app.register_blueprint(shift_scheduler_routes)
 logging.info("Done registering blueprints.")
 
 logging.info("Initializing login manager...")
