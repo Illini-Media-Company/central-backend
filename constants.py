@@ -297,6 +297,13 @@ COURTESY_REQUESTS_CHANNEL_ID = (
 
 ONBOARDING_EMAIL = "onboarding@illinimedia.com"
 
+# Google Groups for copy admin dashboard access control
+COPY_ADMIN_ACCESS_GROUPS = [
+    "webdev",
+    "imc-staff-webdev",
+    "copy-chief",
+]
+
 # Google Groups for shift scheduler access control
 COPY_EDITOR_GROUPS = ["copy-editors"]
 SENIOR_COPY_EDITOR_GROUPS = ["senior-copy-editors"]
