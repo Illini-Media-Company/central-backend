@@ -1,37 +1,837 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title> Copy Admin</title>
-</head>
-<body>
-    <h1> Copy Editor Admin Dashboard</h1>
+{% extends 'base.html' %}
 
-    <h2>Editors</h2>
-    <ul>
-        {% for editor in editors %}
-            <li>
-                {{editor.name}} - {{editor.email}}
-                 <form action="/copy-admin-dashboard/admin/editor/{{ editor.uid }}/delete" method="POST">
-                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit">Delete</button>
-                </form>
+{% block title %} Copy Admin Dashboard {% endblock %}
 
-                <form action="/copy-admin-dashboard/admin/editor/{{ editor.uid }}/update" method="POST">
-                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                    <input type="text" name="name" value="{{ editor.name }}" required>
-                    <input type="email" name="email" value="{{ editor.email }}" required>
-                    <button type="submit">Update</button>
-                </form>
-            </li>
-        {% endfor %}
-    </ul>
+{% block extra_head %}
+<style>
+    .page-content { overflow: hidden;}
+    .tab-btn { padding: 6px 12px; border: none; border-radius: 4px; background: transparent; cursor: pointer; font-size: 0.875rem; }
+    .tab-btn.active-tab { background: #e5e7eb; font-weight: 500; }
+    .tab-btn:hover:not(.active-tab) { background: #f3f4f6; }
+</style>
+{% endblock %}
 
-    <h2> Add Editor</h2>
-    <form action="/copy-admin-dashboard/admin/editor" method="POST">
-        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-        <input type="text" name="name" placeholder="Name" required>
-        <input type="email" name="email" placeholder="Email" required>
-        <button type="submit">Add</button>
-    </form>
-</body>
-</html>
+{% block content%}
+
+<script>
+    const EDITORS = {{ editors | tojson}};
+    const SHIFTS = {{ shifts | tojson}};
+    const SHIFT_REQUESTS = {{ shift_requests | tojson}};
+    const CSRF_TOKEN = '{{ csrf_token() }}';
+</script>
+
+<div id="sub-topbar" style="height:57px; background:white; border-bottom:1px solid #dee2e6; display:flex; align-items:center; justify-content:space-between; padding:0 1.5rem; flex-shrink:0;">
+    
+    <!-- Left: week navigation -->
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+        <button onclick="prevWeek()" style="padding:4px 8px; border:1px solid #dee2e6; border-radius:4px; background:white; cursor:pointer;">&#8249;</button>
+        <span id="date-range-label" style="font-weight:500; min-width:140px; text-align:center;">---</span>
+        <button onclick="nextWeek()" style="padding:4px 8px; border:1px solid #dee2e6; border-radius:4px; background:white; cursor:pointer;">&#8250;</button>
+        <button onclick="thisWeek()" style="padding:4px 10px; border:1px solid #dee2e6; border-radius:4px; background:white; cursor:pointer; font-size:0.875rem;">This Week</button>
+    </div>
+
+    <!-- Center: coverage badges -->
+     <div style="display:flex; align-items:center; gap:0.5rem;">
+        <span id="coverage-open" style="padding:2px 10px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; font-size:0.75rem; color:#1e40af;">Open: 0</span>
+        <span id="coverage-staffed" style="padding:2px 10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:4px; font-size:0.75rem; color:#166534;">Staffed: 0</span>
+        <span id="coverage-full" style="padding:2px 10px; background:#faf5ff; border:1px solid #e9d5ff; border-radius:4px; font-size:0.75rem; color:#6b21a8;">Full: 0</span>
+     </div>
+
+     <!-- Right: tabs + search -->
+      <div style="display:flex; align-items:center; gap:0.5rem;">
+        <button id="tab-schedule" onclick="switchTab('schedule')" class="tab-btn active-tab">Schedule</button>
+        <button id="tab-editors" onclick="switchTab('editors')" class="tab-btn">Editors</button>
+        <button id="tab-history" onclick="switchTab('history')" class="tab-btn">History / Logs</button>
+        <div style="position:relative;">
+            <i class="bi bi-search" style="position:absolute; left:8px; top:50%; transform:translateY(-50%); color:#9ca3af; font-size:0.875rem;"></i>
+            <input id="search-input" type="text" placeholder="Search editor, shift, status..." oninput="handleSearch(this.value)" style="padding:6px 8px 6px 28px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem; width:240px;">
+        </div>
+      </div>
+
+</div>
+
+<!-- Main content area -->
+ <div id="main-content" style="display:flex; flex-direction: column; flex:1; overflow:hidden;">
+
+    <!-- VIEW: Schedule (default visible) -->
+     <div id="view-schedule" style="display:flex; height:100%; overflow:hidden;">
+        
+        <!-- Left: grid area (70%) -->
+         <div id="grid-area" style="flex: 0 0 70%; overflow:auto; padding:1.5rem; border-right:1px solid #dee2e6">
+            <!-- Legend -->
+            <div style="display:flex; gap:1rem; margin-bottom:1rem; font-size:0.75rem; color:#6b7280;">
+                <div style="display:flex; align-items:center; gap:0.4rem;"><div style="width:14px; height:14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:2px;"></div> Open</div>
+                <div style="display:flex; align-items:center; gap:0.4rem;"><div style="width:14px; height:14px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:2px;"></div> Staffed</div>
+                <div style="display:flex; align-items:center; gap:0.4rem;"><div style="width:14px; height:14px; background:#faf5ff; border:1px solid #e9d5ff; border-radius:2px;"></div> Full</div>
+                <div style="display:flex; align-items:center; gap:0.4rem;"><div style="width:14px; height:14px; background:#fff1f2; border:1px solid #fca5a5; border-radius:2px;"></div> Action needed</div>
+            </div>
+
+            <!-- Grid table -->
+            <div style="border:1px solid #dee2e6; border-radius:6px; overflow:hidden;">
+                <table style="width:100%; border-collapse:collapse; min-width:560px;">
+                    <thead>
+                        <tr style="background:#f9fafb; border-bottom:1px solid #dee2e6;">
+                            <th style="width:90px; padding:0.5rem; border-right:1px solid #dee2e6;"></th>
+                            {% for i in range(7) %}
+                            <th id="grid-hdr-{{ i }}" style="padding:0.5rem; text-align:center; border-right:1px solid #dee2e6; min-width:80px;"></th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set time_labels = ['8am–10am','10am–12pm','12pm–2pm','2pm–4pm','4pm–6pm','6pm–8pm','8pm–10pm','10pm–12am'] %}
+                        {% for slot in range(8) %}
+                        <tr style="border-bottom:1px solid #dee2e6;">
+                            <td style="padding:0.5rem; font-size:0.75rem; color:#6b7280; background:#f9fafb; border-right:1px solid #dee2e6; white-space:nowrap;">{{ time_labels[slot] }}</td>
+                            {% for day in range(7) %}
+                            <td id="cell-{{ slot }}-{{ day }}" style="height:72px; border-right:1px solid #dee2e6; padding:0.4rem; vertical-align:top; cursor:default;"></td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+         </div>
+
+        <!-- Right: action panel (30%) -->
+        <div id="action-panel" style="flex:0 0 30%; overflow:auto; padding:1.5rem;">
+            <!-- Pending Actions -->
+            <div style="margin-bottom:1.5rem;">
+                <h6 style="font-weight:600; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;">
+                    <i class="bi bi-exclamation-circle"></i> Pending Actions
+                </h6>
+                <div id="pending-actions-list">
+                    <p style="color:#9ca3af; font-size:0.875rem;">No pending actions</p>
+                </div>
+            </div>
+
+            <!-- Weekly Load -->
+            <div>
+                <h6 style="font-weight:600; margin-bottom:0.75rem;">Weekly Load by Editor</h6>
+                <div id="weekly-load-list">
+                    <p style="color:#9ca3af; font-size:0.875rem;">No editors</p>
+                </div>
+            </div>
+
+            <!-- Add Shift button -->
+            <div style="margin-top:1.5rem; border-top:1px solid #dee2e6; padding-top:1rem;">
+                <button onclick="openAddShiftModal()" class="button-primary" style="width:100%;">
+                    + Add Shift
+                </button>
+            </div>
+        </div>
+
+     </div>
+
+     <!-- VIEW: Editors (hidden) -->
+    <div id="view-editors" style="display:none; height:100%; overflow:auto; padding:1.5rem;">
+        <div style="max-width:1200px;">
+        <h5 style="font-weight:600; margin-bottom:1.5rem;">Editors</h5>
+        <div style="display:flex; gap:1.5rem;">
+
+            <!-- Copy Editors table -->
+            <div style="flex:1;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                    <h6 style="margin:0;">Copy Editors (<span id="copy-editors-count">0</span>)</h6>
+                    <button onclick="openAddEditorModal('Copy Editor')" class="button-secondary" style="font-size:0.8rem;">
+                        <i class="bi bi-plus"></i> Add Editor
+                    </button>
+                </div>
+                <input type="text" id="copy-editor-search" placeholder="Filter editors..." oninput="renderEditorsView()" style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem; margin-bottom:0.5rem;">
+                <div style="border:1px solid #dee2e6; border-radius:6px; overflow:hidden;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead style="background:#f9fafb; border-bottom:1px solid #dee2e6;">
+                            <tr>
+                                <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Editor</th>
+                                <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Shifts</th>
+                                <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Weekend</th>
+                                <th style="width:40px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="copy-editors-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Senior Copy Editors table -->
+            <div style="flex:1;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                    <h6 style="margin:0;">Senior Copy Editors (<span id="senior-editors-count">0</span>)</h6>
+                    <button onclick="openAddEditorModal('Senior Copy Editor')" class="button-secondary" style="font-size:0.8rem;">
+                        <i class="bi bi-plus"></i> Add Editor
+                    </button>
+                </div>
+                <input type="text" id="senior-editor-search" placeholder="Filter editors..." oninput="renderEditorsView()" style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem; margin-bottom:0.5rem;">
+                <div style="border:1px solid #dee2e6; border-radius:6px; overflow:hidden;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead style="background:#f9fafb; border-bottom:1px solid #dee2e6;">
+                            <tr>
+                                <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Editor</th>
+                                <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Shifts</th>
+                                <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Weekend</th>
+                                <th style="width:40px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="senior-editors-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    </div>
+
+    <!-- VIEW: History (hidden) -->
+    <div id="view-history" style="display:none; height:100%; overflow:auto; padding:1.5rem;">
+        <div style="max-width:1200px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h5 style="font-weight:600; margin:0;">History / Requests</h5>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <label style="font-size:0.875rem; color:#6b7280;">Filter:</label>
+                    <select id="history-filter" onchange="renderHistoryView()" style="padding:5px 8px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem;">
+                        <option value="all">All</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="denied">Denied</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+            </div>
+            <div style="border:1px solid #dee2e6; border-radius:6px; overflow:hidden;">
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead style="background:#f9fafb; border-bottom:1px solid #dee2e6;">
+                        <tr>
+                            <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Submitted</th>
+                            <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Type</th>
+                            <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Requester</th>
+                            <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Shift</th>
+                            <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Details</th>
+                            <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Status</th>
+                            <th style="padding:10px 16px; text-align:left; font-size:0.875rem;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-tbody">
+                        <tr><td colspan="7" style="padding:2rem; text-align:center; color:#9ca3af; font-size:0.875rem;">No requests</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+ </div>
+
+ <!-- MODAL: Add / Edit Shift -->
+<div id="modal-shift" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:8px; padding:1.5rem; width:420px; max-width:95vw; box-shadow:0 4px 24px rgba(0,0,0,0.15);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h6 id="modal-shift-title" style="font-weight:600; margin:0;">Add Shift</h6>
+            <button onclick="closeShiftModal()" style="background:none; border:none; font-size:1.25rem; cursor:pointer; color:#6b7280;">&times;</button>
+        </div>
+        <form id="form-shift" onsubmit="submitShiftModal(event)">
+            <div style="margin-bottom:0.75rem;">
+                <label style="font-size:0.875rem; font-weight:500; display:block; margin-bottom:0.25rem;">Date</label>
+                <input type="date" id="shift-date" required style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem;">
+            </div>
+            <div style="margin-bottom:0.75rem;">
+                <label style="font-size:0.875rem; font-weight:500; display:block; margin-bottom:0.25rem;">Time Slot</label>
+                <select id="shift-hour" required style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem;">
+                    <option value="8">8am – 10am</option>
+                    <option value="10">10am – 12pm</option>
+                    <option value="12">12pm – 2pm</option>
+                    <option value="14">2pm – 4pm</option>
+                    <option value="16">4pm – 6pm</option>
+                    <option value="18">6pm – 8pm</option>
+                    <option value="20">8pm – 10pm</option>
+                    <option value="22">10pm – 12am</option>
+                </select>
+            </div>
+            <div style="margin-bottom:0.75rem;">
+                <label style="font-size:0.875rem; font-weight:500; display:block; margin-bottom:0.25rem;">Editor 1</label>
+                <select id="shift-editor-1" style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem;">
+                    <option value="">— Unassigned —</option>
+                </select>
+            </div>
+            <div style="margin-bottom:1rem;">
+                <label style="font-size:0.875rem; font-weight:500; display:block; margin-bottom:0.25rem;">Editor 2</label>
+                <select id="shift-editor-2" style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem;">
+                    <option value="">— Unassigned —</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                <button type="button" onclick="closeShiftModal()" class="button-secondary">Cancel</button>
+                <button type="submit" id="modal-shift-submit" class="button-primary">Add Shift</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: Add / Edit Editor -->
+<div id="modal-editor" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:8px; padding:1.5rem; width:420px; max-width:95vw; box-shadow:0 4px 24px rgba(0,0,0,0.15);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h6 id="modal-editor-title" style="font-weight:600; margin:0;">Add Editor</h6>
+            <button onclick="closeEditorModal()" style="background:none; border:none; font-size:1.25rem; cursor:pointer; color:#6b7280;">&times;</button>
+        </div>
+        <form id="form-editor" onsubmit="submitEditorModal(event)">
+            <div style="margin-bottom:0.75rem;">
+                <label style="font-size:0.875rem; font-weight:500; display:block; margin-bottom:0.25rem;">Name</label>
+                <input type="text" id="editor-name" required placeholder="Full name" style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem;">
+            </div>
+            <div style="margin-bottom:0.75rem;">
+                <label style="font-size:0.875rem; font-weight:500; display:block; margin-bottom:0.25rem;">Email</label>
+                <input type="email" id="editor-email" required placeholder="email@example.com" style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem;">
+            </div>
+            <div style="margin-bottom:0.75rem;">
+                <label style="font-size:0.875rem; font-weight:500; display:block; margin-bottom:0.25rem;">Phone <span style="color:#9ca3af;">(optional)</span></label>
+                <input type="tel" id="editor-phone" placeholder="(555) 000-0000" style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem;">
+            </div>
+            <div style="margin-bottom:1rem;">
+                <label style="font-size:0.875rem; font-weight:500; display:block; margin-bottom:0.25rem;">Category</label>
+                <select id="editor-category" style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem;">
+                    <option value="Copy Editor">Copy Editor</option>
+                    <option value="Senior Copy Editor">Senior Copy Editor</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                <button type="button" onclick="closeEditorModal()" class="button-secondary">Cancel</button>
+                <button type="submit" id="modal-editor-submit" class="button-primary">Add Editor</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: Editor Detail -->
+<div id="modal-editor-detail" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:8px; padding:1.5rem; width:480px; max-width:95vw; box-shadow:0 4px 24px rgba(0,0,0,0.15);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h6 id="detail-editor-name" style="font-weight:600; margin:0;">Editor Name</h6>
+            <button onclick="closeEditorDetailModal()" style="background:none; border:none; font-size:1.25rem; cursor:pointer; color:#6b7280;">&times;</button>
+        </div>
+        <div style="margin-bottom:1rem; font-size:0.875rem; color:#6b7280;">
+            <div style="margin-bottom:0.4rem;"><i class="bi bi-envelope" style="margin-right:0.4rem;"></i><span id="detail-editor-email">—</span></div>
+            <div style="margin-bottom:0.4rem;"><i class="bi bi-telephone" style="margin-right:0.4rem;"></i><span id="detail-editor-phone">—</span></div>
+            <div><i class="bi bi-tag" style="margin-right:0.4rem;"></i><span id="detail-editor-category">—</span></div>
+        </div>
+        <div style="margin-bottom:1rem;">
+            <h6 style="font-size:0.875rem; font-weight:600; margin-bottom:0.5rem;">Upcoming Shifts</h6>
+            <div id="detail-editor-shifts" style="font-size:0.875rem; color:#6b7280;">—</div>
+        </div>
+        <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+            <button onclick="openEditEditorFromDetail()" class="button-secondary" style="font-size:0.875rem;">
+                <i class="bi bi-pencil"></i> Edit
+            </button>
+            <button onclick="deleteEditorFromDetail()" class="button-secondary" style="font-size:0.875rem; color:#dc2626; border-color:#fca5a5;">
+                <i class="bi bi-trash"></i> Delete
+            </button>
+            <button onclick="closeEditorDetailModal()" class="button-primary" style="font-size:0.875rem;">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let editors = EDITORS.slice();
+let shifts = SHIFTS.slice();
+let shiftRequests = SHIFT_REQUESTS.slice();
+let currentWeekStart = getMonday(new Date());
+let searchQuery = '';
+
+// Modal edit state
+let editingShiftUid = null;   // null = adding, string = editing
+let editingEditorUid = null;  // null = adding, int = editing
+let detailEditorUid = null;
+
+// ─── Date Helpers ─────────────────────────────────────────────────────────────
+function getMonday(d) {
+    const day = d.getDay();
+    const diff = (day === 0) ? -6 : 1 - day;
+    const mon = new Date(d);
+    mon.setDate(d.getDate() + diff);
+    mon.setHours(0, 0, 0, 0);
+    return mon;
+}
+
+function addDays(d, n) {
+    const r = new Date(d);
+    r.setDate(r.getDate() + n);
+    return r;
+}
+
+function toDateStr(d) {
+    return d.toISOString().slice(0, 10); // "YYYY-MM-DD"
+}
+
+function fmtDate(d) {
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function fmtHour(h) {
+    const labels = {8:'8am',10:'10am',12:'12pm',14:'2pm',16:'4pm',18:'6pm',20:'8pm',22:'10pm'};
+    const ends   = {8:'10am',10:'12pm',12:'2pm',14:'4pm',16:'6pm',18:'8pm',20:'10pm',22:'12am'};
+    return `${labels[h]}–${ends[h]}`;
+}
+
+// ─── Week Navigation ──────────────────────────────────────────────────────────
+function prevWeek() { currentWeekStart = addDays(currentWeekStart, -7); renderAll(); }
+function nextWeek() { currentWeekStart = addDays(currentWeekStart,  7); renderAll(); }
+function thisWeek() { currentWeekStart = getMonday(new Date());          renderAll(); }
+
+// ─── Tab Switching ────────────────────────────────────────────────────────────
+function switchTab(tab) {
+    ['schedule','editors','history'].forEach(t => {
+        document.getElementById(`view-${t}`).style.display = 'none';
+        document.getElementById(`tab-${t}`).classList.remove('active-tab');
+    });
+    document.getElementById(`view-${tab}`).style.display = (tab === 'schedule') ? 'flex' : 'block';
+    document.getElementById(`tab-${tab}`).classList.add('active-tab');
+    if (tab === 'editors') renderEditorsView();
+    if (tab === 'history') renderHistoryView();
+}
+
+// ─── Search ───────────────────────────────────────────────────────────────────
+function handleSearch(val) {
+    searchQuery = val.toLowerCase();
+    renderAll();
+}
+
+// ─── Render All ───────────────────────────────────────────────────────────────
+function renderAll() {
+    renderDateHeaders();
+    renderGrid();
+    renderCoverageBadges();
+    renderActionPanel();
+}
+
+// ─── Date Headers ─────────────────────────────────────────────────────────────
+const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+function renderDateHeaders() {
+    const start = currentWeekStart;
+    const end   = addDays(start, 6);
+    document.getElementById('date-range-label').textContent =
+        `${fmtDate(start)} – ${fmtDate(end)}`;
+    for (let i = 0; i < 7; i++) {
+        const d = addDays(start, i);
+        const hdr = document.getElementById(`grid-hdr-${i}`);
+        const isToday = toDateStr(d) === toDateStr(new Date());
+        hdr.innerHTML = `<div style="font-size:0.75rem; color:#6b7280;">${DAY_NAMES[i]}</div>
+            <div style="font-weight:${isToday?'700':'500'}; color:${isToday?'#1d4ed8':'inherit'};">${fmtDate(d)}</div>`;
+    }
+}
+
+// ─── Grid ─────────────────────────────────────────────────────────────────────
+const SLOT_HOURS = [8,10,12,14,16,18,20,22];
+
+function getShiftForCell(dateStr, hour) {
+    return shifts.find(s => s.date === dateStr && s.start_hour === hour) || null;
+}
+
+function cellStatus(shift) {
+    if (!shift) return 'open';
+    if (shift.editor_id && shift.editor_id_2) return 'full';
+    if (shift.editor_id || shift.editor_id_2) return 'staffed';
+    return 'open';
+}
+
+const STATUS_STYLE = {
+    open:    'background:#eff6ff; border:1px solid #bfdbfe;',
+    staffed: 'background:#f0fdf4; border:1px solid #bbf7d0;',
+    full:    'background:#faf5ff; border:1px solid #e9d5ff;',
+    action:  'background:#fff1f2; border:1px solid #fca5a5;',
+};
+
+function renderGrid() {
+    for (let slot = 0; slot < 8; slot++) {
+        for (let day = 0; day < 7; day++) {
+            const cell = document.getElementById(`cell-${slot}-${day}`);
+            const dateStr = toDateStr(addDays(currentWeekStart, day));
+            const hour    = SLOT_HOURS[slot];
+            const shift   = getShiftForCell(dateStr, hour);
+            const hasAction = shift && shift.up_for_drop;
+            const status  = hasAction ? 'action' : cellStatus(shift);
+
+            // Search filter dims non-matching cells
+            let dimmed = false;
+            if (searchQuery && shift) {
+                const haystack = [shift.editor_name, shift.editor_name_2, dateStr, fmtHour(hour)].join(' ').toLowerCase();
+                dimmed = !haystack.includes(searchQuery);
+            }
+
+            cell.style.cssText = `height:72px; border-right:1px solid #dee2e6; padding:0.4rem; vertical-align:top; cursor:pointer; ${STATUS_STYLE[status]} ${dimmed ? 'opacity:0.3;' : ''}`;
+            cell.onclick = () => openShiftModal(dateStr, hour);
+
+            if (!shift) {
+                cell.innerHTML = `<span style="font-size:0.7rem; color:#9ca3af;">+ Add</span>`;
+            } else {
+                const names = [shift.editor_name, shift.editor_name_2].filter(Boolean);
+                cell.innerHTML = names.map(n =>
+                    `<div style="font-size:0.75rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${n}</div>`
+                ).join('') + (hasAction ? `<div style="font-size:0.7rem; color:#dc2626; margin-top:2px;">Drop requested</div>` : '');
+            }
+        }
+    }
+}
+
+// ─── Coverage Badges ──────────────────────────────────────────────────────────
+function renderCoverageBadges() {
+    let open = 0, staffed = 0, full = 0;
+    for (let slot = 0; slot < 8; slot++) {
+        for (let day = 0; day < 7; day++) {
+            const dateStr = toDateStr(addDays(currentWeekStart, day));
+            const shift   = getShiftForCell(dateStr, SLOT_HOURS[slot]);
+            const s = cellStatus(shift);
+            if (s === 'open')    open++;
+            if (s === 'staffed') staffed++;
+            if (s === 'full')    full++;
+        }
+    }
+    document.getElementById('coverage-open').textContent    = `Open: ${open}`;
+    document.getElementById('coverage-staffed').textContent = `Staffed: ${staffed}`;
+    document.getElementById('coverage-full').textContent    = `Full: ${full}`;
+}
+
+// ─── Action Panel ─────────────────────────────────────────────────────────────
+function renderActionPanel() {
+    renderPendingActions();
+    renderWeeklyLoad();
+}
+
+function renderPendingActions() {
+    const pending = shiftRequests.filter(r => r.status === 'pending');
+    const el = document.getElementById('pending-actions-list');
+    if (!pending.length) {
+        el.innerHTML = `<p style="color:#9ca3af; font-size:0.875rem;">No pending actions</p>`;
+        return;
+    }
+    el.innerHTML = pending.map(r => `
+        <div style="border:1px solid #fca5a5; background:#fff1f2; border-radius:6px; padding:0.75rem; margin-bottom:0.5rem; font-size:0.875rem;">
+            <div style="font-weight:500;">${r.requester_name} — ${r.request_type.replace(/_/g,' ')}</div>
+            <div style="color:#6b7280; font-size:0.75rem; margin:2px 0;">${r.source_shift_date} ${fmtHour(r.source_shift_hour)}</div>
+            <div style="display:flex; gap:0.4rem; margin-top:0.4rem;">
+                <button onclick="approveRequest(${r.uid})" class="button-primary" style="font-size:0.75rem; padding:3px 10px;">Approve</button>
+                <button onclick="denyRequest(${r.uid})"    class="button-secondary" style="font-size:0.75rem; padding:3px 10px;">Deny</button>
+            </div>
+        </div>`).join('');
+}
+
+function renderWeeklyLoad() {
+    const el = document.getElementById('weekly-load-list');
+    if (!editors.length) {
+        el.innerHTML = `<p style="color:#9ca3af; font-size:0.875rem;">No editors</p>`;
+        return;
+    }
+    const counts = {};
+    editors.forEach(e => counts[e.uid] = 0);
+    shifts.forEach(s => {
+        const d = new Date(s.date + 'T00:00:00');
+        const weekEnd = addDays(currentWeekStart, 7);
+        if (d >= currentWeekStart && d < weekEnd) {
+            if (s.editor_id   && counts[s.editor_id]   !== undefined)   counts[s.editor_id]++;
+            if (s.editor_id_2 && counts[s.editor_id_2] !== undefined) counts[s.editor_id_2]++;
+        }
+    });
+    el.innerHTML = editors.map(e => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:0.875rem; border-bottom:1px solid #f3f4f6;">
+            <span>${e.name}</span>
+            <span style="font-weight:500;">${counts[e.uid] || 0} shift${counts[e.uid] === 1 ? '' : 's'}</span>
+        </div>`).join('');
+}
+
+// ─── Editors View ─────────────────────────────────────────────────────────────
+function renderEditorsView() {
+    const copyQ   = document.getElementById('copy-editor-search').value.toLowerCase();
+    const seniorQ = document.getElementById('senior-editor-search').value.toLowerCase();
+
+    const copyEditors   = editors.filter(e => e.category === 'Copy Editor'        && e.name.toLowerCase().includes(copyQ));
+    const seniorEditors = editors.filter(e => e.category === 'Senior Copy Editor' && e.name.toLowerCase().includes(seniorQ));
+
+    document.getElementById('copy-editors-count').textContent   = copyEditors.length;
+    document.getElementById('senior-editors-count').textContent = seniorEditors.length;
+
+    renderEditorTable('copy-editors-tbody',   copyEditors);
+    renderEditorTable('senior-editors-tbody', seniorEditors);
+}
+
+function renderEditorTable(tbodyId, list) {
+    const tbody = document.getElementById(tbodyId);
+    if (!list.length) {
+        tbody.innerHTML = `<tr><td colspan="4" style="padding:1rem; text-align:center; color:#9ca3af; font-size:0.875rem;">No editors</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = list.map(e => {
+        const shiftCount = shifts.filter(s => s.editor_id === String(e.uid) || s.editor_id_2 === String(e.uid)).length;
+        const weekendCount = shifts.filter(s => {
+            if (s.editor_id !== String(e.uid) && s.editor_id_2 !== String(e.uid)) return false;
+            const dow = new Date(s.date + 'T00:00:00').getDay();
+            return dow === 0 || dow === 6;
+        }).length;
+        return `
+        <tr style="border-bottom:1px solid #dee2e6; cursor:pointer;" onclick="openEditorDetailModal(${e.uid})" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
+            <td style="padding:10px 16px; font-size:0.875rem;">${e.name}</td>
+            <td style="padding:10px 16px; font-size:0.875rem;">${shiftCount}</td>
+            <td style="padding:10px 16px; font-size:0.875rem;">${weekendCount}</td>
+            <td style="padding:10px 16px;">
+                <button onclick="event.stopPropagation(); openAddEditorModal('${e.category}', ${e.uid})" style="background:none; border:none; cursor:pointer; color:#6b7280; font-size:0.875rem;" title="Edit">
+                    <i class="bi bi-pencil"></i>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+// ─── History View ─────────────────────────────────────────────────────────────
+function renderHistoryView() {
+    const filter = document.getElementById('history-filter').value;
+    const list   = filter === 'all' ? shiftRequests : shiftRequests.filter(r => r.status === filter);
+    const tbody  = document.getElementById('history-tbody');
+
+    if (!list.length) {
+        tbody.innerHTML = `<tr><td colspan="7" style="padding:2rem; text-align:center; color:#9ca3af; font-size:0.875rem;">No requests</td></tr>`;
+        return;
+    }
+
+    const STATUS_BADGE = {
+        pending:   'background:#fef3c7; color:#92400e; border:1px solid #fcd34d;',
+        approved:  'background:#f0fdf4; color:#166534; border:1px solid #bbf7d0;',
+        denied:    'background:#fff1f2; color:#991b1b; border:1px solid #fca5a5;',
+        cancelled: 'background:#f3f4f6; color:#6b7280; border:1px solid #d1d5db;',
+    };
+
+    tbody.innerHTML = list.map(r => `
+        <tr style="border-bottom:1px solid #dee2e6;">
+            <td style="padding:10px 16px; font-size:0.875rem; color:#6b7280;">${r.created_at ? r.created_at.slice(0,10) : '—'}</td>
+            <td style="padding:10px 16px; font-size:0.875rem;">${r.request_type.replace(/_/g,' ')}</td>
+            <td style="padding:10px 16px; font-size:0.875rem;">${r.requester_name}</td>
+            <td style="padding:10px 16px; font-size:0.875rem;">${r.source_shift_date} ${fmtHour(r.source_shift_hour)}</td>
+            <td style="padding:10px 16px; font-size:0.875rem; color:#6b7280;">${r.target_editor_name || (r.target_shift_date ? r.target_shift_date : '—')}</td>
+            <td style="padding:10px 16px;">
+                <span style="padding:2px 8px; border-radius:4px; font-size:0.75rem; ${STATUS_BADGE[r.status]}">${r.status}</span>
+            </td>
+            <td style="padding:10px 16px;">
+                ${r.status === 'pending' ? `
+                <div style="display:flex; gap:0.4rem;">
+                    <button onclick="approveRequest(${r.uid})" class="button-primary" style="font-size:0.75rem; padding:3px 10px;">Approve</button>
+                    <button onclick="denyRequest(${r.uid})"    class="button-secondary" style="font-size:0.75rem; padding:3px 10px;">Deny</button>
+                </div>` : ''}
+            </td>
+        </tr>`).join('');
+}
+
+// ─── Shift Modal ──────────────────────────────────────────────────────────────
+function populateEditorDropdowns() {
+    const opts = `<option value="">— Unassigned —</option>` +
+        editors.map(e => `<option value="${e.uid}">${e.name}</option>`).join('');
+    document.getElementById('shift-editor-1').innerHTML = opts;
+    document.getElementById('shift-editor-2').innerHTML = opts;
+}
+
+function openAddShiftModal() {
+    openShiftModal(toDateStr(new Date()), 8);
+}
+
+function openShiftModal(dateStr, hour) {
+    const existing = getShiftForCell(dateStr, hour);
+    editingShiftUid = existing ? existing.uid : null;
+
+    document.getElementById('modal-shift-title').textContent  = existing ? 'Edit Shift' : 'Add Shift';
+    document.getElementById('modal-shift-submit').textContent = existing ? 'Save Changes' : 'Add Shift';
+    document.getElementById('shift-date').value = dateStr;
+    document.getElementById('shift-hour').value = hour;
+
+    populateEditorDropdowns();
+
+    if (existing) {
+        document.getElementById('shift-editor-1').value = existing.editor_id   || '';
+        document.getElementById('shift-editor-2').value = existing.editor_id_2 || '';
+    } else {
+        document.getElementById('shift-editor-1').value = '';
+        document.getElementById('shift-editor-2').value = '';
+    }
+
+    document.getElementById('modal-shift').style.display = 'flex';
+}
+
+function closeShiftModal() {
+    document.getElementById('modal-shift').style.display = 'none';
+    editingShiftUid = null;
+}
+
+async function submitShiftModal(e) {
+    e.preventDefault();
+    const date      = document.getElementById('shift-date').value;
+    const startHour = document.getElementById('shift-hour').value;
+    const e1uid     = document.getElementById('shift-editor-1').value;
+    const e2uid     = document.getElementById('shift-editor-2').value;
+
+    const ed1 = editors.find(x => String(x.uid) === e1uid);
+    const ed2 = editors.find(x => String(x.uid) === e2uid);
+
+    const body = new FormData();
+    body.append('date',        date);
+    body.append('start_hour',  startHour);
+    body.append('editor_id',   ed1 ? String(ed1.uid)  : '');
+    body.append('editor_name', ed1 ? ed1.name          : '');
+    body.append('editor_id_2', ed2 ? String(ed2.uid)   : '');
+    body.append('editor_name_2', ed2 ? ed2.name        : '');
+
+    const url = editingShiftUid
+        ? `/copy-admin-dashboard/admin/shift/${editingShiftUid}/update`
+        : `/copy-admin-dashboard/admin/shift`;
+
+    const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF_TOKEN },
+        body,
+    });
+    if (!resp.ok) { showInfoBar('Error saving shift.'); return; }
+    const saved = await resp.json();
+
+    if (editingShiftUid) {
+        shifts = shifts.map(s => s.uid === saved.uid ? saved : s);
+    } else {
+        shifts.push(saved);
+    }
+
+    closeShiftModal();
+    renderAll();
+    showInfoBar(editingShiftUid ? 'Shift updated.' : 'Shift added.');
+}
+
+// ─── Editor Modal ─────────────────────────────────────────────────────────────
+function openAddEditorModal(category, uid = null) {
+    editingEditorUid = uid;
+    const editor = uid !== null ? editors.find(e => e.uid === uid) : null;
+
+    document.getElementById('modal-editor-title').textContent  = editor ? 'Edit Editor'  : 'Add Editor';
+    document.getElementById('modal-editor-submit').textContent = editor ? 'Save Changes' : 'Add Editor';
+    document.getElementById('editor-name').value     = editor ? editor.name     : '';
+    document.getElementById('editor-email').value    = editor ? editor.email    : '';
+    document.getElementById('editor-phone').value    = editor ? (editor.phone  || '') : '';
+    document.getElementById('editor-category').value = editor ? (editor.category || category) : category;
+
+    document.getElementById('modal-editor').style.display = 'flex';
+}
+
+function closeEditorModal() {
+    document.getElementById('modal-editor').style.display = 'none';
+    editingEditorUid = null;
+}
+
+async function submitEditorModal(e) {
+    e.preventDefault();
+    const body = new FormData();
+    body.append('name',     document.getElementById('editor-name').value);
+    body.append('email',    document.getElementById('editor-email').value);
+    body.append('phone',    document.getElementById('editor-phone').value);
+    body.append('category', document.getElementById('editor-category').value);
+
+    const url = editingEditorUid !== null
+        ? `/copy-admin-dashboard/admin/editor/${editingEditorUid}/update`
+        : `/copy-admin-dashboard/admin/editor`;
+
+    const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF_TOKEN },
+        body,
+    });
+    if (!resp.ok) { showInfoBar('Error saving editor.'); return; }
+    const saved = await resp.json();
+
+    if (editingEditorUid !== null) {
+        editors = editors.map(ed => ed.uid === saved.uid ? saved : ed);
+    } else {
+        editors.push(saved);
+    }
+
+    closeEditorModal();
+    renderEditorsView();
+    showInfoBar(editingEditorUid !== null ? 'Editor updated.' : 'Editor added.');
+}
+
+// ─── Editor Detail Modal ──────────────────────────────────────────────────────
+function openEditorDetailModal(uid) {
+    detailEditorUid = uid;
+    const e = editors.find(x => x.uid === uid);
+    if (!e) return;
+
+    document.getElementById('detail-editor-name').textContent     = e.name;
+    document.getElementById('detail-editor-email').textContent    = e.email;
+    document.getElementById('detail-editor-phone').textContent    = e.phone    || '—';
+    document.getElementById('detail-editor-category').textContent = e.category || '—';
+
+    const upcoming = shifts
+        .filter(s => s.editor_id === String(uid) || s.editor_id_2 === String(uid))
+        .filter(s => new Date(s.date + 'T00:00:00') >= new Date())
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .slice(0, 5);
+
+    document.getElementById('detail-editor-shifts').innerHTML = upcoming.length
+        ? upcoming.map(s => `<div>${s.date} ${fmtHour(s.start_hour)}</div>`).join('')
+        : 'No upcoming shifts.';
+
+    document.getElementById('modal-editor-detail').style.display = 'flex';
+}
+
+function closeEditorDetailModal() {
+    document.getElementById('modal-editor-detail').style.display = 'none';
+    detailEditorUid = null;
+}
+
+function openEditEditorFromDetail() {
+    const uid = detailEditorUid;
+    closeEditorDetailModal();
+    openAddEditorModal(null, uid);
+}
+
+async function deleteEditorFromDetail() {
+    const uid = detailEditorUid;
+    const e   = editors.find(x => x.uid === uid);
+    const confirmed = await showButtonAlert('Delete Editor', `Remove ${e.name}? This cannot be undone.`, 'Delete', 'Cancel');
+    if (!confirmed) return;
+
+    const resp = await fetch(`/copy-admin-dashboard/admin/editor/${uid}/delete`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF_TOKEN },
+    });
+    if (!resp.ok) { showInfoBar('Error deleting editor.'); return; }
+
+    editors = editors.filter(x => x.uid !== uid);
+    closeEditorDetailModal();
+    renderEditorsView();
+    showInfoBar('Editor deleted.');
+}
+
+// ─── Approve / Deny Requests ──────────────────────────────────────────────────
+async function approveRequest(uid) {
+    const resp = await fetch(`/copy-admin-dashboard/admin/request/${uid}/approve`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF_TOKEN },
+    });
+    if (!resp.ok) { showInfoBar('Error approving request.'); return; }
+    shiftRequests = shiftRequests.map(r => r.uid === uid ? {...r, status: 'approved'} : r);
+    renderActionPanel();
+    renderHistoryView();
+    showInfoBar('Request approved.');
+}
+
+async function denyRequest(uid) {
+    const resp = await fetch(`/copy-admin-dashboard/admin/request/${uid}/deny`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF_TOKEN },
+    });
+    if (!resp.ok) { showInfoBar('Error denying request.'); return; }
+    shiftRequests = shiftRequests.map(r => r.uid === uid ? {...r, status: 'denied'} : r);
+    renderActionPanel();
+    renderHistoryView();
+    showInfoBar('Request denied.');
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+renderAll();
+</script>
+
+{% include "partials/button_alert.html" %}
+{% include "partials/info_bar.html" %}
+
+{% endblock %}
