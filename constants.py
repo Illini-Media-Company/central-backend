@@ -296,3 +296,24 @@ COURTESY_REQUESTS_CHANNEL_ID = (
 )  # #imc_courtesy-photos — Channel that all courtesy photo requests get sent to
 
 ONBOARDING_EMAIL = "onboarding@illinimedia.com"
+
+# Google Groups for shift scheduler access control
+COPY_EDITOR_GROUPS = ["copy-editors"]
+SENIOR_COPY_EDITOR_GROUPS = ["senior-copy-editors"]
+COPY_CHIEF_GROUPS = ["copy-chief"]
+
+ALL_SCHEDULER_GROUPS = (
+    COPY_EDITOR_GROUPS
+    + SENIOR_COPY_EDITOR_GROUPS
+    + COPY_CHIEF_GROUPS
+    + ["webdev", "imc-staff-webdev"]
+)
+
+SHIFT_REQUIREMENTS = {
+    "copy_editor": 2,
+    "senior_copy_editor": 8,
+    "copy_chief": 0,  # copy chief may not need to sign up for shifts
+}
+
+WEEKEND_SHIFT_REDUCTION = 1
+SCHEDULER_TIMEZONE = "America/Chicago"

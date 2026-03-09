@@ -122,6 +122,7 @@ from views.photo_request import photo_request_routes
 from views.employee_management import ems_routes
 from views.employee_management import get_ems_brand_image_url
 from views.copy_admin_dashboard import copy_admin_dashboard_routes
+from views.shift_scheduler import shift_scheduler_routes
 
 ################################################################################
 ############################# IMPORTS COMPLETE #################################
@@ -143,6 +144,17 @@ Talisman(app, content_security_policy=[])
 csrf.init_app(app)
 logging.info("Done initializing Flask.")
 
+from seed_shifts import seed_dummy_shifts
+
+
+@app.route("/seed-shifts")
+@login_required
+@restrict_to(TOOLS_ADMIN_ACCESS_GROUPS)
+def seed_shifts():
+    seed_dummy_shifts()
+    return "Seeded!", 200
+
+
 logging.info("Registering blueprints...")
 app.register_blueprint(tools_routes)
 app.register_blueprint(content_doc_routes)
@@ -163,6 +175,7 @@ app.register_blueprint(rotate_tv_routes)
 app.register_blueprint(photo_request_routes)
 app.register_blueprint(ems_routes)
 app.register_blueprint(copy_admin_dashboard_routes)
+app.register_blueprint(shift_scheduler_routes)
 logging.info("Done registering blueprints.")
 
 logging.info("Initializing login manager...")
