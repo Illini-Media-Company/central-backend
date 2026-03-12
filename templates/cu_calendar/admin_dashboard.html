@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+
+{% block title %}
+CU Calendar Admin Dashboard
+{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/styles/styles_index.css">
+<link rel="stylesheet" href="/static/macros/form.css">
+{% endblock %}
+
+{% import "macros/form.html" as form %}
+
+{% block content %}
+<h1>CU Calendar Admin</h1>
+<hr style="margin-bottom: 2rem;">
+
+<style>
+    /* Align labels and controls into consistent columns */
+    .cu-admin .form-row {
+        display: grid;
+        grid-template-columns: 190px minmax(0, 1fr);
+        column-gap: 1rem;
+        row-gap: 0.5rem;
+        align-items: start;
+        margin-bottom: 0.75rem;
+    }
+
+    .cu-admin .form-row > input,
+    .cu-admin .form-row > textarea {
+        width: 100%;
+        max-width: 520px;
+    }
+
+    .cu-admin .form-row > input[type="file"] {
+        width: 100%;
+        max-width: 520px;
+    }
+
+    /* Keep section tables visually consistent */
+    .cu-admin-table {
+        width: 100%;
+    }
+</style>
+
+{# Pending submissions section #}
+<section class="section-container">
+    <div class="section-header">
+        <h2 style="margin-bottom: 0">Pending public submissions</h2>
+    </div>
+
+    {% if not pending_events %}
+        <div class="inner-container" style="text-align: center;">
+            <p style="margin-bottom: 0;">No pending events right now.</p>
+        </div>
+    {% else %}
+        <div class="inner-container" style="padding: 0;">
+            <div style="overflow-x: auto; max-width: 100%; border-radius: var(--main-border-radius);">
+                <table class="cu-admin-table">
+                    <thead>
+                        <tr>
+                            <th style="padding-right: 2rem;">Title</th>
+                            <th style="padding-right: 2rem;">Start</th>
+                            <th style="padding-right: 2rem;">End</th>
+                            <th style="padding-right: 2rem;">Address</th>
+                            <th style="padding-right: 2rem;">Type</th>
+                            <th style="padding-right: 2rem;">Submitter</th>
+                            <th style="padding-right: 2rem;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ev in pending_events %}
+                        <tr>
+                            <td>{{ ev.title or ev.get("title") }}</td>
+                            <td>
+                                {% if ev.start_date or ev.get("start_date") %}
+                                    {{ (ev.start_date or ev.get("start_date"))|ap_datetime }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if ev.end_date or ev.get("end_date") %}
+                                    {{ (ev.end_date or ev.get("end_date"))|ap_datetime }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td>{{ ev.address or ev.get("address") }}</td>
+                            <td>{{ ev.event_type or ev.get("event_type") }}</td>
+                            <td>
+                                {% set name = ev.submitter_name or ev.get("submitter_name") %}
+                                {% set email = ev.submitter_email or ev.get("submitter_email") %}
+                                {{ name if name else "" }}{% if email %}<br><span class="subtext">{{ email }}</span>{% endif %}
+                            </td>
+                            <td style="white-space: nowrap;">
+                                {% set uid = ev.uid or ev.get("uid") %}
+                                <button class="button-primary js-accept" data-uid="{{ uid }}">Accept</button>
+                                <button class="button-secondary js-highlight" data-uid="{{ uid }}">Highlight</button>
+                                <button class="button-secondary js-reject" data-uid="{{ uid }}">Reject</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+</section>
+
+<div style="height: 2rem;"></div>
+
+<section class="section-container">
+    <div class="section-header">
+        <h2 style="margin-bottom: 0">Manually add an event</h2>
+    </div>
+
+    <div class="inner-container cu-admin">
+        <form id="manualAddForm" action="/admin/cu-calendar/dashboard/add-event" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+            {{ form.text_input(name="title", label="Title", required=true, class="", input_class="", placeholder="Event title", subtext="", alt_type="", maxlength="", pattern="", initial_val="") }}
+            {{ form.text_input(name="address", label="Address", required=true, class="", input_class="", placeholder="Street address", alt_type="", maxlength="", pattern="", initial_val="") }}
+            {{ form.text_input(name="url", label="URL", required=false, class="", input_class="", placeholder="https://…", subtext="", alt_type="url", maxlength="", pattern="", initial_val="") }}
+            {{ form.text_input(name="event_type", label="Event type", required=false, class="", input_class="", placeholder="Category", subtext="", alt_type="", maxlength="", pattern="", initial_val="") }}
+            {{ form.textarea_input(name="description", label="Description", required=false, class="", placeholder="", subtext="", maxlength="", initial_val="") }}
+            {{ form.text_input(name="company_name", label="Company name", required=false, class="", input_class="", placeholder="", subtext="", alt_type="", maxlength="", pattern="", initial_val="") }}
+
+            <div class="form-row" id="formfield-start_date">
+                <div>
+                    <label for="start_date" class="field-label">Start date</label>
+                </div>
+                <input type="date" id="start_date" name="start_date" min="{{ today_iso }}" class="text-input">
+            </div>
+            <div class="form-row" id="formfield-end_date">
+                <div>
+                    <label for="end_date" class="field-label">End date</label>
+                </div>
+                <input type="date" id="end_date" name="end_date" min="{{ today_iso }}" class="text-input">
+            </div>
+
+            <div class="form-row" id="formfield-images">
+                <div>
+                    <label class="field-label">Images</label>
+                    <p class="subtext">Upload images (optional).</p>
+                </div>
+                <input type="file" id="images" name="images" accept="image/*" multiple>
+            </div>
+
+            {{ form.text_input(name="submitter_name", label="Submitter name", required=false, class="", input_class="", placeholder="", alt_type="", maxlength="", pattern="", initial_val="") }}
+            {{ form.text_input(name="submitter_email", label="Submitter email", required=false, class="", input_class="", placeholder="", subtext="", alt_type="email", maxlength="", pattern="", initial_val="") }}
+
+            {{ form.switch_input(name="highlight", label="Highlight", class="", subtext="Highlighted events may be emphasized on the map.") }}
+
+            {{ form.submit_button(text="Add event", label="manualAddSubmit", class="") }}
+        </form>
+    </div>
+</section>
+
+<section class="section-container" style="margin-top: 2rem;">
+    <div class="section-header">
+        <h2 style="margin-bottom: 0">Add a Google Calendar source</h2>
+    </div>
+
+    <div class="inner-container cu-admin">
+        <form id="addSourceForm" action="/admin/cu-calendar/source/add" method="post" enctype="application/x-www-form-urlencoded">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            {{ form.text_input(name="gcal_url", label="Google Calendar URL", required=true, class="", input_class="", placeholder="https://calendar.google.com/…", subtext="Embed URL or public iCal URL.", alt_type="url", maxlength="", pattern="", initial_val="") }}
+            {{ form.text_input(name="company_name", label="Company name", required=false, class="", input_class="", placeholder="", alt_type="", maxlength="", pattern="", initial_val="") }}
+            {{ form.submit_button(text="Import", label="addSourceSubmit", class="") }}
+        </form>
+    </div>
+</section>
+
+<script>
+    async function postAction(url) {
+        const body = new URLSearchParams();
+        body.set("_csrf_token", "{{ csrf_token() }}");
+        const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: body.toString(),
+        });
+        return res;
+    }
+
+    async function acceptEvent(uid) {
+        const res = await postAction(`/admin/cu-calendar/${uid}/accept`);
+        if (res.ok) window.location.reload();
+        else alert(await res.text());
+    }
+
+    async function rejectEvent(uid) {
+        const res = await postAction(`/admin/cu-calendar/${uid}/reject`);
+        if (res.ok) window.location.reload();
+        else alert(await res.text());
+    }
+
+    async function highlightEvent(uid) {
+        const res = await postAction(`/admin/cu-calendar/${uid}/highlight`);
+        if (res.ok) window.location.reload();
+        else alert(await res.text());
+    }
+
+    document.querySelectorAll(".js-accept").forEach((btn) => {
+        btn.addEventListener("click", () => acceptEvent(btn.dataset.uid));
+    });
+    document.querySelectorAll(".js-highlight").forEach((btn) => {
+        btn.addEventListener("click", () => highlightEvent(btn.dataset.uid));
+    });
+    document.querySelectorAll(".js-reject").forEach((btn) => {
+        btn.addEventListener("click", () => rejectEvent(btn.dataset.uid));
+    });
+</script>
+{% endblock %}
+

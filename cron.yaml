@@ -10,3 +10,15 @@ cron:
   schedule: every 24 hours
   timezone: America/Chicago
   target: default
+
+- description: "Weekly sync of CU Calendar sources (next 30 days)"
+  url: "/cron/cu-calendar-sync-30d"
+  schedule: every 7 days
+  timezone: America/Chicago
+  target: default
+
+- description: "Annual sync of CU Calendar sources (next year)"
+  url: "/cron/cu-calendar-sync-year"
+  schedule: 30 of aug 00:00
+  timezone: America/Chicago
+  target: default

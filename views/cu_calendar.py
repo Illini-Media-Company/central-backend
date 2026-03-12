@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, time, timezone
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, render_template
 from flask_cors import cross_origin
 from flask_login import login_required
 
@@ -14,6 +14,7 @@ from db.cu_calender import (
     get_future_public_events,
     get_pending_events,
     highlight_event as db_highlight_event,
+    remove_event as db_remove_event,
 )
 from util.cu_calendar import geocode_address, gcal_to_events, upload_images_to_gcs
 from util.security import csrf
@@ -215,7 +216,7 @@ def list_pending_events():
 @admin_calendar_routes.route("/source/add", methods=["POST"])
 @login_required
 def add_and_process_source():
-    data = request.get_json()
+    data = request.get_json(silent=True) or request.form or {}
     gcal_url = data.get("gcal_url")
     company = data.get("company_name")
     if not gcal_url:
@@ -242,12 +243,15 @@ def add_and_process_source():
                 event_type="Imported",
                 description=event.get("description"),
                 company_name=company,
+                submitter_name="",
+                submitter_email="",
                 is_accepted=True,
+                highlight=False,
             )
 
     add_calendar_source(gcal_url, company or "")
 
-    return jsonify({"message": "Successfully imported events!"}), 200
+    return jsonify({"success": True, "message": "Successfully imported events!"}), 200
 
 
 @admin_calendar_routes.route("/<uid>/highlight", methods=["POST"])
@@ -286,3 +290,87 @@ def accept_pending_event(uid):
         return jsonify({"error": "Event not found or already accepted."}), 404
 
     return jsonify({"message": "Event accepted!"}), 200
+
+
+@admin_calendar_routes.route("/<uid>/reject", methods=["POST"])
+@login_required
+def reject_pending_event(uid):
+    """Reject a pending event by deleting it (and any uploaded images)."""
+    if not uid:
+        return jsonify({"error": "Invalid Event ID format."}), 400
+
+    success = db_remove_event(uid)
+    if not success:
+        return jsonify({"error": "Event not found."}), 404
+
+    return jsonify({"message": "Event rejected."}), 200
+
+
+@admin_calendar_routes.route("/dashboard", methods=["GET"])
+@login_required
+def admin_dashboard():
+    """
+    Render the CU Calendar admin dashboard.
+    Shows: manual add form, add Google Calendar source form, and pending public submissions.
+    """
+    pending = get_pending_events()
+    pending_sorted = sorted(
+        pending,
+        key=lambda ev: ev.get("start_date") or datetime.min,
+        reverse=True,
+    )
+    today_iso = datetime.now().date().isoformat()
+    return render_template(
+        "cu_calendar/admin_dashboard.html",
+        pending_events=pending_sorted,
+        today_iso=today_iso,
+    )
+
+
+@admin_calendar_routes.route("/dashboard/add-event", methods=["POST"])
+@login_required
+def admin_add_event():
+    """Manually add an accepted CU Calendar event (IMC staff)."""
+    title = (request.form.get("title") or "").strip()
+    address = (request.form.get("address") or "").strip()
+    if not title or not address:
+        return jsonify({"error": "Missing title and address."}), 400
+
+    try:
+        start_date = _parse_submission_datetime(request.form.get("start_date"))
+        end_date = _parse_submission_datetime(request.form.get("end_date"), is_end=True)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    coords = geocode_address(address)
+    if not coords:
+        return jsonify({"error": "Failed to geocode address."}), 400
+    lat, lng = coords
+
+    try:
+        image_urls = upload_images_to_gcs(_get_uploaded_files())
+    except Exception:
+        logging.exception("CU calendar admin image upload failed")
+        return jsonify({"error": "Failed to upload images."}), 500
+
+    highlight = bool(request.form.get("highlight"))
+
+    new_event = add_event(
+        title=title,
+        lat=lat,
+        long=lng,
+        url=request.form.get("url"),
+        start_date=start_date,
+        end_date=end_date,
+        images=image_urls,
+        address=address,
+        event_type=(request.form.get("event_type") or "").strip(),
+        description=(request.form.get("description") or "").strip(),
+        company_name=(request.form.get("company_name") or "").strip(),
+        submitter_name=(request.form.get("submitter_name") or "").strip(),
+        submitter_email=(request.form.get("submitter_email") or "").strip(),
+        is_accepted=True,
+        highlight=highlight,
+    )
+
+    return jsonify({"success": True, "uid": new_event.get("uid")}), 201

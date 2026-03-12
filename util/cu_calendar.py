@@ -5,18 +5,18 @@ Includes geocoding addresses, Google Cloud Storage logic, and parsing Google Cal
 """
 
 import os
-import uuid 
-from datetime import date, datetime, timedelta, timezone 
-from typing import List, Optional 
-from urllib.parse import parse_qs, unquote, urlparse 
+import uuid
+from datetime import date, datetime, timedelta, timezone
+from typing import List, Optional
+from urllib.parse import parse_qs, unquote, urlparse
 from zoneinfo import ZoneInfo
 
 import googlemaps
-from google.cloud import storage 
-from gcsa.google_calendar import GoogleCalendar 
+from google.cloud import storage
+from gcsa.google_calendar import GoogleCalendar
 
 from constants import GCS_BUCKET_NAME, BACKEND_GOOGLE_MAP_API
-from util.security import get_creds 
+from util.security import get_creds
 
 
 GCAL_SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
@@ -27,13 +27,13 @@ def geocode_address(address):
     if not api_key:
         print("Error: Google API key not found.")
         return None
-   
+
     gmaps = googlemaps.Client(key=api_key)
     try:
         geocode_result = gmaps.geocode(address)
         if geocode_result:
-            location = geocode_result[0]['geometry']['location']
-            return location['lat'], location['lng']
+            location = geocode_result[0]["geometry"]["location"]
+            return location["lat"], location["lng"]
         else:
             return None
     except Exception as e:
@@ -48,10 +48,10 @@ def upload_images_to_gcs(files):
     bucket = storage_client.bucket(GCS_BUCKET_NAME)
     uploaded_urls = []
     for file in files:
-        if file.filename == '':
+        if file.filename == "":
             continue
-       
-        ext = file.filename.rsplit('.',1)[1].lower() if '.' in file.filename else 'jpg'
+
+        ext = file.filename.rsplit(".", 1)[1].lower() if "." in file.filename else "jpg"
         unique_filename = f"{uuid.uuid4()}.{ext}"
         blob = bucket.blob(unique_filename)
         blob.upload_from_file(file)
@@ -59,7 +59,6 @@ def upload_images_to_gcs(files):
 
         uploaded_urls.append(blob.public_url)
     return uploaded_urls
-
 
 
 def delete_images_from_gcs(image_urls):
@@ -76,7 +75,6 @@ def delete_images_from_gcs(image_urls):
                 print(f"Deleted image from GCS: {blob_name}")
         except Exception as e:
             print(f"Error deleting image {url} from GCS: {e}")
-
 
 
 def _parse_calendar_id_from_url(gcal_url: str) -> Optional[str]:
@@ -103,7 +101,6 @@ def _parse_calendar_id_from_url(gcal_url: str) -> Optional[str]:
         if parts[0]:
             return unquote(parts[0].strip())
     return None
-
 
 
 def gcal_to_events(gcal_url: str, future_days: int = 365) -> Optional[List[dict]]:
@@ -163,8 +160,7 @@ def gcal_to_events(gcal_url: str, future_days: int = 365) -> Optional[List[dict]
     return result
 
 
-
-def sync_cu_calendar_sources() -> int:
+def sync_gcal_sources(*, future_days: int = 30) -> int:
     """
     Sync all stored Google Calendar sources: fetch events from each gcal URL,
     add any new events that are not already in the database.
@@ -185,7 +181,7 @@ def sync_cu_calendar_sources() -> int:
         if not gcal_url:
             continue
 
-        parsed_events = gcal_to_events(gcal_url, future_days=30)
+        parsed_events = gcal_to_events(gcal_url, future_days=future_days)
         if parsed_events is None:
             continue
 
@@ -205,7 +201,7 @@ def sync_cu_calendar_sources() -> int:
                 url=gcal_url,
                 start_date=event.get("start_date"),
                 end_date=event.get("end_date"),
-                images=[], 
+                images=[],
                 address=event.get("address", ""),
                 event_type="Imported",
                 description=event.get("description", ""),

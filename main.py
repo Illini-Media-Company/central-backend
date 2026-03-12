@@ -131,6 +131,8 @@ from views.cu_calendar import (
     public_calendar_api_routes,
 )
 
+from util.cu_calendar import sync_gcal_sources
+
 ################################################################################
 ############################# IMPORTS COMPLETE #################################
 ################################################################################
@@ -411,6 +413,44 @@ def cron_rss_listener():
         return {"success": True, "stories_posted": count, "links": links}, 200
     except Exception as e:
         logging.exception("RSS cron job failed")
+        return {"success": False, "error": str(e)}, 500
+
+
+@app.route("/cron/cu-calendar-sync-30d", methods=["GET", "POST"])
+@csrf.exempt
+@talisman(force_https=False)
+def cron_cu_calendar_sync_30d():
+    """
+    Cron endpoint: sync CU calendar sources for the next 30 days.
+    Intended to run weekly via cron.yaml.
+    """
+    if request.headers.get("X-Appengine-Cron") != "true":
+        return "Unauthorized", 403
+    try:
+        added = sync_gcal_sources(future_days=30)
+        logging.info(f"cu_calendar 30d sync completed: added={added}")
+        return {"success": True, "added": added}, 200
+    except Exception as e:
+        logging.exception("cu_calendar 30d sync failed")
+        return {"success": False, "error": str(e)}, 500
+
+
+@app.route("/cron/cu-calendar-sync-year", methods=["GET", "POST"])
+@csrf.exempt
+@talisman(force_https=False)
+def cron_cu_calendar_sync_year():
+    """
+    Cron endpoint: sync CU calendar sources for the next year (365 days).
+    Intended to run annually (Aug 30) via cron.yaml.
+    """
+    if request.headers.get("X-Appengine-Cron") != "true":
+        return "Unauthorized", 403
+    try:
+        added = sync_gcal_sources(future_days=365)
+        logging.info(f"cu_calendar yearly sync completed: added={added}")
+        return {"success": True, "added": added}, 200
+    except Exception as e:
+        logging.exception("cu_calendar yearly sync failed")
         return {"success": False, "error": str(e)}, 500
 
 
