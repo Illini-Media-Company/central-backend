@@ -1,63 +1,124 @@
-from flask import Blueprint, request, jsonify
-from flask_login import login_required
-from flask_cors import cross_origin
 import logging
+from datetime import datetime, time, timezone
+
+from flask import Blueprint, jsonify, request
+from flask_cors import cross_origin
+from flask_login import login_required
+
 from db.cu_calender import (
-    get_future_public_events,
-    center_val,
-    add_event,
-    remove_event,
-    get_pending_events,
     accept_event,
-    delete_expired_events,
+    add_calendar_source,
+    add_event,
+    center_val,
     get_event_by_id,
+    get_future_public_events,
+    get_pending_events,
     highlight_event as db_highlight_event,
-    add_calendar_source 
 )
 from util.cu_calendar import geocode_address, gcal_to_events, upload_images_to_gcs
-from util.security import restrict_to, csrf
-from datetime import datetime
-calendar_routes = Blueprint("calendar_routes", __name__, url_prefix="/cu-calendar")
-admin_calendar_routes = Blueprint("admin_calendar_routes", __name__, url_prefix="/admin/cu-calendar")
- 
-#public routes
-@calendar_routes.route("/events", methods=["GET"])
-@cross_origin()
-@csrf.exempt
-def list_public_events():
-    return jsonify(get_future_public_events()), 200
+from util.security import csrf
 
-@calendar_routes.route("/center", methods=["GET"])
-@cross_origin()
-@csrf.exempt
-def get_map_center():
-    center = center_val()
-    return jsonify({"lat": center[0], "long": center[1]}), 200
- 
- #switched from request.get_json to reques.form/files for images
-@calendar_routes.route("/submit", methods=["POST"])
-@cross_origin()
-@csrf.exempt
-def submit_calendar_item():
-   
-    title = request.form.get("title")
-    address = request.form.get("address")
-    start_date_str = request.form.get("start_date")
-    end_date_str = request.form.get("end_date")
+
+calendar_routes = Blueprint("calendar_routes", __name__, url_prefix="/cu-calendar")
+admin_calendar_routes = Blueprint(
+    "admin_calendar_routes", __name__, url_prefix="/admin/cu-calendar"
+)
+public_calendar_api_routes = Blueprint(
+    "public_calendar_api_routes", __name__, url_prefix="/api/events"
+)
+
+
+def _serialize_datetime(value):
+    if isinstance(value, datetime):
+        if value.tzinfo is not None:
+            return value.astimezone(timezone.utc).isoformat()
+        return value.isoformat()
+    return value
+
+
+def _serialize_public_event(event):
+    return {
+        "uid": event.get("uid"),
+        "title": event.get("title"),
+        "description": event.get("description"),
+        "event_type": event.get("event_type"),
+        "highlight": bool(event.get("highlight", False)),
+        "start_date": _serialize_datetime(event.get("start_date")),
+        "end_date": _serialize_datetime(event.get("end_date")),
+        "address": event.get("address"),
+        "lat": event.get("lat"),
+        "long": event.get("long"),
+        "url": event.get("url"),
+        "images": [image for image in (event.get("images") or []) if image],
+    }
+
+
+def _serialize_legacy_public_event(event):
+    serialized = dict(event)
+    serialized["start_date"] = _serialize_datetime(event.get("start_date"))
+    serialized["end_date"] = _serialize_datetime(event.get("end_date"))
+    serialized["created_at"] = _serialize_datetime(event.get("created_at"))
+    serialized["images"] = [image for image in (event.get("images") or []) if image]
+    serialized.pop("submitter_name", None)
+    serialized.pop("submitter_email", None)
+    return serialized
+
+
+def _parse_submission_datetime(raw_value, is_end=False):
+    if raw_value is None:
+        return None
+
+    value = raw_value.strip()
+    if not value:
+        return None
+
+    if len(value) == 10:
+        parsed_date = datetime.strptime(value, "%Y-%m-%d").date()
+        return datetime.combine(parsed_date, time(23, 59, 59) if is_end else time.min)
+
+    normalized_value = value.replace("Z", "+00:00")
+    try:
+        parsed_datetime = datetime.fromisoformat(normalized_value)
+    except ValueError as exc:
+        raise ValueError("Invalid date format. Use YYYY-MM-DD or ISO 8601.") from exc
+
+    if parsed_datetime.tzinfo is not None:
+        return parsed_datetime.astimezone(timezone.utc).replace(tzinfo=None)
+    return parsed_datetime
+
+
+def _get_uploaded_files():
+    files = [
+        upload
+        for upload in request.files.getlist("images")
+        if upload and upload.filename
+    ]
+
+    image_file = request.files.get("image_file")
+    if image_file and image_file.filename:
+        files.append(image_file)
+
+    return files
+
+
+def _create_pending_submission():
+    title = (request.form.get("title") or "").strip()
+    address = (request.form.get("address") or "").strip()
+
     if not title or not address:
         return jsonify({"error": "Missing title and address."}), 400
+
     try:
-        start_date = datetime.strptime(start_date_str, "%Y-%m-%d") if start_date_str else None
-        end_date = datetime.strptime(end_date_str, "%Y-%m-%d") if end_date_str else None
-    except ValueError:
-        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
-   
-    if "images" not in request.files:
-        logging.info("No images part in the request.")
-   
-    files = request.files.getlist("images")
+        start_date = _parse_submission_datetime(request.form.get("start_date"))
+        end_date = _parse_submission_datetime(request.form.get("end_date"), is_end=True)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    if start_date and end_date and end_date < start_date:
+        return jsonify({"error": "end_date must be after start_date."}), 400
+
     try:
-        image_urls = upload_images_to_gcs(files)
+        image_urls = upload_images_to_gcs(_get_uploaded_files())
         new_event = add_event(
             title=title,
             lat=None,
@@ -70,22 +131,87 @@ def submit_calendar_item():
             event_type=request.form.get("event_type"),
             description=request.form.get("description"),
             company_name=request.form.get("company_name"),
-            is_accepted=False
+            submitter_name=request.form.get("submitter_name"),
+            submitter_email=request.form.get("submitter_email"),
+            is_accepted=False,
+            highlight=False,
         )
-        return jsonify({"message": "Event submitted for IMC approval!", "uid": new_event['uid']}), 201
-   
-    except Exception as e:
-        logging.error(f"Error during event submission: {str(e)}")
+        return (
+            jsonify(
+                {
+                    "message": "Event submitted for IMC approval!",
+                    "uid": new_event["uid"],
+                }
+            ),
+            201,
+        )
+    except Exception:
+        logging.exception("Error during CU calendar submission")
         return jsonify({"error": "Failed to process image upload or save event."}), 500
 
-#admin routes
-#regular events
+
+# public routes
+@calendar_routes.route("/events", methods=["GET"])
+@cross_origin()
+@csrf.exempt
+def list_public_events():
+    events = [
+        _serialize_legacy_public_event(event) for event in get_future_public_events()
+    ]
+    return jsonify(events), 200
+
+
+@calendar_routes.route("/center", methods=["GET"])
+@cross_origin()
+@csrf.exempt
+def get_map_center():
+    center = center_val()
+    return jsonify({"lat": center[0], "long": center[1]}), 200
+
+
+@calendar_routes.route("/submit", methods=["POST"])
+@cross_origin()
+@csrf.exempt
+def submit_calendar_item():
+    return _create_pending_submission()
+
+
+@public_calendar_api_routes.route("", methods=["GET"])
+@cross_origin()
+@csrf.exempt
+def list_public_events_api():
+    events = [_serialize_public_event(event) for event in get_future_public_events()]
+    return jsonify(events), 200
+
+
+@public_calendar_api_routes.route("/submissions", methods=["POST"])
+@cross_origin()
+@csrf.exempt
+def submit_public_event_api():
+    return _create_pending_submission()
+
+
+@public_calendar_api_routes.route("/categories", methods=["GET"])
+@cross_origin()
+@csrf.exempt
+def list_public_event_categories():
+    categories = sorted(
+        {
+            event.get("event_type").strip()
+            for event in get_future_public_events()
+            if event.get("event_type") and event.get("event_type").strip()
+        }
+    )
+    return jsonify(categories), 200
+
+
+# admin routes
 @admin_calendar_routes.route("/pending", methods=["GET"])
 @login_required
 def list_pending_events():
     return jsonify(get_pending_events()), 200
- 
- 
+
+
 @admin_calendar_routes.route("/source/add", methods=["POST"])
 @login_required
 def add_and_process_source():
@@ -94,17 +220,16 @@ def add_and_process_source():
     company = data.get("company_name")
     if not gcal_url:
         return jsonify({"error": "Missing gcal_url"}), 400
-   
+
     parsed_events = gcal_to_events(gcal_url)
     if parsed_events is None:
         return jsonify({"error": "Failed to parse Google Calendar URL."}), 400
-   
+
     for event in parsed_events:
         coords = geocode_address(event.get("address"))
-       
+
         if coords:
             lat, lng = coords
-            # 3. Save directly as an accepted event
             add_event(
                 title=event.get("title"),
                 lat=lat,
@@ -117,45 +242,47 @@ def add_and_process_source():
                 event_type="Imported",
                 description=event.get("description"),
                 company_name=company,
-                is_accepted=True # Direct to map
+                is_accepted=True,
             )
-            
+
     add_calendar_source(gcal_url, company or "")
-    
-    return jsonify({"message": f"Successfully imported events!"}), 200
- 
+
+    return jsonify({"message": "Successfully imported events!"}), 200
+
+
 @admin_calendar_routes.route("/<uid>/highlight", methods=["POST"])
 @login_required
 def highlight_event(uid):
     if not uid:
         return jsonify({"error": "Invalid Event ID format."}), 400
-   
+
     success = db_highlight_event(uid)
-   
+
     if not success:
         return jsonify({"error": "Event not found."}), 404
-   
+
     return jsonify({"message": "Event highlighted successfully!"}), 200
+
 
 @admin_calendar_routes.route("/<uid>/accept", methods=["POST"])
 @login_required
 def accept_pending_event(uid):
     if not uid:
         return jsonify({"error": "Invalid Event ID format."}), 400
-   
+
     event = get_event_by_id(uid)
     if not event:
         return jsonify({"error": "Event not found."}), 404
-   
+
     address = event.get("address")
     coords = geocode_address(address)
     if not coords:
         return jsonify({"error": "Failed to geocode address."}), 400
-   
+
     lat, lng = coords
- 
+
     success = accept_event(uid, lat, lng)
     if not success:
         return jsonify({"error": "Event not found or already accepted."}), 404
-   
+
     return jsonify({"message": "Event accepted!"}), 200

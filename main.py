@@ -125,7 +125,11 @@ from views.photo_request import photo_request_routes
 from views.di_social_poster import di_social_poster_routes
 from views.employee_management import ems_routes
 from views.employee_management import get_ems_brand_image_url
-from views.cu_calendar import calendar_routes, admin_calendar_routes
+from views.cu_calendar import (
+    admin_calendar_routes,
+    calendar_routes,
+    public_calendar_api_routes,
+)
 
 ################################################################################
 ############################# IMPORTS COMPLETE #################################
@@ -169,6 +173,7 @@ app.register_blueprint(di_social_poster_routes)
 app.register_blueprint(ems_routes)
 app.register_blueprint(calendar_routes)
 app.register_blueprint(admin_calendar_routes)
+app.register_blueprint(public_calendar_api_routes)
 logging.info("Done registering blueprints.")
 
 logging.info("Initializing login manager...")
@@ -349,8 +354,9 @@ def schedulers():
 # All endpoints beginning with /cron/ are called by the Google Cloud Scheduler
 # from jobs defined in cron.yaml
 
-#add cron job for 
-#import regular function and run it 
+
+# add cron job for
+# import regular function and run it
 @app.route("/cron/delete-expired-events", methods=["GET", "POST"])
 @csrf.exempt
 @talisman(force_https=False)
