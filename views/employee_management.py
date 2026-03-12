@@ -2,7 +2,7 @@
 This file defines the API for the Employee Management System.
 
 Created by Jacob Slabosz on Jan. 12, 2026
-Last modified Feb. 16, 2026
+Last modified by Jacob Slabosz March 9, 2026
 """
 
 import logging
@@ -10,6 +10,7 @@ from flask import Blueprint, render_template, request, jsonify, abort, session
 from flask_login import login_required, current_user
 from util.security import restrict_to, is_user_in_group
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from flask import request, jsonify, url_for
 from util.employee_management import send_onboarding_email
@@ -98,7 +99,89 @@ def ems_dashboard():
     """
     Renders the Employee Management System dashboard.
     """
-    return render_template("employee_management/ems_base.html", selection="dash")
+    # Get all employees, positions and relations
+    all_employees = get_all_employee_cards()
+    all_positions = get_all_position_cards()
+    all_relations = get_all_relations()
+
+    # Calculate statistics
+    total_employees = len(all_employees)
+    total_positions = len(all_positions)
+
+    # Count active positions (not archived)
+    active_positions = len([p for p in all_positions if not p.get("archived", False)])
+
+    # Count employees by status
+    status_counts = {}
+    for status in EMPLOYEE_STATUS_OPTIONS:
+        status_counts[status] = len(
+            [e for e in all_employees if e.get("status") == status]
+        )
+
+    # Count active employees (currently employed)
+    active_employees = sum([status_counts.get("Active", 0)])
+
+    # Count onboarding employees
+    onboarding_incomplete = len(
+        [
+            e
+            for e in all_employees
+            if not e.get("onboarding_complete", False)
+            and e.get("status") == "Onboarding"
+        ]
+    )
+    onboarding_form_pending = len(
+        [
+            e
+            for e in all_employees
+            if not e.get("onboarding_form_done", False)
+            and e.get("status") == "Onboarding"
+        ]
+    )
+
+    # Count open positions (positions with no current employee)
+    current_date = datetime.now(ZoneInfo("America/Chicago")).date()
+    filled_position_ids = set()
+    for rel in all_relations:
+        start = rel.get("start_date")
+        end = rel.get("end_date")
+        if start and start <= current_date and (not end or end >= current_date):
+            filled_position_ids.add(rel.get("position_id"))
+
+    open_positions = len(
+        [
+            p
+            for p in all_positions
+            if not p.get("archived", False) and p.get("uid") not in filled_position_ids
+        ]
+    )
+
+    # Get recent employees (last 5 added)
+    recent_employees = sorted(
+        all_employees, key=lambda e: e.get("created_at", datetime.min), reverse=True
+    )[:5]
+
+    # Add profile photos
+    for emp in recent_employees:
+        if emp.get("user_uid"):
+            photo = get_user_profile_photo(emp["user_uid"])
+            emp["profile_photo"] = photo if photo else None
+        else:
+            emp["profile_photo"] = None
+
+    return render_template(
+        "employee_management/ems_dashboard.html",
+        selection="dash",
+        total_employees=total_employees,
+        active_employees=active_employees,
+        total_positions=total_positions,
+        active_positions=active_positions,
+        open_positions=open_positions,
+        onboarding_incomplete=onboarding_incomplete,
+        onboarding_form_pending=onboarding_form_pending,
+        status_counts=status_counts,
+        recent_employees=recent_employees,
+    )
 
 
 # TEMPLATE
