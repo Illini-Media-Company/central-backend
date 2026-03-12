@@ -1,50 +1,86 @@
 """
 
-Last modified Feb. 11, 2026
+Last modified by Jacob Slabosz March 12, 2026
 """
 
-import json
 import logging
 import sys
-import os
-import urllib
-import atexit
+import time
 
-from db import client as dbclient
+# CONFIGURE LOGGING
+LOG_FORMAT = "%(levelname)s | %(filename)s:%(lineno)d | %(funcName)s() | %(message)s"
+logging.basicConfig(stream=sys.stdout, level=logging.INFO, format=LOG_FORMAT)
+logging.info("Logging configured.")
 
-import requests
-from threading import Thread
-from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
-from flask_talisman import Talisman
-from oauthlib.oauth2 import WebApplicationClient
-from apscheduler.triggers.date import DateTrigger
-from flask import (
-    Flask,
-    redirect,
-    render_template,
-    request,
-    url_for,
-    session,
-)
-from flask_login import (
-    LoginManager,
-    current_user,
-    login_required,
-    login_user,
-    logout_user,
-)
 
-import constants
-from constants import (
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET,
-    TOOLS_ADMIN_ACCESS_GROUPS,
-)
+class InitTimer:
+    """Context manager to log the duration of startup phases."""
+
+    def __init__(self, phase_name):
+        self.phase_name = phase_name
+
+    def __enter__(self):
+        self.start_time = time.perf_counter()
+        logging.info(f"Loading: {self.phase_name}...")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        duration_ms = (time.perf_counter() - self.start_time) * 1000
+        if exc_type is None:
+            logging.info(f"Loaded: {self.phase_name} in {duration_ms:.2f}ms")
+        else:
+            logging.error(
+                f"FAILED: {self.phase_name} after {duration_ms:.2f}ms. Error: {exc_val}"
+            )
+
+
+logging.info("Importing modules...")
+
+with InitTimer("Standard Libraries"):
+    import json
+    import os
+    import urllib
+    import atexit
+    from threading import Thread
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+with InitTimer("Third-Party Libraries"):
+    import requests
+    from flask_talisman import Talisman
+    from oauthlib.oauth2 import WebApplicationClient
+    from apscheduler.triggers.date import DateTrigger
+
+with InitTimer("Flask and Flask-Login"):
+    from flask import (
+        Flask,
+        redirect,
+        render_template,
+        request,
+        url_for,
+        session,
+    )
+    from flask_login import (
+        LoginManager,
+        current_user,
+        login_required,
+        login_user,
+        logout_user,
+    )
+
+with InitTimer("Constants"):
+    import constants
+    from constants import (
+        GOOGLE_CLIENT_ID,
+        GOOGLE_CLIENT_SECRET,
+        TOOLS_ADMIN_ACCESS_GROUPS,
+    )
+
+logging.info("Modules imported.")
 
 ################################################################################
 # DB IMPORTS ###################################################################
 
+logging.info("Importing database functions...")
 from db import client as dbclient
 from db.user import (
     add_user,
@@ -64,9 +100,12 @@ from db.map_point import get_all_points
 from db.json_store import json_store_set
 from db.employee_management import initialize_ems_settings
 
+logging.info("Database functions imported.")
+
 ################################################################################
 # UTIL IMPORTS #################################################################
 
+logging.info("Importing utility functions...")
 from util.security import (
     csrf,
     get_google_provider_cfg,
@@ -101,9 +140,12 @@ from util.helpers.ap_datetime import (
     time_between,
 )
 
+logging.info("Utility functions imported.")
+
 ################################################################################
 # VIEWS IMPORTS #################################################################
 
+logging.info("Importing views...")
 from views.all_tools import tools_routes
 from views.content_doc import content_doc_routes
 from views.constant_contact import constant_contact_routes
@@ -125,13 +167,11 @@ from views.di_social_poster import di_social_poster_routes
 from views.employee_management import ems_routes
 from views.employee_management import get_ems_brand_image_url
 
+logging.info("Views imported.")
+
 ################################################################################
 ############################# IMPORTS COMPLETE #################################
 ################################################################################
-
-# CONFIGURE LOGGING
-LOG_FORMAT = "%(levelname)s | %(filename)s:%(lineno)d | %(funcName)s() | %(message)s"
-logging.basicConfig(stream=sys.stdout, level=logging.INFO, format=LOG_FORMAT)
 
 logging.info("Initializing Flask...")
 app = Flask(__name__)
