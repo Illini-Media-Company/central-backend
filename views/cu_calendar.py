@@ -66,26 +66,25 @@ def _serialize_legacy_public_event(event):
 
 
 def _parse_submission_datetime(raw_value, is_end=False):
-    if raw_value is None:
+    if not raw_value or not raw_value.strip():
         return None
 
     value = raw_value.strip()
-    if not value:
-        return None
 
+    
     if len(value) == 10:
         parsed_date = datetime.strptime(value, "%Y-%m-%d").date()
         return datetime.combine(parsed_date, time(23, 59, 59) if is_end else time.min)
 
-    normalized_value = value.replace("Z", "+00:00")
     try:
+        normalized_value = value.replace("Z", "+00:00")
         parsed_datetime = datetime.fromisoformat(normalized_value)
+        
+        if parsed_datetime.tzinfo is not None:
+            return parsed_datetime.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed_datetime
     except ValueError as exc:
-        raise ValueError("Invalid date format. Use YYYY-MM-DD or ISO 8601.") from exc
-
-    if parsed_datetime.tzinfo is not None:
-        return parsed_datetime.astimezone(timezone.utc).replace(tzinfo=None)
-    return parsed_datetime
+        raise ValueError("Invalid date/time format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM") from exc
 
 
 def _get_uploaded_files():

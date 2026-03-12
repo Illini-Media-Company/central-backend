@@ -119,24 +119,24 @@ CU Calendar Admin Dashboard
         <form id="manualAddForm" action="/admin/cu-calendar/dashboard/add-event" method="post" enctype="multipart/form-data">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
 
-            {{ form.text_input(name="title", label="Title", required=true, class="", input_class="", placeholder="Event title", subtext="", alt_type="", maxlength="", pattern="", initial_val="") }}
-            {{ form.text_input(name="address", label="Address", required=true, class="", input_class="", placeholder="Street address", alt_type="", maxlength="", pattern="", initial_val="") }}
-            {{ form.text_input(name="url", label="URL", required=false, class="", input_class="", placeholder="https://…", subtext="", alt_type="url", maxlength="", pattern="", initial_val="") }}
-            {{ form.text_input(name="event_type", label="Event type", required=false, class="", input_class="", placeholder="Category", subtext="", alt_type="", maxlength="", pattern="", initial_val="") }}
-            {{ form.textarea_input(name="description", label="Description", required=false, class="", placeholder="", subtext="", maxlength="", initial_val="") }}
-            {{ form.text_input(name="company_name", label="Company name", required=false, class="", input_class="", placeholder="", subtext="", alt_type="", maxlength="", pattern="", initial_val="") }}
+            {{ form.text_input(name="title", label="Title", required=true, placeholder="Event title") }}
+            {{ form.text_input(name="address", label="Address", required=true, placeholder="Street address") }}
+            {{ form.text_input(name="url", label="URL", required=false, placeholder="https://…", alt_type="url") }}
+            {{ form.text_input(name="event_type", label="Event type", required=false, placeholder="Category") }}
+            {{ form.textarea_input(name="description", label="Description", required=false) }}
+            {{ form.text_input(name="company_name", label="Company name", required=false) }}
 
             <div class="form-row" id="formfield-start_date">
                 <div>
-                    <label for="start_date" class="field-label">Start date</label>
+                    <label for="start_date" class="field-label">Start Date & Time</label>
                 </div>
-                <input type="date" id="start_date" name="start_date" min="{{ today_iso }}" class="text-input">
+                <input type="datetime-local" id="start_date" name="start_date" class="text-input">
             </div>
             <div class="form-row" id="formfield-end_date">
                 <div>
-                    <label for="end_date" class="field-label">End date</label>
+                    <label for="end_date" class="field-label">End Date & Time</label>
                 </div>
-                <input type="date" id="end_date" name="end_date" min="{{ today_iso }}" class="text-input">
+                <input type="datetime-local" id="end_date" name="end_date" class="text-input">
             </div>
 
             <div class="form-row" id="formfield-images">
@@ -147,12 +147,12 @@ CU Calendar Admin Dashboard
                 <input type="file" id="images" name="images" accept="image/*" multiple>
             </div>
 
-            {{ form.text_input(name="submitter_name", label="Submitter name", required=false, class="", input_class="", placeholder="", alt_type="", maxlength="", pattern="", initial_val="") }}
-            {{ form.text_input(name="submitter_email", label="Submitter email", required=false, class="", input_class="", placeholder="", subtext="", alt_type="email", maxlength="", pattern="", initial_val="") }}
+            {{ form.text_input(name="submitter_name", label="Submitter name", required=false) }}
+            {{ form.text_input(name="submitter_email", label="Submitter email", required=false, alt_type="email") }}
 
-            {{ form.switch_input(name="highlight", label="Highlight", class="", subtext="Highlighted events may be emphasized on the map.") }}
+            {{ form.switch_input(name="highlight", label="Highlight", subtext="Highlighted events may be emphasized on the map.") }}
 
-            {{ form.submit_button(text="Add event", label="manualAddSubmit", class="") }}
+            {{ form.submit_button(text="Add event", label="manualAddSubmit") }}
         </form>
     </div>
 </section>
@@ -165,9 +165,9 @@ CU Calendar Admin Dashboard
     <div class="inner-container cu-admin">
         <form id="addSourceForm" action="/admin/cu-calendar/source/add" method="post" enctype="application/x-www-form-urlencoded">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-            {{ form.text_input(name="gcal_url", label="Google Calendar URL", required=true, class="", input_class="", placeholder="https://calendar.google.com/…", subtext="Embed URL or public iCal URL.", alt_type="url", maxlength="", pattern="", initial_val="") }}
-            {{ form.text_input(name="company_name", label="Company name", required=false, class="", input_class="", placeholder="", alt_type="", maxlength="", pattern="", initial_val="") }}
-            {{ form.submit_button(text="Import", label="addSourceSubmit", class="") }}
+            {{ form.text_input(name="gcal_url", label="Google Calendar URL", required=true, placeholder="https://calendar.google.com/…", subtext="Embed URL or public iCal URL.", alt_type="url") }}
+            {{ form.text_input(name="company_name", label="Company name", required=false) }}
+            {{ form.submit_button(text="Import", label="addSourceSubmit") }}
         </form>
     </div>
 </section>
@@ -211,6 +211,57 @@ CU Calendar Admin Dashboard
     document.querySelectorAll(".js-reject").forEach((btn) => {
         btn.addEventListener("click", () => rejectEvent(btn.dataset.uid));
     });
+
+    // Handle the Manual Add Event form submission
+    document.getElementById("manualAddForm").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+
+        try {
+            const res = await fetch(form.action, {
+                method: "POST",
+                body: formData 
+            });
+
+            if (res.ok) {
+                alert("Event added successfully!");
+                form.reset();
+                window.location.reload();
+            } else {
+                const data = await res.json();
+                alert(data.error || "Failed to add event.");
+            }
+        } catch (err) {
+            console.error("Submission error:", err);
+            alert("An error occurred while communicating with the server.");
+        }
+    });
+
+    // Handle the Google Calendar Import form submission
+    document.getElementById("addSourceForm").addEventListener("submit", async function(e) {
+        e.preventDefault(); 
+        const form = e.target;
+        const formData = new FormData(form);
+
+        try {
+            const res = await fetch(form.action, {
+                method: "POST",
+                body: new URLSearchParams(formData)
+            });
+
+            if (res.ok) {
+                alert("Calendar source imported successfully!");
+                form.reset();
+                window.location.reload();
+            } else {
+                const data = await res.json();
+                alert(data.error || "Failed to import calendar.");
+            }
+        } catch (err) {
+            console.error("Import error:", err);
+            alert("An error occurred while importing.");
+        }
+    });
 </script>
 {% endblock %}
-
