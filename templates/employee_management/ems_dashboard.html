@@ -1,0 +1,340 @@
+{% extends 'employee_management/ems_base.html' %}
+
+{% block ems_title %}
+    Dashboard
+{% endblock %}
+
+{% block ems_extra_head %}
+
+<style>
+    .ems-dash-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        width: 100%;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+        gap: 0.5rem;
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, var(--main-bg-color) 0%, var(--main-extralight-color) 100%);
+        border-radius: var(--main-border-radius);
+        padding: 0.5rem;
+        box-shadow: var(--input-box-shadow);
+        text-align: center;
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        border: 1px solid transparent;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--main-box-shadow);
+        border-color: var(--main-accent-color);
+    }
+
+    .stat-card i {
+        color: var(--main-accent-color);
+    }
+
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: 600;
+        text-align: center;
+        margin: 0;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+        gap: 0.5rem;
+    }
+
+    .action-button {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        background-color: var(--main-bg-color);
+        border-radius: var(--main-border-radius);
+        box-shadow: var(--input-box-shadow);
+        text-decoration: none;
+        color: var(--main-text-color);
+        transition: all 0.2s ease-in-out;
+        border: 1px solid transparent;
+    }
+
+    .action-button:hover {
+        color: var(--main-accent-color);
+        transform: translateY(-2px);
+        box-shadow: var(--main-box-shadow);
+        border-color: var(--main-accent-color);
+    }
+
+    .action-button i {
+        font-size: 1.75rem;
+    }
+
+    .action-button span {
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+
+    .recent-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .recent-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem;
+        background-color: var(--main-bg-color);
+        border-radius: var(--main-border-radius);
+        margin-bottom: 0.5rem;
+        box-shadow: var(--input-box-shadow);
+        text-decoration: none;
+        color: var(--main-text-color);
+        transition: all 0.2s ease-in-out;
+    }
+
+    .recent-item:hover {
+        background-color: var(--main-extralight-color);
+        transform: translateX(4px);
+    }
+
+    .recent-item img {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid var(--main-lt-gray-color);
+    }
+
+    .recent-item-placeholder {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: var(--main-lt-gray-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        color: var(--main-text-color);
+    }
+
+    .recent-item-info {
+        flex: 1;
+    }
+
+    .recent-item-name {
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .recent-item-detail {
+        font-size: 0.85rem;
+        color: var(--main-text-color);
+        margin: 0;
+    }
+
+    .status-breakdown {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .status-item {
+        padding: 0.75rem;
+        background-color: var(--main-bg-color);
+        border-radius: var(--main-border-radius);
+        box-shadow: var(--input-box-shadow);
+        text-align: center;
+    }
+
+    .status-count {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: var(--main-accent-color);
+        margin: 0;
+    }
+
+    .status-name {
+        font-size: 0.85rem;
+        color: var(--main-text-color);
+        margin: 0.25rem 0 0 0;
+    }
+
+    .warning-badge {
+        display: inline-block;
+        background-color: var(--main-accent-color);
+        color: var(--main-bg-color);
+        padding: 0.25rem 0.5rem;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-left: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block ems_content %}
+
+<h3>Welcome back, {{ current_user.name.split()[0] }}! 👋</h3>
+<p style="margin: 0;">
+    Here's an overview of EMS.
+</p>
+
+<hr>
+
+<div class="ems-dash-container">
+    
+    {# Key Metrics #}
+    <section class="section-container">
+        <div class="section-header">
+            <h3>Key Metrics</h3>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">{{ active_employees }}</div>
+                <div class="stat-label">
+                    <i class="bi bi-person-check-fill"></i>&nbsp; Active Employees
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ total_employees }}</div>
+                <div class="stat-label">
+                    <i class="bi bi-people-fill"></i>&nbsp; Total Employees
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ active_positions }}</div>
+                <div class="stat-label">
+                    <i class="bi bi-briefcase-fill"></i>&nbsp; Active Positions
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ open_positions }}</div>
+                <div class="stat-label">
+                    <i class="bi bi-clipboard-check"></i>&nbsp; Open Positions
+                </div>
+            </div>
+            {% if onboarding_incomplete > 0 %}
+            <div class="stat-card" style="border-color: var(--main-accent-color);">
+                <div class="stat-value" style="color: var(--main-accent-color);">{{ onboarding_incomplete }}</div>
+                <div class="stat-label">
+                    <i class="bi bi-hourglass-split" style="color: var(--main-accent-color);"></i>&nbsp; Onboarding Incomplete
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    {# Quick Actions #}
+    <section class="section-container">
+        <div class="section-header">
+            <h3>Quick Actions</h3>
+        </div>
+        <div class="quick-actions">
+            <a href="/ems/employee/add" class="action-button">
+                <i class="bi bi-person-plus-fill"></i>
+                <span>Add Employee</span>
+            </a>
+            <a href="/ems/employee/onboard" class="action-button">
+                <i class="bi bi-envelope-fill"></i>
+                <span>Send Onboarding</span>
+            </a>
+            <a href="/ems/position/add" class="action-button">
+                <i class="bi bi-briefcase-fill"></i>
+                <span>Add Position</span>
+            </a>
+            <a href="/ems/employees" class="action-button">
+                <i class="bi bi-list-ul"></i>
+                <span>View All Employees</span>
+            </a>
+            <a href="/ems/positions" class="action-button">
+                <i class="bi bi-briefcase-fill"></i>
+                <span>View All Positions</span>
+            </a>
+            <a href="/ems/org-chart" class="action-button">
+                <i class="bi bi-diagram-3-fill"></i>
+                <span>Org Chart</span>
+            </a>
+        </div>
+    </section>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+        
+        {# Employee Status Breakdown #}
+        <section class="section-container">
+            <div class="section-header">
+                <h3>Employee Status</h3>
+            </div>
+            <div class="status-breakdown">
+                {% for status, count in status_counts.items() %}
+                    {% if count > 0 %}
+                    <div class="status-item">
+                        <div class="status-count">{{ count }}</div>
+                        <div class="status-name">{{ status }}</div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </section>
+
+        {# Recently Added Employees #}
+        <section class="section-container">
+            <div class="section-header">
+                <h3 style="display: flex; align-items: center;">Recently Added
+                    {% if onboarding_form_pending > 0 %}
+                    <span class="warning-badge">{{ onboarding_form_pending }} Awaiting Form</span>
+                    {% endif %}
+                </h3>
+            </div>
+            {% if recent_employees %}
+            <ul class="recent-list">
+                {% for emp in recent_employees %}
+                <a href="/ems/employee/view/{{ emp.uid }}" class="recent-item">
+                    {% if emp.profile_photo %}
+                    <img src="{{ emp.profile_photo }}" alt="{{ emp.first_name }} {{ emp.last_name }}">
+                    {% else %}
+                    <div class="recent-item-placeholder">
+                        {{ emp.first_name[0] }}{{ emp.last_name[0] }}
+                    </div>
+                    {% endif %}
+                    <div class="recent-item-info">
+                        <p class="recent-item-name">{{ emp.first_name }} {{ emp.last_name }}</p>
+                        <p class="recent-item-detail">
+                            {% if emp.status %}{{ emp.status }}{% else %}Status Unknown{% endif %}
+                            {% if not emp.onboarding_complete %} • <span style="color: #F99F20;">Onboarding Incomplete</span>{% endif %}
+                        </p>
+                    </div>
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p style="text-align: center; color: var(--main-md-gray-color); padding: 2rem 0;">
+                No employees added yet.
+            </p>
+            {% endif %}
+        </section>
+
+    </div>
+
+</div>
+
+{% endblock %}

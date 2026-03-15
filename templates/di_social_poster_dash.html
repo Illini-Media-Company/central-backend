@@ -98,13 +98,13 @@
         <table>
             <thead>
                 <tr>
-                    <th style="width: 23%">Story</th>
-                    <th style="width: 12%">Date Posted</th>
-                    <th style="width: 13%"><i class="bi bi-instagram"></i>&nbsp; Instagram</th>
-                    <th style="width: 13%"><i class="bi bi-facebook"></i>&nbsp; Facebook</th>
-                    <th style="width: 13%"><i class="bi bi-reddit"></i>&nbsp; Reddit</th>
-                    <th style="width: 13%"><i class="bi bi-twitter-x"></i>&nbsp; Twitter/X</th>
-                    <th style="width: 13%"><i class="bi bi-threads"></i>&nbsp; Threads</th>
+                    <th style="width: 23%; min-width: 8rem;">Story</th>
+                    <th style="width: 12%;">Date Posted</th>
+                    <th style="width: 13%;"><i class="bi bi-instagram"></i>&nbsp; Instagram</th>
+                    <th style="width: 13%;"><i class="bi bi-facebook"></i>&nbsp; Facebook</th>
+                    <th style="width: 13%;"><i class="bi bi-reddit"></i>&nbsp; Reddit</th>
+                    <th style="width: 13%;"><i class="bi bi-twitter-x"></i>&nbsp; Twitter/X</th>
+                    <th style="width: 13%;"><i class="bi bi-threads"></i>&nbsp; Threads</th>
                 </tr>
             </thead>
             <tbody>
@@ -122,35 +122,35 @@
                     </td>
                     <td>
                         {% if story.instagram_timestamp %}
-                            <i class="bi bi-check-circle" style="color: var(--green-500); font-size: 0.75rem;"></i>&nbsp; {{ story.instagram_timestamp|ap_datetime }}
+                            <i class="bi bi-check-circle" style="color: var(--wpgu-green-500); font-size: 0.75rem;"></i>&nbsp; {{ story.instagram_timestamp|ap_datetime }}
                         {% else %}
                             Not posted
                         {% endif %}
                     </td>
                     <td>
                         {% if story.facebook_timestamp %}
-                            <i class="bi bi-check-circle" style="color: var(--green-500); font-size: 0.75rem;"></i>&nbsp; {{ story.facebook_timestamp|ap_datetime }}
+                            <i class="bi bi-check-circle" style="color: var(--wpgu-green-500); font-size: 0.75rem;"></i>&nbsp; {{ story.facebook_timestamp|ap_datetime }}
                         {% else %}
                             Not posted
                         {% endif %}
                     </td>
                     <td>
                         {% if story.reddit_timestamp %}
-                            <i class="bi bi-check-circle" style="color: var(--green-500); font-size: 0.75rem;"></i>&nbsp; {{ story.reddit_timestamp|ap_datetime }}
+                            <i class="bi bi-check-circle" style="color: var(--wpgu-green-500); font-size: 0.75rem;"></i>&nbsp; {{ story.reddit_timestamp|ap_datetime }}
                         {% else %}
                             Not posted
                         {% endif %}
                     </td>
                     <td>
                         {% if story.x_timestamp %}
-                            <i class="bi bi-check-circle" style="color: var(--green-500); font-size: 0.75rem;"></i>&nbsp; {{ story.x_timestamp|ap_datetime }}
+                            <i class="bi bi-check-circle" style="color: var(--wpgu-green-500); font-size: 0.75rem;"></i>&nbsp; {{ story.x_timestamp|ap_datetime }}
                         {% else %}
                             Not posted
                         {% endif %}
                     </td>
                     <td>
                         {% if story.threads_timestamp %}
-                            <i class="bi bi-check-circle" style="color: var(--green-500); font-size: 0.75rem;"></i>&nbsp; {{ story.threads_timestamp|ap_datetime }}
+                            <i class="bi bi-check-circle" style="color: var(--wpgu-green-500); font-size: 0.75rem;"></i>&nbsp; {{ story.threads_timestamp|ap_datetime }}
                         {% else %}
                             Not posted
                         {% endif %}

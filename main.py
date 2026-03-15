@@ -1,50 +1,86 @@
 """
 
-Last modified Feb. 11, 2026
+Last modified by Jacob Slabosz March 12, 2026
 """
 
-import json
 import logging
 import sys
-import os
-import urllib
-import atexit
+import time
 
-from db import client as dbclient
+# CONFIGURE LOGGING
+LOG_FORMAT = "%(levelname)s | %(filename)s:%(lineno)d | %(funcName)s() | %(message)s"
+logging.basicConfig(stream=sys.stdout, level=logging.INFO, format=LOG_FORMAT)
+logging.info("Logging configured.")
 
-import requests
-from threading import Thread
-from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
-from flask_talisman import Talisman
-from oauthlib.oauth2 import WebApplicationClient
-from apscheduler.triggers.date import DateTrigger
-from flask import (
-    Flask,
-    redirect,
-    render_template,
-    request,
-    url_for,
-    session,
-)
-from flask_login import (
-    LoginManager,
-    current_user,
-    login_required,
-    login_user,
-    logout_user,
-)
 
-import constants
-from constants import (
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET,
-    TOOLS_ADMIN_ACCESS_GROUPS,
-)
+class InitTimer:
+    """Context manager to log the duration of startup phases."""
+
+    def __init__(self, phase_name):
+        self.phase_name = phase_name
+
+    def __enter__(self):
+        self.start_time = time.perf_counter()
+        logging.info(f"Loading: {self.phase_name}...")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        duration_ms = (time.perf_counter() - self.start_time) * 1000
+        if exc_type is None:
+            logging.info(f"Loaded: {self.phase_name} in {duration_ms:.2f}ms")
+        else:
+            logging.error(
+                f"FAILED: {self.phase_name} after {duration_ms:.2f}ms. Error: {exc_val}"
+            )
+
+
+logging.info("Importing modules...")
+
+with InitTimer("Standard Libraries"):
+    import json
+    import os
+    import urllib
+    import atexit
+    from threading import Thread
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+with InitTimer("Third-Party Libraries"):
+    import requests
+    from flask_talisman import Talisman
+    from oauthlib.oauth2 import WebApplicationClient
+    from apscheduler.triggers.date import DateTrigger
+
+with InitTimer("Flask and Flask-Login"):
+    from flask import (
+        Flask,
+        redirect,
+        render_template,
+        request,
+        url_for,
+        session,
+    )
+    from flask_login import (
+        LoginManager,
+        current_user,
+        login_required,
+        login_user,
+        logout_user,
+    )
+
+with InitTimer("Constants"):
+    import constants
+    from constants import (
+        GOOGLE_CLIENT_ID,
+        GOOGLE_CLIENT_SECRET,
+        TOOLS_ADMIN_ACCESS_GROUPS,
+    )
+
+logging.info("Modules imported.")
 
 ################################################################################
 # DB IMPORTS ###################################################################
 
+logging.info("Importing database functions...")
 from db import client as dbclient
 from db.user import (
     add_user,
@@ -65,9 +101,12 @@ from db.json_store import json_store_set
 from db.employee_management import initialize_ems_settings
 from db.cu_calender import delete_expired_events
 
+logging.info("Database functions imported.")
+
 ################################################################################
 # UTIL IMPORTS #################################################################
 
+logging.info("Importing utility functions...")
 from util.security import (
     csrf,
     get_google_provider_cfg,
@@ -102,9 +141,12 @@ from util.helpers.ap_datetime import (
     time_between,
 )
 
+logging.info("Utility functions imported.")
+
 ################################################################################
 # VIEWS IMPORTS #################################################################
 
+logging.info("Importing views...")
 from views.all_tools import tools_routes
 from views.content_doc import content_doc_routes
 from views.constant_contact import constant_contact_routes
@@ -133,13 +175,11 @@ from views.cu_calendar import (
 
 from util.cu_calendar import sync_gcal_sources
 
+logging.info("Views imported.")
+
 ################################################################################
 ############################# IMPORTS COMPLETE #################################
 ################################################################################
-
-# CONFIGURE LOGGING
-LOG_FORMAT = "%(levelname)s | %(filename)s:%(lineno)d | %(funcName)s() | %(message)s"
-logging.basicConfig(stream=sys.stdout, level=logging.INFO, format=LOG_FORMAT)
 
 logging.info("Initializing Flask...")
 app = Flask(__name__)
@@ -221,6 +261,58 @@ def log_scheduler():
 ################################################################################
 
 
+@app.errorhandler(401)
+def unauthorized(e):
+    """
+    Error handler for 401 errors (Unauthorized). Can be manually shown through an API by calling:
+    `abort(401, description="Your string here")`
+    """
+    # Use the string provided from abort(), otherwise default
+    default_error = "You must be authenticated to access this resource. Please log in and try again."
+    generic_default = "You must be authenticated (logged in) to access this resource. You either are not logged in, supplied the wrong credentials (e.g. a bad password), or your browser doesn't understand how to supply the credentials required."
+
+    error_message = (
+        e.description
+        if hasattr(e, "description") and e.description != generic_default
+        else default_error
+    )
+
+    return (
+        render_template(
+            "error.html",
+            code="401",
+            error=error_message,
+        ),
+        401,
+    )
+
+
+@app.errorhandler(403)
+def access_forbidden(e):
+    """
+    Error handler for 403 errors (Forbidden). Can be manually shown through an API by calling:
+    `abort(403, description="Your string here")`
+    """
+    # Use the string provided from abort(), otherwise default
+    default_error = "You do not have permission to access this resource. If you believe this is an error, please contact a system administrator."
+    generic_default = "You don't have the permission to access the requested resource. Alternatively, it is either read-protected or not readable by the server."
+
+    error_message = (
+        e.description
+        if hasattr(e, "description") and e.description != generic_default
+        else default_error
+    )
+
+    return (
+        render_template(
+            "error.html",
+            code="403",
+            error=error_message,
+        ),
+        403,
+    )
+
+
 @app.errorhandler(404)
 def page_not_found(e):
     """
@@ -244,32 +336,6 @@ def page_not_found(e):
             error=error_message,
         ),
         404,
-    )
-
-
-@app.errorhandler(403)
-def access_forbidden(e):
-    """
-    Error handler for 403 errors (Forbidden). Can be manually shown through an API by calling:
-    `abort(403, description="Your string here")`
-    """
-    # Use the string provided from abort(), otherwise default
-    default_error = "You do not have permission to access this resource. If you believe this is an error, please contact a system administrator."
-    generic_default = "You don't have the permission to access the requested resource. It is either read-protected or not readable by the server."
-
-    error_message = (
-        e.description
-        if hasattr(e, "description") and e.description != generic_default
-        else default_error
-    )
-
-    return (
-        render_template(
-            "error.html",
-            code="403",
-            error=error_message,
-        ),
-        403,
     )
 
 

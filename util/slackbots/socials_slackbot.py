@@ -456,11 +456,17 @@ def _on_reaction_added(event):
                 try:
                     social_url, _ = post_to_reddit(title=story_name, url=story_url)
                 except Exception:
+                    logger.exception(
+                        f"Failed to automatically post story {story_url} to Reddit after reaction."
+                    )
                     pass
             elif platform == "X":
                 try:
                     social_url, _ = post_to_twitter(title=story_name, url=story_url)
                 except Exception:
+                    logger.exception(
+                        f"Failed to automatically post story {story_url} to Twitter after reaction."
+                    )
                     pass
 
             if social_url:

@@ -13,7 +13,7 @@ from constants import (
 
 QUAD_CAM_URL = "https://www.youtube.com/embed/WyrkXojtRXk?si=z5FBa5yPGEXkfdj-"
 ALMA_CAM_URL = "https://www.youtube.com/embed/0mEf4MbHKDo?si=4eV1SvgyvArvomCA"
-MORROW_CAM_URL = "https://www.youtube.com/embed/4_5srHxIN-4?si=vblJyJKo3Rs2Xe6l"
+MORROW_CAM_URL = "https://www.youtube.com/embed/4PMMSI_p7BE?si=EiXbDKrgwK_5AQLR"
 
 
 rotate_tv_routes = Blueprint("rotate_tv_routes", __name__, url_prefix="/tv-rotation")

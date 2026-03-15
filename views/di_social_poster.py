@@ -48,7 +48,7 @@ def dashboard():
     stories = all_stories[start:end]
 
     return render_template(
-        "di_social_poster/dashboard.html",
+        "di_social_poster_dash.html",
         stories=stories,
         total_stories=total_stories,
         page=page,

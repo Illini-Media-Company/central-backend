@@ -101,15 +101,6 @@ WPGU_ONAIR_GCAL_ID = "c_b888554deb36a74a61aea32bac28ab500ade0003cd2ae61085354e07
 ### EMPLOYEE MANAGEMENT SYSTEM #################################################
 ################################################################################
 
-# Google Groups with admin access to EMS
-EMS_ADMIN_ACCESS_GROUPS = [
-    "webdev",
-    "imc-staff-webdev",
-    "helpdesk@illinimedia.com",
-    "student-managers",
-    "professional-staff",
-]
-
 EMPLOYEE_PRONOUNS = [
     "He/Him",
     "She/Her",

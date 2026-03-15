@@ -1,5 +1,32 @@
 # Changelog
 
+## [2.7.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.6.3...v2.7.0) (2026-03-12)
+
+
+### Features
+
+* [EMS] Add dashboard ([e60ef49](https://github.com/Illini-Media-Company/central-backend/commit/e60ef49966e5443a64182073e774a0aadd171520))
+
+
+### Bug Fixes
+
+* [EMS] Update access to use explicit Google Groups ([b51291a](https://github.com/Illini-Media-Company/central-backend/commit/b51291ac8be165aea9959c3eb2be464b3980b627))
+* [TV-Display] Change on-air calendar to match WPGU branding ([c44436b](https://github.com/Illini-Media-Company/central-backend/commit/c44436bb91c71fa1252c1ca8e5828f0bd626676f))
+* [TV-Display] Fix autoplay issues with Youtube players ([52796a9](https://github.com/Illini-Media-Company/central-backend/commit/52796a95ac4107c5a14027ac4dcfcd098f85d25a))
+* Add error handler page for 401 codes ([a250d9b](https://github.com/Illini-Media-Company/central-backend/commit/a250d9b3e0011f45bda20a940478fce92c6bad76))
+
+
+### Documentation
+
+* Update import logging to be more descriptive ([b841aa6](https://github.com/Illini-Media-Company/central-backend/commit/b841aa6a62b161ef3806fce052ee4a59915f3fd7))
+
+## [2.6.3](https://github.com/Illini-Media-Company/central-backend/compare/v2.6.2...v2.6.3) (2026-03-03)
+
+
+### Bug Fixes
+
+* [EMS] Fix issue of manually overridden employees not being added to Slack channels ([a9fd554](https://github.com/Illini-Media-Company/central-backend/commit/a9fd554c5a33d1ba05e020a589cf85e826f920e5))
+
 ## [2.6.2](https://github.com/Illini-Media-Company/central-backend/compare/v2.6.1...v2.6.2) (2026-02-22)
 
 

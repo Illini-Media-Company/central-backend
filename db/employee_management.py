@@ -51,6 +51,8 @@ from constants import (
 
 from . import client
 
+logger = logging.getLogger(__name__)
+
 
 # Decorator so that we can use functions nested and avoid context errors
 def ensure_context(func):
@@ -373,7 +375,7 @@ def create_employee_onboarding_card(
             employee.put()
             return employee.to_dict()
         except Exception as e:
-            print(f"Error creating onboarding EmployeeCard: {e}")
+            logger.error(f"Error creating onboarding EmployeeCard: {e}")
             return EEXCEPT
 
 
@@ -402,7 +404,7 @@ def update_employee_onboarding_card(uid: int, ts: str) -> dict | int:
             employee.put()
 
         except Exception as e:
-            print(f"Error modifying EmployeeCard: {e}")
+            logger.error(f"Error modifying EmployeeCard: {e}")
             return EEXCEPT  # Employee modification failed
 
 
@@ -444,7 +446,7 @@ def create_employee_card(**kwargs: dict) -> dict | int:
         `EMISSING`: If required fields are missing (`imc_email`)
         `EEXCEPT`: Other fatal error
     """
-    logging.info(f"Attempting to create EmployeeCard.")
+    logger.info(f"Attempting to create EmployeeCard.")
 
     with client.context():
         if "imc_email" in kwargs:
@@ -455,13 +457,13 @@ def create_employee_card(**kwargs: dict) -> dict | int:
                 EmployeeCard.imc_email == kwargs["imc_email"]
             ).get()
             if existing:
-                logging.warning(
+                logger.warning(
                     f"Employee with email {kwargs['imc_email']} already exists."
                 )
                 return EEXISTS  # Employee with this IMC email already exists
 
         else:
-            logging.warning("Missing required field: imc_email.")
+            logger.warning("Missing required field: imc_email.")
             return EMISSING  # Missing required field
 
         if "personal_email" in kwargs:
@@ -472,29 +474,29 @@ def create_employee_card(**kwargs: dict) -> dict | int:
             if "user_uid" in kwargs:
                 user = User.get_by_id(kwargs["user_uid"])
                 if not user:
-                    logging.warning(
+                    logger.warning(
                         f"User with UID {kwargs['user_uid']} does not exist."
                     )
                     return EUSERDNE
             employee = EmployeeCard(**kwargs)
-            logging.debug(f"Created EmployeeCard object.")
+            logger.debug(f"Created EmployeeCard object.")
             employee.slack_id = _lookup_user_id_by_email(employee.imc_email)
             employee.created_at = datetime.now(tz=ZoneInfo("America/Chicago"))
             employee.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
             employee.updated_by = current_user.email if current_user else "System"
             employee.put()
-            logging.debug(f"Saved EmployeeCard to datastore with ID {employee.uid}.")
+            logger.debug(f"Saved EmployeeCard to datastore with ID {employee.uid}.")
 
             temp = employee.uid
             tie_employee_to_user(employee_uid=temp)
             employee = EmployeeCard.get_by_id(temp)
 
-            logging.info(
+            logger.info(
                 f"Successfully created EmployeeCard for {employee.full_name} with email {employee.imc_email}."
             )
             return employee.to_dict()
         except Exception as e:
-            logging.warning(f"Error creating EmployeeCard: {e}")
+            logger.warning(f"Error creating EmployeeCard: {e}")
             return EEXCEPT  # Employee creation failed
 
 
@@ -565,7 +567,9 @@ def modify_employee_card(uid: int, **kwargs: dict) -> dict | None | int:
                     return EEXISTS  # Employee with this IMC email already exists
 
                 # Update the employee's Slack ID if it wasn't directly given (only if their email changed)
-                if kwargs["imc_email"] != employee.imc_email:
+                if (kwargs["imc_email"] != employee.imc_email) or (
+                    employee.slack_id is None
+                ):
                     if not "slack_id" in kwargs:
                         employee.slack_id = _lookup_user_id_by_email(
                             kwargs["imc_email"]
@@ -595,7 +599,7 @@ def modify_employee_card(uid: int, **kwargs: dict) -> dict | None | int:
 
             return employee.to_dict()
         except Exception as e:
-            print(f"Error modifying EmployeeCard: {e}")
+            logger.error(f"Error modifying EmployeeCard: {e}")
             return EEXCEPT  # Employee modification failed
 
 
@@ -681,7 +685,7 @@ def delete_employee_card(uid: int) -> bool | int:
             employee.key.delete()
             return True
         except Exception as e:
-            print(f"Error deleting EmployeeCard: {e}")
+            logger.error(f"Error deleting EmployeeCard: {e}")
             return EEXCEPT  # Deletion failed
 
 
@@ -704,13 +708,13 @@ def tie_employee_to_user(employee_uid: int = None, user_uid: int = None) -> bool
     """
 
     if employee_uid:
-        logging.info(
+        logger.info(
             f"Attempting to link EmployeeCard with UID {employee_uid} to a User."
         )
         employee = EmployeeCard.get_by_id(employee_uid)
         user = User.query(User.email == employee.imc_email).get() if employee else None
     elif user_uid:
-        logging.info(f"Attempting to link User with UID {user_uid} to an EmployeeCard.")
+        logger.info(f"Attempting to link User with UID {user_uid} to an EmployeeCard.")
         user = User.get_by_id(user_uid)
         employee = (
             EmployeeCard.query(EmployeeCard.imc_email == user.email).get()
@@ -719,10 +723,10 @@ def tie_employee_to_user(employee_uid: int = None, user_uid: int = None) -> bool
         )
 
     if not employee:
-        logging.warning(f"Employee with UID {employee_uid} does not exist.")
+        logger.warning(f"Employee with UID {employee_uid} does not exist.")
         return EEMPDNE  # Employee does not exist
     if not user:
-        logging.warning(f"User with UID {user_uid} does not exist.")
+        logger.warning(f"User with UID {user_uid} does not exist.")
         return EUSERDNE  # User does not exist
 
     try:
@@ -734,12 +738,12 @@ def tie_employee_to_user(employee_uid: int = None, user_uid: int = None) -> bool
             employee.updated_by = "System"
         employee.put()
 
-        logging.debug(
+        logger.debug(
             f"Successfully linked EmployeeCard (UID {employee.uid}) to User (UID {user.key.id()})."
         )
         return True
     except Exception as e:
-        logging.warning(f"Error linking EmployeeCard to User: {str(e)}")
+        logger.warning(f"Error linking EmployeeCard to User: {str(e)}")
         return EEXCEPT  # If linking fails
 
 
@@ -825,7 +829,7 @@ def create_position_card(**kwargs: dict) -> dict | int:
 
             return position.to_dict()
         except Exception as e:
-            print(f"Error creating PositionCard: {e}")
+            logger.error(f"Error creating PositionCard: {e}")
             return EEXCEPT  # Position creation failed
 
 
@@ -932,7 +936,7 @@ def modify_position_card(uid: int, **kwargs: dict) -> dict | int:
                                 supervisor.updated_by = "System"
                                 supervisor.put()
             except Exception as e:
-                print(f"Error updating supervisors for PositionCard: {e}")
+                logger.error(f"Error updating supervisors for PositionCard: {e}")
                 return ESUPREP  # Updating supervisors failed
 
             # Ignore direct report updates
@@ -1000,18 +1004,23 @@ def modify_position_card(uid: int, **kwargs: dict) -> dict | int:
                     )
 
                     if set(old_channels) != set(new_channels):
-                        if emp.slack_id:
+                        slack_id = emp.slack_id or _lookup_user_id_by_email(
+                            emp.imc_email
+                        )
+                        if slack_id:
                             success, _ = update_slack_channels(
-                                user_id=emp.slack_id,
+                                user_id=slack_id,
                                 old_channels=old_channels,
                                 new_channels=new_channels,
                             )
                             if not success:
                                 return ESLACK  # Updating Slack channels failed
+                        else:
+                            logger.info(f"Employee ID {emp.uid} has no Slack ID.")
 
             return position.to_dict()
         except Exception as e:
-            print(f"Error modifying PositionCard: {e}")
+            logger.error(f"Error modifying PositionCard: {e}")
             return EEXCEPT  # Position modification failed
 
 
@@ -1065,7 +1074,9 @@ def get_position_card_by_id(uid: int) -> dict | int:
 
 def delete_position_card(uid: int) -> bool | int:
     """
-    Deletes a PositionCard by its unique ID.
+    Deletes a PositionCard by its unique ID. Will also delete all EmployeePositionRelation
+    entries that involve this position, and remove this position from any supervisors'
+    direct reports and any direct reports' supervisors.
 
     Arguments:
         `uid` (`int`): The unique ID of the PositionCard to delete
@@ -1076,10 +1087,14 @@ def delete_position_card(uid: int) -> bool | int:
     Raises:
         `EPOSDNE`: PositionCard not found
         `EEXCEPT`: Other fatal error
+        `EEXISTS`: Position has active relations, cannot delete
     """
     with client.context():
+        logger.info(f"Attempting to delete PositionCard with UID {uid}.")
+
         position = PositionCard.get_by_id(uid)
         if not position:
+            logger.info(f"PositionCard with UID {uid} does not exist.")
             return EPOSDNE  # Position not found
 
         try:
@@ -1092,6 +1107,10 @@ def delete_position_card(uid: int) -> bool | int:
                     supervisor.updated_by = "System"
                     supervisor.put()
 
+            logger.debug(
+                f"Removed PositionCard UID {position.uid} from supervisors' direct reports."
+            )
+
             # Remove this position from direct reports' supervisors
             for report_uid in position.direct_reports:
                 report = PositionCard.get_by_id(report_uid)
@@ -1101,6 +1120,10 @@ def delete_position_card(uid: int) -> bool | int:
                     report.updated_by = "System"
                     report.put()
 
+            logger.debug(
+                f"Removed PositionCard UID {position.uid} from direct reports' supervisors."
+            )
+
             # Delete all relations involving this position
             relations = get_relations_by_position(position.uid)
             for relation in relations:
@@ -1109,9 +1132,11 @@ def delete_position_card(uid: int) -> bool | int:
                     relation_entity.key.delete()
 
             position.key.delete()
+
+            logger.info(f"Successfully deleted PositionCard with UID {uid}.")
             return True
         except Exception as e:
-            print(f"Error deleting PositionCard: {e}")
+            logger.error(f"Error deleting PositionCard: {e}")
             return EEXCEPT  # Deletion failed
 
 
@@ -1131,12 +1156,18 @@ def archive_position_card(uid: int) -> bool | int:
         `None`: Other fatal error
     """
     with client.context():
+        logger.info(f"Attempting to archive PositionCard with UID {uid}.")
+
         position = PositionCard.get_by_id(uid)
         if not position:
+            logger.info(f"PositionCard with UID {uid} does not exist.")
             return EPOSDNE  # Position not found
 
         rels = get_relations_by_position_current(position.uid)
         if rels:
+            logger.info(
+                f"PositionCard with UID {uid} has active relations and cannot be archived."
+            )
             return EEXISTS  # Position has active relations, cannot archive
 
         try:
@@ -1144,9 +1175,11 @@ def archive_position_card(uid: int) -> bool | int:
             position.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
             position.updated_by = current_user.email if current_user else "System"
             position.put()
+
+            logger.info(f"Successfully archived PositionCard with UID {uid}.")
             return True
         except Exception as e:
-            print(f"Error archiving PositionCard: {e}")
+            logger.error(f"Error archiving PositionCard: {e}")
             return EEXCEPT  # Archiving failed
 
 
@@ -1165,8 +1198,11 @@ def restore_position_card(uid: int) -> bool | int:
         `EEXCEPT`: Other fatal error
     """
     with client.context():
+        logger.info(f"Attempting to restore PositionCard with UID {uid}.")
+
         position = PositionCard.get_by_id(uid)
         if not position:
+            logger.info(f"PositionCard with UID {uid} does not exist.")
             return EPOSDNE  # Position not found
 
         try:
@@ -1174,9 +1210,11 @@ def restore_position_card(uid: int) -> bool | int:
             position.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
             position.updated_by = current_user.email if current_user else "System"
             position.put()
+
+            logger.info(f"Successfully restored PositionCard with UID {uid}.")
             return True
         except Exception as e:
-            print(f"Error restoring PositionCard: {e}")
+            logger.error(f"Error restoring PositionCard: {e}")
             return EEXCEPT  # Restoring failed
 
 
@@ -1231,8 +1269,12 @@ def create_relation(**kwargs: dict) -> dict | int:
             if not employee:
                 return EEMPDNE  # Employee with this UID does not exist
         except Exception as e:
-            print(f"Error validating position or employee: {e}")
+            logger.error(f"Error validating position or employee: {e}")
             return EEXCEPT  # Validation failed
+
+        logger.info(
+            f"Creating relation between Employee ID {employee.uid} and Position ID {position.uid}."
+        )
 
         # Check for existing relation
         try:
@@ -1243,9 +1285,12 @@ def create_relation(**kwargs: dict) -> dict | int:
                 )
             ).get()
             if existing:
+                logger.info(
+                    f"Relation already exists between Employee ID {employee.uid} and Position ID {position.uid}."
+                )
                 return EEXISTS  # Position with this brand and title already exists
         except Exception as e:
-            print(f"Error checking existing EmployeePositionRelation: {e}")
+            logger.error(f"Error checking existing EmployeePositionRelation: {e}")
             return EEXCEPT  # Checking existing relation failed
 
         try:
@@ -1257,6 +1302,9 @@ def create_relation(**kwargs: dict) -> dict | int:
             relation.updated_at = datetime.now(tz=ZoneInfo("America/Chicago"))
             relation.updated_by = current_user.email if current_user else "System"
             relation.put()
+            logger.info(
+                f"Successfully created relation between Employee ID {employee.uid} and Position ID {position.uid} with Relation ID {relation.uid}."
+            )
 
             # Update Google Groups if necessary
             new_groups = get_groups_for_employee(employee.uid)
@@ -1267,23 +1315,37 @@ def create_relation(**kwargs: dict) -> dict | int:
                     new_groups=new_groups,
                 )
                 if not success:
+                    logger.error(
+                        f"Failed to update Google Groups for Employee ID {employee.uid} after creating relation. Error: {error}"
+                    )
                     return EGROUP  # Updating Google Groups failed
 
             # Update Slack channels if necessary
             new_channels = get_slack_channels_for_employee(employee.uid)
             if set(old_channels) != set(new_channels):
-                if employee.slack_id:
+                slack_id = employee.slack_id or _lookup_user_id_by_email(
+                    employee.imc_email
+                )
+                if slack_id:
                     success, error = update_slack_channels(
-                        user_id=employee.slack_id,
+                        user_id=slack_id,
                         old_channels=old_channels,
                         new_channels=new_channels,
                     )
                     if not success:
+                        logger.error(
+                            f"Failed to update Slack channels for Employee ID {employee.uid} after creating relation. Error: {error}"
+                        )
                         return ESLACK
+                else:
+                    logger.info(f"Employee ID {employee.uid} has no Slack ID.")
 
+            logger.info(
+                f"Successfully created EmployeePositionRelation (ID {relation.uid}) and updated Google Groups and Slack channels for Employee ID {employee.uid} as needed."
+            )
             return relation.to_dict()
         except Exception as e:
-            print(f"Error creating EmployeePositionRelation: {e}")
+            logger.error(f"Error creating EmployeePositionRelation: {e}")
             return EEXCEPT  # Relation creation fails
 
 
@@ -1320,6 +1382,10 @@ def modify_relation(uid: int, **kwargs: dict) -> dict | int:
         if not employee:
             return EEMPDNE  # Employee not found
 
+        logger.info(
+            f"Modifying relation ID {relation.uid} for Employee ID {employee.uid} and Position ID {relation.position_id}."
+        )
+
         try:
             if "position_id" in kwargs:
                 del kwargs["position_id"]  # Prevent changing position_id
@@ -1337,6 +1403,10 @@ def modify_relation(uid: int, **kwargs: dict) -> dict | int:
             relation.updated_by = current_user.email if current_user else "System"
             relation.put()
 
+            logger.info(
+                f"Successfully modified EmployeePositionRelation ID {relation.uid}."
+            )
+
             # Update Google groups if necessary
             new_groups = get_groups_for_employee(employee.uid, override_rel=relation)
             if set(old_groups) != set(new_groups):
@@ -1346,6 +1416,9 @@ def modify_relation(uid: int, **kwargs: dict) -> dict | int:
                     new_groups=new_groups,
                 )
                 if not success:
+                    logger.error(
+                        f"Failed to update Google Groups for Employee ID {employee.uid} after modifying relation. Error: {error}"
+                    )
                     return EGROUP  # Updating Google Groups failed
 
             # Update Slack channels if necessary
@@ -1353,18 +1426,29 @@ def modify_relation(uid: int, **kwargs: dict) -> dict | int:
                 employee.uid, override_rel=relation
             )
             if set(old_channels) != set(new_channels):
-                if employee.slack_id:
+                slack_id = employee.slack_id or _lookup_user_id_by_email(
+                    employee.imc_email
+                )
+                if slack_id:
                     success, error = update_slack_channels(
-                        user_id=employee.slack_id,
+                        user_id=slack_id,
                         old_channels=old_channels,
                         new_channels=new_channels,
                     )
                     if not success:
+                        logger.error(
+                            f"Failed to update Slack channels for Employee ID {employee.uid} after modifying relation. Error: {error}"
+                        )
                         return ESLACK
+                else:
+                    logger.info(f"Employee ID {employee.uid} has no Slack ID.")
 
+            logger.info(
+                f"Successfully modified EmployeePositionRelation (ID {relation.uid}) and updated Google Groups and Slack channels for Employee ID {employee.uid} as needed."
+            )
             return relation.to_dict()
         except Exception as e:
-            print(f"Error modifying EmployeePositionRelation: {e}")
+            logger.error(f"Error modifying EmployeePositionRelation: {e}")
             return EEXCEPT  # Relation modification failed
 
 
@@ -1578,18 +1662,23 @@ def delete_relation(uid: int) -> bool | int:
             # Update Slack channels if necessary
             new_channels = get_slack_channels_for_employee(employee.uid)
             if set(old_channels) != set(new_channels):
-                if employee.slack_id:
+                slack_id = employee.slack_id or _lookup_user_id_by_email(
+                    employee.imc_email
+                )
+                if slack_id:
                     success, error = update_slack_channels(
-                        user_id=employee.slack_id,
+                        user_id=slack_id,
                         old_channels=old_channels,
                         new_channels=new_channels,
                     )
                     if not success:
                         return ESLACK
+                else:
+                    logger.info(f"Employee ID {employee.uid} has no Slack ID.")
 
             return True
         except Exception as e:
-            print(f"Error deleting EmployeePositionRelation: {e}")
+            logger.error(f"Error deleting EmployeePositionRelation: {e}")
             return EEXCEPT  # Deletion failed
 
 
@@ -1694,19 +1783,19 @@ def create_employee(data):
         if data.get(field):
             # Converts "YYYY-MM-DD" string to a Python date object
             data[field] = datetime.strptime(data[field], "%Y-%m-%d").date()
-            logging.debug(f"Converted field {field} to date object: {data[field]}")
+            logger.debug(f"Converted field {field} to date object: {data[field]}")
 
     if data.get("payroll_number"):
         data["payroll_number"] = int(data["payroll_number"])
-        logging.debug(f"Converted payroll_number to int: {data['payroll_number']}")
+        logger.debug(f"Converted payroll_number to int: {data['payroll_number']}")
 
     if data.get("user_uid"):
         data["user_uid"] = int(data["user_uid"])
-        logging.debug(f"Converted user_uid to int: {data['user_uid']}")
+        logger.debug(f"Converted user_uid to int: {data['user_uid']}")
 
     if data:
         created = create_employee_card(**data)
         return created
 
-    logging.warning("No data provided for employee creation.")
+    logger.warning("No data provided for employee creation.")
     raise Exception("No data was entered. Cannot create employee with no information.")

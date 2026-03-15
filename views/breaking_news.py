@@ -56,7 +56,6 @@ def submit_story():
     slack_message_id = ""
     result = app.client.chat_postMessage(
         token=SLACK_BOT_TOKEN,
-        username="IMC Breaking News Bot",
         channel=DI_COPYING_ID,
         blocks=[
             {"type": "divider"},
