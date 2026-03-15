@@ -7,6 +7,7 @@ CU Calendar Admin Dashboard
 {% block extra_head %}
 <link rel="stylesheet" href="/static/styles/styles_index.css">
 <link rel="stylesheet" href="/static/macros/form.css">
+<script async defer src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&libraries=places&callback=initAutocomplete"></script>
 {% endblock %}
 
 {% import "macros/form.html" as form %}
@@ -173,6 +174,22 @@ CU Calendar Admin Dashboard
 </section>
 
 <script>
+    let autocomplete;
+
+    function initAutocomplete() {
+        const addressInput = document.querySelector('input[name="address"]');
+        
+        if (addressInput) {
+            autocomplete = new google.maps.places.Autocomplete(addressInput, {
+                types: ['geocode'], 
+            });
+            addressInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                }
+            });
+        }
+    }
     async function postAction(url) {
         const body = new URLSearchParams();
         body.set("_csrf_token", "{{ csrf_token() }}");

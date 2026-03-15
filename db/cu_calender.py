@@ -1,6 +1,5 @@
 from google.cloud import ndb
 from datetime import datetime, timezone
-import random
 from util.cu_calendar import delete_images_from_gcs
 from . import client
 
@@ -38,7 +37,7 @@ class CalendarSource(ndb.Model):
     created_at = ndb.DateTimeProperty()
 
 
-# Adds a new event along with jitter for duplicate lat-long values
+# Adds a new event along with 
 def add_event(
     title,
     lat,
@@ -209,22 +208,6 @@ def accept_event(uid, lat, long):
     with client.context():
         point = CalendarObject.get_by_id(int(uid))
         if point is not None:
-            existing = CalendarObject.query(
-                CalendarObject.lat == lat, CalendarObject.long == long
-            ).get()
-            if existing and existing.uid != int(uid):
-                # Apply small random offset until its lat-long is unique
-                # This helps avoid overlapping points on the actual map display
-                while True:
-                    lat_jitter = lat + random.uniform(-0.0001, 0.0001)
-                    long_jitter = long + random.uniform(-0.0001, 0.0001)
-                    duplicate = CalendarObject.query(
-                        CalendarObject.lat == lat_jitter,
-                        CalendarObject.long == long_jitter,
-                    ).get()
-                    if not duplicate:
-                        lat, long = lat_jitter, long_jitter
-                        break
             point.lat = lat
             point.long = long
             point.is_accepted = True

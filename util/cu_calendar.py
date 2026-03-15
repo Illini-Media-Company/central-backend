@@ -137,14 +137,27 @@ def gcal_to_events(gcal_url: str, future_days: int = 365) -> Optional[List[dict]
     for event in events_iter:
         start = event.start
         end = event.end
+
         if isinstance(start, date) and not isinstance(start, datetime):
-            start = datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc)
-        elif isinstance(start, datetime) and start.tzinfo is None:
-            start = start.replace(tzinfo=tz).astimezone(timezone.utc)
+            # Convert pure date to naive datetime (00:00:00)
+            start = datetime.combine(start, datetime.min.time())
+        elif isinstance(start, datetime):
+            if start.tzinfo is None:
+                # If naive, assume it's Chicago time, convert to UTC, then strip tzinfo
+                start = start.replace(tzinfo=tz).astimezone(timezone.utc).replace(tzinfo=None)
+            else:
+                # If it already has tzinfo (standard GCal response), convert to UTC and strip tzinfo
+                start = start.astimezone(timezone.utc).replace(tzinfo=None)
+
+        # --- CLEAN END DATE ---
         if isinstance(end, date) and not isinstance(end, datetime):
-            end = datetime.combine(end, datetime.min.time(), tzinfo=timezone.utc)
-        elif isinstance(end, datetime) and end.tzinfo is None:
-            end = end.replace(tzinfo=tz).astimezone(timezone.utc)
+            # Convert pure date to naive datetime (00:00:00)
+            end = datetime.combine(end, datetime.min.time())
+        elif isinstance(end, datetime):
+            if end.tzinfo is None:
+                end = end.replace(tzinfo=tz).astimezone(timezone.utc).replace(tzinfo=None)
+            else:
+                end = end.astimezone(timezone.utc).replace(tzinfo=None)
 
         result.append(
             {

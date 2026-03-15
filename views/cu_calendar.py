@@ -4,6 +4,7 @@ from datetime import datetime, time, timezone
 from flask import Blueprint, jsonify, request, render_template
 from flask_cors import cross_origin
 from flask_login import login_required
+from constants import GOOGLE_MAP_API
 
 from db.cu_calender import (
     accept_event,
@@ -319,10 +320,12 @@ def admin_dashboard():
         reverse=True,
     )
     today_iso = datetime.now().date().isoformat()
+    
     return render_template(
         "cu_calendar/admin_dashboard.html",
         pending_events=pending_sorted,
         today_iso=today_iso,
+        GOOGLE_MAPS_API_KEY=GOOGLE_MAP_API,
     )
 
 
