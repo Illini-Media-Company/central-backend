@@ -429,7 +429,7 @@ def schedulers():
 @csrf.exempt
 @talisman(force_https=False)
 def cron_delete_expired_events():
-    if request.headers.get("X-Appengine-Cron") != "false":
+    if request.headers.get("X-Appengine-Cron") != "true":
         logging.warning(
             "Unauthorized attempt to trigger delete_expired_events cron job"
         )
@@ -493,7 +493,7 @@ def cron_cu_calendar_sync_30d():
     if request.headers.get("X-Appengine-Cron") != "true":
         return "Unauthorized", 403
     try:
-        added = sync_gcal_sources(future_days=30)
+        added = sync_gcal_sources(future_days=60)
         logging.info(f"cu_calendar 30d sync completed: added={added}")
         return {"success": True, "added": added}, 200
     except Exception as e:

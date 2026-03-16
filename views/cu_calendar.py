@@ -16,6 +16,8 @@ from db.cu_calender import (
     get_pending_events,
     highlight_event as db_highlight_event,
     remove_event as db_remove_event,
+    event_exists,
+    get_all_calendar_sources
 )
 from util.cu_calendar import geocode_address, gcal_to_events, upload_images_to_gcs
 from util.security import csrf
@@ -34,7 +36,7 @@ def _serialize_datetime(value):
     if isinstance(value, datetime):
         if value.tzinfo is not None:
             return value.astimezone(timezone.utc).isoformat()
-        return value.isoformat()
+        return value.isoformat() + "Z"
     return value
 
 
@@ -219,16 +221,23 @@ def add_and_process_source():
     data = request.get_json(silent=True) or request.form or {}
     gcal_url = data.get("gcal_url")
     company = data.get("company_name")
+    
     if not gcal_url:
         return jsonify({"error": "Missing gcal_url"}), 400
+
+    existing_sources = get_all_calendar_sources()
+    source_already_exists = any(s.get("gcal_url") == gcal_url for s in existing_sources)
 
     parsed_events = gcal_to_events(gcal_url)
     if parsed_events is None:
         return jsonify({"error": "Failed to parse Google Calendar URL."}), 400
 
+    events_added = 0
     for event in parsed_events:
-        coords = geocode_address(event.get("address"))
+        if event_exists(gcal_url, event.get("title"), event.get("start_date")):
+            continue
 
+        coords = geocode_address(event.get("address"))
         if coords:
             lat, lng = coords
             add_event(
@@ -248,10 +257,15 @@ def add_and_process_source():
                 is_accepted=True,
                 highlight=False,
             )
+            events_added += 1
 
-    add_calendar_source(gcal_url, company or "")
+    if not source_already_exists:
+        add_calendar_source(gcal_url, company or "")
+        message = f"Successfully linked new calendar and imported {events_added} events!"
+    else:
+        message = f"Calendar already linked. Synced {events_added} new events!"
 
-    return jsonify({"success": True, "message": "Successfully imported events!"}), 200
+    return jsonify({"success": True, "message": message}), 200
 
 
 @admin_calendar_routes.route("/<uid>/highlight", methods=["POST"])
