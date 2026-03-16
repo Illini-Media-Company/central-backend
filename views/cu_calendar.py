@@ -4,7 +4,7 @@ from datetime import datetime, time, timezone
 from flask import Blueprint, jsonify, request, render_template
 from flask_cors import cross_origin
 from flask_login import login_required
-from constants import GOOGLE_MAP_API
+from constants import GOOGLE_MAP_API, CU_CALENDAR_ID
 
 from db.cu_calender import (
     accept_event,
@@ -22,6 +22,7 @@ from db.cu_calender import (
 from util.cu_calendar import geocode_address, gcal_to_events, upload_images_to_gcs
 from util.security import csrf
 
+from util.slackbots.general import dm_channel_by_id
 
 calendar_routes = Blueprint("calendar_routes", __name__, url_prefix="/cu-calendar")
 admin_calendar_routes = Blueprint(
@@ -139,6 +140,19 @@ def _create_pending_submission():
             is_accepted=False,
             highlight=False,
         )
+
+
+        #Jacob review 
+        channel_id = CU_CALENDAR_ID
+        link = "tenplink.com/admin/cu-calendar/dashboard" 
+        notification_text = f"New event submitted: *{title}*. Click the link to review: {link}"
+
+        dm_channel_by_id(
+            channel_id=channel_id, 
+            text=notification_text
+        )
+
+
         return (
             jsonify(
                 {

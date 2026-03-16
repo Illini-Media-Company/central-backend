@@ -285,6 +285,8 @@ WPGU_ON_AIR_ID = "C06BRUCMUG6" if ENV == "prod" else "C06FR61KDJS"
 WPGU_PRODUCTION_ID = "C09ET1PT762" if ENV == "prod" else "C06FXQXKJAE"
 WPGU_SPORTS_ID = "C09FRSTPVAL" if ENV == "prod" else "C09V8V4K5K8"
 
+CU_CALENDAR_ID = "" if ENV == "prod" else "C0AMKL402HE"
+
 PHOTO_REQUESTS_CHANNEL_ID = (
     "C09NCRWU8T1" if ENV == "dev" else "C09CJMTAYHW"
 )  # #imc_photo — Channel that all photo request get sent to
