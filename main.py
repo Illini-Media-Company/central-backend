@@ -172,6 +172,7 @@ from views.cu_calendar import (
     calendar_routes,
     public_calendar_api_routes,
 )
+from views.song_request import song_request_routes
 
 from util.cu_calendar import sync_gcal_sources
 
@@ -216,6 +217,7 @@ app.register_blueprint(ems_routes)
 app.register_blueprint(calendar_routes)
 app.register_blueprint(admin_calendar_routes)
 app.register_blueprint(public_calendar_api_routes)
+app.register_blueprint(song_request_routes)
 logging.info("Done registering blueprints.")
 
 logging.info("Initializing login manager...")
