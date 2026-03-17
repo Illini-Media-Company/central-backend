@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}WPGU Song Requests Dashboard{% endblock %}
+
+{% block content %}
+<meta name="csrf-token" content="{{ csrf_token() }}">
+
+<div class="dashboard-container" style="padding: 2rem; max-width: 1200px; margin: 0 auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h1>WPGU Song Requests</h1>
+        
+        <div>
+            <label for="statusFilter" style="font-weight: bold; margin-right: 0.5rem;">Filter by Status:</label>
+            <select id="statusFilter" style="padding: 0.5rem; border-radius: 4px;">
+                <option value="all">All Requests</option>
+                <option value="pending" selected>Pending</option>
+                <option value="in_progress">In Progress (Claimed)</option>
+                <option value="accepted">Accepted</option>
+                <option value="declined">Declined</option>
+            </select>
+        </div>
+    </div>
+
+    <table style="width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <thead>
+            <tr style="background-color: #f4f4f4; border-bottom: 2px solid #ddd; text-align: left;">
+                <th style="padding: 1rem;">Song</th>
+                <th style="padding: 1rem;">Artist</th>
+                <th style="padding: 1rem;">Submitter</th>
+                <th style="padding: 1rem;">Date</th>
+                <th style="padding: 1rem;">Status</th>
+                <th style="padding: 1rem;">Actions / Reviewer</th>
+            </tr>
+        </thead>
+        <tbody id="requestsTableBody">
+            <tr><td colspan="6" style="padding: 1rem; text-align: center;">Loading requests...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // Grab the current user's name from Jinja so we can compare it to the reviewer
+    const currentUserName = "{{ current_user.name }}";
+    let allRequests = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchRequests();
+
+        document.getElementById('statusFilter').addEventListener('change', renderTable);
+    });
+
+    async function fetchRequests() {
+        try {
+            const response = await fetch('/wpgu-song-requests/get-requests');
+            if (response.ok) {
+                allRequests = await response.json();
+                renderTable();
+            } else {
+                console.error("Failed to fetch requests");
+            }
+        } catch (error) {
+            console.error("Error fetching requests:", error);
+        }
+    }
+
+    function renderTable() {
+        const filter = document.getElementById('statusFilter').value;
+        const tbody = document.getElementById('requestsTableBody');
+        tbody.innerHTML = '';
+
+        const filteredRequests = allRequests.filter(req => {
+            if (filter === 'all') return true;
+            return req.status === filter;
+        });
+
+        if (filteredRequests.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="padding: 1rem; text-align: center;">No requests found for this filter.</td></tr>';
+            return;
+        }
+
+        filteredRequests.forEach(req => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid #ddd';
+            
+            // Format date
+            const dateObj = new Date(req.timestamp);
+            const dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            // Submitter info
+            let submitterInfo = req.is_imc_employee ? `${req.submitter_name} (Staff)` : (req.submitter_email || 'Outside User');
+
+            // Status Badge
+            let statusColor = '#666';
+            if (req.status === 'pending') statusColor = '#f39c12';
+            if (req.status === 'in_progress') statusColor = '#3498db';
+            if (req.status === 'accepted') statusColor = '#2ecc71';
+            if (req.status === 'declined') statusColor = '#e74c3c';
+            
+            const statusBadge = `<span style="background-color: ${statusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem;">${req.status.replace('_', ' ').toUpperCase()}</span>`;
+
+            // Action Buttons Logic
+            let actionsHtml = '';
+            if (req.status === 'pending') {
+                actionsHtml = `<button onclick="claimRequest('${req.uid}')" style="padding: 0.5rem 1rem; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">Claim Request</button>`;
+            } 
+            else if (req.status === 'in_progress') {
+                // If the current user claimed it, let them approve/deny
+                if (req.reviewer_name === currentUserName) {
+                    actionsHtml = `
+                        <button onclick="approveRequest('${req.uid}')" style="padding: 0.5rem; background-color: #2ecc71; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 0.5rem;">Approve</button>
+                        <button onclick="denyRequest('${req.uid}')" style="padding: 0.5rem; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer;">Deny</button>
+                    `;
+                } else {
+                    // Someone else claimed it
+                    actionsHtml = `<span style="font-style: italic; color: #555;">Reviewing: ${req.reviewer_name}</span>`;
+                }
+            } 
+            else if (req.status === 'accepted') {
+                actionsHtml = `<span style="color: #2ecc71; font-weight: bold;">Added by ${req.reviewer_name}</span>`;
+            } 
+            else if (req.status === 'declined') {
+                actionsHtml = `
+                    <span style="color: #e74c3c; font-weight: bold;">Denied by ${req.reviewer_name}</span>
+                    <div style="font-size: 0.85rem; color: #666; margin-top: 0.25rem;">Reason: ${req.rejection_reason || 'N/A'}</div>
+                `;
+            }
+
+            tr.innerHTML = `
+                <td style="padding: 1rem;"><strong>${req.song_name}</strong></td>
+                <td style="padding: 1rem;">${req.artist_name}</td>
+                <td style="padding: 1rem;">${submitterInfo}</td>
+                <td style="padding: 1rem; font-size: 0.9rem; color: #555;">${dateStr}</td>
+                <td style="padding: 1rem;">${statusBadge}</td>
+                <td style="padding: 1rem;">${actionsHtml}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function makeApiCall(url, method = 'POST', bodyData = null) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        const options = {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            }
+        };
+        if (bodyData) {
+            options.body = JSON.stringify(bodyData);
+        }
+        
+        try {
+            const response = await fetch(url, options);
+            if (response.ok) {
+                await fetchRequests();
+            } else {
+                const errorData = await response.json();
+                alert(errorData.error || 'An error occurred.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('A network error occurred.');
+        }
+    }
+
+    function claimRequest(uid) {
+        if(confirm("Claim this request to review it?")) {
+            makeApiCall(`/wpgu-song-requests/api/${uid}/claim`);
+        }
+    }
+
+    function approveRequest(uid) {
+        if(confirm("Are you sure you want to approve this song and mark it as added?")) {
+            makeApiCall(`/wpgu-song-requests/api/${uid}/approve`);
+        }
+    }
+
+    function denyRequest(uid) {
+        const reason = prompt("Please provide a brief reason why this song cannot be added (optional):");
+        if (reason !== null) { // If they didn't click cancel on the prompt
+            makeApiCall(`/wpgu-song-requests/api/${uid}/deny`, 'POST', { rejection_reason: reason });
+        }
+    }
+</script>
+{% endblock %}

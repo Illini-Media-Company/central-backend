@@ -100,6 +100,7 @@ from db.map_point import get_all_points
 from db.json_store import json_store_set
 from db.employee_management import initialize_ems_settings
 from db.cu_calender import delete_expired_events
+from db.song_request import delete_old_song_requests
 
 logging.info("Database functions imported.")
 
@@ -521,7 +522,26 @@ def cron_cu_calendar_sync_year():
         logging.exception("cu_calendar yearly sync failed")
         return {"success": False, "error": str(e)}, 500
 
-
+@app.route("/cron/wpgu-song-requests-cleanup", methods=["GET", "POST"])
+@csrf.exempt
+@talisman(force_https=False)
+def cron_wpgu_song_requests_cleanup():
+    """
+    Cron endpoint: delete WPGU song requests older than 60 days.
+    Intended to run weekly via cron.yaml.
+    """
+    if request.headers.get("X-Appengine-Cron") != "true":
+        logging.warning("Unauthorized attempt to trigger WPGU song request cleanup cron job")
+        return "Unauthorized", 403
+        
+    try:
+        deleted_count = delete_old_song_requests(days_old=60)
+        logging.info(f"WPGU song requests cleanup completed: deleted={deleted_count}")
+        return {"success": True, "deleted": deleted_count}, 200
+    except Exception as e:
+        logging.exception("WPGU song requests cleanup cron job failed")
+        return {"success": False, "error": str(e)}, 500
+    
 ################################################################################
 ############################### END CRON JOBS ##################################
 ################################################################################
