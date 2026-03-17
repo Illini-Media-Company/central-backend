@@ -6,7 +6,8 @@ from db.song_request import (
     create_song_request,
     get_all_song_requests,
     update_request_status,
-    delete_all_song_requests
+    delete_all_song_requests,
+    delete_song_request
 )
 from util.song_request import send_song_request_update_email
 song_request_routes = Blueprint(
@@ -60,14 +61,39 @@ def form():
     )
 
 # Dashboard Routes 
+# Dashboard Routes 
 @song_request_routes.route("/dashboard", methods=["GET"])
+@song_request_routes.route("/dashboard/<filter_type>", methods=["GET"])
 @login_required
-def dashboard():
+@restrict_to(["wpgu-music", "imc-staff-webdev"])
+def dashboard(filter_type="all"):
     """
-    Simple dashboard to verify backend data.
-    Access at: /wpgu-song-requests/dashboard
+    Dashboard to view and manage song requests. Matches IMC styling.
     """
-    return render_template("wpgu-song-req/wpgu_song_req_dashboard.html") 
+    all_requests = get_all_song_requests()
+    
+    # Apply filtering based on the URL parameter
+    if filter_type.lower() == "pending":
+        requests = [r for r in all_requests if r.status == "pending"]
+        selection = "Pending Requests"
+    elif filter_type.lower() == "in-progress":
+        requests = [r for r in all_requests if r.status == "in_progress"]
+        selection = "In-Progress Requests"
+    elif filter_type.lower() == "accepted":
+        requests = [r for r in all_requests if r.status == "accepted"]
+        selection = "Accepted Requests"
+    elif filter_type.lower() == "declined":
+        requests = [r for r in all_requests if r.status == "declined"]
+        selection = "Declined Requests"
+    else:
+        requests = all_requests
+        selection = "All Requests"
+        
+    return render_template(
+        "wpgu-song-req/wpgu_song_req_dashboard.html", 
+        requests=requests,
+        selection=selection
+    )
 
 @song_request_routes.route("/get-requests", methods=["GET"])
 @login_required
@@ -158,3 +184,16 @@ def api_deny(uid):
 
     # TODO: Update original Slack message and DM user update
     return jsonify({"message": "Song denied.", "request": updated.to_dict()}), 200
+
+
+@song_request_routes.route("/api/<uid>/remove", methods=["POST"])
+@login_required
+@restrict_to(["wpgu-music", "imc-staff-webdev"])
+def api_remove_single(uid):
+    """Deletes a single song request from the database."""
+    success = delete_song_request(uid)
+    
+    if not success:
+        return jsonify({"error": "Request not found."}), 404
+        
+    return jsonify({"message": "Deleted successfully"}), 200

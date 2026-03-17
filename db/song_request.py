@@ -76,3 +76,13 @@ def delete_old_song_requests(days_old=60):
             ndb.delete_multi(keys)
             
         return len(keys)
+
+def delete_song_request(uid):
+    with client.context():
+        song_key = ndb.Key('SongRequest', int(uid))
+        
+        if not song_key.get():
+            return False
+            
+        song_key.delete()
+        return True
