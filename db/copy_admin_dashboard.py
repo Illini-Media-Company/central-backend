@@ -13,6 +13,17 @@ class CopyEditorAdmin(ndb.Model):
     category = ndb.StringProperty(default=None)
 
 
+def _editor_dict(entity):
+    """Build a complete dict for a CopyEditorAdmin entity."""
+    return {
+        "uid": entity.key.id() if entity.key else None,
+        "name": entity.name,
+        "email": entity.email,
+        "phone": getattr(entity, "phone", None),
+        "category": getattr(entity, "category", None),
+    }
+
+
 def add_copy_editor(name, email, phone=None, category=None):
     """Add a new copy editor to the database."""
     with client.context():
@@ -23,38 +34,37 @@ def add_copy_editor(name, email, phone=None, category=None):
             category=category or None,
         )
         entity.put()
-        return entity.to_dict()
+        return _editor_dict(entity)
 
 
 def get_all_copy_editors():
     """Returns all copy editors."""
     with client.context():
         editors = CopyEditorAdmin.query().fetch()
-    return [e.to_dict() for e in editors]
+        return [_editor_dict(e) for e in editors]
 
 
 def get_copy_editor_by_uid(uid):
     """Lookup a copy editor by its unique UID (entity id)."""
     with client.context():
         ce = CopyEditorAdmin.get_by_id(uid)
-        return ce.to_dict() if ce else None
+        return _editor_dict(ce) if ce else None
 
 
-def update_copy_editor(uid, **fields):
-    """Update a copy editor by their UID.
-
-    Only passed fields are changed. Unknown field names are ignored.
-    Returns updated dict or None if not found.
-    """
+def update_copy_editor(uid, name=None, email=None, phone=None, category=None):
+    """Update a copy editor by their UID. Returns updated dict or None if not found."""
     with client.context():
         entity = CopyEditorAdmin.get_by_id(uid)
         if entity is None:
             return None
-        for key, value in fields.items():
-            if hasattr(entity, key):
-                setattr(entity, key, value)
+        if name is not None:
+            entity.name = name
+        if email is not None:
+            entity.email = email
+        entity.phone = phone
+        entity.category = category
         entity.put()
-        return entity.to_dict()
+        return _editor_dict(entity)
 
 
 def delete_copy_editor(uid):
@@ -66,8 +76,9 @@ def delete_copy_editor(uid):
         entity = CopyEditorAdmin.get_by_id(uid)
         if entity is None:
             return False
+        d = _editor_dict(entity)
         entity.key.delete()
-        return entity.to_dict()
+        return d
 
 
 class ShiftSlot(ndb.Model):
@@ -88,6 +99,20 @@ class ShiftSlot(ndb.Model):
     up_for_drop = ndb.BooleanProperty(default=False)
     editor_id_2 = ndb.StringProperty(default=None)
     editor_name_2 = ndb.StringProperty(default=None)
+
+
+def _shift_dict(entity):
+    """Build a complete dict for a ShiftSlot entity, always including every field."""
+    return {
+        "uid": entity.key.id() if entity.key else None,
+        "date": entity.date,
+        "start_hour": entity.start_hour,
+        "editor_id": getattr(entity, "editor_id", None),
+        "editor_name": getattr(entity, "editor_name", None),
+        "editor_id_2": getattr(entity, "editor_id_2", None),
+        "editor_name_2": getattr(entity, "editor_name_2", None),
+        "up_for_drop": getattr(entity, "up_for_drop", False),
+    }
 
 
 def add_shift(
@@ -114,38 +139,47 @@ def add_shift(
             editor_name_2=editor_name_2 or None,
         )
         entity.put()
-        return entity.to_dict()
+        return _shift_dict(entity)
 
 
 def get_all_shifts():
     """Returns all shift slots."""
     with client.context():
         shifts = ShiftSlot.query().fetch()
-    return [s.to_dict() for s in shifts]
+        return [_shift_dict(s) for s in shifts]
 
 
 def get_shift_by_uid(uid):
     """Lookup a shift slot by its string key (e.g. '2025-02-03_14')."""
     with client.context():
         shift = ShiftSlot.get_by_id(uid)
-        return shift.to_dict() if shift else None
+        return _shift_dict(shift) if shift else None
 
 
-def update_shift(uid, **fields):
-    """Update a shift slot by its string key.
-
-    Only passed fields are changed. Unknown field names are ignored.
-    Returns updated dict or None if not found.
-    """
+def update_shift(
+    uid,
+    date=None,
+    start_hour=None,
+    editor_id=None,
+    editor_name=None,
+    editor_id_2=None,
+    editor_name_2=None,
+):
+    """Update a shift slot by its string key. Returns updated dict or None if not found."""
     with client.context():
         entity = ShiftSlot.get_by_id(uid)
         if entity is None:
             return None
-        for key, value in fields.items():
-            if hasattr(entity, key):
-                setattr(entity, key, value)
+        if date is not None:
+            entity.date = date
+        if start_hour is not None:
+            entity.start_hour = start_hour
+        entity.editor_id = editor_id
+        entity.editor_name = editor_name
+        entity.editor_id_2 = editor_id_2
+        entity.editor_name_2 = editor_name_2
         entity.put()
-        return entity.to_dict()
+        return _shift_dict(entity)
 
 
 def delete_shift(uid):
@@ -157,8 +191,9 @@ def delete_shift(uid):
         entity = ShiftSlot.get_by_id(uid)
         if entity is None:
             return False
+        d = _shift_dict(entity)
         entity.key.delete()
-        return entity.to_dict()
+        return d
 
 
 class ShiftRequest(ndb.Model):
@@ -208,11 +243,33 @@ class ShiftRequest(ndb.Model):
     slack_message_id = ndb.StringProperty(default=None)
 
 
+def _shift_request_dict(entity):
+    """Build a complete dict for a ShiftRequest entity, always including the key id."""
+    return {
+        "uid": entity.key.id() if entity.key else None,
+        "request_type": entity.request_type,
+        "status": entity.status,
+        "requester_id": entity.requester_id,
+        "requester_name": entity.requester_name,
+        "source_shift_date": entity.source_shift_date,
+        "source_shift_hour": entity.source_shift_hour,
+        "target_shift_date": getattr(entity, "target_shift_date", None),
+        "target_shift_hour": getattr(entity, "target_shift_hour", None),
+        "target_editor_id": getattr(entity, "target_editor_id", None),
+        "target_editor_name": getattr(entity, "target_editor_name", None),
+        "approver_type": entity.approver_type,
+        "approver_id": getattr(entity, "approver_id", None),
+        "created_at": getattr(entity, "created_at", None),
+        "resolved_at": getattr(entity, "resolved_at", None),
+        "slack_message_id": getattr(entity, "slack_message_id", None),
+    }
+
+
 def get_all_shift_requests():
     """Returns all shift requests."""
     with client.context():
         requests = ShiftRequest.query().fetch()
-    return [r.to_dict() for r in requests]
+        return [_shift_request_dict(r) for r in requests]
 
 
 def update_shift_request_status(uid, status):
@@ -229,4 +286,4 @@ def update_shift_request_status(uid, status):
         if status in ("approved", "denied", "cancelled"):
             entity.resolved_at = datetime.datetime.utcnow()
         entity.put()
-        return entity.to_dict()
+        return {"uid": entity.key.id(), "status": entity.status}
