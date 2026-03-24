@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 from google.cloud import ndb
 
-from db.shift_schedule import ShiftSlot, ShiftRequest
+from db.copy_schedule import ShiftSlot, ShiftRequest
 from constants import (
     COPY_EDITOR_GROUPS,
     SENIOR_COPY_EDITOR_GROUPS,
@@ -17,9 +17,6 @@ from constants import (
     SCHEDULER_TIMEZONE,
 )
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
 SHIFT_START_HOURS = [8, 10, 12, 14, 16, 18, 20, 22]
 DAYS_OF_WEEK = [
     "Sunday",
@@ -33,9 +30,9 @@ DAYS_OF_WEEK = [
 WEEKEND_DAY_INDICES = {5, 6}  # Saturday=5, Sunday=6 in Python weekday()
 
 
-# ---------------------------------------------------------------------------
-# Role helpers
-# ---------------------------------------------------------------------------
+from util.slackbots.general import dm_user_by_email
+
+COPY_CHIEF_EMAIL = "rishab4@illinimedia.com"
 
 
 def get_user_role(user) -> str:
@@ -58,11 +55,6 @@ def get_required_shifts(user, reference_date: date = None) -> int:
 def _has_weekend_shift(editor_id: str, reference_date: date = None) -> bool:
     shifts = get_editor_shifts_for_week(editor_id, reference_date)
     return any(s.date.weekday() in WEEKEND_DAY_INDICES for s in shifts)
-
-
-# ---------------------------------------------------------------------------
-# Date / time helpers
-# ---------------------------------------------------------------------------
 
 
 def get_week_bounds(reference_date: date = None):
@@ -119,18 +111,8 @@ def is_shift_in_past(shift_date: date, start_hour: int) -> bool:
     return datetime.now(tz) >= shift_start
 
 
-# ---------------------------------------------------------------------------
-# Shift key helper
-# ---------------------------------------------------------------------------
-
-
 def _slot_key_name(d: date, start_hour: int) -> str:
     return f"{d.isoformat()}_{start_hour}"
-
-
-# ---------------------------------------------------------------------------
-# Shift queries
-# ---------------------------------------------------------------------------
 
 
 def get_shift(d: date, start_hour: int) -> ShiftSlot:
@@ -213,11 +195,6 @@ def mark_up_for_drop(d: date, start_hour: int) -> None:
         slot.put()
 
 
-# ---------------------------------------------------------------------------
-# ShiftRequest queries
-# ---------------------------------------------------------------------------
-
-
 def get_pending_requests_for_editor(
     editor_id: str, reference_date: date = None
 ) -> list:
@@ -260,11 +237,6 @@ def build_swap_requested_set(reference_date: date = None) -> set:
     }
 
 
-# ---------------------------------------------------------------------------
-# Business logic: Drop
-# ---------------------------------------------------------------------------
-
-
 def request_drop(user, shift_date: date, shift_hour: int) -> dict:
     """
     Mark shift as up-for-drop. Stays assigned until someone picks it up
@@ -289,11 +261,6 @@ def request_drop(user, shift_date: date, shift_hour: int) -> dict:
     return {"request_id": req.key.id(), "up_for_drop": True}
 
 
-# ---------------------------------------------------------------------------
-# Business logic: Pickup (claim an up-for-drop shift)
-# ---------------------------------------------------------------------------
-
-
 def pickup_shift(user, shift_date: date, shift_hour: int) -> dict:
     """
     Pick up a shift marked as up_for_drop. Immediate, no approval needed.
@@ -316,7 +283,6 @@ def pickup_shift(user, shift_date: date, shift_hour: int) -> dict:
     # Cancel any pending drop request from the original editor
     _cancel_drop_requests_for_shift(old_editor_id, shift_date, shift_hour)
 
-    # Audit trail
     req = ShiftRequest(
         request_type="pickup",
         status="approved",
@@ -350,11 +316,6 @@ def _cancel_drop_requests_for_shift(editor_id: str, shift_date: date, shift_hour
         ndb.put_multi(reqs)
 
 
-# ---------------------------------------------------------------------------
-# Business logic: Add Slot
-# ---------------------------------------------------------------------------
-
-
 def add_slot(user, shift_date: date, shift_hour: int) -> dict:
     """Add editor into an empty shift slot. No approval needed."""
     slot = get_shift(shift_date, shift_hour)
@@ -362,11 +323,6 @@ def add_slot(user, shift_date: date, shift_hour: int) -> dict:
         return {"success": False, "reason": "Slot is already occupied."}
     assign_shift(shift_date, shift_hour, user.email, user.name)
     return {"success": True}
-
-
-# ---------------------------------------------------------------------------
-# Business logic: Swap
-# ---------------------------------------------------------------------------
 
 
 def request_swap(
@@ -414,7 +370,7 @@ def request_swap(
         return {"request_id": req.key.id()}
 
     elif swap_mode == "swap_drop":
-        # Swap with someone who wants to drop — they take your slot instead
+        # Swap with someone who wants to drop - they take your slot instead
         if target_editor_id is None:
             return {"error": "Cannot swap-drop with an empty slot."}
         req = ShiftRequest(
@@ -453,11 +409,6 @@ def request_swap(
         if target_editor_id:
             notify_slack_swap_involves_your_shift(req, target_editor_name)
         return {"request_id": req.key.id()}
-
-
-# ---------------------------------------------------------------------------
-# Business logic: Cancel / Approve / Deny
-# ---------------------------------------------------------------------------
 
 
 def cancel_request(request_id) -> dict:
@@ -541,21 +492,59 @@ def deny_request(request_id) -> dict:
     return {"success": True}
 
 
-# ---------------------------------------------------------------------------
-# Slack integration stubs
-# ---------------------------------------------------------------------------
+# Slack integration TODO
+
+
+def _source_label(req: ShiftRequest) -> str:
+    """e.g. 'Monday 3/27 6pm-8pm'"""
+    return f"{day_label(req.source_shift_date)} {shift_label(req.source_shift_hour)}"
+
+
+def _target_label(req: ShiftRequest) -> str:
+    """e.g. 'Monday 3/27 8pm-10pm'"""
+    if req.target_shift_date and req.target_shift_hour is not None:
+        return (
+            f"{day_label(req.target_shift_date)} {shift_label(req.target_shift_hour)}"
+        )
+    return "—"
 
 
 def send_drop_approval_to_slack(request: ShiftRequest):
     """Send to copy chief: editor wants to drop. Shift is up for pickup."""
-    # TODO: implement
-    pass
+    msg = (
+        f"📋 *Drop Request*\n"
+        f"{request.requester_name} has requested to drop their shift on "
+        f"{_source_label(request)}.\n"
+        f"The shift is now marked as 'up for drop' so another editor can pick it up. "
+        f"If no one does, your approval is needed to remove it entirely.\n"
+        f"👉 Review in the admin dashboard."
+    )
+    dm_user_by_email(COPY_CHIEF_EMAIL, msg)
 
 
 def send_direct_swap_to_slack(request: ShiftRequest):
     """Send DM to target editor: requester wants to exchange shifts."""
-    # TODO: implement
-    pass
+    chief_msg = (
+        f"🔄 *Direct Swap Request*\n"
+        f"{request.requester_name} has requested to swap shifts with "
+        f"{request.target_editor_name}.\n"
+        f"  • {request.requester_name}'s shift: {_source_label(request)}\n"
+        f"  • {request.target_editor_name}'s shift: {_target_label(request)}\n"
+        f"This requires {request.target_editor_name}'s approval.\n"
+        f"👉 Review in the admin dashboard."
+    )
+    dm_user_by_email(COPY_CHIEF_EMAIL, chief_msg)
+
+    # Notify the target editor directly.
+    if request.target_editor_id:
+        editor_msg = (
+            f"🔄 *Swap Request — Action Needed*\n"
+            f"{request.requester_name} has requested to swap shifts with you.\n"
+            f"  • Their shift: {_source_label(request)}\n"
+            f"  • Your shift: {_target_label(request)}\n"
+            f"👉 Check the shift dashboard to approve or deny."
+        )
+        dm_user_by_email(request.target_editor_id, editor_msg)
 
 
 def send_swap_drop_to_slack(request: ShiftRequest):
@@ -565,40 +554,128 @@ def send_swap_drop_to_slack(request: ShiftRequest):
     You would take their [source shift] and they would take your [target shift].'
     Include Approve/Deny buttons.
     """
-    # TODO: implement
-    pass
+    chief_msg = (
+        f"🔄 *Swap-Drop Request*\n"
+        f"{request.requester_name} wants to swap with {request.target_editor_name}, "
+        f"who has their shift up for drop.\n"
+        f"  • {request.requester_name}'s shift: {_source_label(request)}\n"
+        f"  • {request.target_editor_name}'s shift: {_target_label(request)}\n"
+        f"Instead of dropping, {request.target_editor_name} would take "
+        f"{request.requester_name}'s slot. Requires {request.target_editor_name}'s approval.\n"
+        f"👉 Review in the admin dashboard."
+    )
+    dm_user_by_email(COPY_CHIEF_EMAIL, chief_msg)
+
+    # Notify the dropping editor.
+    if request.target_editor_id:
+        editor_msg = (
+            f"🔄 *Swap Offer — Action Needed*\n"
+            f"{request.requester_name} is offering to swap shifts with you instead of "
+            f"you dropping yours.\n"
+            f"  • Your shift: {_target_label(request)}\n"
+            f"  • Their shift: {_source_label(request)}\n"
+            f"If you approve, you would take their shift and they would take yours.\n"
+            f"👉 Check the shift dashboard to approve or deny."
+        )
+        dm_user_by_email(request.target_editor_id, editor_msg)
 
 
 def send_swap_approval_to_slack(request: ShiftRequest):
     """Send to copy chief: editor wants to swap-add or swap into empty slot."""
-    # TODO: implement
-    pass
+    if request.request_type == "swap_add" and request.target_editor_name:
+        target_desc = f"a slot occupied by {request.target_editor_name}"
+    else:
+        target_desc = "an empty slot"
+
+    msg = (
+        f"📋 *Swap Request — Your Approval Needed*\n"
+        f"{request.requester_name} wants to move from {_source_label(request)} "
+        f"into {target_desc} ({_target_label(request)}).\n"
+        f"Their current shift would be dropped once approved.\n"
+        f"👉 Review and approve or deny in the admin dashboard."
+    )
+    dm_user_by_email(COPY_CHIEF_EMAIL, msg)
 
 
 def notify_slack_swap_involves_your_shift(
     request: ShiftRequest, target_editor_name: str
 ):
     """Inform editor their shift is target of a swap_add (copy chief decides)."""
-    # TODO: implement
-    pass
+    if request.target_editor_id:
+        editor_msg = (
+            f"ℹ️ *Heads Up — Your Shift Is Involved in a Swap Request*\n"
+            f"{request.requester_name} has requested to join your shift on "
+            f"{_target_label(request)}.\n"
+            f"This is pending copy chief approval. You don't need to do anything — "
+            f"you'll be notified of the outcome."
+        )
+        dm_user_by_email(request.target_editor_id, editor_msg)
 
 
 def notify_slack_shift_picked_up(request: ShiftRequest, old_editor_name: str):
     """Notify original editor their up-for-drop shift was picked up."""
-    # TODO: implement
-    pass
+    chief_msg = (
+        f"✅ *Shift Picked Up*\n"
+        f"{request.requester_name} has picked up {old_editor_name}'s shift on "
+        f"{_source_label(request)}. No further action needed."
+    )
+    dm_user_by_email(COPY_CHIEF_EMAIL, chief_msg)
+
+    # Notify the original editor their shift is covered.
+    if request.target_editor_id:
+        editor_msg = (
+            f"✅ *Your Shift Has Been Picked Up*\n"
+            f"{request.requester_name} has taken over your shift on "
+            f"{_source_label(request)}. You're all set — no further action needed."
+        )
+        dm_user_by_email(request.target_editor_id, editor_msg)
 
 
 def notify_slack_cancelled(request: ShiftRequest):
-    # TODO: implement
-    pass
+    msg = (
+        f"❌ *Request Cancelled*\n"
+        f"{request.requester_name} has cancelled their "
+        f"{request.request_type.replace('_', ' ')} request for "
+        f"{_source_label(request)}. No further action needed."
+    )
+    dm_user_by_email(COPY_CHIEF_EMAIL, msg)
 
 
 def notify_slack_approved(request: ShiftRequest):
-    # TODO: implement
-    pass
+    dm_user_by_email(
+        request.requester_id,
+        (
+            f"✅ *Your Request Was Approved*\n"
+            f"Your {request.request_type.replace('_', ' ')} request for "
+            f"{_source_label(request)} has been approved.\n"
+            f"👉 Check the shift dashboard to see your updated schedule."
+        ),
+    )
+    dm_user_by_email(
+        COPY_CHIEF_EMAIL,
+        (
+            f"✅ *Request Approved*\n"
+            f"{request.requester_name}'s {request.request_type.replace('_', ' ')} "
+            f"request for {_source_label(request)} has been approved."
+        ),
+    )
 
 
 def notify_slack_denied(request: ShiftRequest):
-    # TODO: implement
-    pass
+    dm_user_by_email(
+        request.requester_id,
+        (
+            f"❌ *Your Request Was Denied*\n"
+            f"Your {request.request_type.replace('_', ' ')} request for "
+            f"{_source_label(request)} has been denied.\n"
+            f"Please check the shift dashboard or reach out to the copy chief with questions."
+        ),
+    )
+    dm_user_by_email(
+        COPY_CHIEF_EMAIL,
+        (
+            f"❌ *Request Denied*\n"
+            f"{request.requester_name}'s {request.request_type.replace('_', ' ')} "
+            f"request for {_source_label(request)} has been denied."
+        ),
+    )

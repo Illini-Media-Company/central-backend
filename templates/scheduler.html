@@ -75,9 +75,7 @@
     </tbody>
   </table>
 
-  {# ------------------------------------------------------------------ #}
-  {# MY SHIFTS LIST                                                      #}
-  {# ------------------------------------------------------------------ #}
+  {# MY SHIFTS LIST #}
   <div class="my-shifts-section">
     <p>
       You are currently signed up for <strong>{{ my_shifts|length }}</strong>
@@ -129,9 +127,7 @@
   </div>
 </div>
 
-{# ==================================================================== #}
-{# SWAP CHOICE MODAL (for filled, non-droppable slots — 3 buttons)       #}
-{# ==================================================================== #}
+{# SWAP CHOICE MODAL (for filled, non-droppable slots - 3 buttons)       #}
 <div id="swap-choice-screen">
   <div class="swap-choice-container">
     <h3 style="margin-top: 1rem;" id="swap-choice-header">Swap Options</h3>
@@ -145,16 +141,11 @@
   </div>
 </div>
 
-{# -- Selection Mode Banner -- #}
 <div id="selectionBanner" style="display:none;">
   <span id="selectionBannerText"></span>
   <button onclick="exitSelectionMode()">Cancel</button>
 </div>
 
-
-{# ==================================================================== #}
-{# JAVASCRIPT                                                           #}
-{# ==================================================================== #}
 <script>
   let currentMode = null; // null | "swap" | "add"
   let sourceDate = null;
@@ -166,7 +157,7 @@
 
   function postJSON(url, body) {
     body['_csrf_token'] = csrfToken;
-    return fetch(url, {
+    return fetch(`${url}?_csrf_token=${encodeURIComponent(csrfToken)}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -176,7 +167,6 @@
     }).then(r => r.json());
   }
 
-  // ---- Week navigation ----
   function navigateWeek(delta) {
     const currentWeekStart = '{{ week_days[0].date_str }}';
     const d = new Date(currentWeekStart + 'T00:00:00');
@@ -185,7 +175,6 @@
     window.location.href = '{{ url_for("shift_scheduler_routes.scheduler") }}?week=' + iso;
   }
 
-  // ---- Selection mode ----
   function enterSelectionMode(mode, bannerText) {
     currentMode = mode;
     const banner = document.getElementById('selectionBanner');
@@ -231,7 +220,6 @@
     });
   }
 
-  // ---- Cell click handler ----
   document.querySelectorAll('.shift-cell').forEach(cell => {
     cell.addEventListener('click', function () {
       if (!currentMode) return;  // No clicking in default view
@@ -266,7 +254,6 @@
     });
   });
 
-  // ---- Pickup (add mode, up-for-drop shift) ----
   async function handlePickup(dateStr, hour, editorName) {
     const confirmed = await showButtonAlert(
       'Pick Up Shift',
@@ -288,7 +275,6 @@
     }
   }
 
-  // ---- Swap with up-for-drop editor ----
   async function handleSwapDrop(editorName) {
     const confirmed = await showButtonAlert(
       'Swap with ' + editorName,
@@ -302,7 +288,6 @@
     }
   }
 
-  // ---- Drop ----
   async function startDrop(dateStr, hour) {
     sourceDate = dateStr;
     sourceHour = hour;
@@ -327,7 +312,6 @@
     }
   }
 
-  // ---- Swap into empty slot ----
   async function handleSwapIntoEmpty() {
     const confirmed = await showButtonAlert(
       'Swap Into Empty Slot',
@@ -340,7 +324,6 @@
     }
   }
 
-  // ---- Swap choice for filled (non-droppable) slot ----
   function showSwapChoice(editorName) {
     const screen = document.getElementById('swap-choice-screen');
     document.getElementById('swap-choice-text').textContent =
@@ -391,7 +374,6 @@
     enterSelectionMode('swap', 'Select a slot to swap into, or click Cancel.');
   }
 
-  // ---- Add Slot ----
   function startAddSlot() {
     sourceDate = null;
     sourceHour = null;
@@ -407,7 +389,6 @@
     });
   }
 
-  // ---- Cancel Pending Request ----
   async function handleCancelRequest(requestId) {
     const confirmed = await showButtonAlert(
       'Cancel Request',
@@ -423,10 +404,6 @@
   }
 </script>
 
-
-{# ==================================================================== #}
-{# STYLES                                                               #}
-{# ==================================================================== #}
 <style>
   .scheduler-header {
     display: flex;

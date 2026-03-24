@@ -29,9 +29,7 @@ shift_scheduler_routes = Blueprint(
 )
 
 
-# ---------------------------------------------------------------------------
 # Helper: build template context for a given week
-# ---------------------------------------------------------------------------
 
 
 def _build_week_context(reference_date: date = None):
@@ -97,9 +95,7 @@ def _build_week_context(reference_date: date = None):
     }
 
 
-# ---------------------------------------------------------------------------
 # Page route
-# ---------------------------------------------------------------------------
 
 
 @shift_scheduler_routes.route("", methods=["GET"])
@@ -120,9 +116,7 @@ def scheduler():
     return render_template("scheduler.html", **ctx)
 
 
-# ---------------------------------------------------------------------------
 # API routes
-# ---------------------------------------------------------------------------
 
 
 @shift_scheduler_routes.route("/api/drop", methods=["POST"])

@@ -479,15 +479,21 @@ function renderPendingActions() {
         el.innerHTML = `<p style="color:#9ca3af; font-size:0.875rem;">No pending actions</p>`;
         return;
     }
-    el.innerHTML = pending.map(r => `
+    el.innerHTML = pending.map(r => {
+        const sourceLabel = `${r.source_shift_date} ${fmtHour(r.source_shift_hour)}`;
+        const targetLabel = r.target_shift_date
+            ? ` → ${r.target_shift_date} ${fmtHour(r.target_shift_hour)}`
+            : '';
+        return `
         <div style="border:1px solid #fca5a5; background:#fff1f2; border-radius:6px; padding:0.75rem; margin-bottom:0.5rem; font-size:0.875rem;">
             <div style="font-weight:500;">${r.requester_name} — ${r.request_type.replace(/_/g,' ')}</div>
-            <div style="color:#6b7280; font-size:0.75rem; margin:2px 0;">${r.source_shift_date} ${fmtHour(r.source_shift_hour)}</div>
+            <div style="color:#6b7280; font-size:0.75rem; margin:2px 0;">${sourceLabel}${targetLabel}</div>
             <div style="display:flex; gap:0.4rem; margin-top:0.4rem;">
                 <button onclick="approveRequest(${r.uid})" class="button-primary" style="font-size:0.75rem; padding:3px 10px;">Approve</button>
                 <button onclick="denyRequest(${r.uid})"    class="button-secondary" style="font-size:0.75rem; padding:3px 10px;">Deny</button>
             </div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
 }
 
 function renderWeeklyLoad() {
@@ -497,19 +503,28 @@ function renderWeeklyLoad() {
         return;
     }
     const counts = {};
-    editors.forEach(e => counts[e.uid] = 0);
+    // editors.forEach(e => counts[e.uid] = 0);
+    // shifts.forEach(s => {
+    //     const d = new Date(s.date + 'T00:00:00');
+    //     const weekEnd = addDays(currentWeekStart, 7);
+    //     if (d >= currentWeekStart && d < weekEnd) {
+    //         if (s.editor_id   && counts[s.editor_id]   !== undefined)   counts[s.editor_id]++;
+    //         if (s.editor_id_2 && counts[s.editor_id_2] !== undefined) counts[s.editor_id_2]++;
+    //     }
+    // });
+    editors.forEach(e => counts[e.email] = 0);
     shifts.forEach(s => {
         const d = new Date(s.date + 'T00:00:00');
         const weekEnd = addDays(currentWeekStart, 7);
         if (d >= currentWeekStart && d < weekEnd) {
-            if (s.editor_id   && counts[s.editor_id]   !== undefined)   counts[s.editor_id]++;
+            if (s.editor_id   && counts[s.editor_id]   !== undefined) counts[s.editor_id]++;
             if (s.editor_id_2 && counts[s.editor_id_2] !== undefined) counts[s.editor_id_2]++;
         }
     });
     el.innerHTML = editors.map(e => `
         <div onclick="openEditorDetailModal(${e.uid})" style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:0.875rem; border-bottom:1px solid #f3f4f6; cursor:pointer;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
             <span>${e.name}</span>
-            <span style="font-weight:500;">${counts[e.uid] || 0} shift${counts[e.uid] === 1 ? '' : 's'}</span>
+            <span style="font-weight:500;">${counts[e.email] || 0} shift${counts[e.email] === 1 ? '' : 's'}</span>
         </div>`).join('');
 }
 
@@ -535,12 +550,21 @@ function renderEditorTable(tbodyId, list) {
         return;
     }
     tbody.innerHTML = list.map(e => {
-        const shiftCount = shifts.filter(s => s.editor_id === String(e.uid) || s.editor_id_2 === String(e.uid)).length;
+        // const shiftCount = shifts.filter(s => s.editor_id === String(e.uid) || s.editor_id_2 === String(e.uid)).length;
+        // const weekendCount = shifts.filter(s => {
+        //     if (s.editor_id !== String(e.uid) && s.editor_id_2 !== String(e.uid)) return false;
+        //     const dow = new Date(s.date + 'T00:00:00').getDay();
+        //     return dow === 0 || dow === 6;
+        // }).length;
+        const shiftCount = shifts.filter(s => 
+            s.editor_id === e.email || s.editor_id_2 === e.email
+        ).length;
         const weekendCount = shifts.filter(s => {
-            if (s.editor_id !== String(e.uid) && s.editor_id_2 !== String(e.uid)) return false;
+            if (s.editor_id !== e.email && s.editor_id_2 !== e.email) return false;
             const dow = new Date(s.date + 'T00:00:00').getDay();
             return dow === 0 || dow === 6;
         }).length;
+
         return `
         <tr style="border-bottom:1px solid #dee2e6; cursor:pointer;" onclick="openEditorDetailModal(${e.uid})" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
             <td style="padding:10px 16px; font-size:0.875rem;">${e.name}</td>
@@ -556,9 +580,16 @@ function renderEditorTable(tbodyId, list) {
 }
 
 // ─── Shift Modal ──────────────────────────────────────────────────────────────
+// function populateEditorDropdowns() {
+//     const opts = `<option value="">— Unassigned —</option>` +
+//         editors.map(e => `<option value="${e.uid}">${e.name}</option>`).join('');
+//     document.getElementById('shift-editor-1').innerHTML = opts;
+//     document.getElementById('shift-editor-2').innerHTML = opts;
+// }
+
 function populateEditorDropdowns() {
     const opts = `<option value="">— Unassigned —</option>` +
-        editors.map(e => `<option value="${e.uid}">${e.name}</option>`).join('');
+        editors.map(e => `<option value="${e.email}">${e.name}</option>`).join('');
     document.getElementById('shift-editor-1').innerHTML = opts;
     document.getElementById('shift-editor-2').innerHTML = opts;
 }
@@ -601,11 +632,18 @@ async function submitShiftModal(e) {
     e.preventDefault();
     const date      = document.getElementById('shift-date').value;
     const startHour = document.getElementById('shift-hour').value;
-    const e1uid     = document.getElementById('shift-editor-1').value;
-    const e2uid     = document.getElementById('shift-editor-2').value;
+    // const e1uid     = document.getElementById('shift-editor-1').value;
+    // const e2uid     = document.getElementById('shift-editor-2').value;
 
-    const ed1 = editors.find(x => String(x.uid) === e1uid);
-    const ed2 = editors.find(x => String(x.uid) === e2uid);
+    // const ed1 = editors.find(x => String(x.uid) === e1uid);
+    // const ed2 = editors.find(x => String(x.uid) === e2uid);
+
+    const e1email = document.getElementById('shift-editor-1').value;
+    const e2email = document.getElementById('shift-editor-2').value;
+
+    const ed1 = editors.find(x => x.email === e1email) || null;
+    const ed2 = editors.find(x => x.email === e2email) || null;
+
 
     if (!ed1 && !ed2) {
         showInfoBar('Please assign at least one editor before saving.');
@@ -619,10 +657,15 @@ async function submitShiftModal(e) {
     const body = new FormData();
     body.append('date',        date);
     body.append('start_hour',  startHour);
-    body.append('editor_id',   ed1 ? String(ed1.uid)  : '');
-    body.append('editor_name', ed1 ? ed1.name          : '');
-    body.append('editor_id_2', ed2 ? String(ed2.uid)   : '');
-    body.append('editor_name_2', ed2 ? ed2.name        : '');
+    // body.append('editor_id',   ed1 ? String(ed1.uid)  : '');
+    // body.append('editor_name', ed1 ? ed1.name          : '');
+    // body.append('editor_id_2', ed2 ? String(ed2.uid)   : '');
+    // body.append('editor_name_2', ed2 ? ed2.name        : '');
+
+    body.append('editor_id',     ed1 ? ed1.email : '');
+    body.append('editor_name',   ed1 ? ed1.name  : '');
+    body.append('editor_id_2',   ed2 ? ed2.email : '');
+    body.append('editor_name_2', ed2 ? ed2.name  : '');
 
     const url = editingShiftUid
         ? `/copy-admin-dashboard/admin/shift/${editingShiftUid}/update`
@@ -754,7 +797,8 @@ function openEditorDetailModal(uid) {
     document.getElementById('detail-editor-category').textContent = e.category || '—';
 
     const upcoming = shifts
-        .filter(s => s.editor_id === String(uid) || s.editor_id_2 === String(uid))
+        // .filter(s => s.editor_id === String(uid) || s.editor_id_2 === String(uid))
+        .filter(s => s.editor_id === e.email || s.editor_id_2 === e.email)
         .filter(s => s.date >= toDateStr(new Date()))
         .sort((a, b) => a.date.localeCompare(b.date))
         .slice(0, 5);

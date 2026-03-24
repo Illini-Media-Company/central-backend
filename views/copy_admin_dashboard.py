@@ -3,7 +3,7 @@ import datetime
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required
 
-from db.copy_admin_dashboard import (
+from util.copy_scheduler_admin import (
     get_all_copy_editors,
     add_copy_editor,
     delete_copy_editor,
@@ -13,7 +13,8 @@ from db.copy_admin_dashboard import (
     delete_shift,
     update_shift,
     get_all_shift_requests,
-    update_shift_request_status,
+    approve_shift_request,
+    deny_shift_request,
 )
 from util.security import restrict_to
 from constants import COPY_ADMIN_ACCESS_GROUPS
@@ -135,7 +136,7 @@ def update_shift_route(uid):
 @login_required
 @restrict_to(COPY_ADMIN_ACCESS_GROUPS)
 def approve_request(uid):
-    update_shift_request_status(uid, "approved")
+    approve_shift_request(uid)
     return jsonify({"ok": True})
 
 
@@ -143,5 +144,5 @@ def approve_request(uid):
 @login_required
 @restrict_to(COPY_ADMIN_ACCESS_GROUPS)
 def deny_request(uid):
-    update_shift_request_status(uid, "denied")
+    deny_shift_request(uid)
     return jsonify({"ok": True})
