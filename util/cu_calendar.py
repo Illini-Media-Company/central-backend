@@ -15,7 +15,11 @@ import googlemaps
 from google.cloud import storage
 from gcsa.google_calendar import GoogleCalendar
 
-from constants import GCS_BUCKET_NAME, BACKEND_GOOGLE_MAP_API
+from constants import (
+    BACKEND_GOOGLE_MAP_API,
+    DEFAULT_PUBLIC_EVENT_CATEGORY,
+    GCS_BUCKET_NAME,
+)
 from util.security import get_creds
 
 
@@ -216,7 +220,7 @@ def sync_gcal_sources(*, future_days: int = 30) -> int:
                 end_date=event.get("end_date"),
                 images=[],
                 address=event.get("address", ""),
-                event_type="Imported",
+                event_type=DEFAULT_PUBLIC_EVENT_CATEGORY,
                 description=event.get("description", ""),
                 company_name=company,
                 is_accepted=True,

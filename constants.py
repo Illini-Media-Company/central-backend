@@ -76,7 +76,7 @@ OV_ENDPOINT = os.environ.get("OV_ENDPOINT", None)
 
 RETOOL_API_KEY = os.environ.get("RETOOL_API_KEY", None)
 
-#GSC Budket ID
+# GSC Budket ID
 GCS_BUCKET_NAME = "cu-calendar-images"
 
 # Google Calendar IDs
@@ -96,6 +96,19 @@ WPGU_OFFICE_RESOURCE_GCAL_ID = (
     "c_188ejl7c2di5uisrjp7qdcu8f7pto@resource.calendar.google.com"
 )
 WPGU_ONAIR_GCAL_ID = "c_b888554deb36a74a61aea32bac28ab500ade0003cd2ae61085354e07c2fa0fa0@group.calendar.google.com"
+
+# CU Calendar public event options
+PUBLIC_EVENT_OPTIONS = {
+    "categories": [
+        "Music",
+        "Food",
+        "Arts",
+        "Sports",
+        "Community",
+        "Education",
+    ]
+}
+DEFAULT_PUBLIC_EVENT_CATEGORY = "Community"
 
 ################################################################################
 ### EMPLOYEE MANAGEMENT SYSTEM #################################################

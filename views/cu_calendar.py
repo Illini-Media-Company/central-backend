@@ -4,7 +4,7 @@ from datetime import datetime, time, timezone
 from flask import Blueprint, jsonify, request, render_template
 from flask_cors import cross_origin
 from flask_login import login_required
-from constants import GOOGLE_MAP_API, CU_CALENDAR_ID
+from constants import CU_CALENDAR_ID, DEFAULT_PUBLIC_EVENT_CATEGORY, GOOGLE_MAP_API
 from zoneinfo import ZoneInfo
 
 from db.cu_calender import (
@@ -18,7 +18,9 @@ from db.cu_calender import (
     highlight_event as db_highlight_event,
     remove_event as db_remove_event,
     event_exists,
-    get_all_calendar_sources
+    get_all_calendar_sources,
+    get_public_event_categories,
+    normalize_public_event_category,
 )
 from util.cu_calendar import geocode_address, gcal_to_events, upload_images_to_gcs
 from util.security import csrf
@@ -34,6 +36,13 @@ public_calendar_api_routes = Blueprint(
 )
 
 
+def _safe_public_event_category(event_type):
+    try:
+        return normalize_public_event_category(event_type)
+    except ValueError:
+        return DEFAULT_PUBLIC_EVENT_CATEGORY
+
+
 def _serialize_datetime(value):
     if isinstance(value, datetime):
         if value.tzinfo is not None:
@@ -47,7 +56,7 @@ def _serialize_public_event(event):
         "uid": event.get("uid"),
         "title": event.get("title"),
         "description": event.get("description"),
-        "event_type": event.get("event_type"),
+        "event_type": _safe_public_event_category(event.get("event_type")),
         "highlight": bool(event.get("highlight", False)),
         "start_date": _serialize_datetime(event.get("start_date")),
         "end_date": _serialize_datetime(event.get("end_date")),
@@ -61,6 +70,7 @@ def _serialize_public_event(event):
 
 def _serialize_legacy_public_event(event):
     serialized = dict(event)
+    serialized["event_type"] = _safe_public_event_category(event.get("event_type"))
     serialized["start_date"] = _serialize_datetime(event.get("start_date"))
     serialized["end_date"] = _serialize_datetime(event.get("end_date"))
     serialized["created_at"] = _serialize_datetime(event.get("created_at"))
@@ -116,6 +126,7 @@ def _create_pending_submission():
         return jsonify({"error": "Missing title and address."}), 400
 
     try:
+        event_type = normalize_public_event_category(request.form.get("event_type"))
         start_date = _parse_submission_datetime(request.form.get("start_date"))
         end_date = _parse_submission_datetime(request.form.get("end_date"), is_end=True)
     except ValueError as exc:
@@ -135,7 +146,7 @@ def _create_pending_submission():
             end_date=end_date,
             images=image_urls,
             address=address,
-            event_type=request.form.get("event_type"),
+            event_type=event_type,
             description=request.form.get("description"),
             company_name=request.form.get("company_name"),
             submitter_name=request.form.get("submitter_name"),
@@ -215,14 +226,7 @@ def submit_public_event_api():
 @cross_origin()
 @csrf.exempt
 def list_public_event_categories():
-    categories = sorted(
-        {
-            event.get("event_type").strip()
-            for event in get_future_public_events()
-            if event.get("event_type") and event.get("event_type").strip()
-        }
-    )
-    return jsonify(categories), 200
+    return jsonify(get_public_event_categories()), 200
 
 
 # admin routes
@@ -244,6 +248,7 @@ def add_and_process_source():
 
     existing_sources = get_all_calendar_sources()
     source_already_exists = any(s.get("gcal_url") == gcal_url for s in existing_sources)
+    imported_event_type = DEFAULT_PUBLIC_EVENT_CATEGORY
 
     parsed_events = gcal_to_events(gcal_url)
     if parsed_events is None:
@@ -266,7 +271,7 @@ def add_and_process_source():
                 end_date=event.get("end_date"),
                 images=[],
                 address=event.get("address"),
-                event_type="Imported",
+                event_type=imported_event_type,
                 description=event.get("description"),
                 company_name=company,
                 submitter_name="",
@@ -370,6 +375,7 @@ def admin_add_event():
         return jsonify({"error": "Missing title and address."}), 400
 
     try:
+        event_type = normalize_public_event_category(request.form.get("event_type"))
         start_date = _parse_submission_datetime(request.form.get("start_date"))
         end_date = _parse_submission_datetime(request.form.get("end_date"), is_end=True)
     except ValueError as exc:
@@ -397,7 +403,7 @@ def admin_add_event():
         end_date=end_date,
         images=image_urls,
         address=address,
-        event_type=(request.form.get("event_type") or "").strip(),
+        event_type=event_type,
         description=(request.form.get("description") or "").strip(),
         company_name=(request.form.get("company_name") or "").strip(),
         submitter_name=(request.form.get("submitter_name") or "").strip(),
