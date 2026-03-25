@@ -1,4 +1,5 @@
 from google.cloud import ndb
+from zoneinfo import ZoneInfo
 from datetime import datetime, timezone
 from util.cu_calendar import delete_images_from_gcs
 from . import client
@@ -12,9 +13,9 @@ class CalendarObject(ndb.Model):
     long = ndb.FloatProperty()
     title = ndb.StringProperty()
     url = ndb.StringProperty()
-    created_at = ndb.DateTimeProperty()
-    start_date = ndb.DateTimeProperty()
-    end_date = ndb.DateTimeProperty()
+    created_at = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
+    start_date = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
+    end_date = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
     images = ndb.StringProperty(repeated=True)
     address = ndb.StringProperty()
     event_type = ndb.StringProperty()

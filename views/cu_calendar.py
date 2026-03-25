@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, request, render_template
 from flask_cors import cross_origin
 from flask_login import login_required
 from constants import GOOGLE_MAP_API, CU_CALENDAR_ID
+from zoneinfo import ZoneInfo
 
 from db.cu_calender import (
     accept_event,
@@ -78,17 +79,19 @@ def _parse_submission_datetime(raw_value, is_end=False):
     
     if len(value) == 10:
         parsed_date = datetime.strptime(value, "%Y-%m-%d").date()
-        return datetime.combine(parsed_date, time(23, 59, 59) if is_end else time.min)
+        dt = datetime.combine(parsed_date, time(23, 59, 59) if is_end else time.min)
+        return dt.replace(tzinfo=ZoneInfo("America/Chicago"))
 
     try:
         normalized_value = value.replace("Z", "+00:00")
         parsed_datetime = datetime.fromisoformat(normalized_value)
         
         if parsed_datetime.tzinfo is not None:
-            return parsed_datetime.astimezone(timezone.utc).replace(tzinfo=None)
-        return parsed_datetime
+            return parsed_datetime.astimezone(ZoneInfo("America/Chicago"))
+        return parsed_datetime.replace(tzinfo=ZoneInfo("America/Chicago"))
     except ValueError as exc:
         raise ValueError("Invalid date/time format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM") from exc
+
 
 
 def _get_uploaded_files():
