@@ -127,6 +127,7 @@ from util.helpers.email_to_slackid import email_to_slackid
 from util.all_tools import format_restricted_groups
 import util.slackbots.employee_agreement_slackbot
 import util.slackbots.photo_request
+import util.slackbots.song_request
 import util.slackbots.socials_slackbot
 import util.slackbots.knowledge_slackbot
 from util.helpers.ap_datetime import (
@@ -522,6 +523,7 @@ def cron_cu_calendar_sync_year():
         logging.exception("cu_calendar yearly sync failed")
         return {"success": False, "error": str(e)}, 500
 
+
 @app.route("/cron/wpgu-song-requests-cleanup", methods=["GET", "POST"])
 @csrf.exempt
 @talisman(force_https=False)
@@ -531,9 +533,11 @@ def cron_wpgu_song_requests_cleanup():
     Intended to run weekly via cron.yaml.
     """
     if request.headers.get("X-Appengine-Cron") != "true":
-        logging.warning("Unauthorized attempt to trigger WPGU song request cleanup cron job")
+        logging.warning(
+            "Unauthorized attempt to trigger WPGU song request cleanup cron job"
+        )
         return "Unauthorized", 403
-        
+
     try:
         deleted_count = delete_old_song_requests(days_old=60)
         logging.info(f"WPGU song requests cleanup completed: deleted={deleted_count}")
@@ -541,7 +545,8 @@ def cron_wpgu_song_requests_cleanup():
     except Exception as e:
         logging.exception("WPGU song requests cleanup cron job failed")
         return {"success": False, "error": str(e)}, 500
-    
+
+
 ################################################################################
 ############################### END CRON JOBS ##################################
 ################################################################################

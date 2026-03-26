@@ -76,7 +76,7 @@ OV_ENDPOINT = os.environ.get("OV_ENDPOINT", None)
 
 RETOOL_API_KEY = os.environ.get("RETOOL_API_KEY", None)
 
-#GSC Budket ID
+# GSC Budket ID
 GCS_BUCKET_NAME = "cu-calendar-images"
 
 # Google Calendar IDs
@@ -284,6 +284,7 @@ WPGU_NEWS_ID = "C08KCADDCD8" if ENV == "prod" else "C06FXML7BHR"
 WPGU_ON_AIR_ID = "C06BRUCMUG6" if ENV == "prod" else "C06FR61KDJS"
 WPGU_PRODUCTION_ID = "C09ET1PT762" if ENV == "prod" else "C06FXQXKJAE"
 WPGU_SPORTS_ID = "C09FRSTPVAL" if ENV == "prod" else "C09V8V4K5K8"
+WPGU_SONG_REQUESTS_ID = "C06FXLRJGKV" if ENV == "prod" else "C0AP06FTGA0"
 
 CU_CALENDAR_ID = "" if ENV == "prod" else "C0AMKL402HE"
 

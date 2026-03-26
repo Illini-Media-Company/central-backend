@@ -305,6 +305,41 @@ def remove_user_from_channel(user_id: str, channel_id: str) -> tuple[bool, str |
         return False, error_msg
 
 
+def update_message_blocks(
+    channel: str, ts: str, new_blocks: List[Dict[str, Any]], text: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Edits an existing Slack message in a channel.
+
+    Arguments:
+        `channel` (`str`): The Slack channel ID containing the message
+        `ts` (`str`): The timestamp of the message to edit
+        `new_blocks` (`List[Dict[str, Any]]`): The updated message blocks
+        `text` (`Optional[str]`): Fallback text for the updated message
+
+    Returns:
+        `dict`:
+            * `ok` (`bool`): `True` if the update was successful, `False` otherwise
+            * `error` (`str`): (If `ok` = `False`) The error that occurred
+            * `channel` (`str`): (If `ok` = `True`) The channel the message was updated in
+            * `ts` (`str`): (If `ok` = `True`) The timestamp of the updated message
+    """
+    try:
+        res = app.client.chat_update(
+            token=SLACK_BOT_TOKEN,
+            channel=channel,
+            ts=ts,
+            blocks=new_blocks,
+            text=text or "Updated",
+        )
+        return {"ok": True, "channel": res["channel"], "ts": res["ts"]}
+    except Exception as e:
+        logging.error(
+            f"[update_message_blocks] chat_update failed for {channel} ts={ts}: {e}"
+        )
+        return {"ok": False, "error": str(e)}
+
+
 # HELPERS
 
 
