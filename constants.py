@@ -321,7 +321,7 @@ ALL_SCHEDULER_GROUPS = (
 
 SHIFT_REQUIREMENTS = {
     "copy_editor": 2,
-    "senior_copy_editor": 8,
+    "senior_copy_editor": 2,
     "copy_chief": 0,  # copy chief may not need to sign up for shifts
 }
 

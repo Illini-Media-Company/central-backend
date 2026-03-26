@@ -312,7 +312,7 @@
 let editors = EDITORS.slice();
 let shifts = SHIFTS.slice();
 let shiftRequests = SHIFT_REQUESTS.slice();
-let currentWeekStart = getMonday(new Date());
+let currentWeekStart = getSunday(new Date());
 let searchQuery = '';
 
 // Modal edit state
@@ -321,13 +321,11 @@ let editingEditorUid = null;  // null = adding, int = editing
 let detailEditorUid = null;
 
 // ─── Date Helpers ─────────────────────────────────────────────────────────────
-function getMonday(d) {
-    const day = d.getDay();
-    const diff = (day === 0) ? -6 : 1 - day;
-    const mon = new Date(d);
-    mon.setDate(d.getDate() + diff);
-    mon.setHours(0, 0, 0, 0);
-    return mon;
+function getSunday(d) {
+    const sun = new Date(d);
+    sun.setDate(d.getDate() - d.getDay());
+    sun.setHours(0, 0, 0, 0);
+    return sun;
 }
 
 function addDays(d, n) {
@@ -356,7 +354,7 @@ function fmtHour(h) {
 // ─── Week Navigation ──────────────────────────────────────────────────────────
 function prevWeek() { currentWeekStart = addDays(currentWeekStart, -7); renderAll(); }
 function nextWeek() { currentWeekStart = addDays(currentWeekStart,  7); renderAll(); }
-function thisWeek() { currentWeekStart = getMonday(new Date());          renderAll(); }
+function thisWeek() { currentWeekStart = getSunday(new Date());          renderAll(); }
 
 // ─── Tab Switching ────────────────────────────────────────────────────────────
 function switchTab(tab) {
@@ -384,7 +382,7 @@ function renderAll() {
 }
 
 // ─── Date Headers ─────────────────────────────────────────────────────────────
-const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 function renderDateHeaders() {
     const start = currentWeekStart;
@@ -441,7 +439,7 @@ function renderGrid() {
             cell.style.cssText = `height:72px; border-right:1px solid #dee2e6; padding:0.4rem; vertical-align:top; cursor:pointer; ${STATUS_STYLE[status]} ${dimmed ? 'opacity:0.3;' : ''}`;
             cell.onclick = () => openShiftModal(dateStr, hour);
 
-            if (!shift) {
+            if (!shift || (!shift.editor_id && !shift.editor_id_2)) {
                 cell.innerHTML = `<span style="font-size:0.7rem; color:#9ca3af;">+ Add</span>`;
             } else {
                 const names = [shift.editor_name, shift.editor_name_2].filter(Boolean);
@@ -712,9 +710,9 @@ async function submitShiftModal(e) {
     if (wasEditing) {
         const sep = editingShiftUid.lastIndexOf('_');
         const editDate = editingShiftUid.slice(0, sep);
-        const editHour = editingShiftUid.slice(sep + 1);
+        const editHour = parseInt(editingShiftUid.slice(sep + 1), 10);
         shifts = shifts.map(s =>
-            (s && s.date === editDate && String(s.start_hour).padStart(2, '0') === editHour) ? saved : s
+            (s && s.date === editDate && s.start_hour === editHour) ? saved : s
         );
     } else {
         shifts.push(saved);
@@ -745,8 +743,8 @@ async function deleteCurrentShift() {
 
     const sep = uid.lastIndexOf('_');
     const deleteDate = uid.slice(0, sep);
-    const deleteHour = uid.slice(sep + 1);
-    shifts = shifts.filter(s => !(s.date === deleteDate && String(s.start_hour).padStart(2, '0') === deleteHour));
+    const deleteHour = parseInt(uid.slice(sep + 1), 10);
+    shifts = shifts.filter(s => !(s.date === deleteDate && s.start_hour === deleteHour));
     shiftRequests = shiftRequests.filter(r => {
         const rUid = r.source_shift_date + '_' + String(r.source_shift_hour).padStart(2, '0');
         return rUid !== uid;
@@ -873,6 +871,11 @@ async function deleteEditorFromDetail() {
 }
 
 // ─── Approve / Deny Requests ──────────────────────────────────────────────────
+async function refreshShifts() {
+    const resp = await fetch('/copy-admin-dashboard/admin/shifts');
+    if (resp.ok) shifts = await resp.json();
+}
+
 async function approveRequest(uid) {
     let resp;
     try {
@@ -886,7 +889,8 @@ async function approveRequest(uid) {
     }
     if (!resp.ok) { showInfoBar('Error approving request.'); return; }
     shiftRequests = shiftRequests.map(r => r.uid === uid ? {...r, status: 'approved'} : r);
-    renderActionPanel();
+    await refreshShifts();
+    renderAll();
     showInfoBar('Request approved.');
 }
 
@@ -903,7 +907,8 @@ async function denyRequest(uid) {
     }
     if (!resp.ok) { showInfoBar('Error denying request.'); return; }
     shiftRequests = shiftRequests.map(r => r.uid === uid ? {...r, status: 'denied'} : r);
-    renderActionPanel();
+    await refreshShifts();
+    renderAll();
     showInfoBar('Request denied.');
 }
 

@@ -138,6 +138,13 @@ def update_shift_route(uid):
     return jsonify(_to_json_safe(shift))
 
 
+@copy_admin_dashboard_routes.route("/admin/shifts", methods=["GET"])
+@login_required
+@restrict_to(COPY_ADMIN_ACCESS_GROUPS)
+def get_shifts():
+    return jsonify([_to_json_safe(s) for s in get_all_shifts()])
+
+
 @copy_admin_dashboard_routes.route("/admin/request/<int:uid>/approve", methods=["POST"])
 @login_required
 @restrict_to(COPY_ADMIN_ACCESS_GROUPS)

@@ -32,7 +32,7 @@ WEEKEND_DAY_INDICES = {5, 6}  # Saturday=5, Sunday=6 in Python weekday()
 
 from util.slackbots.general import dm_user_by_email
 
-COPY_CHIEF_EMAIL = "rishab4@illinimedia.com"
+COPY_CHIEF_EMAIL = "alanxie2@illinimedia.com"
 
 
 def get_user_role(user) -> str:
@@ -462,12 +462,20 @@ def approve_request(request_id) -> dict:
 
     elif req.request_type in ("swap_add", "swap_empty"):
         clear_shift(req.source_shift_date, req.source_shift_hour)
-        assign_shift(
-            req.target_shift_date,
-            req.target_shift_hour,
-            req.requester_id,
-            req.requester_name,
-        )
+        target_slot = get_shift(req.target_shift_date, req.target_shift_hour)
+        if req.request_type == "swap_add" and target_slot and target_slot.editor_id:
+            # Slot already has an editor — add requester as second editor
+            target_slot.editor_id_2 = req.requester_id
+            target_slot.editor_name_2 = req.requester_name
+            target_slot.up_for_drop = False
+            target_slot.put()
+        else:
+            assign_shift(
+                req.target_shift_date,
+                req.target_shift_hour,
+                req.requester_id,
+                req.requester_name,
+            )
 
     req.put()
     notify_slack_approved(req)
