@@ -48,11 +48,6 @@ graphic_request_routes = Blueprint(
 @graphic_request_routes.route(
     "/dashboard", defaults={"selection": "all"}, methods=["GET"]
 )
-
-
-# CHECK if we di-staff-graphics was correct or not
-
-
 @login_required
 @restrict_to(
     [
