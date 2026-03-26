@@ -124,7 +124,12 @@
      <!-- VIEW: Editors (hidden) -->
     <div id="view-editors" style="display:none; height:100%; overflow:auto; padding:1.5rem;">
         <div style="max-width:1200px;">
-        <h5 style="font-weight:600; margin-bottom:1.5rem;">Editors</h5>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+            <h5 style="font-weight:600; margin:0;">Editors</h5>
+            <button onclick="syncFromGroups()" id="sync-groups-btn" class="button-secondary" style="font-size:0.875rem;">
+                <i class="bi bi-arrow-repeat"></i> Sync from Google Groups
+            </button>
+        </div>
         <div style="display:flex; gap:1.5rem;">
 
             <!-- Copy Editors table -->
@@ -529,6 +534,27 @@ function renderWeeklyLoad() {
 }
 
 // ─── Editors View ─────────────────────────────────────────────────────────────
+async function syncFromGroups() {
+    const btn = document.getElementById('sync-groups-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Syncing...';
+    try {
+        const res = await fetch('/copy-admin-dashboard/admin/sync-from-groups', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': CSRF_TOKEN },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Sync failed');
+        alert(`Sync complete: ${data.added} added, ${data.skipped} skipped.`);
+        location.reload();
+    } catch (e) {
+        alert('Error syncing from Google Groups: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sync from Google Groups';
+    }
+}
+
 function renderEditorsView() {
     const copyQ   = document.getElementById('copy-editor-search').value.toLowerCase();
     const seniorQ = document.getElementById('senior-editor-search').value.toLowerCase();

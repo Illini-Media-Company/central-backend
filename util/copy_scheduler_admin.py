@@ -91,6 +91,36 @@ def delete_copy_editor(uid) -> dict | None:
         return d
 
 
+def upsert_editors_from_groups(group_map: dict) -> dict:
+    """
+    Sync editors from Google Groups into the DB.
+
+    Arguments:
+        `group_map` (`dict`): maps category string -> list of member dicts
+            e.g. {"Copy Editor": [{"email": "...", "displayName": "..."}], ...}
+    Returns:
+        dict with "added" and "skipped" counts
+    """
+    added = 0
+    skipped = 0
+    with client.context():
+        existing_emails = {
+            e.email for e in CopyEditorAdmin.query().fetch(projection=["email"])
+        }
+        for category, members in group_map.items():
+            for m in members:
+                email = m.get("email", "").strip().lower()
+                if not email or email in existing_emails:
+                    skipped += 1
+                    continue
+                name = m.get("displayName") or email.split("@")[0]
+                entity = CopyEditorAdmin(name=name, email=email, category=category)
+                entity.put()
+                existing_emails.add(email)
+                added += 1
+    return {"added": added, "skipped": skipped}
+
+
 def get_editor_with_shifts(uid, reference_date: date = None) -> dict | None:
     """
     Return an editor dict with a "shifts" key containing all their

@@ -15,9 +15,15 @@ from util.copy_scheduler_admin import (
     get_all_shift_requests,
     approve_shift_request,
     deny_shift_request,
+    upsert_editors_from_groups,
 )
+from util.google_admin import get_group_members
 from util.security import restrict_to
-from constants import COPY_ADMIN_ACCESS_GROUPS
+from constants import (
+    COPY_ADMIN_ACCESS_GROUPS,
+    COPY_EDITOR_GROUPS,
+    SENIOR_COPY_EDITOR_GROUPS,
+)
 
 copy_admin_dashboard_routes = Blueprint(
     "copy_admin_dashboard_routes", __name__, url_prefix="/copy-admin-dashboard"
@@ -146,3 +152,18 @@ def approve_request(uid):
 def deny_request(uid):
     deny_shift_request(uid)
     return jsonify({"ok": True})
+
+
+@copy_admin_dashboard_routes.route("/admin/sync-from-groups", methods=["POST"])
+@login_required
+@restrict_to(COPY_ADMIN_ACCESS_GROUPS)
+def sync_from_groups():
+    group_map = {}
+    for group in COPY_EDITOR_GROUPS:
+        members = get_group_members(f"{group}@illinimedia.com")
+        group_map.setdefault("Copy Editor", []).extend(members)
+    for group in SENIOR_COPY_EDITOR_GROUPS:
+        members = get_group_members(f"{group}@illinimedia.com")
+        group_map.setdefault("Senior Copy Editor", []).extend(members)
+    result = upsert_editors_from_groups(group_map)
+    return jsonify(result)

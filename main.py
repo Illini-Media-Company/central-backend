@@ -187,17 +187,6 @@ talisman = Talisman(app, content_security_policy=[])
 csrf.init_app(app)
 logging.info("Done initializing Flask.")
 
-from seed_shifts import seed_dummy_shifts
-
-
-@app.route("/seed-shifts")
-@login_required
-@restrict_to(TOOLS_ADMIN_ACCESS_GROUPS)
-def seed_shifts():
-    seed_dummy_shifts()
-    return "Seeded!", 200
-
-
 logging.info("Registering blueprints...")
 app.register_blueprint(tools_routes)
 app.register_blueprint(content_doc_routes)
