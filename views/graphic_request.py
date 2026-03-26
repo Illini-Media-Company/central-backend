@@ -50,7 +50,7 @@ graphic_request_routes = Blueprint(
 )
 
 
-# CHECK if we imc-staff-graphics was correct or not
+# CHECK if we di-staff-graphics was correct or not
 
 
 @login_required
@@ -58,7 +58,7 @@ graphic_request_routes = Blueprint(
     [
         "student-managers",
         "di-section-editors",
-        "imc-staff-graphics",
+        "di-staff-graphics",
         "imc-staff-webdev",
         "professional-staff",
     ]
@@ -227,7 +227,7 @@ def api_submit():
 # /api/<uid>/claim — claim request
 @graphic_request_routes.route("/api/<uid>/claim", methods=["POST"])
 @login_required
-@restrict_to(["imc-staff-graphics", "imc-staff-webdev"])
+@restrict_to(["di-staff-graphics", "imc-staff-webdev"])
 def api_claim(uid):
     """
     Claims a graphic request.
@@ -249,7 +249,7 @@ def api_claim(uid):
 # /api/<uid>/complete — complete with Drive URL
 @graphic_request_routes.route("/api/<uid>/complete", methods=["POST"])
 @login_required
-@restrict_to(["imc-staff-graphics", "imc-staff-webdev"])
+@restrict_to(["di-staff-graphics", "imc-staff-webdev"])
 def api_complete(uid):
     """
     Marks a graphic request as complete with a Google Drive URL.
@@ -303,7 +303,7 @@ def api_modify(uid):
 # /api/<uid>/get — get a specific request
 @graphic_request_routes.route("/api/<uid>/get", methods=["GET"])
 @login_required
-@restrict_to(["imc-staff-graphics", "imc-staff-webdev"])
+@restrict_to(["di-staff-graphics", "imc-staff-webdev"])
 def api_get(uid):
     """Fetches a single graphic request by UID."""
     req = get_graphic_request_by_uid(int(uid))
