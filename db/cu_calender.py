@@ -1,3 +1,12 @@
+"""
+Database models and functions for the CU Calendar.
+
+Contains CalendarObject (public map events) and CalendarSource (linked Google Calendars),
+plus CRUD, approval workflow, geocoding-related helpers, and sync deduplication.
+
+Last modified by --- on ---
+"""
+
 from google.cloud import ndb
 from zoneinfo import ZoneInfo
 from datetime import datetime, timezone
@@ -40,7 +49,7 @@ class CalendarSource(ndb.Model):
 
 
 def get_public_event_categories():
-    """Return the canonical list of allowed public event categories."""
+    """Return allowed public event category strings."""
 
     return list(PUBLIC_EVENT_OPTIONS["categories"])
 
@@ -62,7 +71,6 @@ def normalize_public_event_category(event_type, *, default=None):
     return category
 
 
-# Adds a new event
 def add_event(
     title,
     lat,
@@ -80,6 +88,8 @@ def add_event(
     is_accepted=False,
     highlight=False,
 ):
+    """Create and save a new calendar event."""
+
     normalized_event_type = normalize_public_event_category(event_type)
 
     with client.context():
@@ -105,8 +115,9 @@ def add_event(
         return new_event.to_dict()
 
 
-# delete an event by uid
 def remove_event(uid):
+    """Delete an event by id and remove its images from GCS."""
+
     with client.context():
         event = CalendarObject.get_by_id(int(uid))
         if event is not None:
@@ -121,15 +132,17 @@ def remove_event(uid):
             return False
 
 
-# return all events
 def get_all_events():
+    """Return every calendar event."""
+
     with client.context():
         events = [event.to_dict() for event in CalendarObject.query().fetch()]
     return events
 
 
-# get count newest events
 def get_recent_events(count):
+    """Return the most recently created events (up to count)."""
+
     with client.context():
         events = [
             event.to_dict()
@@ -140,7 +153,6 @@ def get_recent_events(count):
     return events
 
 
-# change an event by uid, and set is_accepted to false so that it needs to be re-approved after changes are made
 def change_event(
     uid,
     title,
@@ -157,6 +169,8 @@ def change_event(
     submitter_name=None,
     submitter_email=None,
 ):
+    """Update an event by id; clears acceptance until staff re-approves."""
+
     normalized_event_type = normalize_public_event_category(event_type)
 
     with client.context():
@@ -185,8 +199,9 @@ def change_event(
             return False
 
 
-# get only accepted events that are in the future, sorted by start date
 def get_future_public_events():
+    """Return accepted events that have not ended yet."""
+
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     with client.context():
         query = (
@@ -199,8 +214,9 @@ def get_future_public_events():
     return events
 
 
-# for map centering
 def center_val():
+    """Map center as [lat, long] from future events, or a default."""
+
     events = get_future_public_events()
     if len(events) == 0:
         return [40.109337703305975, -88.22721514717438]
@@ -215,8 +231,9 @@ def center_val():
     return [lat_center, long_center]
 
 
-# remove any events that have passed
 def delete_expired_events():
+    """Delete events whose end time is in the past."""
+
     with client.context():
         now = datetime.now(timezone.utc).replace(tzinfo=None)
         query = CalendarObject.query(CalendarObject.end_date < now)
@@ -225,15 +242,17 @@ def delete_expired_events():
             ndb.delete_multi(keys_to_delete)
 
 
-# get all events pending approval
 def get_pending_events():
+    """Return events not yet accepted."""
+
     with client.context():
         query = CalendarObject.query(CalendarObject.is_accepted == False)
         return [event.to_dict() for event in query.fetch()]
 
 
-# accept an event
 def accept_event(uid, lat, long):
+    """Approve a pending event with lat/long."""
+
     with client.context():
         point = CalendarObject.get_by_id(int(uid))
         if point is not None:
@@ -251,14 +270,17 @@ def accept_event(uid, lat, long):
             return False
 
 
-# get an event by uid
 def get_event_by_id(uid):
+    """Return one event by id, or None."""
+
     with client.context():
         event = CalendarObject.get_by_id(int(uid))
         return event.to_dict() if event else None
 
 
 def highlight_event(uid):
+    """Mark an event highlighted and accepted."""
+
     with client.context():
         event = CalendarObject.get_by_id(int(uid))
         if event is not None:
@@ -275,8 +297,10 @@ def highlight_event(uid):
             return False
 
 
-# check if an event already exists
 def event_exists(gcal_url, title, start_date):
+    """
+    Return whether an event with the same source URL, title, and start_date exists (sync dedupe).
+    """
     with client.context():
         existing = CalendarObject.query(
             CalendarObject.url == gcal_url,
