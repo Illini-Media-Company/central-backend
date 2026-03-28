@@ -1,0 +1,285 @@
+{# CU Calendar admin: pending list, manual add, GCal import. Last modified by Cal Anderson on March 24, 2026 #}
+{% extends 'base.html' %}
+
+{% block title %}
+CU Calendar Admin Dashboard
+{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/styles/styles_index.css">
+<link rel="stylesheet" href="/static/macros/form.css">
+<script async defer src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&libraries=places&callback=initAutocomplete"></script>
+{% endblock %}
+
+{% import "macros/form.html" as form %}
+
+{% block content %}
+<h1>CU Calendar Admin</h1>
+<hr style="margin-bottom: 2rem;">
+
+<style>
+    /* Align labels and controls into consistent columns */
+    .cu-admin .form-row {
+        display: grid;
+        grid-template-columns: 190px minmax(0, 1fr);
+        column-gap: 1rem;
+        row-gap: 0.5rem;
+        align-items: start;
+        margin-bottom: 0.75rem;
+    }
+
+    .cu-admin .form-row > input,
+    .cu-admin .form-row > textarea {
+        width: 100%;
+        max-width: 520px;
+    }
+
+    .cu-admin .form-row > input[type="file"] {
+        width: 100%;
+        max-width: 520px;
+    }
+
+    /* Keep section tables visually consistent */
+    .cu-admin-table {
+        width: 100%;
+    }
+</style>
+
+{# Pending submissions section #}
+<section class="section-container">
+    <div class="section-header">
+        <h2 style="margin-bottom: 0">Pending public submissions</h2>
+    </div>
+
+    {% if not pending_events %}
+        <div class="inner-container" style="text-align: center;">
+            <p style="margin-bottom: 0;">No pending events right now.</p>
+        </div>
+    {% else %}
+        <div class="inner-container" style="padding: 0;">
+            <div style="overflow-x: auto; max-width: 100%; border-radius: var(--main-border-radius);">
+                <table class="cu-admin-table">
+                    <thead>
+                        <tr>
+                            <th style="padding-right: 2rem;">Title</th>
+                            <th style="padding-right: 2rem;">Start</th>
+                            <th style="padding-right: 2rem;">End</th>
+                            <th style="padding-right: 2rem;">Address</th>
+                            <th style="padding-right: 2rem;">Type</th>
+                            <th style="padding-right: 2rem;">Submitter</th>
+                            <th style="padding-right: 2rem;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ev in pending_events %}
+                        <tr>
+                            <td>{{ ev.title or ev.get("title") }}</td>
+                            <td>
+                                {% if ev.start_date or ev.get("start_date") %}
+                                    {{ (ev.start_date or ev.get("start_date"))|ap_datetime }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if ev.end_date or ev.get("end_date") %}
+                                    {{ (ev.end_date or ev.get("end_date"))|ap_datetime }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td>{{ ev.address or ev.get("address") }}</td>
+                            <td>{{ ev.event_type or ev.get("event_type") }}</td>
+                            <td>
+                                {% set name = ev.submitter_name or ev.get("submitter_name") %}
+                                {% set email = ev.submitter_email or ev.get("submitter_email") %}
+                                {{ name if name else "" }}{% if email %}<br><span class="subtext">{{ email }}</span>{% endif %}
+                            </td>
+                            <td style="white-space: nowrap;">
+                                {% set uid = ev.uid or ev.get("uid") %}
+                                <button class="button-primary js-accept" data-uid="{{ uid }}">Accept</button>
+                                <button class="button-secondary js-highlight" data-uid="{{ uid }}">Highlight</button>
+                                <button class="button-secondary js-reject" data-uid="{{ uid }}">Reject</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+</section>
+
+<div style="height: 2rem;"></div>
+
+<section class="section-container">
+    <div class="section-header">
+        <h2 style="margin-bottom: 0">Manually add an event</h2>
+    </div>
+
+    <div class="inner-container cu-admin">
+        <form id="manualAddForm" action="/admin/cu-calendar/dashboard/add-event" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+            {{ form.text_input(name="title", label="Title", required=true, placeholder="Event title") }}
+            {{ form.text_input(name="address", label="Address", required=true, placeholder="Street address") }}
+            {{ form.text_input(name="url", label="URL", required=false, placeholder="https://…", alt_type="url") }}
+            {{ form.text_input(name="event_type", label="Event type", required=false, placeholder="Category") }}
+            {{ form.textarea_input(name="description", label="Description", required=false) }}
+            {{ form.text_input(name="company_name", label="Company name", required=false) }}
+
+            <div class="form-row" id="formfield-start_date">
+                <div>
+                    <label for="start_date" class="field-label">Start Date & Time</label>
+                </div>
+                <input type="datetime-local" id="start_date" name="start_date" class="text-input">
+            </div>
+            <div class="form-row" id="formfield-end_date">
+                <div>
+                    <label for="end_date" class="field-label">End Date & Time</label>
+                </div>
+                <input type="datetime-local" id="end_date" name="end_date" class="text-input">
+            </div>
+
+            <div class="form-row" id="formfield-images">
+                <div>
+                    <label class="field-label">Images</label>
+                    <p class="subtext">Upload images (optional).</p>
+                </div>
+                <input type="file" id="images" name="images" accept="image/*" multiple>
+            </div>
+
+            {{ form.text_input(name="submitter_name", label="Submitter name", required=false) }}
+            {{ form.text_input(name="submitter_email", label="Submitter email", required=false, alt_type="email") }}
+
+            {{ form.switch_input(name="highlight", label="Highlight", subtext="Highlighted events may be emphasized on the map.") }}
+
+            {{ form.submit_button(text="Add event", label="manualAddSubmit") }}
+        </form>
+    </div>
+</section>
+
+<section class="section-container" style="margin-top: 2rem;">
+    <div class="section-header">
+        <h2 style="margin-bottom: 0">Add a Google Calendar source</h2>
+    </div>
+
+    <div class="inner-container cu-admin">
+        <form id="addSourceForm" action="/admin/cu-calendar/source/add" method="post" enctype="application/x-www-form-urlencoded">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            {{ form.text_input(name="gcal_url", label="Google Calendar URL", required=true, placeholder="https://calendar.google.com/…", subtext="Embed URL or public iCal URL.", alt_type="url") }}
+            {{ form.text_input(name="company_name", label="Company name", required=false) }}
+            {{ form.submit_button(text="Import", label="addSourceSubmit") }}
+        </form>
+    </div>
+</section>
+
+<script>
+    let autocomplete;
+
+    function initAutocomplete() {
+        const addressInput = document.querySelector('input[name="address"]');
+        
+        if (addressInput) {
+            autocomplete = new google.maps.places.Autocomplete(addressInput, {
+                types: ['geocode'], 
+            });
+            addressInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                }
+            });
+        }
+    }
+    async function postAction(url) {
+        const body = new URLSearchParams();
+        body.set("_csrf_token", "{{ csrf_token() }}");
+        const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: body.toString(),
+        });
+        return res;
+    }
+
+    async function acceptEvent(uid) {
+        const res = await postAction(`/admin/cu-calendar/${uid}/accept`);
+        if (res.ok) window.location.reload();
+        else alert(await res.text());
+    }
+
+    async function rejectEvent(uid) {
+        const res = await postAction(`/admin/cu-calendar/${uid}/reject`);
+        if (res.ok) window.location.reload();
+        else alert(await res.text());
+    }
+
+    async function highlightEvent(uid) {
+        const res = await postAction(`/admin/cu-calendar/${uid}/highlight`);
+        if (res.ok) window.location.reload();
+        else alert(await res.text());
+    }
+
+    document.querySelectorAll(".js-accept").forEach((btn) => {
+        btn.addEventListener("click", () => acceptEvent(btn.dataset.uid));
+    });
+    document.querySelectorAll(".js-highlight").forEach((btn) => {
+        btn.addEventListener("click", () => highlightEvent(btn.dataset.uid));
+    });
+    document.querySelectorAll(".js-reject").forEach((btn) => {
+        btn.addEventListener("click", () => rejectEvent(btn.dataset.uid));
+    });
+
+    // Handle the Manual Add Event form submission
+    document.getElementById("manualAddForm").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+
+        try {
+            const res = await fetch(form.action, {
+                method: "POST",
+                body: formData 
+            });
+
+            if (res.ok) {
+                alert("Event added successfully!");
+                form.reset();
+                window.location.reload();
+            } else {
+                const data = await res.json();
+                alert(data.error || "Failed to add event.");
+            }
+        } catch (err) {
+            console.error("Submission error:", err);
+            alert("An error occurred while communicating with the server.");
+        }
+    });
+
+    // Handle the Google Calendar Import form submission
+    document.getElementById("addSourceForm").addEventListener("submit", async function(e) {
+        e.preventDefault(); 
+        const form = e.target;
+        const formData = new FormData(form);
+
+        try {
+            const res = await fetch(form.action, {
+                method: "POST",
+                body: new URLSearchParams(formData)
+            });
+
+            if (res.ok) {
+                alert("Calendar source imported successfully!");
+                form.reset();
+                window.location.reload();
+            } else {
+                const data = await res.json();
+                alert(data.error || "Failed to import calendar.");
+            }
+        } catch (err) {
+            console.error("Import error:", err);
+            alert("An error occurred while importing.");
+        }
+    });
+</script>
+{% endblock %}

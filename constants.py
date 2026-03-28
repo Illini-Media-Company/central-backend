@@ -17,6 +17,7 @@ GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", None)
 GOOGLE_PROJECT_ID = os.environ.get("DATASTORE_PROJECT_ID", None)
 GOOGLE_MAP_API = os.environ.get("GOOGLE_MAP_API", None)
 FOOD_TRUCK_MAPS_ID = os.environ.get("FOOD_TRUCK_MAPS_ID", None)
+BACKEND_GOOGLE_MAP_API = os.environ.get("BACKEND_GOOGLE_MAP_API", None)
 
 # Google Analytics information
 IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID = "G-6V6FSKGBDZ"
@@ -75,6 +76,9 @@ OV_ENDPOINT = os.environ.get("OV_ENDPOINT", None)
 
 RETOOL_API_KEY = os.environ.get("RETOOL_API_KEY", None)
 
+# GSC Budket ID
+GCS_BUCKET_NAME = "cu-calendar-images"
+
 # Google Calendar IDs
 MAIN_IMC_GCAL_ID = (
     "illinimedia.com_8cati95103kg5o3h8i11hmu0lo@group.calendar.google.com"
@@ -92,6 +96,19 @@ WPGU_OFFICE_RESOURCE_GCAL_ID = (
     "c_188ejl7c2di5uisrjp7qdcu8f7pto@resource.calendar.google.com"
 )
 WPGU_ONAIR_GCAL_ID = "c_b888554deb36a74a61aea32bac28ab500ade0003cd2ae61085354e07c2fa0fa0@group.calendar.google.com"
+
+# CU Calendar public event options
+PUBLIC_EVENT_OPTIONS = {
+    "categories": [
+        "Music",
+        "Food",
+        "Arts",
+        "Sports",
+        "Community",
+        "Education",
+    ]
+}
+DEFAULT_PUBLIC_EVENT_CATEGORY = "Community"
 
 ################################################################################
 ### EMPLOYEE MANAGEMENT SYSTEM #################################################
@@ -280,6 +297,8 @@ WPGU_NEWS_ID = "C08KCADDCD8" if ENV == "prod" else "C06FXML7BHR"
 WPGU_ON_AIR_ID = "C06BRUCMUG6" if ENV == "prod" else "C06FR61KDJS"
 WPGU_PRODUCTION_ID = "C09ET1PT762" if ENV == "prod" else "C06FXQXKJAE"
 WPGU_SPORTS_ID = "C09FRSTPVAL" if ENV == "prod" else "C09V8V4K5K8"
+
+CU_CALENDAR_ID = "" if ENV == "prod" else "C0AMKL402HE"
 
 PHOTO_REQUESTS_CHANNEL_ID = (
     "C09NCRWU8T1" if ENV == "dev" else "C09CJMTAYHW"
