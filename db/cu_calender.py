@@ -4,7 +4,7 @@ Database models and functions for the CU Calendar.
 Contains CalendarObject (public map events) and CalendarSource (linked Google Calendars),
 plus CRUD, approval workflow, geocoding-related helpers, and sync deduplication.
 
-Last modified by --- on ---
+Last modified by Cal Anderson on March 24, 2026
 """
 
 from google.cloud import ndb

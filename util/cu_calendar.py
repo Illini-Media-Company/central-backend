@@ -1,6 +1,6 @@
 """CU Calendar helpers: geocoding, GCS images, Google Calendar fetch/sync.
 
-Last modified by --- on ---
+Last modified by Cal Anderson on March 24, 2026
 """
 
 import os
