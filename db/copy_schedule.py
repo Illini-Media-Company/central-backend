@@ -1,7 +1,5 @@
 """
-db/copy_schedule.py
-
-Single source of truth for all NDB copy scheduler model definitions.
+Contains all NDB copy scheduler model definitions.
 """
 
 import datetime

@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
 from util.security import restrict_to
-from util.shift_utils import (
+from util.copy_schedule import (
     get_week_bounds,
     get_shifts_for_week,
     get_droppable_shifts_for_week,
@@ -23,10 +23,12 @@ from db import client as dbclient
 from constants import ALL_SCHEDULER_GROUPS
 from datetime import date, datetime, timedelta
 
+from views.copy_schedule_admin import copy_scheduler_routes
 
-shift_scheduler_routes = Blueprint(
-    "shift_scheduler_routes", __name__, url_prefix="/shift-scheduler"
-)
+
+# shift_scheduler_routes = Blueprint(
+#     "shift_scheduler_routes", __name__, url_prefix="/shift-scheduler"
+# )
 
 
 # Helper: build template context for a given week
@@ -98,8 +100,8 @@ def _build_week_context(reference_date: date = None):
 # Page route
 
 
-@shift_scheduler_routes.route("", methods=["GET"])
-@shift_scheduler_routes.route("/", methods=["GET"])
+# @copy_schedule_routes.route("", methods=["GET"])
+@copy_scheduler_routes.route("/me", methods=["GET"])
 @login_required
 @restrict_to(ALL_SCHEDULER_GROUPS)
 def scheduler():
@@ -113,13 +115,13 @@ def scheduler():
         reference_date = date.today()
 
     ctx = _build_week_context(reference_date)
-    return render_template("scheduler.html", **ctx)
+    return render_template("copy_schedule.html", **ctx)
 
 
 # API routes
 
 
-@shift_scheduler_routes.route("/api/drop", methods=["POST"])
+@copy_scheduler_routes.route("/me/api/drop", methods=["POST"])
 @login_required
 @restrict_to(ALL_SCHEDULER_GROUPS)
 def api_drop_shift():
@@ -136,7 +138,7 @@ def api_drop_shift():
     return jsonify({"status": "pending", "request_id": result["request_id"]})
 
 
-@shift_scheduler_routes.route("/api/swap", methods=["POST"])
+@copy_scheduler_routes.route("/me/api/swap", methods=["POST"])
 @login_required
 @restrict_to(ALL_SCHEDULER_GROUPS)
 def api_swap_shift():
@@ -163,7 +165,7 @@ def api_swap_shift():
     return jsonify({"status": "pending", "request_id": result["request_id"]})
 
 
-@shift_scheduler_routes.route("/api/add-slot", methods=["POST"])
+@copy_scheduler_routes.route("/me/api/add-slot", methods=["POST"])
 @login_required
 @restrict_to(ALL_SCHEDULER_GROUPS)
 def api_add_slot():
@@ -180,7 +182,7 @@ def api_add_slot():
         return jsonify({"status": "error", "message": result["reason"]}), 400
 
 
-@shift_scheduler_routes.route("/api/pickup", methods=["POST"])
+@copy_scheduler_routes.route("/me/api/pickup", methods=["POST"])
 @login_required
 @restrict_to(ALL_SCHEDULER_GROUPS)
 def api_pickup_shift():
@@ -197,7 +199,7 @@ def api_pickup_shift():
     return jsonify({"status": "picked_up"})
 
 
-@shift_scheduler_routes.route("/api/cancel-request", methods=["POST"])
+@copy_scheduler_routes.route("/me/api/cancel-request", methods=["POST"])
 @login_required
 @restrict_to(ALL_SCHEDULER_GROUPS)
 def api_cancel_request():

@@ -308,8 +308,8 @@ COPY_ADMIN_ACCESS_GROUPS = [
 ]
 
 # Google Groups for shift scheduler access control
-COPY_EDITOR_GROUPS = ["copy-editors"]
-SENIOR_COPY_EDITOR_GROUPS = ["senior-copy-editors"]
+COPY_EDITOR_GROUPS = ["di-staff-copy"]
+SENIOR_COPY_EDITOR_GROUPS = ["di-senior-copy"]
 COPY_CHIEF_GROUPS = ["copy-chief"]
 
 ALL_SCHEDULER_GROUPS = (

@@ -172,7 +172,7 @@
     const d = new Date(currentWeekStart + 'T00:00:00');
     d.setDate(d.getDate() + delta * 7);
     const iso = d.toISOString().split('T')[0];
-    window.location.href = '{{ url_for("shift_scheduler_routes.scheduler") }}?week=' + iso;
+    window.location.href = '{{ url_for("copy_scheduler_routes.scheduler") }}?week=' + iso;
   }
 
   function enterSelectionMode(mode, bannerText) {
@@ -262,7 +262,7 @@
       'Cancel'
     );
     if (confirmed) {
-      postJSON('{{ url_for("shift_scheduler_routes.api_pickup_shift") }}',
+      postJSON('{{ url_for("copy_scheduler_routes.api_pickup_shift") }}',
         { date: dateStr, hour: hour }
       ).then(data => {
         exitSelectionMode();
@@ -300,7 +300,7 @@
       'Cancel'
     );
     if (confirmed) {
-      postJSON('{{ url_for("shift_scheduler_routes.api_drop_shift") }}',
+      postJSON('{{ url_for("copy_scheduler_routes.api_drop_shift") }}',
         { date: sourceDate, hour: sourceHour }
       ).then(data => {
         if (data.status === 'error') {
@@ -352,7 +352,7 @@
   }
 
   function submitSwap(mode) {
-    postJSON('{{ url_for("shift_scheduler_routes.api_swap_shift") }}', {
+    postJSON('{{ url_for("copy_scheduler_routes.api_swap_shift") }}', {
       source_date: sourceDate,
       source_hour: sourceHour,
       target_date: targetDate,
@@ -381,7 +381,7 @@
   }
 
   function submitAdd(dateStr, hour) {
-    postJSON('{{ url_for("shift_scheduler_routes.api_add_slot") }}',
+    postJSON('{{ url_for("copy_scheduler_routes.api_add_slot") }}',
       { date: dateStr, hour: parseInt(hour) }
     ).then(() => {
       exitSelectionMode();
@@ -397,7 +397,7 @@
       'No, Keep'
     );
     if (confirmed) {
-      postJSON('{{ url_for("shift_scheduler_routes.api_cancel_request") }}',
+      postJSON('{{ url_for("copy_scheduler_routes.api_cancel_request") }}',
         { request_id: requestId }
       ).then(() => window.location.reload());
     }

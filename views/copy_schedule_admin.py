@@ -3,7 +3,7 @@ import datetime
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required
 
-from util.copy_scheduler_admin import (
+from util.copy_schedule_admin import (
     get_all_copy_editors,
     add_copy_editor,
     delete_copy_editor,
@@ -25,8 +25,8 @@ from constants import (
     SENIOR_COPY_EDITOR_GROUPS,
 )
 
-copy_admin_dashboard_routes = Blueprint(
-    "copy_admin_dashboard_routes", __name__, url_prefix="/copy-admin-dashboard"
+copy_scheduler_routes = Blueprint(
+    "copy_scheduler_routes", __name__, url_prefix="/copy-schedule"
 )
 
 
@@ -41,7 +41,7 @@ def _to_json_safe(obj):
     return obj
 
 
-@copy_admin_dashboard_routes.route("/admin", methods=["GET"])
+@copy_scheduler_routes.route("/admin", methods=["GET"])
 @login_required
 @restrict_to(COPY_ADMIN_ACCESS_GROUPS)
 def admin():
@@ -49,11 +49,14 @@ def admin():
     shifts = [_to_json_safe(s) for s in get_all_shifts()]
     shift_requests = [_to_json_safe(r) for r in get_all_shift_requests()]
     return render_template(
-        "copy_admin.html", editors=editors, shifts=shifts, shift_requests=shift_requests
+        "copy_schedule_admin.html",
+        editors=editors,
+        shifts=shifts,
+        shift_requests=shift_requests,
     )
 
 
-@copy_admin_dashboard_routes.route("/admin/editor", methods=["POST"])
+@copy_scheduler_routes.route("/admin/editor", methods=["POST"])
 @login_required
 @restrict_to(COPY_ADMIN_ACCESS_GROUPS)
 def create_editor():
@@ -65,7 +68,7 @@ def create_editor():
     return jsonify(editor), 201
 
 
-@copy_admin_dashboard_routes.route("/admin/editor/<int:uid>/delete", methods=["POST"])
+@copy_scheduler_routes.route("/admin/editor/<int:uid>/delete", methods=["POST"])
 @login_required
 @restrict_to(COPY_ADMIN_ACCESS_GROUPS)
 def delete_editor(uid):
@@ -73,7 +76,7 @@ def delete_editor(uid):
     return jsonify({"ok": True})
 
 
-@copy_admin_dashboard_routes.route("/admin/editor/<int:uid>/update", methods=["POST"])
+@copy_scheduler_routes.route("/admin/editor/<int:uid>/update", methods=["POST"])
 @login_required
 @restrict_to(COPY_ADMIN_ACCESS_GROUPS)
 def update_editor(uid):
@@ -87,7 +90,7 @@ def update_editor(uid):
     return jsonify(editor)
 
 
-@copy_admin_dashboard_routes.route("/admin/shift", methods=["POST"])
+@copy_scheduler_routes.route("/admin/shift", methods=["POST"])
 @login_required
 @restrict_to(COPY_ADMIN_ACCESS_GROUPS)
 def create_shift():
@@ -108,7 +111,7 @@ def create_shift():
     return jsonify(_to_json_safe(shift)), 201
 
 
-@copy_admin_dashboard_routes.route("/admin/shift/<uid>/delete", methods=["POST"])
+@copy_scheduler_routes.route("/admin/shift/<uid>/delete", methods=["POST"])
 @login_required
 @restrict_to(COPY_ADMIN_ACCESS_GROUPS)
 def delete_shift_route(uid):
@@ -116,7 +119,7 @@ def delete_shift_route(uid):
     return jsonify({"ok": True})
 
 
-@copy_admin_dashboard_routes.route("/admin/shift/<uid>/update", methods=["POST"])
+@copy_scheduler_routes.route("/admin/shift/<uid>/update", methods=["POST"])
 @login_required
 @restrict_to(COPY_ADMIN_ACCESS_GROUPS)
 def update_shift_route(uid):
@@ -138,14 +141,14 @@ def update_shift_route(uid):
     return jsonify(_to_json_safe(shift))
 
 
-@copy_admin_dashboard_routes.route("/admin/shifts", methods=["GET"])
+@copy_scheduler_routes.route("/admin/shifts", methods=["GET"])
 @login_required
 @restrict_to(COPY_ADMIN_ACCESS_GROUPS)
 def get_shifts():
     return jsonify([_to_json_safe(s) for s in get_all_shifts()])
 
 
-@copy_admin_dashboard_routes.route("/admin/request/<int:uid>/approve", methods=["POST"])
+@copy_scheduler_routes.route("/admin/request/<int:uid>/approve", methods=["POST"])
 @login_required
 @restrict_to(COPY_ADMIN_ACCESS_GROUPS)
 def approve_request(uid):
@@ -153,7 +156,7 @@ def approve_request(uid):
     return jsonify({"ok": True})
 
 
-@copy_admin_dashboard_routes.route("/admin/request/<int:uid>/deny", methods=["POST"])
+@copy_scheduler_routes.route("/admin/request/<int:uid>/deny", methods=["POST"])
 @login_required
 @restrict_to(COPY_ADMIN_ACCESS_GROUPS)
 def deny_request(uid):
@@ -161,7 +164,7 @@ def deny_request(uid):
     return jsonify({"ok": True})
 
 
-@copy_admin_dashboard_routes.route("/admin/sync-from-groups", methods=["POST"])
+@copy_scheduler_routes.route("/admin/sync-from-groups", methods=["POST"])
 @login_required
 @restrict_to(COPY_ADMIN_ACCESS_GROUPS)
 def sync_from_groups():

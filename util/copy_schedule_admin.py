@@ -15,7 +15,7 @@ from google.cloud import ndb
 
 from db.copy_schedule import CopyEditorAdmin, ShiftSlot, ShiftRequest
 from db import client
-from util.shift_utils import (
+from util.copy_schedule import (
     SHIFT_START_HOURS,
     get_week_bounds,
     _slot_key_name,

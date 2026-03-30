@@ -537,7 +537,7 @@ async function syncFromGroups() {
     btn.disabled = true;
     btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Syncing...';
     try {
-        const res = await fetch('/copy-admin-dashboard/admin/sync-from-groups', {
+        const res = await fetch('/copy-schedule/admin/sync-from-groups', {
             method: 'POST',
             headers: { 'X-CSRFToken': CSRF_TOKEN },
         });
@@ -692,8 +692,8 @@ async function submitShiftModal(e) {
     body.append('editor_name_2', ed2 ? ed2.name  : '');
 
     const url = editingShiftUid
-        ? `/copy-admin-dashboard/admin/shift/${editingShiftUid}/update`
-        : `/copy-admin-dashboard/admin/shift`;
+        ? `/copy-schedule/admin/shift/${editingShiftUid}/update`
+        : `/copy-schedule/admin/shift`;
 
     let resp;
     try {
@@ -731,7 +731,7 @@ async function deleteCurrentShift() {
 
     let resp;
     try {
-        resp = await fetch(`/copy-admin-dashboard/admin/shift/${uid}/delete`, {
+        resp = await fetch(`/copy-schedule/admin/shift/${uid}/delete`, {
             method: 'POST',
             headers: { 'X-CSRFToken': CSRF_TOKEN },
         });
@@ -783,8 +783,8 @@ async function submitEditorModal(e) {
     body.append('category', document.getElementById('editor-category').value);
 
     const url = editingEditorUid !== null
-        ? `/copy-admin-dashboard/admin/editor/${editingEditorUid}/update`
-        : `/copy-admin-dashboard/admin/editor`;
+        ? `/copy-schedule/admin/editor/${editingEditorUid}/update`
+        : `/copy-schedule/admin/editor`;
 
     let resp;
     try {
@@ -853,7 +853,7 @@ async function deleteEditorFromDetail() {
 
     let resp;
     try {
-        resp = await fetch(`/copy-admin-dashboard/admin/editor/${uid}/delete`, {
+        resp = await fetch(`/copy-schedule/admin/editor/${uid}/delete`, {
             method: 'POST',
             headers: { 'X-CSRFToken': CSRF_TOKEN },
         });
@@ -872,14 +872,14 @@ async function deleteEditorFromDetail() {
 
 // ─── Approve / Deny Requests ──────────────────────────────────────────────────
 async function refreshShifts() {
-    const resp = await fetch('/copy-admin-dashboard/admin/shifts');
+    const resp = await fetch('/copy-schedule/admin/shifts');
     if (resp.ok) shifts = await resp.json();
 }
 
 async function approveRequest(uid) {
     let resp;
     try {
-        resp = await fetch(`/copy-admin-dashboard/admin/request/${uid}/approve`, {
+        resp = await fetch(`/copy-schedule/admin/request/${uid}/approve`, {
             method: 'POST',
             headers: { 'X-CSRFToken': CSRF_TOKEN },
         });
@@ -897,7 +897,7 @@ async function approveRequest(uid) {
 async function denyRequest(uid) {
     let resp;
     try {
-        resp = await fetch(`/copy-admin-dashboard/admin/request/${uid}/deny`, {
+        resp = await fetch(`/copy-schedule/admin/request/${uid}/deny`, {
             method: 'POST',
             headers: { 'X-CSRFToken': CSRF_TOKEN },
         });
