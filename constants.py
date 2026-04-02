@@ -299,10 +299,10 @@ COURTESY_REQUESTS_CHANNEL_ID = (
 
 # These are left empty as per the spec
 GRAPHIC_REQUESTS_CHANNEL_ID = (
-    "" if ENV == "prod" else "C0ALA44EJRY"
+    "C0ALA44EJRY" if ENV == "dev" else "C0ALA44EJRY"
 )  # di_graphics — Channel that all graphic requests get sent to
 AD_REQUESTS_CHANNEL_ID = (
-    "" if ENV == "prod" else "C0ALA49V95G"
+    "C0ALA49V95G" if ENV == "dev" else "C0ALA49V95G"
 )  # #imc_ad_design — Channel that all ad design graphic requests get sent to
 
 SOCIAL_MEDIA_POSTS_CHANNEL_ID = (

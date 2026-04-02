@@ -145,11 +145,12 @@
                     {% endif %}                    
                 </td>
                 <td>{{ r.dueDate|ap_date }} {% if r.lateSubmit %}<span title="Submitted less than 48 hours in advance." style="cursor: default; margin-left: 0.25rem;">🕐</span>{% endif %}</td>
-                <td>{{ r.graphicType }}</td>
-                <td>{{ r.storyheadline }}</td>
-                <td>{{ r.storyDetails }}</td>
-                <td>{{ r.illustrationDescription }}</td>
-                <td>{{ r.illustrationPurpose }}</td>
+                <td>{{ r.requestType }}</td>
+                <td>{{ r.memo }}</td>
+                <td>{{ r.specificDetails }}</td>
+                <td>{{ r.illustrationDescription or "None" }}</td>
+                <td>{{ r.moreInfo }}</td>
+                <td>{{ r.destination }}</td>
                 <td>
                     {% if r.referenceURL %}
                         <a href="{{ r.referenceURL }}" target="_blank">Link</a>

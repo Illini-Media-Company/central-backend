@@ -41,6 +41,7 @@ class GraphicRequest(ndb.Model):
     # Request details
     memo = ndb.StringProperty(required=True)  # short headline / blurb
     specificDetails = ndb.StringProperty(required=True)
+    illustrationDescription = ndb.StringProperty(required=False)
     referenceURL = ndb.StringProperty(required=False)
     dueDate = ndb.DateProperty(required=True)
     moreInfo = ndb.StringProperty(required=False)
@@ -55,7 +56,7 @@ class GraphicRequest(ndb.Model):
     pressPass = ndb.BooleanProperty(required=False)
     pressPassRequester = ndb.StringProperty(required=False)
 
-    # Designer/Photographer that claimed the request 
+    # Designer/Photographer that claimed the request
     # (Leaving as 'photog' to maintain parity with existing UI/Slack integrations)
     photogEmail = ndb.StringProperty()
     photogName = ndb.StringProperty()
@@ -92,6 +93,7 @@ def add_graphic_request(
     moreInfo,
     requestType,
     specificEvent,
+    illustrationDescription,
     eventLocation,
     pressPass,
     pressPassRequester,
@@ -151,6 +153,7 @@ def add_graphic_request(
             eventDateTime=eventDateTime,
             eventLocation=eventLocation,
             pressPass=pressPass,
+            illustrationDescription=illustrationDescription,
             pressPassRequester=pressPassRequester,
         )
         entity.put()
@@ -161,7 +164,9 @@ def add_graphic_request(
 def get_all_graphic_requests():
     """Returns all graphic requests, newest first."""
     with client.context():
-        requests = GraphicRequest.query().order(-GraphicRequest.submissionTimestamp).fetch()
+        requests = (
+            GraphicRequest.query().order(-GraphicRequest.submissionTimestamp).fetch()
+        )
 
     return [request.to_dict() for request in requests]
 
@@ -181,7 +186,9 @@ def get_unclaimed_graphic_requests():
 def get_claimed_graphic_requests():
     """Return all claimed requests (ordered by submission date)."""
     with client.context():
-        requests = GraphicRequest.query().order(-GraphicRequest.submissionTimestamp).fetch()
+        requests = (
+            GraphicRequest.query().order(-GraphicRequest.submissionTimestamp).fetch()
+        )
 
     return [
         request.to_dict() for request in requests if request.claimTimestamp is not None
@@ -191,7 +198,9 @@ def get_claimed_graphic_requests():
 def get_completed_graphic_requests():
     """Return all completed requests (ordered by submission date)."""
     with client.context():
-        requests = GraphicRequest.query().order(-GraphicRequest.submissionTimestamp).fetch()
+        requests = (
+            GraphicRequest.query().order(-GraphicRequest.submissionTimestamp).fetch()
+        )
 
     return [
         request.to_dict()
@@ -345,7 +354,8 @@ def get_id_from_slack_claim_ts(ch, thread_ts):
     """
     with client.context():
         req = GraphicRequest.query(
-            GraphicRequest.claimSlackChannel == ch, GraphicRequest.claimSlackTs == thread_ts
+            GraphicRequest.claimSlackChannel == ch,
+            GraphicRequest.claimSlackTs == thread_ts,
         ).get()
 
         if req:

@@ -18,7 +18,7 @@ from util.slackbots.general import (
     dm_user_by_email,
     dm_channel_by_id,
 )
-from db.graphic_request import (   # GOING TO NEED A DATABASE TO GET FROM
+from db.graphic_request import (  # GOING TO NEED A DATABASE TO GET FROM
     claim_graphic_request,
     complete_graphic_request,
     update_graphic_request,
@@ -27,7 +27,7 @@ from db.graphic_request import (   # GOING TO NEED A DATABASE TO GET FROM
 )
 from util.helpers.ap_datetime import ap_daydate, ap_daydatetime, ap_datetime
 
-from constants import (              # GOING TO NEED ID's IN CONSTANTS TO GET FROM
+from constants import (  # GOING TO NEED ID's IN CONSTANTS TO GET FROM
     GRAPHIC_REQUESTS_CHANNEL_ID,
     AD_REQUESTS_CHANNEL_ID,
 )
@@ -168,13 +168,13 @@ def post_graphic_blocks(
     if request_type == "advertisement":
         ch = AD_REQUESTS_CHANNEL_ID
     else:
-        ch = GRAPHIC_REQUESTS_CHANNEL_ID 
+        ch = GRAPHIC_REQUESTS_CHANNEL_ID
 
     if not ch:
         return {"ok": False, "error": "graphic_channel_not_configured"}
-        
+
     final_blocks = ensure_claim_button(blocks, request_id=request_id)
-    
+
     try:
         res = app.client.chat_postMessage(
             token=SLACK_BOT_TOKEN,
@@ -265,7 +265,9 @@ def _handle_claim_generic(ack, body, logger):
         try:
             claim_request(uid=int(request_id), name=claimer_name, email=claimer_email)
         except Exception as e:
-            logger.error(f"[graphic_claim] DB claim_request failed for {request_id}: {e}")
+            logger.error(
+                f"[graphic_claim] DB claim_request failed for {request_id}: {e}"
+            )
 
         # ephemeral confirmation to claimer
         try:

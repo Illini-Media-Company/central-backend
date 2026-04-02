@@ -140,11 +140,12 @@ def api_submit():
     required = [
         "submitterEmail",
         "submitterName",
-        "destination",
-        "memo",
-        "specificDetails",
+        "department",
+        "storyheadline",
+        "storyDetails",
         "dueDate",
-        "requestType",
+        "publishLocation",
+        "graphicType",
     ]
     for field in required:
         if field not in data or data[field] == "" or data[field] is None:
@@ -156,7 +157,24 @@ def api_submit():
     del data["_csrf_token"]
 
     try:
-        created = add_graphic_request(**data)
+        created = add_graphic_request(
+            submitterEmail=data["submitterEmail"],
+            submitterName=data["submitterName"],
+            destination=data["publishLocation"],
+            department=data["department"],
+            memo=data["storyheadline"],
+            specificDetails=data["storyDetails"],
+            referenceURL=data.get("referenceURL", ""),
+            illustrationDescription=data.get("illustrationDescription", ""),
+            dueDate=data["dueDate"],
+            moreInfo=data.get("illustrationPurpose", ""),
+            requestType=data["graphicType"],
+            specificEvent=False,
+            eventLocation="",
+            pressPass=False,
+            pressPassRequester="",
+            eventDateTime=None,
+        )
 
         # Build the Slack blocks from the saved record
         blocks, fallback_text = build_blocks_from_request(created)
@@ -231,8 +249,8 @@ def api_claim(uid):
     """
     print(f"Claiming graphic request {uid}...")
     data = request.get_json() or {}
-    name = data.get("photogName")
-    email = data.get("photogEmail")
+    name = data.get("graphicgName")
+    email = data.get("graphicgEmail")
     if not name or not email:
         print("Missing photogName or photogEmail.")
         return jsonify({"error": "photogName and photogEmail required"}), 400
