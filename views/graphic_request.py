@@ -1,0 +1,352 @@
+"""
+Flask routes for graphic request management.
+
+Handles web interface and API endpoints for creating, viewing, claiming,
+and completing graphic requests.
+
+Adapted from graphic_requests.py
+"""
+
+from flask import Blueprint, render_template, request, jsonify
+from flask_login import login_required
+from util.security import restrict_to
+from datetime import datetime
+
+
+# CHECK THE UPDATED SLACK BOT HELPERS
+from util.slackbots.graphic_request import (
+    build_blocks_from_request,
+    dm_user_by_email,
+    post_graphic_blocks,
+    claim_request,
+    complete_request,
+    delete_request,
+)
+
+
+from db.graphic_request import (
+    add_graphic_request,
+    get_all_graphic_requests,
+    update_graphic_request,
+    get_graphic_request_by_uid,
+    get_completed_graphic_requests,
+    get_inprogress_graphic_requests,
+    get_claimed_graphic_requests,
+    get_unclaimed_graphic_requests,
+    get_claimed_graphic_requests_for_user,
+    get_completed_graphic_requests_for_user,
+    get_submitted_graphic_requests_for_user,
+)
+
+graphic_request_routes = Blueprint(
+    "graphic_request_routes", __name__, url_prefix="/graphic-requests"
+)
+
+
+# /dashboard — render graphic requests based on selection (defaults to all requests)
+@graphic_request_routes.route("/dashboard/<selection>", methods=["GET"])
+@graphic_request_routes.route(
+    "/dashboard", defaults={"selection": "all"}, methods=["GET"]
+)
+@login_required
+@restrict_to(
+    [
+        "student-managers",
+        "di-section-editors",
+        "di-staff-graphics",
+        "imc-staff-webdev",
+        "professional-staff",
+    ]
+)
+def dashboard(selection=None):
+    """
+    Renders the graphic requests dashboard with filtered view.
+
+    Selection can be: all, completed, in-progress, claimed, unclaimed,
+    claimed-email, completed-email, or submitted-email
+    """
+    print(f'Fetching "{selection}" graphic requests for dashboard...')
+
+    # Fetch the appropriate requests based on selection
+    # Format the selection name to display on the dashboard
+    match selection:
+        case "completed":
+            requests = get_completed_graphic_requests()
+            selection_name = "Completed Requests"
+        case "in-progress":
+            requests = get_inprogress_graphic_requests()
+            selection_name = "In-Progress Requests"
+        case "claimed":
+            requests = get_claimed_graphic_requests()
+            selection_name = "Claimed Requests"
+        case "unclaimed":
+            requests = get_unclaimed_graphic_requests()
+            selection_name = "Unclaimed Requests"
+        case "claimed-email":
+            email = request.args.get("email")
+            requests = get_claimed_graphic_requests_for_user(email)
+            selection_name = f"Requests Claimed by {email}"
+        case "completed-email":
+            email = request.args.get("email")
+            requests = get_completed_graphic_requests_for_user(email)
+            selection_name = f"Requests Completed by {email}"
+        case "submitted-email":
+            email = request.args.get("email")
+            requests = get_submitted_graphic_requests_for_user(email)
+            selection_name = f"Requests Submitted by {email}"
+        case "all":
+            requests = get_all_graphic_requests()
+            selection_name = "All Requests"
+        case _:
+            return "Invalid request selection", 404
+    # CHECK less than 48 hours rule is used here also or not
+    for req in requests:
+        if req["dueDate"] and req["submissionTimestamp"]:
+            due_dt = datetime.combine(req["dueDate"], datetime.max.time())
+
+            if req["submissionTimestamp"].tzinfo is not None:
+                due_dt = due_dt.replace(tzinfo=req["submissionTimestamp"].tzinfo)
+
+            diff = due_dt - req["submissionTimestamp"]
+            req["lateSubmit"] = diff.total_seconds() < 48 * 60 * 60
+
+    print("Fetched.")
+    return render_template(
+        "graphic-req/graphic_req_sheet.html",
+        requests=requests,
+        selection=selection_name,
+    )
+
+
+# /form — form to submit a request
+@graphic_request_routes.route("/form", methods=["GET"])
+@login_required
+def form():
+    """Renders the graphic request submission form."""
+    return render_template("graphic-req/graphic_req_form.html")
+
+
+# /api/submit — create new request
+@graphic_request_routes.route("/api/submit", methods=["POST"])
+@login_required
+def api_submit():
+    """
+    Creates a new graphic request and posts it to Slack.
+
+    Validates required fields, saves to database, sends DM to submitter,
+    and posts to the graphic channel.
+    """
+    data = request.get_json() or {}
+    required = [
+        "submitterEmail",
+        "submitterName",
+        "department",
+        "storyheadline",
+        "storyDetails",
+        "dueDate",
+        "publishLocation",
+        "graphicType",
+    ]
+    for field in required:
+        if field not in data or data[field] == "" or data[field] is None:
+            return jsonify({"error": "missing required fields"}), 400
+
+    print("All required fields present, submitting graphic request...")
+
+    # Remove the CSRF token from the JSON to pass to the function
+    del data["_csrf_token"]
+
+    try:
+        created = add_graphic_request(
+            submitterEmail=data["submitterEmail"],
+            submitterName=data["submitterName"],
+            destination=data["publishLocation"],
+            department=data["department"],
+            memo=data["storyheadline"],
+            specificDetails=data["storyDetails"],
+            referenceURL=data.get("referenceURL", ""),
+            illustrationDescription=data.get("illustrationDescription", ""),
+            dueDate=data["dueDate"],
+            moreInfo=data.get("illustrationPurpose", ""),
+            requestType=data["graphicType"],
+            specificEvent=False,
+            eventLocation="",
+            pressPass=False,
+            pressPassRequester="",
+            eventDateTime=None,
+        )
+
+        # Build the Slack blocks from the saved record
+        blocks, fallback_text = build_blocks_from_request(created)
+
+        # DM the requester a copy (always)
+        try:
+            dm_user_by_email(
+                email=created["submitterEmail"],
+                text="I sent your request to the graphics staff! I'll also send you updates, like when it's claimed or completed! A copy of your submission:",
+            )
+            res = dm_user_by_email(
+                email=created["submitterEmail"],
+                text=fallback_text,
+                blocks=blocks,
+            )
+
+            # If posting succeeded, store channel + ts so we can update later
+            if isinstance(res, dict) and res.get("ok"):
+                try:
+                    update_graphic_request(
+                        uid=int(created["uid"]),
+                        submitSlackChannel=res.get("channel"),
+                        submitSlackTs=res.get("ts"),
+                    )
+
+                except Exception as _e:
+                    print(f"[graphic_submit] storing slack ids failed: {_e}")
+                    return {"ok": False, "error": "no_recipient"}
+        except Exception as e:
+            print(f"[graphic_submit] DM failed: {e}")
+
+        # Post to the photo channel
+        try:
+            # CHECK what functions it takes
+            res = post_graphic_blocks(
+                req=created,
+                blocks=blocks,
+                request_id=str(created["uid"]),
+                fallback_text=fallback_text,
+            )
+            # If posting succeeded, store channel + ts so we can update later
+            if isinstance(res, dict) and res.get("ok"):
+                try:
+                    update_graphic_request(
+                        uid=int(created["uid"]),
+                        slackChannel=res.get("channel"),
+                        slackTs=res.get("ts"),
+                        status="submitted",
+                    )
+
+                except Exception as _e:
+                    print(f"[graphic_submit] storing slack ids failed: {_e}")
+
+        except Exception as e:
+            print(f"[graphic_submit] Channel post failed: {e}")
+
+        return jsonify({"message": "submitted", "request": created}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+# /api/<uid>/claim — claim request
+@graphic_request_routes.route("/api/<uid>/claim", methods=["POST"])
+@login_required
+@restrict_to(["di-staff-graphics", "imc-staff-webdev"])
+def api_claim(uid):
+    """
+    Claims a graphic request.
+
+    Requires photogName and photogEmail in request body.
+    """
+    print(f"Claiming graphic request {uid}...")
+    data = request.get_json() or {}
+    name = data.get("graphicgName")
+    email = data.get("graphicgEmail")
+    if not name or not email:
+        print("Missing photogName or photogEmail.")
+        return jsonify({"error": "photogName and photogEmail required"}), 400
+
+    res, status = claim_request(uid=int(uid), name=name, email=email)
+    return jsonify(res), status
+
+
+# /api/<uid>/complete — complete with Drive URL
+@graphic_request_routes.route("/api/<uid>/complete", methods=["POST"])
+@login_required
+@restrict_to(["di-staff-graphics", "imc-staff-webdev"])
+def api_complete(uid):
+    """
+    Marks a graphic request as complete with a Google Drive URL.
+
+    Requires driveURL in request body.
+    """
+    data = request.get_json() or {}
+    driveURL = data.get("driveURL")
+    if not driveURL:
+        return jsonify({"error": "driveURL required"}), 400
+
+    res, status = complete_request(uid=int(uid), driveURL=driveURL)
+    return jsonify(res), status
+
+
+# /api/<uid>/remove — delete a request
+# CHECK to make sure this is valid to do
+@graphic_request_routes.route("/api/<uid>/remove", methods=["POST"])
+@login_required
+@restrict_to(["graphics", "imc-staff-webdev"])
+def api_remove(uid):
+    """Deletes a graphic request by UID."""
+
+    res, status = delete_request(uid=int(uid))
+    return jsonify(res), status
+
+
+# /api/<uid>/modify — update an existing request
+@graphic_request_routes.route("/api/<uid>/modify", methods=["POST"])
+@login_required
+@restrict_to(["graphics", "imc-staff-webdev"])
+def api_modify(uid):
+    """Updates fields on an existing graphic request."""
+    data = request.get_json() or {}
+
+    if data:
+        # Remove the CSRF token from the JSON to pass to the function
+        del data["_csrf_token"]
+
+        updated = update_graphic_request(uid=int(uid), **data)
+        if not updated:
+            return jsonify({"error": "not found or no changes"}), 400
+        return jsonify({"message": "updated", "request": updated}), 200
+
+    return jsonify({"error": "no changes"}), 400
+
+
+# —————————————————————————————————————————————————————————————————————— #
+
+
+# /api/<uid>/get — get a specific request
+@graphic_request_routes.route("/api/<uid>/get", methods=["GET"])
+@login_required
+@restrict_to(["di-staff-graphics", "imc-staff-webdev"])
+def api_get(uid):
+    """Fetches a single graphic request by UID."""
+    req = get_graphic_request_by_uid(int(uid))
+    if not req:
+        return "Request not found.", 400
+    return req, 200
+
+
+# /api/fetch/all — get all requests
+@graphic_request_routes.route("/api/fetch/all", methods=["GET"])
+@login_required
+def api_fetch_all():
+    """Fetches all graphic requests."""
+    requests = get_all_graphic_requests()
+    if not requests:
+        return "Requests not found.", 400
+    return requests, 200
+
+
+# /api/fetch/submitted/<email> — get all requests submitted by a user with specified email
+@graphic_request_routes.route("/api/fetch/submitted/<email>", methods=["GET"])
+@login_required
+def api_fetch_submitted_email(email):
+    """Fetches all graphic requests submitted by a specific user email."""
+    print(f"Fetching submitted graphic requests for {email}...")
+    requests = get_submitted_graphic_requests_for_user(email)
+
+    return render_template(
+        "graphic-req/graphic_req_sheet.html",
+        requests=requests,
+        selection="Your Requests",
+        hide_extras=True,
+    )

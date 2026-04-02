@@ -125,6 +125,7 @@ from util.helpers.email_to_slackid import email_to_slackid
 from util.all_tools import format_restricted_groups
 import util.slackbots.employee_agreement_slackbot
 import util.slackbots.photo_request
+import util.slackbots.graphic_request
 import util.slackbots.socials_slackbot
 import util.slackbots.knowledge_slackbot
 from util.helpers.ap_datetime import (
@@ -163,6 +164,7 @@ from views.food_truck import food_truck_routes
 from views.employee_agreement import employee_agreement_routes
 from views.rotate_tv import rotate_tv_routes
 from views.photo_request import photo_request_routes
+from views.graphic_request import graphic_request_routes
 from views.di_social_poster import di_social_poster_routes
 from views.employee_management import ems_routes
 from views.employee_management import get_ems_brand_image_url
@@ -203,6 +205,7 @@ app.register_blueprint(food_truck_routes)
 app.register_blueprint(employee_agreement_routes)
 app.register_blueprint(rotate_tv_routes)
 app.register_blueprint(photo_request_routes)
+app.register_blueprint(graphic_request_routes)
 app.register_blueprint(di_social_poster_routes)
 app.register_blueprint(ems_routes)
 logging.info("Done registering blueprints.")
