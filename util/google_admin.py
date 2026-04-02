@@ -118,7 +118,7 @@ def get_group_members(group_email: str) -> list[dict]:
     Returns:
         `list[dict]`: List of member dicts with 'email' and 'displayName' keys
     """
-    creds = get_admin_creds(MEMBER_SCOPE)
+    creds = get_admin_creds(MEMBER_SCOPE + [USER_SCOPE])
     members = []
 
     with build("admin", "directory_v1", credentials=creds) as service:
@@ -127,12 +127,18 @@ def get_group_members(group_email: str) -> list[dict]:
             response = request.execute()
             for m in response.get("members", []):
                 if m.get("type") == "USER":
-                    members.append(
-                        {
-                            "email": m.get("email", ""),
-                            "displayName": m.get("displayName") or m.get("email", ""),
-                        }
-                    )
+                    email = m.get("email", "")
+                    try:
+                        user = service.users().get(userKey=email).execute()
+                        name_obj = user.get("name", {})
+                        display_name = (
+                            name_obj.get("fullName")
+                            or f"{name_obj.get('givenName', '')} {name_obj.get('familyName', '')}".strip()
+                            or email
+                        )
+                    except Exception:
+                        display_name = email
+                    members.append({"email": email, "displayName": display_name})
             request = service.members().list_next(request, response)
 
     return members

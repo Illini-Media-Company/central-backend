@@ -1,0 +1,7 @@
+{% macro email_to_name_map(editors) -%}
+{
+  {%- for e in editors -%}
+  {{ e.email | tojson }}: {{ (e.email | to_user_name or e.name) | tojson }}{% if not loop.last %},{% endif %}
+  {%- endfor %}
+}
+{%- endmacro %}

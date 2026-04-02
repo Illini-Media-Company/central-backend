@@ -12,11 +12,14 @@ from util.copy_schedule_admin import (
     add_shift,
     delete_shift,
     update_shift,
+    get_shift_by_uid,
     get_all_shift_requests,
     approve_shift_request,
     deny_shift_request,
     upsert_editors_from_groups,
 )
+from util.copy_schedule import shift_label, day_label
+from util.slackbots.general import dm_user_by_email
 from util.google_admin import get_group_members
 from util.security import restrict_to
 from constants import (
@@ -39,6 +42,39 @@ def _to_json_safe(obj):
     if hasattr(obj, "isoformat"):
         return obj.isoformat()
     return obj
+
+
+def _shift_label_str(shift: dict) -> str:
+    """Return a human-readable shift label like 'Monday 4/7 6pm-8pm' from a shift dict."""
+    d = shift.get("date")
+    h = shift.get("start_hour")
+    if d and h is not None:
+        return f"{day_label(d)} {shift_label(h)}"
+    return "your shift"
+
+
+def _notify_editors_added(shift: dict):
+    """DM any editors who were just assigned to a shift."""
+    label = _shift_label_str(shift)
+    for email in filter(None, [shift.get("editor_id"), shift.get("editor_id_2")]):
+        dm_user_by_email(
+            email,
+            f"📅 *You've Been Scheduled for a Shift*\n"
+            f"The copy chief has added you to a shift on {label}.\n"
+            f"👉 Check the shift dashboard for details.",
+        )
+
+
+def _notify_editors_removed(shift: dict):
+    """DM any editors who were just removed from a shift."""
+    label = _shift_label_str(shift)
+    for email in filter(None, [shift.get("editor_id"), shift.get("editor_id_2")]):
+        dm_user_by_email(
+            email,
+            f"🗑️ *A Shift Was Removed*\n"
+            f"The copy chief has removed your shift on {label}.\n"
+            f"👉 Check the shift dashboard for your updated schedule.",
+        )
 
 
 @copy_scheduler_routes.route("/admin", methods=["GET"])
@@ -108,6 +144,8 @@ def create_shift():
         editor_id_2=editor_id_2,
         editor_name_2=editor_name_2,
     )
+    if "error" not in shift:
+        _notify_editors_added(shift)
     return jsonify(_to_json_safe(shift)), 201
 
 
@@ -115,7 +153,9 @@ def create_shift():
 @login_required
 @restrict_to(COPY_ADMIN_ACCESS_GROUPS)
 def delete_shift_route(uid):
-    delete_shift(uid)
+    deleted = delete_shift(uid)
+    if deleted:
+        _notify_editors_removed(deleted)
     return jsonify({"ok": True})
 
 
@@ -129,6 +169,7 @@ def update_shift_route(uid):
     editor_name = request.form.get("editor_name") or None
     editor_id_2 = request.form.get("editor_id_2") or None
     editor_name_2 = request.form.get("editor_name_2") or None
+    old_shift = get_shift_by_uid(uid)
     shift = update_shift(
         uid,
         date=date,
@@ -138,6 +179,28 @@ def update_shift_route(uid):
         editor_id_2=editor_id_2,
         editor_name_2=editor_name_2,
     )
+    if shift and old_shift:
+        old_editors = {
+            e for e in [old_shift.get("editor_id"), old_shift.get("editor_id_2")] if e
+        }
+        new_editors = {
+            e for e in [shift.get("editor_id"), shift.get("editor_id_2")] if e
+        }
+        label = _shift_label_str(shift)
+        for email in new_editors - old_editors:
+            dm_user_by_email(
+                email,
+                f"📅 *You've Been Scheduled for a Shift*\n"
+                f"The copy chief has added you to a shift on {label}.\n"
+                f"👉 Check the shift dashboard for details.",
+            )
+        for email in old_editors - new_editors:
+            dm_user_by_email(
+                email,
+                f"🗑️ *You've Been Removed from a Shift*\n"
+                f"The copy chief has removed you from the shift on {label}.\n"
+                f"👉 Check the shift dashboard for your updated schedule.",
+            )
     return jsonify(_to_json_safe(shift))
 
 
@@ -152,7 +215,16 @@ def get_shifts():
 @login_required
 @restrict_to(COPY_ADMIN_ACCESS_GROUPS)
 def approve_request(uid):
-    approve_shift_request(uid)
+    result = approve_shift_request(uid)
+    if "error" not in result:
+        requester_email = result.get("requester_id")
+        if requester_email:
+            dm_user_by_email(
+                requester_email,
+                f"✅ *Your Request Was Approved*\n"
+                f"Your {result.get('request_type', '').replace('_', ' ')} request has been approved by the copy chief.\n"
+                f"👉 Check the shift dashboard to see your updated schedule.",
+            )
     return jsonify({"ok": True})
 
 
@@ -160,7 +232,16 @@ def approve_request(uid):
 @login_required
 @restrict_to(COPY_ADMIN_ACCESS_GROUPS)
 def deny_request(uid):
-    deny_shift_request(uid)
+    result = deny_shift_request(uid)
+    if "error" not in result:
+        requester_email = result.get("requester_id")
+        if requester_email:
+            dm_user_by_email(
+                requester_email,
+                f"❌ *Your Request Was Denied*\n"
+                f"Your {result.get('request_type', '').replace('_', ' ')} request has been denied by the copy chief.\n"
+                f"Please check the shift dashboard or reach out with questions.",
+            )
     return jsonify({"ok": True})
 
 

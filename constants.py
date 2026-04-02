@@ -316,7 +316,7 @@ ALL_SCHEDULER_GROUPS = (
     COPY_EDITOR_GROUPS
     + SENIOR_COPY_EDITOR_GROUPS
     + COPY_CHIEF_GROUPS
-    + ["webdev", "imc-staff-webdev"]
+    + ["webdev", "imc-staff-webdev", "webdev-test-users"]
 )
 
 SHIFT_REQUIREMENTS = {

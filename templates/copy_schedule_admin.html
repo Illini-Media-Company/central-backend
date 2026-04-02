@@ -1,10 +1,11 @@
 {% extends 'base.html' %}
+{% from 'macros/editors.html' import email_to_name_map %}
 
 {% block title %} Copy Admin Dashboard {% endblock %}
 
 {% block extra_head %}
 <style>
-    .page-content { overflow: hidden;}
+    .page-content { overflow: auto; }
     .tab-btn { padding: 6px 12px; border: none; border-radius: 4px; background: transparent; cursor: pointer; font-size: 0.875rem; }
     .tab-btn.active-tab { background: #e5e7eb; font-weight: 500; }
     .tab-btn:hover:not(.active-tab) { background: #f3f4f6; }
@@ -18,6 +19,7 @@
     const SHIFTS = {{ shifts | tojson}};
     const SHIFT_REQUESTS = {{ shift_requests | tojson}};
     const CSRF_TOKEN = '{{ csrf_token() }}';
+    const EMAIL_TO_NAME = {{ email_to_name_map(editors) }};
 </script>
 
 <div id="sub-topbar" style="height:57px; background:white; border-bottom:1px solid #dee2e6; display:flex; align-items:center; justify-content:space-between; padding:0 1.5rem; flex-shrink:0;">
@@ -50,7 +52,7 @@
 </div>
 
 <!-- Main content area -->
- <div id="main-content" style="display:flex; flex-direction: column; flex:1; overflow:hidden;">
+ <div id="main-content" style="display:flex; flex-direction: column; flex:1; overflow:auto;">
 
     <!-- VIEW: Schedule (default visible) -->
      <div id="view-schedule" style="display:flex; height:100%; overflow:hidden;">
@@ -489,7 +491,7 @@ function renderPendingActions() {
             : '';
         return `
         <div style="border:1px solid #fca5a5; background:#fff1f2; border-radius:6px; padding:0.75rem; margin-bottom:0.5rem; font-size:0.875rem;">
-            <div style="font-weight:500;">${r.requester_name} — ${r.request_type.replace(/_/g,' ')}</div>
+            <div style="font-weight:500;">${r.requester_name || EMAIL_TO_NAME[r.requester_id] || r.requester_id} — ${r.request_type.replace(/_/g,' ')}</div>
             <div style="color:#6b7280; font-size:0.75rem; margin:2px 0;">${sourceLabel}${targetLabel}</div>
             <div style="display:flex; gap:0.4rem; margin-top:0.4rem;">
                 <button onclick="approveRequest(${r.uid})" class="button-primary" style="font-size:0.75rem; padding:3px 10px;">Approve</button>
@@ -526,7 +528,7 @@ function renderWeeklyLoad() {
     });
     el.innerHTML = editors.map(e => `
         <div onclick="openEditorDetailModal(${e.uid})" style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:0.875rem; border-bottom:1px solid #f3f4f6; cursor:pointer;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
-            <span>${e.name}</span>
+            <span>${EMAIL_TO_NAME[e.email] || e.name}</span>
             <span style="font-weight:500;">${counts[e.email] || 0} shift${counts[e.email] === 1 ? '' : 's'}</span>
         </div>`).join('');
 }
@@ -557,8 +559,13 @@ function renderEditorsView() {
     const copyQ   = document.getElementById('copy-editor-search').value.toLowerCase();
     const seniorQ = document.getElementById('senior-editor-search').value.toLowerCase();
 
-    const copyEditors   = editors.filter(e => e.category === 'Copy Editor'        && e.name.toLowerCase().includes(copyQ));
-    const seniorEditors = editors.filter(e => e.category === 'Senior Copy Editor' && e.name.toLowerCase().includes(seniorQ));
+    const displayName = e => EMAIL_TO_NAME[e.email] || e.name;
+    const copyEditors   = editors
+        .filter(e => e.category === 'Copy Editor'        && displayName(e).toLowerCase().includes(copyQ))
+        .sort((a, b) => displayName(a).localeCompare(displayName(b)));
+    const seniorEditors = editors
+        .filter(e => e.category === 'Senior Copy Editor' && displayName(e).toLowerCase().includes(seniorQ))
+        .sort((a, b) => displayName(a).localeCompare(displayName(b)));
 
     document.getElementById('copy-editors-count').textContent   = copyEditors.length;
     document.getElementById('senior-editors-count').textContent = seniorEditors.length;
@@ -591,7 +598,7 @@ function renderEditorTable(tbodyId, list) {
 
         return `
         <tr style="border-bottom:1px solid #dee2e6; cursor:pointer;" onclick="openEditorDetailModal(${e.uid})" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
-            <td style="padding:10px 16px; font-size:0.875rem;">${e.name}</td>
+            <td style="padding:10px 16px; font-size:0.875rem;">${EMAIL_TO_NAME[e.email] || e.name}</td>
             <td style="padding:10px 16px; font-size:0.875rem;">${shiftCount}</td>
             <td style="padding:10px 16px; font-size:0.875rem;">${weekendCount}</td>
             <td style="padding:10px 16px;">
@@ -613,7 +620,7 @@ function renderEditorTable(tbodyId, list) {
 
 function populateEditorDropdowns() {
     const opts = `<option value="">— Unassigned —</option>` +
-        editors.map(e => `<option value="${e.email}">${e.name}</option>`).join('');
+        editors.map(e => `<option value="${e.email}">${EMAIL_TO_NAME[e.email] || e.name}</option>`).join('');
     document.getElementById('shift-editor-1').innerHTML = opts;
     document.getElementById('shift-editor-2').innerHTML = opts;
 }
@@ -815,7 +822,7 @@ function openEditorDetailModal(uid) {
     const e = editors.find(x => x.uid === uid);
     if (!e) return;
 
-    document.getElementById('detail-editor-name').textContent     = e.name;
+    document.getElementById('detail-editor-name').textContent     = EMAIL_TO_NAME[e.email] || e.name;
     document.getElementById('detail-editor-email').textContent    = e.email;
     document.getElementById('detail-editor-phone').textContent    = e.phone    || '—';
     document.getElementById('detail-editor-category').textContent = e.category || '—';
