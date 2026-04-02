@@ -86,6 +86,7 @@ from util.helpers.email_to_slackid import email_to_slackid
 from util.all_tools import format_restricted_groups
 import util.slackbots.employee_agreement_slackbot
 import util.slackbots.photo_request
+import util.slackbots.graphic_request
 import util.slackbots.socials_slackbot
 import util.slackbots.knowledge_slackbot
 from util.helpers.ap_datetime import (

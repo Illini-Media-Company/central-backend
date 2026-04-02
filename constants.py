@@ -297,6 +297,14 @@ COURTESY_REQUESTS_CHANNEL_ID = (
     "C09R16GJZBP" if ENV == "dev" else "C09SG769Y6L"
 )  # #imc_courtesy-photos — Channel that all courtesy photo requests get sent to
 
+# These are left empty as per the spec
+GRAPHIC_REQUESTS_CHANNEL_ID = (
+    "" if ENV == "prod" else "C0ALA44EJRY"
+)  # di_graphics — Channel that all graphic requests get sent to
+AD_REQUESTS_CHANNEL_ID = (
+    "" if ENV == "prod" else "C0ALA49V95G"
+)  # #imc_ad_design — Channel that all ad design graphic requests get sent to
+
 SOCIAL_MEDIA_POSTS_CHANNEL_ID = (
     "C0AEFSQT5JA" if ENV == "dev" else "C068R224L10"
 )  # Set prod channel ID in env/constants when known
