@@ -403,6 +403,7 @@ def admin_dashboard():
         pending_events=pending_sorted,
         today_iso=today_iso,
         GOOGLE_MAPS_API_KEY=GOOGLE_MAP_API,
+        event_categories=get_public_event_categories(),
     )
 
 
@@ -416,12 +417,22 @@ def admin_add_event():
     if not title or not address:
         return jsonify({"error": "Missing title and address."}), 400
 
+    raw_start = request.form.get("start_date")
+    raw_end = request.form.get("end_date")
+    if not raw_start or not str(raw_start).strip():
+        return jsonify({"error": "Start date and time are required."}), 400
+    if not raw_end or not str(raw_end).strip():
+        return jsonify({"error": "End date and time are required."}), 400
+
     try:
         event_type = normalize_public_event_category(request.form.get("event_type"))
-        start_date = _parse_submission_datetime(request.form.get("start_date"))
-        end_date = _parse_submission_datetime(request.form.get("end_date"), is_end=True)
+        start_date = _parse_submission_datetime(raw_start)
+        end_date = _parse_submission_datetime(raw_end, is_end=True)
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
+
+    if start_date and end_date and end_date < start_date:
+        return jsonify({"error": "End must be after start."}), 400
 
     coords = geocode_address(address)
     if not coords:

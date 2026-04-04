@@ -14,6 +14,7 @@ CU Calendar Admin Dashboard
 {% import "macros/form.html" as form %}
 
 {% block content %}
+{% include "partials/info_bar.html" %}
 <h1>CU Calendar Admin</h1>
 <hr style="margin-bottom: 2rem;">
 
@@ -35,6 +36,11 @@ CU Calendar Admin Dashboard
     }
 
     .cu-admin .form-row > input[type="file"] {
+        width: 100%;
+        max-width: 520px;
+    }
+
+    .cu-admin .select-input select {
         width: 100%;
         max-width: 520px;
     }
@@ -124,21 +130,37 @@ CU Calendar Admin Dashboard
             {{ form.text_input(name="title", label="Title", required=true, placeholder="Event title") }}
             {{ form.text_input(name="address", label="Address", required=true, placeholder="Street address") }}
             {{ form.text_input(name="url", label="URL", required=false, placeholder="https://…", alt_type="url") }}
-            {{ form.text_input(name="event_type", label="Event type", required=false, placeholder="Category") }}
+            <div class="form-row cu-admin" id="formfield-event_type">
+                <div>
+                    <label for="event_type" class="field-label">
+                        Event type
+                        <span title="Required field" style="color: var(--main-accent-color);">*</span>
+                    </label>
+                </div>
+                <div class="select-input">
+                    <select name="event_type" id="event_type" required>
+                        <option value="" disabled selected>Select...</option>
+                        {% for option in event_categories %}
+                        <option value="{{ option }}">{{ option }}</option>
+                        {% endfor %}
+                    </select>
+                    <i class="bi bi-caret-down-fill select-dropdown-icon"></i>
+                </div>
+            </div>
             {{ form.textarea_input(name="description", label="Description", required=false) }}
             {{ form.text_input(name="company_name", label="Company name", required=false) }}
 
             <div class="form-row" id="formfield-start_date">
                 <div>
-                    <label for="start_date" class="field-label">Start Date & Time</label>
+                    <label for="start_date" class="field-label">Start Date &amp; Time <span title="Required field" style="color: var(--main-accent-color);">*</span></label>
                 </div>
-                <input type="datetime-local" id="start_date" name="start_date" class="text-input">
+                <input type="datetime-local" id="start_date" name="start_date" class="text-input" required>
             </div>
             <div class="form-row" id="formfield-end_date">
                 <div>
-                    <label for="end_date" class="field-label">End Date & Time</label>
+                    <label for="end_date" class="field-label">End Date &amp; Time <span title="Required field" style="color: var(--main-accent-color);">*</span></label>
                 </div>
-                <input type="datetime-local" id="end_date" name="end_date" class="text-input">
+                <input type="datetime-local" id="end_date" name="end_date" class="text-input" required>
             </div>
 
             <div class="form-row" id="formfield-images">
@@ -175,6 +197,14 @@ CU Calendar Admin Dashboard
 </section>
 
 <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const msg = sessionStorage.getItem("infoBarMessage");
+        if (msg) {
+            showInfoBar(msg);
+            sessionStorage.removeItem("infoBarMessage");
+        }
+    });
+
     let autocomplete;
 
     function initAutocomplete() {
@@ -204,20 +234,26 @@ CU Calendar Admin Dashboard
 
     async function acceptEvent(uid) {
         const res = await postAction(`/admin/cu-calendar/${uid}/accept`);
-        if (res.ok) window.location.reload();
-        else alert(await res.text());
+        if (res.ok) {
+            sessionStorage.setItem("infoBarMessage", "Event accepted.");
+            window.location.reload();
+        } else alert(await res.text());
     }
 
     async function rejectEvent(uid) {
         const res = await postAction(`/admin/cu-calendar/${uid}/reject`);
-        if (res.ok) window.location.reload();
-        else alert(await res.text());
+        if (res.ok) {
+            sessionStorage.setItem("infoBarMessage", "Event rejected.");
+            window.location.reload();
+        } else alert(await res.text());
     }
 
     async function highlightEvent(uid) {
         const res = await postAction(`/admin/cu-calendar/${uid}/highlight`);
-        if (res.ok) window.location.reload();
-        else alert(await res.text());
+        if (res.ok) {
+            sessionStorage.setItem("infoBarMessage", "Event highlighted.");
+            window.location.reload();
+        } else alert(await res.text());
     }
 
     document.querySelectorAll(".js-accept").forEach((btn) => {
@@ -243,8 +279,7 @@ CU Calendar Admin Dashboard
             });
 
             if (res.ok) {
-                alert("Event added successfully!");
-                form.reset();
+                sessionStorage.setItem("infoBarMessage", "Event added successfully.");
                 window.location.reload();
             } else {
                 const data = await res.json();
@@ -269,8 +304,11 @@ CU Calendar Admin Dashboard
             });
 
             if (res.ok) {
-                alert("Calendar source imported successfully!");
-                form.reset();
+                const data = await res.json();
+                sessionStorage.setItem(
+                    "infoBarMessage",
+                    data.message || "Calendar source imported successfully."
+                );
                 window.location.reload();
             } else {
                 const data = await res.json();
