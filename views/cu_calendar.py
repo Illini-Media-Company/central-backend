@@ -28,7 +28,7 @@ from db.cu_calender import (
     normalize_public_event_category,
 )
 from util.cu_calendar import geocode_address, gcal_to_events, upload_images_to_gcs
-from util.security import csrf
+from util.security import csrf, restrict_to
 
 from util.slackbots.general import dm_channel_by_id
 
@@ -262,6 +262,7 @@ def list_public_event_categories():
 # admin routes
 @admin_calendar_routes.route("/pending", methods=["GET"])
 @login_required
+@restrict_to(["cu-calendar-admin", "imc-staff-webdev"])
 def list_pending_events():
     """GET pending events (staff)."""
 
@@ -270,6 +271,7 @@ def list_pending_events():
 
 @admin_calendar_routes.route("/source/add", methods=["POST"])
 @login_required
+@restrict_to(["cu-calendar-admin", "imc-staff-webdev"])
 def add_and_process_source():
     """Import from a Google Calendar URL and save the source if new."""
 
@@ -328,6 +330,7 @@ def add_and_process_source():
 
 @admin_calendar_routes.route("/<uid>/highlight", methods=["POST"])
 @login_required
+@restrict_to(["cu-calendar-admin", "imc-staff-webdev"])
 def highlight_event(uid):
     """POST highlight and accept an event."""
 
@@ -344,6 +347,7 @@ def highlight_event(uid):
 
 @admin_calendar_routes.route("/<uid>/accept", methods=["POST"])
 @login_required
+@restrict_to(["cu-calendar-admin", "imc-staff-webdev"])
 def accept_pending_event(uid):
     """POST geocode and accept a pending event."""
 
@@ -370,6 +374,7 @@ def accept_pending_event(uid):
 
 @admin_calendar_routes.route("/<uid>/reject", methods=["POST"])
 @login_required
+@restrict_to(["cu-calendar-admin", "imc-staff-webdev"])
 def reject_pending_event(uid):
     """POST delete a pending event (and its images)."""
 
@@ -385,6 +390,7 @@ def reject_pending_event(uid):
 
 @admin_calendar_routes.route("/dashboard", methods=["GET"])
 @login_required
+@restrict_to(["cu-calendar-admin", "imc-staff-webdev"])
 def admin_dashboard():
     """
     Render the CU Calendar admin dashboard.
@@ -399,7 +405,7 @@ def admin_dashboard():
     today_iso = datetime.now().date().isoformat()
 
     return render_template(
-        "cu_calendar/admin_dashboard.html",
+        "cu_calendar_dash.html",
         pending_events=pending_sorted,
         today_iso=today_iso,
         GOOGLE_MAPS_API_KEY=GOOGLE_MAP_API,
@@ -409,6 +415,7 @@ def admin_dashboard():
 
 @admin_calendar_routes.route("/dashboard/add-event", methods=["POST"])
 @login_required
+@restrict_to(["cu-calendar-admin", "imc-staff-webdev"])
 def admin_add_event():
     """POST a manually added accepted event from the dashboard."""
 
