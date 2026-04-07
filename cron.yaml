@@ -13,7 +13,7 @@ cron:
 
 - description: "Weekly sync of CU Calendar sources (next 30 days)"
   url: "/cron/cu-calendar-sync-30d"
-  schedule: every 7 days
+  schedule: every sunday 00:00
   timezone: America/Chicago
   target: default
 
