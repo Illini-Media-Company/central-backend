@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.8.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.8.0...v2.8.1) (2026-04-07)
+
+
+### Bug Fixes
+
+* Update Slack channel for CU Calendar ([25eef95](https://github.com/Illini-Media-Company/central-backend/commit/25eef950e05206f1ab888fb10b7bdfe5bcabc976))
+
 ## [2.8.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.7.0...v2.8.0) (2026-04-07)
 
 
