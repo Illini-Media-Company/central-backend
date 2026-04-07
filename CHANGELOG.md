@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.8.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.7.0...v2.8.0) (2026-04-07)
+
+
+### Features
+
+* Add backend implementation for CU Calendar ([#77](https://github.com/Illini-Media-Company/central-backend/issues/77)) ([c081ad6](https://github.com/Illini-Media-Company/central-backend/commit/c081ad6e3d54b006460d2d50a6bd2f949c3f9d06))
+
 ## [2.7.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.6.3...v2.7.0) (2026-03-12)
 
 
