@@ -37,6 +37,11 @@
     mask-image: url("/static/icons/imc-mark.svg");
 }
 
+.cu-calendar-mark {
+    -webkit-mask-image: url("/static/icons/cu-calendar-mark.svg");
+    mask-image: url("/static/icons/cu-calendar-mark.svg");
+}
+
 .wpgu-mark {
     -webkit-mask-image: url("/static/icons/wpgu-mark.svg");
     mask-image: url("/static/icons/wpgu-mark.svg");
