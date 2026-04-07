@@ -9,7 +9,12 @@ from datetime import datetime, time, timezone
 from flask import Blueprint, jsonify, request, render_template
 from flask_cors import cross_origin
 from flask_login import login_required
-from constants import CU_CALENDAR_ID, DEFAULT_PUBLIC_EVENT_CATEGORY, GOOGLE_MAP_API
+from constants import (
+    BASE_URL,
+    CU_CALENDAR_ID,
+    DEFAULT_PUBLIC_EVENT_CATEGORY,
+    GOOGLE_MAP_API,
+)
 from zoneinfo import ZoneInfo
 
 from db.cu_calender import (
@@ -177,7 +182,7 @@ def _create_pending_submission():
 
         # Jacob review
         channel_id = CU_CALENDAR_ID
-        link = "tenplink.com/admin/cu-calendar/dashboard"
+        link = BASE_URL + "/admin/cu-calendar/dashboard"
         notification_text = (
             f"New event submitted: *{title}*. Click the link to review: {link}"
         )

@@ -346,11 +346,7 @@ IMC_WELCOME_MESSAGE_TEXT = "Welcome to Illini Media Company!"
 
 logger = logging.getLogger(__name__)
 
-app = App(
-    token=SLACK_BOT_TOKEN,
-    signing_secret=SLACK_SIGNING_SECRET,
-    token_verification_enabled=ENV == "prod",
-)
+app = App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
 
 
 @app.event("app_mention")
