@@ -8,6 +8,8 @@ gcsa ~= 2.0
 google-api-python-client ~= 2.0
 google-auth ~= 2.0
 google-cloud-ndb ~= 2.0
+google-cloud-storage
+googlemaps
 lxml
 networkx ~= 3.0
 oauthlib ~= 3.0

@@ -99,6 +99,7 @@ from db.all_tools import (
 from db.map_point import get_all_points
 from db.json_store import json_store_set
 from db.employee_management import initialize_ems_settings
+from db.cu_calender import delete_expired_events
 
 logging.info("Database functions imported.")
 
@@ -166,6 +167,13 @@ from views.photo_request import photo_request_routes
 from views.di_social_poster import di_social_poster_routes
 from views.employee_management import ems_routes
 from views.employee_management import get_ems_brand_image_url
+from views.cu_calendar import (
+    admin_calendar_routes,
+    calendar_routes,
+    public_calendar_api_routes,
+)
+
+from util.cu_calendar import sync_gcal_sources
 
 logging.info("Views imported.")
 
@@ -205,6 +213,9 @@ app.register_blueprint(rotate_tv_routes)
 app.register_blueprint(photo_request_routes)
 app.register_blueprint(di_social_poster_routes)
 app.register_blueprint(ems_routes)
+app.register_blueprint(calendar_routes)
+app.register_blueprint(admin_calendar_routes)
+app.register_blueprint(public_calendar_api_routes)
 logging.info("Done registering blueprints.")
 
 logging.info("Initializing login manager...")
@@ -412,6 +423,26 @@ def schedulers():
 # from jobs defined in cron.yaml
 
 
+# add cron job for
+# import regular function and run it
+@app.route("/cron/delete-expired-events", methods=["GET", "POST"])
+@csrf.exempt
+@talisman(force_https=False)
+def cron_delete_expired_events():
+    if request.headers.get("X-Appengine-Cron") != "true":
+        logging.warning(
+            "Unauthorized attempt to trigger delete_expired_events cron job"
+        )
+        return "Unauthorized", 403
+    try:
+        delete_expired_events()
+        logging.info("delete_expired_events cron job completed successfully")
+        return {"success": True}, 200
+    except Exception as e:
+        logging.exception("delete_expired_events cron job failed")
+        return {"success": False, "error": str(e)}, 500
+
+
 @app.route("/cron/socials-rss-listener", methods=["GET", "POST"])
 @csrf.exempt
 @talisman(force_https=False)
@@ -448,6 +479,44 @@ def cron_rss_listener():
         return {"success": True, "stories_posted": count, "links": links}, 200
     except Exception as e:
         logging.exception("RSS cron job failed")
+        return {"success": False, "error": str(e)}, 500
+
+
+@app.route("/cron/cu-calendar-sync-30d", methods=["GET", "POST"])
+@csrf.exempt
+@talisman(force_https=False)
+def cron_cu_calendar_sync_30d():
+    """
+    Cron endpoint: sync CU calendar sources for the next 30 days.
+    Intended to run weekly via cron.yaml.
+    """
+    if request.headers.get("X-Appengine-Cron") != "true":
+        return "Unauthorized", 403
+    try:
+        added = sync_gcal_sources(future_days=60)
+        logging.info(f"cu_calendar 30d sync completed: added={added}")
+        return {"success": True, "added": added}, 200
+    except Exception as e:
+        logging.exception("cu_calendar 30d sync failed")
+        return {"success": False, "error": str(e)}, 500
+
+
+@app.route("/cron/cu-calendar-sync-year", methods=["GET", "POST"])
+@csrf.exempt
+@talisman(force_https=False)
+def cron_cu_calendar_sync_year():
+    """
+    Cron endpoint: sync CU calendar sources for the next year (365 days).
+    Intended to run annually (Aug 30) via cron.yaml.
+    """
+    if request.headers.get("X-Appengine-Cron") != "true":
+        return "Unauthorized", 403
+    try:
+        added = sync_gcal_sources(future_days=365)
+        logging.info(f"cu_calendar yearly sync completed: added={added}")
+        return {"success": True, "added": added}, 200
+    except Exception as e:
+        logging.exception("cu_calendar yearly sync failed")
         return {"success": False, "error": str(e)}, 500
 
 
