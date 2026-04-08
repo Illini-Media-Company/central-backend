@@ -14,24 +14,29 @@
 {% endblock %}
 
 {% block content %}
-<div class="container">
-    <h3>Session URL History</h3>
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>URL</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for url in url_history %}
-            <tr>
-                <td>{{ loop.index }}</td> 
-                <td><a href="{{ url }}">{{ url }}</a></td>
-            </tr>
-            {% endfor %}
+<h1>Session URL History</h1>
 
-        </tbody>
-    </table>
-</div>
+<hr style="margin-bottom: 2rem;">
+
+<section class="section-container">
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>URL</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for url in url_history %}
+                <tr>
+                    <td>{{ loop.index }}</td> 
+                    <td><a href="{{ url }}">{{ url }}</a></td>
+                </tr>
+                {% endfor %}
+
+            </tbody>
+        </table>
+    </div>
+</section>
 {% endblock %}

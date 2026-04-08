@@ -45,11 +45,6 @@ CU Calendar Admin Dashboard
         width: 100%;
         max-width: 520px;
     }
-
-    /* Keep section tables visually consistent */
-    .cu-admin-table {
-        width: 100%;
-    }
 </style>
 
 {# Pending submissions section #}
@@ -64,7 +59,7 @@ CU Calendar Admin Dashboard
         </div>
     {% else %}
         <div class="inner-container" style="padding: 0;">
-            <div style="overflow-x: auto; max-width: 100%; border-radius: var(--main-border-radius);">
+            <div class="table-container">
                 <table class="cu-admin-table">
                     <thead>
                         <tr>
