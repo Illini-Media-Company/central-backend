@@ -89,9 +89,119 @@ Mini Crossword Admin
 
 <hr>
 
-<section class="section-container">
+<section class="section-container" id="current-monday-section">
+    <div class="section-header">
+        <h2 style="margin-bottom: 0">Current Puzzle</h2>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Set By</th>
+                    <th>Last Modified</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ current_crossword.date.strftime("%m/%d/%Y") }}</td>
+                    <td>
+                        {% if current_crossword.exists %}
+                            <span style="color: green; font-weight: bold;">Set</span>
+                        {% else %}
+                            <span style="color: gray;">Not Set</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if current_crossword.exists %}
+                            {{ current_crossword.data.created_by or 'Unknown' }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if current_crossword.exists and current_crossword.data.created_at %}
+                            {{ current_crossword.data.created_at|ap_datetime }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button class="button-primary" onclick="openCrosswordForm('{{ current_crossword.date.strftime('%Y-%m-%d') }}', {{ 'true' if current_crossword.exists else 'false' }})">
+                            {% if current_crossword.exists %}Edit{% else %}Set{% endif %}
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<hr>
+
+<section class="section-container" id="upcoming-mondays-section">
+    <div class="section-header">
+        <h2 style="margin-bottom: 0">Upcoming Puzzles</h2>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Set By</th>
+                    <th>Last Modified</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cw in crosswords %}
+                    <tr>
+                        <td>{{ cw.date.strftime("%m/%d/%Y") }}</td>
+                        <td>
+                            {% if cw.exists %}
+                                <span style="color: green; font-weight: bold;">Set</span>
+                            {% else %}
+                                <span style="color: gray;">Not Set</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if cw.exists %}
+                                {{ cw.data.created_by or 'Unknown' }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if cw.exists and cw.data.created_at %}
+                                {{ cw.data.created_at|ap_datetime }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="button-primary" onclick="openCrosswordForm('{{ cw.date.strftime('%Y-%m-%d') }}', {{ 'true' if cw.exists else 'false' }})">
+                                {% if cw.exists %}Edit{% else %}Set{% endif %}
+                            </button>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="section-container" id="crossword-form-section" style="display: none;">
+    <div style="margin-bottom: 1rem;">
+        <button class="button-bg-color" type="button" onclick="closeCrosswordForm()">&larr; Back</button>
+    </div>
+
     <div class="section-header" style="flex-direction: column; align-items: baseline;">
-        <h2 style="margin-bottom: 0">Create a New Crossword</h2>
+        <h2 style="margin-bottom: 0" id="form-title">Create a New Crossword</h2>
         <p style="margin-bottom: 0;">Fill out the board completely, then validate before adding clues. Double-click a square to black it out.</p>
     </div>
     <hr style="margin-top: 1rem;">
@@ -147,7 +257,75 @@ Mini Crossword Admin
 </section>
 
 <script>
+    const upcomingCrosswords = {
+        "{{ current_crossword.date.strftime('%Y-%m-%d') }}": {{ current_crossword.data | tojson | safe if current_crossword.exists else 'null' }},
+        {% for cw in crosswords %}
+            "{{ cw.date.strftime('%Y-%m-%d') }}": {{ cw.data | tojson | safe if cw.exists else 'null' }},
+        {% endfor %}
+    };
+
+    function openCrosswordForm(dateStr, exists) {
+        document.getElementById('upcoming-mondays-section').style.display = 'none';
+        document.getElementById('current-monday-section').style.display = 'none';
+        document.getElementById('crossword-form-section').style.display = 'block';
+        document.getElementById('crossword-date').value = dateStr;
+        document.getElementById('crossword-date').readOnly = true;
+
+        const cwData = upcomingCrosswords[dateStr];
+        
+        if (exists && cwData) {
+            document.getElementById('form-title').innerText = "Edit Crossword for " + dateStr;
+            document.getElementById('article-link').value = cwData.story_link || "";
+            
+            const grid = cwData.grid;
+            for (let r = 0; r < 5; r++) {
+                for (let c = 0; c < 5; c++) {
+                    let cell = document.getElementById(`cross-box-${r}-${c}`);
+                    let val = grid[r][c];
+                    if (val === '#') {
+                        cell.classList.add('letter-blacked-out');
+                        cell.setAttribute("maxlength", 0);
+                        cell.value = "";
+                    } else {
+                        cell.classList.remove('letter-blacked-out');
+                        cell.setAttribute("maxlength", 1);
+                        cell.value = val;
+                    }
+                }
+            }
+        } else {
+            document.getElementById('form-title').innerText = "Create a New Crossword";
+            document.getElementById('article-link').value = "";
+            clearBoard();
+            for (let r = 0; r < 5; r++) {
+                for (let c = 0; c < 5; c++) {
+                    let cell = document.getElementById(`cross-box-${r}-${c}`);
+                    cell.classList.remove('letter-blacked-out');
+                    cell.setAttribute("maxlength", 1);
+                }
+            }
+        }
+        
+        document.getElementById("clues-input-across").innerHTML = "";
+        document.getElementById("clues-input-down").innerHTML = "";
+        const submitBtn = document.getElementById("clues-input").querySelector("button[type='submit']");
+        if (submitBtn) submitBtn.remove();
+        
+        for (let i = 0; i < 5; i++) {
+            for (let j = 0; j < 5; j++) {
+                document.getElementById(`cross-box-${i}-${j}`).disabled = false;
+            }
+        }
+        document.getElementById("clearButton").disabled = false;
+        document.getElementById("validateButton").disabled = false;
+    }
     
+    function closeCrosswordForm() {
+        document.getElementById('upcoming-mondays-section').style.display = 'block';
+        document.getElementById('current-monday-section').style.display = 'block';
+        document.getElementById('crossword-form-section').style.display = 'none';
+    }
+
     // Make the info bar for success show up after the page reloads
     document.addEventListener("DOMContentLoaded", () => {
         const msg = sessionStorage.getItem("infoBarMessage");
@@ -256,12 +434,17 @@ Mini Crossword Admin
         document.getElementById("clearButton").disabled = true;
         document.getElementById("validateButton").disabled = true;
 
+        // Get existing data if editing
+        const existingData = upcomingCrosswords[dateVal] ? upcomingCrosswords[dateVal].data : null;
+
         // Show the clues for across
         if (Object.keys(global_acrossWords).length > 0) {
             for (const [num, data] of Object.entries(global_acrossWords)) {
+                const existingClue = existingData && existingData.across && existingData.across[num] ? existingData.across[num].clue : "";
+                const escapedClue = existingClue.replace(/"/g, '&quot;');
                 acrossCluesEl.innerHTML += `<div class="form-row" id="formfield-across-${num}-clue">`
                     + `<div> <label for="across-${num}-clue" class="field-label">${String(num)}. ${data.answer}:</label></div>`
-                    + `<input type="text" id="across-${num}-clue" class="text-input" name="across-${num}-clue" required></input>`
+                    + `<input type="text" id="across-${num}-clue" class="text-input" name="across-${num}-clue" value="${escapedClue}" required></input>`
                     + `</div`;
             }
             acrossCluesEl.innerHTML += "</br>";
@@ -270,9 +453,11 @@ Mini Crossword Admin
         // Show the clues for down
         if (Object.keys(global_downWords).length > 0) {
             for (const [num, data] of Object.entries(global_downWords)) {
+                const existingClue = existingData && existingData.down && existingData.down[num] ? existingData.down[num].clue : "";
+                const escapedClue = existingClue.replace(/"/g, '&quot;');
                 downCluesEl.innerHTML += `<div class="form-row" id="formfield-down-${num}-clue">`
                     + `<div> <label for="down-${num}-clue" class="field-label">${String(num)}. ${data.answer}:</label></div>`
-                    + `<input type="text" id="down-${num}-clue" class="text-input" name="down-${num}-clue" required></input>`
+                    + `<input type="text" id="down-${num}-clue" class="text-input" name="down-${num}-clue" value="${escapedClue}" required></input>`
                     + `</div`;
             }
             downCluesEl.innerHTML += "</br>";
@@ -383,6 +568,7 @@ Mini Crossword Admin
 
         // Save so we can display after reload
         sessionStorage.setItem("infoBarMessage", "Puzzle successfully submitted."); 
+        window.location.reload();
     }
 
     // Clear the input board
