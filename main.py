@@ -41,7 +41,7 @@ with InitTimer("Standard Libraries"):
     import urllib
     import atexit
     from threading import Thread
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
     from zoneinfo import ZoneInfo
 
 with InitTimer("Third-Party Libraries"):
@@ -632,7 +632,7 @@ def callback():
         refresh_token = token_payload.get("refresh_token")
         expires_in = token_payload.get("expires_in")
         expiry = (
-            datetime.utcnow() + timedelta(seconds=int(expires_in))
+            datetime.now(timezone.utc) + timedelta(seconds=int(expires_in))
             if expires_in is not None
             else None
         )
