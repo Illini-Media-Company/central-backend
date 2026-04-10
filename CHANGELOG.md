@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.9.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.8.1...v2.9.0) (2026-04-10)
+
+
+### Features
+
+* Update Mini Crossword dashboard ([8fb9039](https://github.com/Illini-Media-Company/central-backend/commit/8fb9039e5766f4af0ebb2aa26788cf53f6e580db))
+
 ## [2.8.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.8.0...v2.8.1) (2026-04-07)
 
 
