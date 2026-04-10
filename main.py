@@ -1,6 +1,6 @@
 """
 
-Last modified by Jacob Slabosz March 12, 2026
+Last modified by Jacob Slabosz April 9, 2026
 """
 
 import logging
@@ -75,107 +75,100 @@ with InitTimer("Constants"):
         TOOLS_ADMIN_ACCESS_GROUPS,
     )
 
-logging.info("Modules imported.")
-
 ################################################################################
 # DB IMPORTS ###################################################################
 
-logging.info("Importing database functions...")
-from db import client as dbclient
-from db.user import (
-    add_user,
-    update_user,
-    get_user,
-    get_all_users,
-    get_user_favorite_tools,
-    get_user_name,
-    set_user_ask_oauth_tokens,
-)
-from db.all_tools import (
-    get_all_tools,
-    get_all_tools_restricted,
-    get_tool_by_uid,
-)
-from db.map_point import get_all_points
-from db.json_store import json_store_set
-from db.employee_management import initialize_ems_settings
-from db.cu_calender import delete_expired_events
-
-logging.info("Database functions imported.")
+with InitTimer("Database Functions"):
+    from db import client as dbclient
+    from db.user import (
+        add_user,
+        update_user,
+        get_user,
+        get_all_users,
+        get_user_favorite_tools,
+        get_user_name,
+        set_user_ask_oauth_tokens,
+    )
+    from db.all_tools import (
+        get_all_tools,
+        get_all_tools_restricted,
+        get_tool_by_uid,
+    )
+    from db.map_point import get_all_points
+    from db.json_store import json_store_set
+    from db.employee_management import initialize_ems_settings
+    from db.cu_calender import delete_expired_events
 
 ################################################################################
 # UTIL IMPORTS #################################################################
 
-logging.info("Importing utility functions...")
-from util.security import (
-    csrf,
-    get_google_provider_cfg,
-    is_user_in_group,
-    update_groups,
-    restrict_to,
-)
-from util.map_point import remove_point
-from util.gcal import get_allstaff_events
-from util.slackbots.copy_editing import scheduler as copy_scheduler
-from util.map_point import scheduler as map_scheduler
-from util.rss_social_listener import process_new_stories_to_slack
-from util.scheduler import scheduler_to_json, db_to_scheduler
-from util.changelog_parser import parse_changelog
-from util.slackbots._slackbot import start_slack
-from util.helpers.email_to_slackid import email_to_slackid
-from util.all_tools import format_restricted_groups
-import util.slackbots.employee_agreement_slackbot
-import util.slackbots.photo_request
-import util.slackbots.socials_slackbot
-import util.slackbots.knowledge_slackbot
-from util.helpers.ap_datetime import (
-    ap_datetime,
-    ap_date,
-    ap_time,
-    ap_daydate,
-    ap_daydatetime,
-    days_since,
-    months_since,
-    years_since,
-    time_since,
-    time_between,
-)
+with InitTimer("Utility Functions"):
+    from util.security import (
+        csrf,
+        get_google_provider_cfg,
+        is_user_in_group,
+        update_groups,
+        restrict_to,
+    )
+    from util.map_point import remove_point
+    from util.gcal import get_allstaff_events
+    from util.slackbots.copy_editing import scheduler as copy_scheduler
+    from util.map_point import scheduler as map_scheduler
+    from util.rss_social_listener import process_new_stories_to_slack
+    from util.scheduler import scheduler_to_json, db_to_scheduler
+    from util.changelog_parser import parse_changelog
+    from util.slackbots._slackbot import start_slack
+    from util.helpers.email_to_slackid import email_to_slackid
+    from util.all_tools import format_restricted_groups
+    from util.cu_calendar import sync_gcal_sources
+    from util.employee_management import get_ems_brand_image_url
+    from util.helpers.ap_datetime import (
+        ap_datetime,
+        ap_date,
+        ap_time,
+        ap_daydate,
+        ap_daydatetime,
+        days_since,
+        months_since,
+        years_since,
+        time_since,
+        time_between,
+    )
 
-logging.info("Utility functions imported.")
+with InitTimer("Slackbots"):
+    import util.slackbots.employee_agreement_slackbot
+    import util.slackbots.photo_request
+    import util.slackbots.socials_slackbot
+    import util.slackbots.knowledge_slackbot
 
 ################################################################################
 # VIEWS IMPORTS #################################################################
 
-logging.info("Importing views...")
-from views.all_tools import tools_routes
-from views.content_doc import content_doc_routes
-from views.constant_contact import constant_contact_routes
-from views.illordle import illordle_routes
-from views.mini_crossword import mini_routes
-from views.socials import socials_routes
-from views.retool_apps import retool_routes
-from views.users import users_routes
-from views.groups import groups_routes
-from views.breaking_news import breaking_routes
-from views.copy_schedule import copy_schedule_routes
-from views.map_points import map_points_routes
-from views.overlooked import overlooked_routes
-from views.food_truck import food_truck_routes
-from views.employee_agreement import employee_agreement_routes
-from views.rotate_tv import rotate_tv_routes
-from views.photo_request import photo_request_routes
-from views.di_social_poster import di_social_poster_routes
-from views.employee_management import ems_routes
-from views.employee_management import get_ems_brand_image_url
-from views.cu_calendar import (
-    admin_calendar_routes,
-    calendar_routes,
-    public_calendar_api_routes,
-)
-
-from util.cu_calendar import sync_gcal_sources
-
-logging.info("Views imported.")
+with InitTimer("Views"):
+    from views.all_tools import tools_routes
+    from views.content_doc import content_doc_routes
+    from views.constant_contact import constant_contact_routes
+    from views.illordle import illordle_routes
+    from views.mini_crossword import mini_routes
+    from views.socials import socials_routes
+    from views.retool_apps import retool_routes
+    from views.users import users_routes
+    from views.groups import groups_routes
+    from views.breaking_news import breaking_routes
+    from views.copy_schedule import copy_schedule_routes
+    from views.map_points import map_points_routes
+    from views.overlooked import overlooked_routes
+    from views.food_truck import food_truck_routes
+    from views.employee_agreement import employee_agreement_routes
+    from views.rotate_tv import rotate_tv_routes
+    from views.photo_request import photo_request_routes
+    from views.di_social_poster import di_social_poster_routes
+    from views.employee_management import ems_routes
+    from views.cu_calendar import (
+        admin_calendar_routes,
+        calendar_routes,
+        public_calendar_api_routes,
+    )
 
 ################################################################################
 ############################# IMPORTS COMPLETE #################################
@@ -185,10 +178,6 @@ logging.info("Initializing Flask...")
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 
-# csp = {
-#     'default-src': '*'
-# }
-#
 talisman = Talisman(app, content_security_policy=[])
 csrf.init_app(app)
 logging.info("Done initializing Flask.")
