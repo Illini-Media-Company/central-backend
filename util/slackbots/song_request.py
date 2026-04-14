@@ -161,16 +161,17 @@ def _get_reviewer_name(user_id: str) -> str:
         return f"<@{user_id}>"
 
 
-def _update_channel_message(
-    channel_id,
-    message_ts,
+def update_song_request_message(
+    *,
     updated,
+    message_ts,
     status,
     reviewer_name,
+    channel_id=WPGU_SONG_REQUESTS_ID,
     rejection_reason=None,
     request_id=None,
 ):
-    """Rebuild and push updated blocks to the channel message."""
+    """Rebuild and push the full Slack message for a song request status change."""
     if not (channel_id and message_ts):
         return
 
@@ -229,12 +230,12 @@ def _do_claim(body, logger):
         if not updated:
             return
 
-        _update_channel_message(
-            channel_id,
-            message_ts,
-            updated,
+        update_song_request_message(
             status="in_progress",
             reviewer_name=reviewer_name,
+            updated=updated,
+            message_ts=message_ts,
+            channel_id=channel_id,
             request_id=request_id,
         )
 
@@ -273,12 +274,12 @@ def _do_approve(body, logger):
         if not updated:
             return
 
-        _update_channel_message(
-            channel_id,
-            message_ts,
-            updated,
+        update_song_request_message(
             status="accepted",
             reviewer_name=reviewer_name,
+            updated=updated,
+            message_ts=message_ts,
+            channel_id=channel_id,
         )
 
         # DM submitter
@@ -373,12 +374,12 @@ def _do_deny(body, logger):
         if not updated:
             return
 
-        _update_channel_message(
-            channel_id,
-            message_ts,
-            updated,
+        update_song_request_message(
             status="declined",
             reviewer_name=reviewer_name,
+            updated=updated,
+            message_ts=message_ts,
+            channel_id=channel_id,
             rejection_reason=rejection_reason,
         )
 

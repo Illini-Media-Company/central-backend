@@ -14,10 +14,11 @@ from db.song_request import update_slack_ts
 from util.slackbots.general import (
     dm_channel_by_id,
     dm_user_by_email,
-    update_message_blocks,
 )
-from util.slackbots.song_request import post_song_request_to_slack
-from constants import WPGU_SONG_REQUESTS_ID
+from util.slackbots.song_request import (
+    post_song_request_to_slack,
+    update_song_request_message,
+)
 
 song_request_routes = Blueprint(
     "song_request_routes", __name__, url_prefix="/wpgu-song-requests"
@@ -159,24 +160,13 @@ def api_claim(uid):
     if not updated:
         return jsonify({"error": "Request not found."}), 404
 
-    # TODO: Update original Slack message to remove Approve/Deny buttons
-    # and say "Currently being reviewed by [Name]"
     if updated.slack_ts:
-        update_message_blocks(
-            channel=WPGU_SONG_REQUESTS_ID,
-            ts=updated.slack_ts,
-            new_blocks=[
-                {
-                    "type": "context",
-                    "elements": [
-                        {
-                            "type": "mrkdwn",
-                            "text": f"*Status:* In progress — Currently being reviewed by {reviewer_name}",
-                        }
-                    ],
-                }
-            ],
-            text=f"Currently being reviewed by {reviewer_name}",
+        update_song_request_message(
+            updated=updated,
+            message_ts=updated.slack_ts,
+            status="in_progress",
+            reviewer_name=reviewer_name,
+            request_id=uid,
         )
 
     return (
@@ -221,23 +211,12 @@ def api_approve(uid):
             status="accepted",
         )
 
-    # TODO: Update original Slack message and DM user update
     if updated.slack_ts:
-        update_message_blocks(
-            channel=WPGU_SONG_REQUESTS_ID,
-            ts=updated.slack_ts,
-            new_blocks=[
-                {
-                    "type": "context",
-                    "elements": [
-                        {
-                            "type": "mrkdwn",
-                            "text": f"*Status:* Accepted — Approved by {reviewer_name}",
-                        }
-                    ],
-                }
-            ],
-            text=f"Approved by {reviewer_name}",
+        update_song_request_message(
+            updated=updated,
+            message_ts=updated.slack_ts,
+            status="accepted",
+            reviewer_name=reviewer_name,
         )
     if updated.is_imc_employee:
         if updated.submitter_slack_id:
@@ -278,24 +257,14 @@ def api_deny(uid):
             rejection_reason=rejection_reason,
         )
 
-    # TODO: Update original Slack message and DM user update
     reason_text = f"\n*Reason:* {rejection_reason}" if rejection_reason else ""
     if updated.slack_ts:
-        update_message_blocks(
-            channel=WPGU_SONG_REQUESTS_ID,
-            ts=updated.slack_ts,
-            new_blocks=[
-                {
-                    "type": "context",
-                    "elements": [
-                        {
-                            "type": "mrkdwn",
-                            "text": f"*Status:* Declined — Denied by {reviewer_name}{reason_text}",
-                        }
-                    ],
-                }
-            ],
-            text=f"Denied by {reviewer_name}",
+        update_song_request_message(
+            updated=updated,
+            message_ts=updated.slack_ts,
+            status="declined",
+            reviewer_name=reviewer_name,
+            rejection_reason=rejection_reason,
         )
     if updated.is_imc_employee:
         if updated.submitter_slack_id:
