@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.10.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.9.0...v2.10.0) (2026-04-15)
+
+
+### Features
+
+* Add tools search to homepage ([c3d1a77](https://github.com/Illini-Media-Company/central-backend/commit/c3d1a7735be65aa2e60d064b35a7867eea754b5e))
+
+
+### Bug Fixes
+
+* Fix timezone issues in oauth expiration ([1a7b813](https://github.com/Illini-Media-Company/central-backend/commit/1a7b8135c31b1db21d48ba820a0195d57d011f13))
+
+
+### Documentation
+
+* Update README reqs ([5a2260d](https://github.com/Illini-Media-Company/central-backend/commit/5a2260d4c0be43fe79d2d2363a1100a91402fbfa))
+
 ## [2.9.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.8.1...v2.9.0) (2026-04-10)
 
 
