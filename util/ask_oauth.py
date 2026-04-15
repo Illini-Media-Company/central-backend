@@ -42,6 +42,10 @@ def _is_expired(expiry: Optional[datetime], skew_seconds: int = 60) -> bool:
     """
     if expiry is None:
         return True
+    if expiry.tzinfo is None or expiry.tzinfo.utcoffset(expiry) is None:
+        expiry = expiry.replace(tzinfo=timezone.utc)
+    else:
+        expiry = expiry.astimezone(timezone.utc)
     now = datetime.now(timezone.utc)
     return expiry <= now + timedelta(seconds=skew_seconds)
 
