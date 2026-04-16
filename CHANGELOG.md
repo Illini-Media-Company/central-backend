@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.10.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.10.0...v2.10.1) (2026-04-16)
+
+
+### Bug Fixes
+
+* **Puzzles:** Update access for ILLordle and Illini Mini Crossword ([2488753](https://github.com/Illini-Media-Company/central-backend/commit/24887538a1db37be36b47a1228a5cf8745fb6b78))
+
 ## [2.10.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.9.0...v2.10.0) (2026-04-15)
 
 
