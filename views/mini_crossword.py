@@ -32,6 +32,7 @@ mini_routes = Blueprint("mini_routes", __name__, url_prefix="/mini")
 
 @mini_routes.route("", methods=["GET"])
 @login_required
+@restrict_to(["editors", "di-section-editors", "di-staff-puzzles", "imc-staff-webdev"])
 def all_days():
     """
     Return data; all saved crosswords
@@ -69,7 +70,7 @@ def today():
 
 @mini_routes.route("/dashboard")
 @login_required
-@restrict_to(["di-section-editors", "imc-staff-webdev"])
+@restrict_to(["editors", "di-section-editors", "di-staff-puzzles", "imc-staff-webdev"])
 def dashboard():
     today = datetime.now(tz=ZoneInfo("America/Chicago")).date()
     days_until_monday = (0 - today.weekday()) % 7
@@ -107,6 +108,7 @@ def dashboard():
 
 @mini_routes.route("/api/validate", methods=["POST"])
 @login_required
+@restrict_to(["editors", "di-section-editors", "di-staff-puzzles", "imc-staff-webdev"])
 def validate():
     """
     Validate a crossword grid posted from the admin UI.
@@ -184,7 +186,7 @@ def validate():
 
 @mini_routes.route("/api/submit", methods=["POST"])
 @login_required
-@restrict_to(["di-section-editors", "imc-staff-webdev"])
+@restrict_to(["editors", "di-section-editors", "di-staff-puzzles", "imc-staff-webdev"])
 def save_crossword():
     """ """
 
