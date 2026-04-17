@@ -7,9 +7,8 @@ Last modified Feb. 11, 2026
 
 from flask_login import UserMixin
 from google.cloud import ndb
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
-import datetime
 
 from . import client
 
@@ -37,7 +36,7 @@ class User(ndb.Model):
     fav_tools = ndb.IntegerProperty(repeated=True)
     ask_oauth_access_token = ndb.TextProperty()
     ask_oauth_refresh_token = ndb.TextProperty()
-    ask_oauth_expiry = ndb.DateTimeProperty()
+    ask_oauth_expiry = ndb.DateTimeProperty(tzinfo=timezone.utc)
     query_history = ndb.DateTimeProperty(repeated=True)
 
 
@@ -85,7 +84,8 @@ def add_user(
         tie_employee_to_user(user_uid=user.uid)
     return LoginUser(user)
 
-#Update a users query history, used for knwoledge slackbot to keep track of how many queries a user has made in the past 24 hours
+
+# Update a users query history, used for knwoledge slackbot to keep track of how many queries a user has made in the past 24 hours
 def update_user_entity(email, data):
     with client.context():
         user = User.query().filter(User.email == email).get()
@@ -95,6 +95,7 @@ def update_user_entity(email, data):
             user.put()
             return True
     return False
+
 
 # Update either a user's name, email or picture that already exists in the database
 def update_user(name, email, picture, last_login=None):
@@ -234,24 +235,26 @@ def get_user_favorite_tools(email):
         else:
             return False
 
+
 def check_and_log_query(email, limit=10, hours=24):
     with client.context():
         user = User.query().filter(User.email == email).get()
         if user is None:
             return False
 
-        now = datetime.datetime.now()
-        cutoff = now - datetime.timedelta(hours=hours)
+        now = datetime.now()
+        cutoff = now - timedelta(hours=hours)
         current_history = user.query_history if user.query_history else []
         recent_queries = [t for t in current_history if t > cutoff]
 
         if len(recent_queries) >= limit:
             return False
-        
+
         recent_queries.append(now)
         user.query_history = recent_queries
         user.put()
         return True
+
 
 def get_user_profile_photo(uid):
     """

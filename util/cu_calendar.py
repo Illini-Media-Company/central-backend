@@ -1,7 +1,6 @@
-"""
-Utility functions for the CU Calendar feature.
+"""CU Calendar helpers: geocoding, GCS images, Google Calendar fetch/sync.
 
-Includes geocoding addresses, Google Cloud Storage logic, and parsing Google Calendar URLs.
+Last modified by Cal Anderson on March 24, 2026
 """
 
 import os
@@ -15,7 +14,11 @@ import googlemaps
 from google.cloud import storage
 from gcsa.google_calendar import GoogleCalendar
 
-from constants import GCS_BUCKET_NAME, BACKEND_GOOGLE_MAP_API
+from constants import (
+    BACKEND_GOOGLE_MAP_API,
+    DEFAULT_PUBLIC_EVENT_CATEGORY,
+    GCS_BUCKET_NAME,
+)
 from util.security import get_creds
 
 
@@ -23,6 +26,8 @@ GCAL_SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
 
 
 def geocode_address(address):
+    """Return (lat, lng) for an address, or None."""
+
     api_key = BACKEND_GOOGLE_MAP_API
     if not api_key:
         print("Error: Google API key not found.")
@@ -42,6 +47,8 @@ def geocode_address(address):
 
 
 def upload_images_to_gcs(files):
+    """Upload files to GCS and return their public URLs."""
+
     if not files:
         return []
     storage_client = storage.Client()
@@ -62,6 +69,8 @@ def upload_images_to_gcs(files):
 
 
 def delete_images_from_gcs(image_urls):
+    """Delete GCS objects by public URL."""
+
     if not image_urls:
         return
     storage_client = storage.Client()
@@ -78,12 +87,8 @@ def delete_images_from_gcs(image_urls):
 
 
 def _parse_calendar_id_from_url(gcal_url: str) -> Optional[str]:
-    """
-    Extract calendar ID from a Google Calendar URL.
-    Supports:
-    1. Embed / public view: .../calendar/embed?src=CALENDAR_ID&ctz=...
-    2. Public iCal feed: .../calendar/ical/CALENDAR_ID/public/basic.ics
-    """
+    """Parse calendar id from an embed or iCal URL."""
+
     if not gcal_url or not isinstance(gcal_url, str):
         return None
     parsed = urlparse(gcal_url.strip())
@@ -104,13 +109,8 @@ def _parse_calendar_id_from_url(gcal_url: str) -> Optional[str]:
 
 
 def gcal_to_events(gcal_url: str, future_days: int = 365) -> Optional[List[dict]]:
-    """
-    Parse a Google Calendar URL to extract the calendar ID, fetch events,
-    and return a list of events compatible with the view.
-    future_days: how many days ahead to fetch (default 365 = next year).
-    Returns list of dicts with: title, start_date, end_date, address,
-    description. Returns None if URL parsing or API access fails.
-    """
+    """Fetch events from a Google Calendar URL for the next future_days."""
+
     calendar_id = _parse_calendar_id_from_url(gcal_url)
     if not calendar_id:
         return None
@@ -144,7 +144,11 @@ def gcal_to_events(gcal_url: str, future_days: int = 365) -> Optional[List[dict]
         elif isinstance(start, datetime):
             if start.tzinfo is None:
                 # If naive, assume it's Chicago time, convert to UTC, then strip tzinfo
-                start = start.replace(tzinfo=tz).astimezone(timezone.utc).replace(tzinfo=None)
+                start = (
+                    start.replace(tzinfo=tz)
+                    .astimezone(timezone.utc)
+                    .replace(tzinfo=None)
+                )
             else:
                 # If it already has tzinfo (standard GCal response), convert to UTC and strip tzinfo
                 start = start.astimezone(timezone.utc).replace(tzinfo=None)
@@ -155,7 +159,9 @@ def gcal_to_events(gcal_url: str, future_days: int = 365) -> Optional[List[dict]
             end = datetime.combine(end, datetime.min.time())
         elif isinstance(end, datetime):
             if end.tzinfo is None:
-                end = end.replace(tzinfo=tz).astimezone(timezone.utc).replace(tzinfo=None)
+                end = (
+                    end.replace(tzinfo=tz).astimezone(timezone.utc).replace(tzinfo=None)
+                )
             else:
                 end = end.astimezone(timezone.utc).replace(tzinfo=None)
 
@@ -174,11 +180,8 @@ def gcal_to_events(gcal_url: str, future_days: int = 365) -> Optional[List[dict]
 
 
 def sync_gcal_sources(*, future_days: int = 30) -> int:
-    """
-    Sync all stored Google Calendar sources: fetch events from each gcal URL,
-    add any new events that are not already in the database.
-    Returns the total number of new events added.
-    """
+    """Import new events from all saved calendar sources; return how many were added."""
+
     from db.cu_calender import (
         add_event,
         event_exists,
@@ -216,7 +219,7 @@ def sync_gcal_sources(*, future_days: int = 30) -> int:
                 end_date=event.get("end_date"),
                 images=[],
                 address=event.get("address", ""),
-                event_type="Imported",
+                event_type=DEFAULT_PUBLIC_EVENT_CATEGORY,
                 description=event.get("description", ""),
                 company_name=company,
                 is_accepted=True,

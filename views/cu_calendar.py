@@ -1,10 +1,21 @@
+"""CU Calendar Flask routes: public API, submissions, admin dashboard.
+
+Last modified by Cal Anderson on March 24, 2026
+"""
+
 import logging
 from datetime import datetime, time, timezone
 
 from flask import Blueprint, jsonify, request, render_template
 from flask_cors import cross_origin
 from flask_login import login_required
-from constants import GOOGLE_MAP_API, CU_CALENDAR_ID
+from constants import (
+    BASE_URL,
+    CU_CALENDAR_ID,
+    DEFAULT_PUBLIC_EVENT_CATEGORY,
+    GOOGLE_MAP_API,
+)
+from zoneinfo import ZoneInfo
 
 from db.cu_calender import (
     accept_event,
@@ -17,10 +28,12 @@ from db.cu_calender import (
     highlight_event as db_highlight_event,
     remove_event as db_remove_event,
     event_exists,
-    get_all_calendar_sources
+    get_all_calendar_sources,
+    get_public_event_categories,
+    normalize_public_event_category,
 )
 from util.cu_calendar import geocode_address, gcal_to_events, upload_images_to_gcs
-from util.security import csrf
+from util.security import csrf, restrict_to
 
 from util.slackbots.general import dm_channel_by_id
 
@@ -33,7 +46,19 @@ public_calendar_api_routes = Blueprint(
 )
 
 
+def _safe_public_event_category(event_type):
+    """
+    Normalize event_type for API output; fall back to DEFAULT_PUBLIC_EVENT_CATEGORY if invalid.
+    """
+    try:
+        return normalize_public_event_category(event_type)
+    except ValueError:
+        return DEFAULT_PUBLIC_EVENT_CATEGORY
+
+
 def _serialize_datetime(value):
+    """Format a datetime for JSON (ISO); pass through non-datetimes."""
+
     if isinstance(value, datetime):
         if value.tzinfo is not None:
             return value.astimezone(timezone.utc).isoformat()
@@ -42,11 +67,13 @@ def _serialize_datetime(value):
 
 
 def _serialize_public_event(event):
+    """JSON shape for /api/events (no submitter fields)."""
+
     return {
         "uid": event.get("uid"),
         "title": event.get("title"),
         "description": event.get("description"),
-        "event_type": event.get("event_type"),
+        "event_type": _safe_public_event_category(event.get("event_type")),
         "highlight": bool(event.get("highlight", False)),
         "start_date": _serialize_datetime(event.get("start_date")),
         "end_date": _serialize_datetime(event.get("end_date")),
@@ -59,7 +86,10 @@ def _serialize_public_event(event):
 
 
 def _serialize_legacy_public_event(event):
+    """JSON shape for legacy /cu-calendar endpoints."""
+
     serialized = dict(event)
+    serialized["event_type"] = _safe_public_event_category(event.get("event_type"))
     serialized["start_date"] = _serialize_datetime(event.get("start_date"))
     serialized["end_date"] = _serialize_datetime(event.get("end_date"))
     serialized["created_at"] = _serialize_datetime(event.get("created_at"))
@@ -70,28 +100,34 @@ def _serialize_legacy_public_event(event):
 
 
 def _parse_submission_datetime(raw_value, is_end=False):
+    """Parse submitted date/datetime strings to Chicago time."""
+
     if not raw_value or not raw_value.strip():
         return None
 
     value = raw_value.strip()
 
-    
     if len(value) == 10:
         parsed_date = datetime.strptime(value, "%Y-%m-%d").date()
-        return datetime.combine(parsed_date, time(23, 59, 59) if is_end else time.min)
+        dt = datetime.combine(parsed_date, time(23, 59, 59) if is_end else time.min)
+        return dt.replace(tzinfo=ZoneInfo("America/Chicago"))
 
     try:
         normalized_value = value.replace("Z", "+00:00")
         parsed_datetime = datetime.fromisoformat(normalized_value)
-        
+
         if parsed_datetime.tzinfo is not None:
-            return parsed_datetime.astimezone(timezone.utc).replace(tzinfo=None)
-        return parsed_datetime
+            return parsed_datetime.astimezone(ZoneInfo("America/Chicago"))
+        return parsed_datetime.replace(tzinfo=ZoneInfo("America/Chicago"))
     except ValueError as exc:
-        raise ValueError("Invalid date/time format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM") from exc
+        raise ValueError(
+            "Invalid date/time format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM"
+        ) from exc
 
 
 def _get_uploaded_files():
+    """Collect image uploads from the request."""
+
     files = [
         upload
         for upload in request.files.getlist("images")
@@ -106,6 +142,8 @@ def _get_uploaded_files():
 
 
 def _create_pending_submission():
+    """Validate and save a public submission; notify Slack."""
+
     title = (request.form.get("title") or "").strip()
     address = (request.form.get("address") or "").strip()
 
@@ -113,6 +151,7 @@ def _create_pending_submission():
         return jsonify({"error": "Missing title and address."}), 400
 
     try:
+        event_type = normalize_public_event_category(request.form.get("event_type"))
         start_date = _parse_submission_datetime(request.form.get("start_date"))
         end_date = _parse_submission_datetime(request.form.get("end_date"), is_end=True)
     except ValueError as exc:
@@ -132,7 +171,7 @@ def _create_pending_submission():
             end_date=end_date,
             images=image_urls,
             address=address,
-            event_type=request.form.get("event_type"),
+            event_type=event_type,
             description=request.form.get("description"),
             company_name=request.form.get("company_name"),
             submitter_name=request.form.get("submitter_name"),
@@ -141,17 +180,14 @@ def _create_pending_submission():
             highlight=False,
         )
 
-
-        #Jacob review 
+        # Jacob review
         channel_id = CU_CALENDAR_ID
-        link = "tenplink.com/admin/cu-calendar/dashboard" 
-        notification_text = f"New event submitted: *{title}*. Click the link to review: {link}"
-
-        dm_channel_by_id(
-            channel_id=channel_id, 
-            text=notification_text
+        link = BASE_URL + "/admin/cu-calendar/dashboard"
+        notification_text = (
+            f"New event submitted: *{title}*. Click the link to review: {link}"
         )
 
+        dm_channel_by_id(channel_id=channel_id, text=notification_text)
 
         return (
             jsonify(
@@ -172,6 +208,8 @@ def _create_pending_submission():
 @cross_origin()
 @csrf.exempt
 def list_public_events():
+    """GET future accepted events (legacy JSON)."""
+
     events = [
         _serialize_legacy_public_event(event) for event in get_future_public_events()
     ]
@@ -182,6 +220,9 @@ def list_public_events():
 @cross_origin()
 @csrf.exempt
 def get_map_center():
+    """
+    Return default map center lat/long derived from future events (or campus default).
+    """
     center = center_val()
     return jsonify({"lat": center[0], "long": center[1]}), 200
 
@@ -190,6 +231,8 @@ def get_map_center():
 @cross_origin()
 @csrf.exempt
 def submit_calendar_item():
+    """POST a pending public event (multipart form)."""
+
     return _create_pending_submission()
 
 
@@ -197,6 +240,8 @@ def submit_calendar_item():
 @cross_origin()
 @csrf.exempt
 def list_public_events_api():
+    """GET /api/events — future accepted events."""
+
     events = [_serialize_public_event(event) for event in get_future_public_events()]
     return jsonify(events), 200
 
@@ -205,6 +250,8 @@ def list_public_events_api():
 @cross_origin()
 @csrf.exempt
 def submit_public_event_api():
+    """POST a pending public event (API)."""
+
     return _create_pending_submission()
 
 
@@ -212,35 +259,37 @@ def submit_public_event_api():
 @cross_origin()
 @csrf.exempt
 def list_public_event_categories():
-    categories = sorted(
-        {
-            event.get("event_type").strip()
-            for event in get_future_public_events()
-            if event.get("event_type") and event.get("event_type").strip()
-        }
-    )
-    return jsonify(categories), 200
+    """GET allowed event categories."""
+
+    return jsonify(get_public_event_categories()), 200
 
 
 # admin routes
 @admin_calendar_routes.route("/pending", methods=["GET"])
 @login_required
+@restrict_to(["cu-calendar-admin", "imc-staff-webdev"])
 def list_pending_events():
+    """GET pending events (staff)."""
+
     return jsonify(get_pending_events()), 200
 
 
 @admin_calendar_routes.route("/source/add", methods=["POST"])
 @login_required
+@restrict_to(["cu-calendar-admin", "imc-staff-webdev"])
 def add_and_process_source():
+    """Import from a Google Calendar URL and save the source if new."""
+
     data = request.get_json(silent=True) or request.form or {}
     gcal_url = data.get("gcal_url")
     company = data.get("company_name")
-    
+
     if not gcal_url:
         return jsonify({"error": "Missing gcal_url"}), 400
 
     existing_sources = get_all_calendar_sources()
     source_already_exists = any(s.get("gcal_url") == gcal_url for s in existing_sources)
+    imported_event_type = DEFAULT_PUBLIC_EVENT_CATEGORY
 
     parsed_events = gcal_to_events(gcal_url)
     if parsed_events is None:
@@ -263,7 +312,7 @@ def add_and_process_source():
                 end_date=event.get("end_date"),
                 images=[],
                 address=event.get("address"),
-                event_type="Imported",
+                event_type=imported_event_type,
                 description=event.get("description"),
                 company_name=company,
                 submitter_name="",
@@ -275,7 +324,9 @@ def add_and_process_source():
 
     if not source_already_exists:
         add_calendar_source(gcal_url, company or "")
-        message = f"Successfully linked new calendar and imported {events_added} events!"
+        message = (
+            f"Successfully linked new calendar and imported {events_added} events!"
+        )
     else:
         message = f"Calendar already linked. Synced {events_added} new events!"
 
@@ -284,7 +335,10 @@ def add_and_process_source():
 
 @admin_calendar_routes.route("/<uid>/highlight", methods=["POST"])
 @login_required
+@restrict_to(["cu-calendar-admin", "imc-staff-webdev"])
 def highlight_event(uid):
+    """POST highlight and accept an event."""
+
     if not uid:
         return jsonify({"error": "Invalid Event ID format."}), 400
 
@@ -298,7 +352,10 @@ def highlight_event(uid):
 
 @admin_calendar_routes.route("/<uid>/accept", methods=["POST"])
 @login_required
+@restrict_to(["cu-calendar-admin", "imc-staff-webdev"])
 def accept_pending_event(uid):
+    """POST geocode and accept a pending event."""
+
     if not uid:
         return jsonify({"error": "Invalid Event ID format."}), 400
 
@@ -322,8 +379,10 @@ def accept_pending_event(uid):
 
 @admin_calendar_routes.route("/<uid>/reject", methods=["POST"])
 @login_required
+@restrict_to(["cu-calendar-admin", "imc-staff-webdev"])
 def reject_pending_event(uid):
-    """Reject a pending event by deleting it (and any uploaded images)."""
+    """POST delete a pending event (and its images)."""
+
     if not uid:
         return jsonify({"error": "Invalid Event ID format."}), 400
 
@@ -336,6 +395,7 @@ def reject_pending_event(uid):
 
 @admin_calendar_routes.route("/dashboard", methods=["GET"])
 @login_required
+@restrict_to(["cu-calendar-admin", "imc-staff-webdev"])
 def admin_dashboard():
     """
     Render the CU Calendar admin dashboard.
@@ -348,29 +408,43 @@ def admin_dashboard():
         reverse=True,
     )
     today_iso = datetime.now().date().isoformat()
-    
+
     return render_template(
-        "cu_calendar/admin_dashboard.html",
+        "cu_calendar_dash.html",
         pending_events=pending_sorted,
         today_iso=today_iso,
         GOOGLE_MAPS_API_KEY=GOOGLE_MAP_API,
+        event_categories=get_public_event_categories(),
     )
 
 
 @admin_calendar_routes.route("/dashboard/add-event", methods=["POST"])
 @login_required
+@restrict_to(["cu-calendar-admin", "imc-staff-webdev"])
 def admin_add_event():
-    """Manually add an accepted CU Calendar event (IMC staff)."""
+    """POST a manually added accepted event from the dashboard."""
+
     title = (request.form.get("title") or "").strip()
     address = (request.form.get("address") or "").strip()
     if not title or not address:
         return jsonify({"error": "Missing title and address."}), 400
 
+    raw_start = request.form.get("start_date")
+    raw_end = request.form.get("end_date")
+    if not raw_start or not str(raw_start).strip():
+        return jsonify({"error": "Start date and time are required."}), 400
+    if not raw_end or not str(raw_end).strip():
+        return jsonify({"error": "End date and time are required."}), 400
+
     try:
-        start_date = _parse_submission_datetime(request.form.get("start_date"))
-        end_date = _parse_submission_datetime(request.form.get("end_date"), is_end=True)
+        event_type = normalize_public_event_category(request.form.get("event_type"))
+        start_date = _parse_submission_datetime(raw_start)
+        end_date = _parse_submission_datetime(raw_end, is_end=True)
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
+
+    if start_date and end_date and end_date < start_date:
+        return jsonify({"error": "End must be after start."}), 400
 
     coords = geocode_address(address)
     if not coords:
@@ -394,7 +468,7 @@ def admin_add_event():
         end_date=end_date,
         images=image_urls,
         address=address,
-        event_type=(request.form.get("event_type") or "").strip(),
+        event_type=event_type,
         description=(request.form.get("description") or "").strip(),
         company_name=(request.form.get("company_name") or "").strip(),
         submitter_name=(request.form.get("submitter_name") or "").strip(),

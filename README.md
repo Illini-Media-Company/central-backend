@@ -28,17 +28,21 @@ Illini Media Company recommends [Visual Studio Code](https://code.visualstudio.c
 - [Python Environments](https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-python-envs)
 - [Code Spell Checker](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker)
     - To make sure your code and comments don't have any typos!
+- [flask-snippets](https://marketplace.visualstudio.com/items?itemName=cstrap.flask-snippets)
+    - Allows you to use shortcuts for Flask and Jinja.
 
 ### Prerequisites
 
 Make sure you have all of the following:
 
-- Python 3.12 (Different versions may cause issues for Google Cloud)
+- [Python 3.13+](https://www.python.org/downloads/) 
+    - 3.13 is recommended as different versions may cause issues for Google Cloud
     - You can check which version you have by running `python --version` or `python3 --version` from a new terminal
 - [Google Cloud CLI](https://cloud.google.com/sdk/docs/install)
-- Git
-- [Java 17+](https://www.oracle.com/java/technologies/downloads/#java17)
-    - You can check which version you have by running `java --version` from a new terminal
+- [Git](https://git-scm.com/install/)
+- [Java 21+](https://www.oracle.com/java/technologies/downloads/#jdk21)
+    - Required for Google Cloud CLI
+    - You can check which version you have by running `java -version` from a new terminal
 - You've been added to the "IMC Staff - Web Dev" Google Group by your supervisor
 
 ### Steps
@@ -144,23 +148,12 @@ Creating, using and running Slack apps (Copy Bot, Breaking News Bot, News Scrape
 
 ### Implementation
 
-- The file `/util/slackbot.py` defines and creates the main Slack app, called IMC Bot.
-  - The same file also defines the IMC Welcome Bot, which is an extension of the IMC Bot app and is responsible for sending welcome messages to everyone added to the workspace and routing them to the correct channels.
+- The file `/util/slackbots/_slackbot.py` defines and creates the main Slack app, called Scout.
+  - The same file also defines the IMC Welcome Bot, which is an extension of the Scout app and is responsible for sending welcome messages to everyone added to the workspace and routing them to the correct channels.
   - Most importantly, this file creates the `app` variable which is used by all other files referencing a Slack app. Additionally, it contains the function to initialize the app which is called from `main.py`.
-- Slackbots that do not have Central Backend APIs (like the Copy Editing Bot) are located under `/util/xxx`.
-- Slackbots that *have* Central Backend APIs (like the Breaking News Bot) are located under `/views/xxx`.
+- All custom Slackbot functions should be located inside of `/util/slackbots/xxx`.
+- General purpose functions that can be called from any file can be found under `/util/slackbots/general.py`.
 - All Slackbot files must import the main app (`from util.slackbots._slackbot import app`) as well as the Bot Token (`from constants import SLACK_BOT_TOKEN`)
-- All apps can define the username that the message is sent from. For example:
-    ```
-    app.client.chat_postMessage(
-      token=SLACK_BOT_TOKEN,
-      username="Whatever you want",
-      channel={the ID of the channel with no braces},
-      blocks=[
-        (message blocks go here)
-      ]
-    )
-    ```
 - Message body can be created using the [Slack Block Kit Builder](https://app.slack.com/block-kit-builder/)
 
 ### Running Slackbots
@@ -168,9 +161,9 @@ Creating, using and running Slack apps (Copy Bot, Breaking News Bot, News Scrape
 - When running the Central Backend locally, it pulls all secrets from the `.env` file. These are development secrets and are (usually) different than the production secrets located in GitHub Actions.
 - Because of this, the Slack App will run the app in the Central Backend Testing workspace on Slack. This means you are able to make changes locally and see them work without having to flood the main Workspace with messages.
 - Messages that are sent in specific channels do so by using the channel's ID. The main workspace and the testing workspace have different channel IDs, so it is necessary to define them both.
-- All channel IDs are defined in the file specific to each Slackbot. For example, in `/util/copy_editing.py` you'll see the line:
+- All channel IDs are defined in `constants.py` as follows:
     ```
-    DI_COPY_TAG_CHANNEL_ID = "XXXXXX" if ENV == "prod" else "YYYYYY"
+    AAAAA_CHANNEL_ID = "XXXXXX" if ENV == "prod" else "YYYYYY"
     ```
   - Here, XXXXXX should re replaced with the channel ID in the main Slack workspace, and YYYYYY should be replace with the channel ID in the Central Backend Testing workspace
 - All development should be done in the Central Backend Testing workspace. Once the bot is working, submit a pull request. When the code is pushed to `main`, it will automatically run on the main workspace.

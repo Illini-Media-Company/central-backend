@@ -74,3 +74,13 @@ indexes:
     - name: end_date
     - name: start_date
       direction: desc
+  - kind: CalendarObject
+    properties:
+    - name: is_accepted
+    - name: end_date
+    - name: start_date
+  - kind: CalendarObject
+    properties:
+    - name: start_date
+    - name: title
+    - name: url

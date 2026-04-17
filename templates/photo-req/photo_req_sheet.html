@@ -7,45 +7,6 @@
 {% block extra_head %}
     <link rel="stylesheet" href="/static/styles/styles_index.css">
     <link rel="stylesheet" href="/static/macros/form.css">
-    <style>
-        table {
-            border-collapse: separate;
-            border-spacing: 0 0.5rem;
-            width: 100%;
-            background-color: var(--main-bg-color);
-            border-radius: var(--main-border-radius);
-        }
-
-        tr {
-            border-radius: var(--main-border-radius);
-        }
-
-        tr:hover td {
-            background-color: var(--main-extralight-color);
-        }
-
-        td {
-            padding: 0.75rem 1rem;
-            background-color: var(--main-bg-color);
-        }
-
-        td:first-child {
-            border-top-left-radius: var(--main-border-radius);
-            border-bottom-left-radius: var(--main-border-radius);
-        }
-
-            td:last-child {
-            border-top-right-radius: var(--main-border-radius);
-            border-bottom-right-radius: var(--main-border-radius);
-        }
-
-        th {
-            padding: 0.75rem 1rem;
-            white-space: nowrap;
-            border-bottom: 1px solid var(--main-lt-gray-color);
-            align-items: center;
-        }
-    </style>
 {% endblock %}
 
 {% import "macros/form.html" as form %}
@@ -103,7 +64,7 @@
         <p style="margin-bottom: 0;">There are no photo requests for this selection.</p>
     </div>
     {% else %}
-    <div style="overflow-x: auto; max-width: 100%; border-radius: var(--main-border-radius); box-shadow: var(--input-box-shadow);">
+    <div class="table-container">
         <table>
             <tr>
                 <th style="padding-right: 3rem;"><span><i class="bi bi-caret-up"></i></span> Photographer</th>

@@ -97,6 +97,19 @@ WPGU_OFFICE_RESOURCE_GCAL_ID = (
 )
 WPGU_ONAIR_GCAL_ID = "c_b888554deb36a74a61aea32bac28ab500ade0003cd2ae61085354e07c2fa0fa0@group.calendar.google.com"
 
+# CU Calendar public event options
+PUBLIC_EVENT_OPTIONS = {
+    "categories": [
+        "Music",
+        "Food",
+        "Arts",
+        "Sports",
+        "Community",
+        "Education",
+    ]
+}
+DEFAULT_PUBLIC_EVENT_CATEGORY = "Community"
+
 ################################################################################
 ### EMPLOYEE MANAGEMENT SYSTEM #################################################
 ################################################################################
@@ -287,6 +300,8 @@ WPGU_SPORTS_ID = "C09FRSTPVAL" if ENV == "prod" else "C09V8V4K5K8"
 WPGU_SONG_REQUESTS_ID = "C06FXLRJGKV" if ENV == "prod" else "C0AP06FTGA0"
 
 CU_CALENDAR_ID = "" if ENV == "prod" else "C0AMKL402HE"
+
+CU_CALENDAR_ID = "C0ARFFUSW02" if ENV == "prod" else "C0AMKL402HE"
 
 PHOTO_REQUESTS_CHANNEL_ID = (
     "C09NCRWU8T1" if ENV == "dev" else "C09CJMTAYHW"
