@@ -46,6 +46,27 @@
             border-bottom: 1px solid var(--main-lt-gray-color);
             align-items: center;
         }
+
+        .status-label {
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .status-label.in-progress {
+            color: var(--blue-500);
+        }
+
+        .status-label.accepted {
+            color: var(--wpgu-green-500);
+        }
+
+        .status-label.declined {
+            color: var(--red-500);
+        }
+
+        .status-label.pending {
+            color: var(--imc-orange-500);
+        }
     </style>
 {% endblock %}
 
@@ -114,7 +135,7 @@
             <tr>
                 <td>
                     {% if r.status == "in_progress" %}
-                        <p style="font-weight: bold; margin: 0; color: #3498db;">In Progress</p>
+                        <p class="status-label in-progress">In Progress</p>
                         <p style="font-size: 0.75rem; margin-top: 0.25rem; margin-bottom: 0;">Reviewing: {{ r.reviewer_name }}</p>
 
                         {% if r.reviewer_name == current_user.name %}
@@ -125,18 +146,18 @@
                         {% endif %}
 
                     {% elif r.status == "accepted" %}
-                        <p style="font-weight: bold; margin: 0; color: #2ecc71;">Accepted</p>
+                        <p class="status-label accepted">Accepted</p>
                         <p style="font-size: 0.75rem; margin-top: 0.25rem; margin-bottom: 0;">By {{ r.reviewer_name }}</p>
 
                     {% elif r.status == "declined" %}
-                        <p style="font-weight: bold; margin: 0; color: #e74c3c;">Declined</p>
+                        <p class="status-label declined">Declined</p>
                         <p style="font-size: 0.75rem; margin-top: 0.25rem; margin-bottom: 0;">By {{ r.reviewer_name }}</p>
                         {% if r.rejection_reason %}
                             <p style="font-size: 0.75rem; margin-top: 0.25rem; margin-bottom: 0; font-style: italic;">Reason: {{ r.rejection_reason }}</p>
                         {% endif %}
 
                     {% else %}
-                        <p style="font-weight: bold; margin: 0; color: #f39c12;">Pending</p>
+                        <p class="status-label pending">Pending</p>
                         <button class="button-primary" style="margin-top: 0.5rem;" onclick="claimSong('{{ r.uid }}')">Claim Review</button>
                     {% endif %}                    
                 </td>

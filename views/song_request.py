@@ -5,6 +5,7 @@ from util.security import restrict_to
 from db.song_request import (
     create_song_request,
     get_all_song_requests,
+    get_song_request_by_id,
     update_request_status,
     delete_all_song_requests,
     delete_song_request,
@@ -16,6 +17,7 @@ from util.slackbots.general import (
     dm_user_by_email,
 )
 from util.slackbots.song_request import (
+    delete_song_request_message,
     post_song_request_to_slack,
     update_song_request_message,
 )
@@ -285,7 +287,20 @@ def api_deny(uid):
 @login_required
 @restrict_to(["wpgu-music", "imc-staff-webdev"])
 def api_remove_single(uid):
-    """Deletes a single song request from the database."""
+    """Deletes a single song request and removes its Slack channel message."""
+    song_request = get_song_request_by_id(uid)
+    if not song_request:
+        return jsonify({"error": "Request not found."}), 404
+
+    if song_request.slack_ts:
+        slack_delete = delete_song_request_message(message_ts=song_request.slack_ts)
+        slack_error = str(slack_delete.get("error") or "")
+        if not slack_delete.get("ok") and "message_not_found" not in slack_error:
+            return (
+                jsonify({"error": "Failed to delete the Slack message."}),
+                502,
+            )
+
     success = delete_song_request(uid)
 
     if not success:

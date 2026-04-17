@@ -201,6 +201,25 @@ def update_song_request_message(
         print(f"[song_request] chat_update failed: {e}")
 
 
+def delete_song_request_message(
+    *, message_ts, channel_id=WPGU_SONG_REQUESTS_ID
+) -> dict:
+    """Delete the Slack channel message for a song request."""
+    if not (channel_id and message_ts):
+        return {"ok": False, "error": "missing channel_id or message_ts"}
+
+    try:
+        app.client.chat_delete(
+            token=SLACK_BOT_TOKEN,
+            channel=channel_id,
+            ts=message_ts,
+        )
+        return {"ok": True}
+    except Exception as e:
+        print(f"[song_request] chat_delete failed: {e}")
+        return {"ok": False, "error": str(e)}
+
+
 # ---------------------------------------------------------------------------
 # Action handlers
 # ---------------------------------------------------------------------------
