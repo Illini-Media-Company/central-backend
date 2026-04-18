@@ -35,7 +35,7 @@ DAYS_OF_WEEK = [
     "Saturday",
 ]
 WEEKEND_DAY_INDICES = {5, 6}
-COPY_SCHEDULE_NOTIFICATIONS_CHANNEL = "" if ENV == "prod" else "C0AUAPTJJ0Y"
+COPY_SCHEDULE_NOTIFICATIONS_CHANNEL = "C0AUKUX78UQ" if ENV == "prod" else "C0AUAPTJJ0Y"
 
 
 def _notify_channel(msg: str) -> None:
