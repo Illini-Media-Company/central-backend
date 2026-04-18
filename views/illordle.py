@@ -25,6 +25,7 @@ illordle_routes = Blueprint("illordle_routes", __name__, url_prefix="/illordle")
 
 @illordle_routes.route("/dashboard")
 @login_required
+@restrict_to(["editors", "di-section-editors", "di-staff-puzzles", "imc-staff-webdev"])
 def dashboard():
     today = datetime.now(tz=ZoneInfo("America/Chicago")).date()
     next_two_weeks = [today + timedelta(days=i) for i in range(15)]
@@ -41,6 +42,7 @@ def dashboard():
 
 @illordle_routes.route("", methods=["GET"])
 @login_required
+@restrict_to(["editors", "di-section-editors", "di-staff-puzzles", "imc-staff-webdev"])
 def list_words():
     words = get_all_words()
     return words
@@ -69,6 +71,7 @@ def get_todays_word():
 
 @illordle_routes.route("/word/<mm>/<dd>/<yyyy>", methods=["GET"])
 @login_required
+@restrict_to(["editors", "di-section-editors", "di-staff-puzzles", "imc-staff-webdev"])
 def retrieve_word(mm, dd, yyyy):
     try:
         year = int(yyyy)
@@ -86,7 +89,7 @@ def retrieve_word(mm, dd, yyyy):
 
 @illordle_routes.route("/word/<mm>/<dd>/<yyyy>", methods=["POST"])
 @login_required
-@restrict_to(["editors", "di-section-editors", "webdev"])
+@restrict_to(["editors", "di-section-editors", "di-staff-puzzles", "imc-staff-webdev"])
 def create_word(mm, dd, yyyy):
     word = request.form["word"].lower()
     story_url = request.form["url"].partition("?")[0]

@@ -1,3 +1,10 @@
+"""
+Defines the API endpoints and admin dashboard for managing mini crossword puzzles.
+
+Created by Jia Gill on 
+Last modified by Jacob Slabosz on April 9, 2026
+"""
+
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -13,7 +20,7 @@ from util.helpers.ap_datetime import ap_daydate
 from util.mini_crossword_validator import validate_crossword
 from datetime import date as _date
 
-from db.mini_crossword_object import add_crossword
+from db.mini_crossword_object import add_crossword, delete_crossword
 from flask_login import current_user
 
 from util.google_analytics import send_ga4_event
@@ -25,6 +32,7 @@ mini_routes = Blueprint("mini_routes", __name__, url_prefix="/mini")
 
 @mini_routes.route("", methods=["GET"])
 @login_required
+@restrict_to(["editors", "di-section-editors", "di-staff-puzzles", "imc-staff-webdev"])
 def all_days():
     """
     Return data; all saved crosswords
@@ -62,13 +70,45 @@ def today():
 
 @mini_routes.route("/dashboard")
 @login_required
-@restrict_to(["di-section-editors", "imc-staff-webdev"])
+@restrict_to(["editors", "di-section-editors", "di-staff-puzzles", "imc-staff-webdev"])
 def dashboard():
-    return render_template("mini_crossword.html")
+    today = datetime.now(tz=ZoneInfo("America/Chicago")).date()
+    days_until_monday = (0 - today.weekday()) % 7
+    next_monday = today + timedelta(days=days_until_monday)
+
+    current_monday = (
+        next_monday - timedelta(weeks=1) if days_until_monday != 0 else today
+    )
+    print(current_monday)
+
+    # Get current week's puzzle
+    cw_current = get_crossword(current_monday)
+    current_crossword = {
+        "date": current_monday,
+        "exists": bool(cw_current),
+        "data": cw_current,
+    }
+
+    # Get next 5 puzzles
+    next_five_mondays = [next_monday + timedelta(weeks=i) for i in range(5)]
+    crosswords = []
+    for d in next_five_mondays:
+        cw = get_crossword(d)
+        if cw:
+            crosswords.append({"date": d, "exists": True, "data": cw})
+        else:
+            crosswords.append({"date": d, "exists": False, "data": None})
+
+    return render_template(
+        "mini_crossword.html",
+        current_crossword=current_crossword,
+        crosswords=crosswords,
+    )
 
 
 @mini_routes.route("/api/validate", methods=["POST"])
 @login_required
+@restrict_to(["editors", "di-section-editors", "di-staff-puzzles", "imc-staff-webdev"])
 def validate():
     """
     Validate a crossword grid posted from the admin UI.
@@ -112,17 +152,7 @@ def validate():
         cw_date_obj = cw_date_str
 
     # Check if crossword with this date already exists BEFORE validation
-    existing = get_crossword(cw_date_obj)
-    if existing:
-        return (
-            jsonify(
-                {
-                    "ok": False,
-                    "error": f"A crossword already exists for {cw_date_obj}. Please change the date.",
-                }
-            ),
-            400,
-        )
+    # (Removed to allow edits)
 
     origin = payload.get("origin") or "manual"
     article_link = payload.get("article_link") or ""
@@ -156,7 +186,7 @@ def validate():
 
 @mini_routes.route("/api/submit", methods=["POST"])
 @login_required
-@restrict_to(["di-section-editors", "imc-staff-webdev"])
+@restrict_to(["editors", "di-section-editors", "di-staff-puzzles", "imc-staff-webdev"])
 def save_crossword():
     """ """
 
@@ -184,6 +214,9 @@ def save_crossword():
         title = get_title_from_url(link)
     else:
         title = ""
+
+    # Delete existing crossword for this date if it exists
+    delete_crossword(cw_date)
 
     crossword = add_crossword(
         id=cw_id,

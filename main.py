@@ -1,6 +1,6 @@
 """
 
-Last modified by Jacob Slabosz March 12, 2026
+Last modified by Jacob Slabosz April 9, 2026
 """
 
 import logging
@@ -41,7 +41,7 @@ with InitTimer("Standard Libraries"):
     import urllib
     import atexit
     from threading import Thread
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
     from zoneinfo import ZoneInfo
 
 with InitTimer("Third-Party Libraries"):
@@ -75,103 +75,103 @@ with InitTimer("Constants"):
         TOOLS_ADMIN_ACCESS_GROUPS,
     )
 
-logging.info("Modules imported.")
-
 ################################################################################
 # DB IMPORTS ###################################################################
 
-logging.info("Importing database functions...")
-from db import client as dbclient
-from db.user import (
-    add_user,
-    update_user,
-    get_user,
-    get_all_users,
-    get_user_favorite_tools,
-    get_user_name,
-    set_user_ask_oauth_tokens,
-)
-from db.all_tools import (
-    get_all_tools,
-    get_all_tools_restricted,
-    get_tool_by_uid,
-)
-from db.map_point import get_all_points
-from db.json_store import json_store_set
-from db.employee_management import initialize_ems_settings
-
-logging.info("Database functions imported.")
+with InitTimer("Database Functions"):
+    from db import client as dbclient
+    from db.user import (
+        add_user,
+        update_user,
+        get_user,
+        get_all_users,
+        get_user_favorite_tools,
+        get_user_name,
+        set_user_ask_oauth_tokens,
+    )
+    from db.all_tools import (
+        get_all_tools,
+        get_all_tools_restricted,
+        get_tool_by_uid,
+    )
+    from db.map_point import get_all_points
+    from db.json_store import json_store_set
+    from db.employee_management import initialize_ems_settings
+    from db.cu_calender import delete_expired_events
 
 ################################################################################
 # UTIL IMPORTS #################################################################
 
-logging.info("Importing utility functions...")
-from util.security import (
-    csrf,
-    get_google_provider_cfg,
-    is_user_in_group,
-    update_groups,
-    restrict_to,
-)
-from util.map_point import remove_point
-from util.gcal import get_allstaff_events
-from util.slackbots.copy_editing import scheduler as copy_scheduler
-from util.map_point import scheduler as map_scheduler
-from util.rss_social_listener import process_new_stories_to_slack
-from util.scheduler import scheduler_to_json, db_to_scheduler
-from util.changelog_parser import parse_changelog
-from util.slackbots._slackbot import start_slack
-from util.helpers.email_to_slackid import email_to_slackid
-from util.all_tools import format_restricted_groups
-import util.slackbots.employee_agreement_slackbot
-import util.slackbots.photo_request
-import util.slackbots.socials_slackbot
-import util.slackbots.knowledge_slackbot
-from util.helpers.ap_datetime import (
-    ap_datetime,
-    ap_date,
-    ap_time,
-    ap_daydate,
-    ap_daydatetime,
-    days_since,
-    months_since,
-    years_since,
-    time_since,
-    time_between,
-)
+with InitTimer("Utility Functions"):
+    from util.security import (
+        csrf,
+        get_google_provider_cfg,
+        is_user_in_group,
+        update_groups,
+        restrict_to,
+    )
+    from util.map_point import remove_point
+    from util.gcal import get_allstaff_events
+    from util.slackbots.copy_editing import scheduler as copy_scheduler
+    from util.map_point import scheduler as map_scheduler
+    from util.rss_social_listener import process_new_stories_to_slack
+    from util.scheduler import scheduler_to_json, db_to_scheduler
+    from util.changelog_parser import parse_changelog
+    from util.slackbots._slackbot import start_slack
+    from util.helpers.email_to_slackid import email_to_slackid
+    from util.all_tools import format_restricted_groups
+    from util.cu_calendar import sync_gcal_sources
+    from util.employee_management import get_ems_brand_image_url
+    from util.helpers.ap_datetime import (
+        ap_datetime,
+        ap_date,
+        ap_time,
+        ap_daydate,
+        ap_daydatetime,
+        days_since,
+        months_since,
+        years_since,
+        time_since,
+        time_between,
+    )
 
-logging.info("Utility functions imported.")
+with InitTimer("Slackbots"):
+    import util.slackbots.employee_agreement_slackbot
+    import util.slackbots.photo_request
+    import util.slackbots.socials_slackbot
+    import util.slackbots.knowledge_slackbot
 
 ################################################################################
 # VIEWS IMPORTS #################################################################
 
-logging.info("Importing views...")
-from views.all_tools import tools_routes
-from views.content_doc import content_doc_routes
-from views.constant_contact import constant_contact_routes
-from views.illordle import illordle_routes
-from views.mini_crossword import mini_routes
-from views.socials import socials_routes
-from views.retool_apps import retool_routes
-from views.users import users_routes
-from views.groups import groups_routes
-from views.breaking_news import breaking_routes
-from views.copy_schedule import copy_schedule_routes
-from views.map_points import map_points_routes
-from views.overlooked import overlooked_routes
-from views.food_truck import food_truck_routes
-from views.employee_agreement import employee_agreement_routes
-from views.rotate_tv import rotate_tv_routes
-from views.photo_request import photo_request_routes
-from views.di_social_poster import di_social_poster_routes
-from views.employee_management import ems_routes
-from views.employee_management import get_ems_brand_image_url
-from views.copy_schedule_admin import copy_scheduler_routes
-import views.copy_schedule_user
+with InitTimer("Views"):
+    from views.all_tools import tools_routes
+    from views.content_doc import content_doc_routes
+    from views.constant_contact import constant_contact_routes
+    from views.illordle import illordle_routes
+    from views.mini_crossword import mini_routes
+    from views.socials import socials_routes
+    from views.retool_apps import retool_routes
+    from views.users import users_routes
+    from views.groups import groups_routes
+    from views.breaking_news import breaking_routes
+    from views.copy_schedule import copy_schedule_routes
+    from views.map_points import map_points_routes
+    from views.overlooked import overlooked_routes
+    from views.food_truck import food_truck_routes
+    from views.employee_agreement import employee_agreement_routes
+    from views.rotate_tv import rotate_tv_routes
+    from views.photo_request import photo_request_routes
+    from views.di_social_poster import di_social_poster_routes
+    from views.employee_management import ems_routes
+    from views.cu_calendar import (
+        admin_calendar_routes,
+        calendar_routes,
+        public_calendar_api_routes,
+    )
+    from views.copy_schedule_admin import copy_scheduler_routes
+    import views.copy_schedule_user
 
-# from views.copy_schedule_user import shift_scheduler_routes
-
-logging.info("Views imported.")
 
 ################################################################################
 ############################# IMPORTS COMPLETE #################################
@@ -181,10 +181,6 @@ logging.info("Initializing Flask...")
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 
-# csp = {
-#     'default-src': '*'
-# }
-#
 talisman = Talisman(app, content_security_policy=[])
 csrf.init_app(app)
 logging.info("Done initializing Flask.")
@@ -209,6 +205,9 @@ app.register_blueprint(rotate_tv_routes)
 app.register_blueprint(photo_request_routes)
 app.register_blueprint(di_social_poster_routes)
 app.register_blueprint(ems_routes)
+app.register_blueprint(calendar_routes)
+app.register_blueprint(admin_calendar_routes)
+app.register_blueprint(public_calendar_api_routes)
 app.register_blueprint(copy_scheduler_routes)
 # app.register_blueprint(shift_scheduler_routes)
 logging.info("Done registering blueprints.")
@@ -418,6 +417,26 @@ def schedulers():
 # from jobs defined in cron.yaml
 
 
+# add cron job for
+# import regular function and run it
+@app.route("/cron/delete-expired-events", methods=["GET", "POST"])
+@csrf.exempt
+@talisman(force_https=False)
+def cron_delete_expired_events():
+    if request.headers.get("X-Appengine-Cron") != "true":
+        logging.warning(
+            "Unauthorized attempt to trigger delete_expired_events cron job"
+        )
+        return "Unauthorized", 403
+    try:
+        delete_expired_events()
+        logging.info("delete_expired_events cron job completed successfully")
+        return {"success": True}, 200
+    except Exception as e:
+        logging.exception("delete_expired_events cron job failed")
+        return {"success": False, "error": str(e)}, 500
+
+
 @app.route("/cron/socials-rss-listener", methods=["GET", "POST"])
 @csrf.exempt
 @talisman(force_https=False)
@@ -454,6 +473,44 @@ def cron_rss_listener():
         return {"success": True, "stories_posted": count, "links": links}, 200
     except Exception as e:
         logging.exception("RSS cron job failed")
+        return {"success": False, "error": str(e)}, 500
+
+
+@app.route("/cron/cu-calendar-sync-30d", methods=["GET", "POST"])
+@csrf.exempt
+@talisman(force_https=False)
+def cron_cu_calendar_sync_30d():
+    """
+    Cron endpoint: sync CU calendar sources for the next 30 days.
+    Intended to run weekly via cron.yaml.
+    """
+    if request.headers.get("X-Appengine-Cron") != "true":
+        return "Unauthorized", 403
+    try:
+        added = sync_gcal_sources(future_days=60)
+        logging.info(f"cu_calendar 30d sync completed: added={added}")
+        return {"success": True, "added": added}, 200
+    except Exception as e:
+        logging.exception("cu_calendar 30d sync failed")
+        return {"success": False, "error": str(e)}, 500
+
+
+@app.route("/cron/cu-calendar-sync-year", methods=["GET", "POST"])
+@csrf.exempt
+@talisman(force_https=False)
+def cron_cu_calendar_sync_year():
+    """
+    Cron endpoint: sync CU calendar sources for the next year (365 days).
+    Intended to run annually (Aug 30) via cron.yaml.
+    """
+    if request.headers.get("X-Appengine-Cron") != "true":
+        return "Unauthorized", 403
+    try:
+        added = sync_gcal_sources(future_days=365)
+        logging.info(f"cu_calendar yearly sync completed: added={added}")
+        return {"success": True, "added": added}, 200
+    except Exception as e:
+        logging.exception("cu_calendar yearly sync failed")
         return {"success": False, "error": str(e)}, 500
 
 
@@ -580,7 +637,7 @@ def callback():
         refresh_token = token_payload.get("refresh_token")
         expires_in = token_payload.get("expires_in")
         expiry = (
-            datetime.utcnow() + timedelta(seconds=int(expires_in))
+            datetime.now(timezone.utc) + timedelta(seconds=int(expires_in))
             if expires_in is not None
             else None
         )

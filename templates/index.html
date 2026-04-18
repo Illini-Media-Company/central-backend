@@ -11,11 +11,15 @@
 {# Add extra information to the head of the page #}
 {% block extra_head %}
     <link rel="stylesheet" href="/static/styles/styles_index.css">
+    <link rel="stylesheet" href="/static/macros/form.css">
 
     {# Lets us use the loading screen on this page #}
     {% include "partials/loading.html" %}
     {% include "partials/info_bar.html" %}
 {% endblock %}
+
+{# Import the form macro for search bar styling #}
+{% import "macros/form.html" as form %}
 
 {# Content specific to this page #}
 {% block content %}
@@ -29,7 +33,7 @@
             }
         </style>
         <div class="index-hero">
-            <img src="{{ url_for('static', filename='logo_IMC.svg') }}" alt="IMC Logo" class="index-hero-logo">
+            <img src="/static/brandmarks/logos/logo_imc.svg" alt="IMC Logo" class="index-hero-logo">
             <h1 class="index-hero-text">Console</h1>
             <br>
             <h3>Please <span><a href="/login">login</a></span> to access the console.</h3>
@@ -89,6 +93,7 @@
                             <div class="tool-button-container">
                                 <button class="tool-button" id="rem-fav-{{ favorite.uid }}"
                                     onclick="event.stopPropagation(); event.preventDefault(); remFavorite('{{ favorite.uid }}', '{{ current_user.email }}')"
+                                    title="Remove from favorites"
                                 >
                                     <i class="bi bi-star-fill tool-button-icon"></i>
                                 </button>
@@ -115,6 +120,19 @@
                 </button>   
                 {% endif %}
             </div>
+
+            {# Search bar for tools #}
+            <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                <div style="display: flex; flex-direction: row; align-items: center;" id="toolSearchBar">
+                    <i class="bi bi-search"></i>
+                    {{ form.text_input(
+                        name="toolSearchQuery",
+                        placeholder="Search...",
+                        class=""
+                    ) }}
+                </div>
+            </div>
+
             {% if not tools %}
                 <div class="inner-container" style="align-items: center; text-align: center;">
                     <p style="margin-bottom: 0;">You don't have access to any tools.</p>
@@ -134,11 +152,13 @@
                                     <div class="tool-button-container">
                                         <button class="tool-button" id="add-fav-{{ tool.uid }}" {% if tool in favorites %} style="display: none;" {% endif %} 
                                             onclick="event.stopPropagation(); event.preventDefault(); addFavorite('{{ tool.uid }}', '{{ current_user.email }}')"
+                                            title="Add to favorites"
                                         >
                                             <i class="bi bi-star tool-button-icon"></i>
                                         </button>
                                         <button class="tool-button" id="rem-fav-{{ tool.uid }}" {% if not tool in favorites %} style="display: none;" {% endif %}
                                             onclick="event.stopPropagation(); event.preventDefault(); remFavorite('{{ tool.uid }}', '{{ current_user.email }}')"
+                                            title="Remove from favorites"
                                         >
                                             <i class="bi bi-star-fill tool-button-icon"></i>
                                         </button>
@@ -255,5 +275,20 @@
 
         hideLoading();
     }
+
+    // Search functionality for tools
+    window.addEventListener('load', () => {
+        const searchInput = document.getElementById("toolSearchQuery");
+        const toolItems = document.querySelectorAll(".tool-item-container");
+
+        searchInput.addEventListener("input", () => {
+            const query = searchInput.value.toLowerCase().trim();
+
+            toolItems.forEach(item => {
+                const text = item.innerText.toLowerCase();
+                item.style.display = text.includes(query) ? "" : "none";
+            });
+        });
+    });
 </script>
 {% endblock %}

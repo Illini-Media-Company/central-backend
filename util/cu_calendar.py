@@ -1,0 +1,229 @@
+"""CU Calendar helpers: geocoding, GCS images, Google Calendar fetch/sync.
+
+Last modified by Cal Anderson on March 24, 2026
+"""
+
+import os
+import uuid
+from datetime import date, datetime, timedelta, timezone
+from typing import List, Optional
+from urllib.parse import parse_qs, unquote, urlparse
+from zoneinfo import ZoneInfo
+
+import googlemaps
+from google.cloud import storage
+from gcsa.google_calendar import GoogleCalendar
+
+from constants import (
+    BACKEND_GOOGLE_MAP_API,
+    DEFAULT_PUBLIC_EVENT_CATEGORY,
+    GCS_BUCKET_NAME,
+)
+from util.security import get_creds
+
+
+GCAL_SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
+
+
+def geocode_address(address):
+    """Return (lat, lng) for an address, or None."""
+
+    api_key = BACKEND_GOOGLE_MAP_API
+    if not api_key:
+        print("Error: Google API key not found.")
+        return None
+
+    gmaps = googlemaps.Client(key=api_key)
+    try:
+        geocode_result = gmaps.geocode(address)
+        if geocode_result:
+            location = geocode_result[0]["geometry"]["location"]
+            return location["lat"], location["lng"]
+        else:
+            return None
+    except Exception as e:
+        print(f"Error geocoding address: {e}")
+        return None
+
+
+def upload_images_to_gcs(files):
+    """Upload files to GCS and return their public URLs."""
+
+    if not files:
+        return []
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(GCS_BUCKET_NAME)
+    uploaded_urls = []
+    for file in files:
+        if file.filename == "":
+            continue
+
+        ext = file.filename.rsplit(".", 1)[1].lower() if "." in file.filename else "jpg"
+        unique_filename = f"{uuid.uuid4()}.{ext}"
+        blob = bucket.blob(unique_filename)
+        blob.upload_from_file(file)
+        blob.make_public()
+
+        uploaded_urls.append(blob.public_url)
+    return uploaded_urls
+
+
+def delete_images_from_gcs(image_urls):
+    """Delete GCS objects by public URL."""
+
+    if not image_urls:
+        return
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(GCS_BUCKET_NAME)
+    for url in image_urls:
+        try:
+            blob_name = url.split(f"{GCS_BUCKET_NAME}/")[-1]
+            blob = bucket.blob(blob_name)
+            if blob.exists():
+                blob.delete()
+                print(f"Deleted image from GCS: {blob_name}")
+        except Exception as e:
+            print(f"Error deleting image {url} from GCS: {e}")
+
+
+def _parse_calendar_id_from_url(gcal_url: str) -> Optional[str]:
+    """Parse calendar id from an embed or iCal URL."""
+
+    if not gcal_url or not isinstance(gcal_url, str):
+        return None
+    parsed = urlparse(gcal_url.strip())
+    # Embed / public view: ?src=CALENDAR_ID (optional &ctz=...)
+    if parsed.query:
+        params = parse_qs(parsed.query)
+        src_list = params.get("src")
+        if src_list and src_list[0]:
+            return unquote(src_list[0].strip())
+
+    # Public iCal: /calendar/ical/CALENDAR_ID/public/basic.ics
+    path = parsed.path or ""
+    if "/ical/" in path:
+        parts = path.split("/ical/", 1)[1].split("/", 1)
+        if parts[0]:
+            return unquote(parts[0].strip())
+    return None
+
+
+def gcal_to_events(gcal_url: str, future_days: int = 365) -> Optional[List[dict]]:
+    """Fetch events from a Google Calendar URL for the next future_days."""
+
+    calendar_id = _parse_calendar_id_from_url(gcal_url)
+    if not calendar_id:
+        return None
+    try:
+        creds = get_creds(GCAL_SCOPES)
+        gc = GoogleCalendar(calendar_id, credentials=creds)
+    except Exception:
+        return None
+
+    tz = ZoneInfo("America/Chicago")
+    time_min = datetime.now(tz)
+    time_max = datetime.now(tz) + timedelta(days=future_days)
+    try:
+        events_iter = gc.get_events(
+            time_min=time_min,
+            time_max=time_max,
+            single_events=True,
+            order_by="startTime",
+        )
+    except Exception:
+        return None
+
+    result = []
+    for event in events_iter:
+        start = event.start
+        end = event.end
+
+        if isinstance(start, date) and not isinstance(start, datetime):
+            # Convert pure date to naive datetime (00:00:00)
+            start = datetime.combine(start, datetime.min.time())
+        elif isinstance(start, datetime):
+            if start.tzinfo is None:
+                # If naive, assume it's Chicago time, convert to UTC, then strip tzinfo
+                start = (
+                    start.replace(tzinfo=tz)
+                    .astimezone(timezone.utc)
+                    .replace(tzinfo=None)
+                )
+            else:
+                # If it already has tzinfo (standard GCal response), convert to UTC and strip tzinfo
+                start = start.astimezone(timezone.utc).replace(tzinfo=None)
+
+        # --- CLEAN END DATE ---
+        if isinstance(end, date) and not isinstance(end, datetime):
+            # Convert pure date to naive datetime (00:00:00)
+            end = datetime.combine(end, datetime.min.time())
+        elif isinstance(end, datetime):
+            if end.tzinfo is None:
+                end = (
+                    end.replace(tzinfo=tz).astimezone(timezone.utc).replace(tzinfo=None)
+                )
+            else:
+                end = end.astimezone(timezone.utc).replace(tzinfo=None)
+
+        result.append(
+            {
+                "title": (event.summary or "").strip(),
+                "start_date": start,
+                "end_date": end,
+                "address": (event.location or "").strip() if event.location else "",
+                "description": (event.description or "").strip()
+                if event.description
+                else "",
+            }
+        )
+    return result
+
+
+def sync_gcal_sources(*, future_days: int = 30) -> int:
+    """Import new events from all saved calendar sources; return how many were added."""
+
+    from db.cu_calender import (
+        add_event,
+        event_exists,
+        get_all_calendar_sources,
+    )
+
+    sources = get_all_calendar_sources()
+    total_added = 0
+
+    for source in sources:
+        gcal_url = source.get("gcal_url")
+        company = source.get("company_name", "")
+        if not gcal_url:
+            continue
+
+        parsed_events = gcal_to_events(gcal_url, future_days=future_days)
+        if parsed_events is None:
+            continue
+
+        for event in parsed_events:
+            if event_exists(gcal_url, event.get("title", ""), event.get("start_date")):
+                continue
+
+            coords = geocode_address(event.get("address") or "")
+            if not coords:
+                continue
+
+            lat, lng = coords
+            add_event(
+                title=event.get("title", ""),
+                lat=lat,
+                long=lng,
+                url=gcal_url,
+                start_date=event.get("start_date"),
+                end_date=event.get("end_date"),
+                images=[],
+                address=event.get("address", ""),
+                event_type=DEFAULT_PUBLIC_EVENT_CATEGORY,
+                description=event.get("description", ""),
+                company_name=company,
+                is_accepted=True,
+            )
+            total_added += 1
+
+    return total_added

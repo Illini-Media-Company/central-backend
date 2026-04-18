@@ -8,45 +8,6 @@ ILLordle Dashboard
 <link rel="stylesheet" href="/static/macros/form.css">
 
 <style>
-    table {
-        border-collapse: separate;
-        border-spacing: 0 0.5rem;
-        width: 100%;
-        background-color: var(--main-bg-color);
-        border-radius: var(--main-border-radius);
-    }
-
-    tr {
-        border-radius: var(--main-border-radius);
-    }
-
-    tr:hover td {
-        background-color: var(--main-extralight-color);
-    }
-
-    td {
-        padding: 0.75rem 1rem;
-        background-color: var(--main-bg-color);
-        font-weight: 300;
-    }
-
-    td:first-child {
-        border-top-left-radius: var(--main-border-radius);
-        border-bottom-left-radius: var(--main-border-radius);
-    }
-
-    td:last-child {
-        border-top-right-radius: var(--main-border-radius);
-        border-bottom-right-radius: var(--main-border-radius);
-    }
-
-    th {
-        padding: 0.75rem 1rem;
-        white-space: nowrap;
-        border-bottom: 1px solid var(--main-lt-gray-color);
-        align-items: center;
-    }
-
     .table th:nth-child(1),
     .table td:nth-child(1) {
         width: 12.5%; /* Set a fixed width for the Date column */
@@ -107,7 +68,7 @@ ILLordle Dashboard
     </div>
 
     {# Table #}
-    <div style="overflow-x: auto; max-width: 100%; border-radius: var(--main-border-radius); box-shadow: var(--input-box-shadow);">
+    <div class="table-container">
         <table>
             {# Header #}
             <thead>

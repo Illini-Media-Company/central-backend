@@ -47,11 +47,12 @@ def dashboard():
 @breaking_routes.route("/submit", methods=["POST"])
 @csrf.exempt
 def submit_story():
-    url = request.form["url"] + "&action=edit"
+    data = request.get_json() or {}
+    url = data.get("url", "") + "&action=edit"
     title = url
 
-    post_to_reddit = True if request.form["post_to_reddit"] == "true" else False
-    post_to_twitter = True if request.form["post_to_twitter"] == "true" else False
+    post_to_reddit = True if data.get("post_to_reddit") == "true" else False
+    post_to_twitter = True if data.get("post_to_twitter") == "true" else False
     created_by = current_user.name
     slack_message_id = ""
     result = app.client.chat_postMessage(

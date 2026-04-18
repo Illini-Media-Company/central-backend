@@ -1,10 +1,10 @@
 """
 
 Created on Jan. 26 by Jon Hogg
-Last modified Feb. 18, 2026
+Last modified by Jacob Slabosz on April 10, 2026
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 import logging
 import requests
@@ -42,7 +42,11 @@ def _is_expired(expiry: Optional[datetime], skew_seconds: int = 60) -> bool:
     """
     if expiry is None:
         return True
-    now = datetime.utcnow()
+    if expiry.tzinfo is None or expiry.tzinfo.utcoffset(expiry) is None:
+        expiry = expiry.replace(tzinfo=timezone.utc)
+    else:
+        expiry = expiry.astimezone(timezone.utc)
+    now = datetime.now(timezone.utc)
     return expiry <= now + timedelta(seconds=skew_seconds)
 
 
@@ -68,7 +72,7 @@ def get_valid_access_token(email: str) -> Optional[str]:
 
     expires_in = token_response.get("expires_in")
     expiry = (
-        datetime.utcnow() + timedelta(seconds=int(expires_in))
+        datetime.now(timezone.utc) + timedelta(seconds=int(expires_in))
         if expires_in is not None
         else None
     )

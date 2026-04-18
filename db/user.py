@@ -7,9 +7,8 @@ Last modified Feb. 11, 2026
 
 from flask_login import UserMixin
 from google.cloud import ndb
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
-import datetime
 
 from . import client
 
@@ -37,7 +36,7 @@ class User(ndb.Model):
     fav_tools = ndb.IntegerProperty(repeated=True)
     ask_oauth_access_token = ndb.TextProperty()
     ask_oauth_refresh_token = ndb.TextProperty()
-    ask_oauth_expiry = ndb.DateTimeProperty()
+    ask_oauth_expiry = ndb.DateTimeProperty(tzinfo=timezone.utc)
     query_history = ndb.DateTimeProperty(repeated=True)
 
 
@@ -251,8 +250,8 @@ def check_and_log_query(email, limit=10, hours=24):
         if user is None:
             return False
 
-        now = datetime.datetime.now()
-        cutoff = now - datetime.timedelta(hours=hours)
+        now = datetime.now()
+        cutoff = now - timedelta(hours=hours)
         current_history = user.query_history if user.query_history else []
         recent_queries = [t for t in current_history if t > cutoff]
 

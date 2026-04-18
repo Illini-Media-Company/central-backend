@@ -39,7 +39,8 @@ def list_posts():
 @login_required
 @restrict_to(["editors", "di-section-editors"])
 def create_push_notification():
-    url = request.form["url"].partition("?")[0]
+    data = request.get_json() or {}
+    url = data.get("url", "").partition("?")[0]
     title, err = validate_story(url)
     if err:
         return err
@@ -55,7 +56,8 @@ def create_push_notification():
 @login_required
 @restrict_to(["editors", "di-staff-social", "webdev", "di-section-editors"])
 def create_reddit_post():
-    url = request.form["url"].partition("?")[0]
+    data = request.get_json() or {}
+    url = data.get("url", "").partition("?")[0]
     title, err = validate_story(url)
     if err:
         return err
@@ -72,7 +74,8 @@ def create_reddit_post():
 @login_required
 @restrict_to(["editors", "di-staff-social", "di-section-editors"])
 def create_tweet():
-    url = request.form["url"].partition("?")[0]
+    data = request.get_json() or {}
+    url = data.get("url", "").partition("?")[0]
     title, err = validate_story(url)
     if err:
         return err

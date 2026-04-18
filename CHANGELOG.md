@@ -1,5 +1,50 @@
 # Changelog
 
+## [2.10.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.10.0...v2.10.1) (2026-04-16)
+
+
+### Bug Fixes
+
+* **Puzzles:** Update access for ILLordle and Illini Mini Crossword ([2488753](https://github.com/Illini-Media-Company/central-backend/commit/24887538a1db37be36b47a1228a5cf8745fb6b78))
+
+## [2.10.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.9.0...v2.10.0) (2026-04-15)
+
+
+### Features
+
+* Add tools search to homepage ([c3d1a77](https://github.com/Illini-Media-Company/central-backend/commit/c3d1a7735be65aa2e60d064b35a7867eea754b5e))
+
+
+### Bug Fixes
+
+* Fix timezone issues in oauth expiration ([1a7b813](https://github.com/Illini-Media-Company/central-backend/commit/1a7b8135c31b1db21d48ba820a0195d57d011f13))
+
+
+### Documentation
+
+* Update README reqs ([5a2260d](https://github.com/Illini-Media-Company/central-backend/commit/5a2260d4c0be43fe79d2d2363a1100a91402fbfa))
+
+## [2.9.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.8.1...v2.9.0) (2026-04-10)
+
+
+### Features
+
+* Update Mini Crossword dashboard ([8fb9039](https://github.com/Illini-Media-Company/central-backend/commit/8fb9039e5766f4af0ebb2aa26788cf53f6e580db))
+
+## [2.8.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.8.0...v2.8.1) (2026-04-07)
+
+
+### Bug Fixes
+
+* Update Slack channel for CU Calendar ([25eef95](https://github.com/Illini-Media-Company/central-backend/commit/25eef950e05206f1ab888fb10b7bdfe5bcabc976))
+
+## [2.8.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.7.0...v2.8.0) (2026-04-07)
+
+
+### Features
+
+* Add backend implementation for CU Calendar ([#77](https://github.com/Illini-Media-Company/central-backend/issues/77)) ([c081ad6](https://github.com/Illini-Media-Company/central-backend/commit/c081ad6e3d54b006460d2d50a6bd2f949c3f9d06))
+
 ## [2.7.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.6.3...v2.7.0) (2026-03-12)
 
 

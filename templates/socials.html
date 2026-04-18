@@ -1,74 +1,106 @@
 {% extends 'base.html' %}
 
 {% block title %}
-Socials
+Socials Posting
 {% endblock %}
 
-{% block content %}
+{% block extra_head %}
+<link rel="stylesheet" href="/static/macros/form.css">
 <style>
-    .container {
-        width: 80%;
-        margin-bottom: 10px;
+    .socials-post-form {
+        gap: 1rem;
+
     }
-    .form-control, .form-select {
-        border-color: #a8a8a8;
+    .socials-post-form-row {
+        flex-direction: column;
+        align-items: flex-start;
     }
 </style>
+{% endblock %}
 
-<div class="container">
-    <div class="row my-4">
-        <label for="url" class="col-sm-1 col-form-label">Post URL</label>
-        <div class="col-sm-11">
-            <input type="text" id="url" class="form-control" name="url">
-        </div>
+{% import "macros/form.html" as form %}
+{% include "partials/loading.html" %}
+{% include "partials/text_alert.html" %}
+{% include "partials/info_bar.html" %}
+
+{% block content %}
+<h1>DI Socials Posting</h1>
+
+<p>
+    Automatically post a story to The Daily Illini's social media platforms.
+</p>
+
+<hr style="margin-bottom: 2rem;">
+
+<section class="section-container">
+    <div class="section-header">
+        <h2 style="margin-bottom: 0">Post Story</h2>
     </div>
 
-    <div class="row my-4">
-        <div class="col-sm-1">
-            <label for="post_to" class="col-form-label">Post to:</label>
-        </div>
-        <div class="col-sm-2">
-            <select id="post_to" class="form-select" name="post_to">
-                {% for platform in platforms %}
-                <option value="{{ platform }}">{{ platform }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-sm-2">
-            <button class="btn btn-primary" onclick="submitForm(this)">Submit</button>
-        </div>
+    <div class="inner-container">
+        {% call form.form(id="socialsPostForm", class="socials-post-form", enctype="application/x-www-form-urlencoded", on_submit="return submitForm(event)") %}
+            {{ form.text_input( 
+                name="url",
+                label="Story URL",
+                required=true,
+                placeholder="",
+                class="socials-post-form-row"
+            ) }}
+            {{ form.select_input( 
+                name="post_to",
+                label="Post to:",
+                options=platforms,
+                required=true,
+                class="socials-post-form-row"
+            ) }}
+            {{ form.submit_button(text="Submit", label="submitButton") }}
+        {% endcall %}
     </div>
-</div>
+</section>
 
-<div class="container d-flex justify-content-between align-items-center">
-    <h3>Recent Posts</h3>
-</div>
+<hr>
 
-<div class="container">
-    <table class="table table-bordered">
-        <thead>
-        <tr>
-            <th>Post</th>
-            <th>Date Posted</th>
-            <th>Posted To</th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for post in posts %}
-        <tr>
-            <td><a href="{{ post.url }}">{{ post.title }}</a></td>
-            <td>{{ post.created_at.strftime("%m/%d/%Y") }}</td>
-            <td>{{ post.platform }}</td>
-        </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-</div>
+<section class="section-container">
+    <div class="section-header">
+        <h2 style="margin-bottom: 0">Recent Posts</h2>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+            <tr>
+                <th>Post</th>
+                <th>Date Posted</th>
+                <th>Posted To</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for post in posts %}
+            <tr>
+                <td><a href="{{ post.url }}">{{ post.title }}</a></td>
+                <td>{{ post.created_at.strftime("%m/%d/%Y") }}</td>
+                <td>{{ post.platform }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
 
 <script>
-    async function submitForm(button) {
-        button.disabled = true;
-        button.innerHTML = 'Submitting...';
+    document.addEventListener("DOMContentLoaded", () => {
+        const msg = sessionStorage.getItem("infoBarMessage");
+        if (msg) {
+            showInfoBar(msg);
+            sessionStorage.removeItem("infoBarMessage"); // Clear it after showing
+        }
+    });
+
+    async function submitForm(event) {
+        event.preventDefault();
+        console.log("Submitting...");
+
+        showLoading("Submitting...");
 
         const url = document.getElementById('url').value;
         const postTo = document.getElementById('post_to').value;
@@ -82,25 +114,34 @@ Socials
             endpoint += '/twitter'
         }
 
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+            url: url,
+        };
+
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
+                'Content-Type': 'application/json',
             },
-            body: `_csrf_token={{ csrf_token() }}&url=${url}`,
+            body: JSON.stringify(payload),
         });
 
+        // Check if it was successful
         if (response.status === 200) {
+            // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", "Posted successfully."); // Safe so we can display after reload
             window.location.reload();
         } else {
+            // Alert of the error
+            console.log("Automatic posting failed!");
             const message = await response.text();
             console.error(message);
-            alert(message);
-
-            button.disabled = false;
-            button.innerHTML = 'Submit';
+            await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            hideLoading();
         }
     }
+
     function deleteAllPosts() {
         const confirmation = confirm("Are you sure you want to delete ALL social posts in the database?");
         const confirmation2 = confirm("Are you SURE sure? Everything?");
