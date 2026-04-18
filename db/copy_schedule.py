@@ -29,28 +29,55 @@ class CopyEditorAdmin(ndb.Model):
 
 class ShiftSlot(ndb.Model):
     """
-    Represents a single 2-hour shift slot in the weekly calendar.
-
-    Key name convention: "{YYYY-MM-DD}_{HH}" e.g. "2025-02-03_14" for Mon Feb 3, 2pm-4pm.
-
-    Double-booking (editor_id_2) is supported for overflow/emergency coverage.
-    Under normal operation only editor_id is populated.
+    Staff copy editor shift slots.
+    Key: "{YYYY-MM-DD}_{H}" e.g. "2025-02-03_14"
+    Regular hours: 8am–12am (2-hour slots).
+    Break week hours: 10am, 2pm, 6pm (4-hour slots).
+    Capacity: 2 editors (editor_id + editor_id_2).
     """
 
     date = ndb.DateProperty(required=True)
-    start_hour = ndb.IntegerProperty(required=True)  # 8, 10, 12, 14, 16, 18, 20, 22
+    start_hour = ndb.IntegerProperty(required=True)
 
-    # Primary assigned editor — None means the slot is empty.
     editor_id = ndb.StringProperty(default=None)
     editor_name = ndb.StringProperty(default=None)
-
-    # Secondary assigned editor — populated only for double-booked slots.
     editor_id_2 = ndb.StringProperty(default=None)
     editor_name_2 = ndb.StringProperty(default=None)
 
-    # Editor has marked this shift as available for someone else to pick up.
-    # Shift stays assigned to the original editor until claimed or copy chief
-    # approves the removal.
+    up_for_drop = ndb.BooleanProperty(default=False)
+
+    def to_dict(self):
+        return {
+            "uid": self.key.id() if self.key else None,
+            "date": self.date,
+            "start_hour": self.start_hour,
+            "editor_id": self.editor_id,
+            "editor_name": self.editor_name,
+            "editor_id_2": self.editor_id_2,
+            "editor_name_2": self.editor_name_2,
+            "up_for_drop": self.up_for_drop,
+        }
+
+
+class SeniorShiftSlot(ndb.Model):
+    """
+    Senior copy editor shift slots.
+    Key: "{YYYY-MM-DD}_{H}" — same convention as ShiftSlot.
+    A given key can exist in BOTH ShiftSlot and SeniorShiftSlot simultaneously,
+    representing concurrent staff and senior coverage of the same time window.
+    Regular hours: 10am–10pm (2-hour slots, senior restriction).
+    Break week hours: 10am, 2pm, 6pm (4-hour slots).
+    Capacity: 2 editors (editor_id + editor_id_2).
+    """
+
+    date = ndb.DateProperty(required=True)
+    start_hour = ndb.IntegerProperty(required=True)
+
+    editor_id = ndb.StringProperty(default=None)
+    editor_name = ndb.StringProperty(default=None)
+    editor_id_2 = ndb.StringProperty(default=None)
+    editor_name_2 = ndb.StringProperty(default=None)
+
     up_for_drop = ndb.BooleanProperty(default=False)
 
     def to_dict(self):
@@ -71,23 +98,8 @@ class ShiftRequest(ndb.Model):
     Represents a pending drop or swap request that may require approval.
     Key: auto-generated integer id.
 
-    request_type:
-      "drop"        — editor wants to drop a shift; marked up_for_drop and stays
-                      assigned until someone picks it up or copy chief approves removal.
-      "swap_direct" — editor A and editor B exchange shifts (needs editor B's approval).
-      "swap_add"    — editor A joins editor B's occupied slot, dropping their own
-                      (needs copy chief approval).
-      "swap_empty"  — editor A moves into an empty slot, dropping their own
-                      (needs copy chief approval).
-      "swap_drop"   — editor A swaps with editor B who has their shift up for drop;
-                      instead of B just dropping, they exchange slots
-                      (needs editor B's approval).
-      "pickup"      — editor claims a shift marked up_for_drop; immediate, no approval
-                      needed, but tracked for audit.
-
-    Lifecycle:
-      pending -> approved | denied | cancelled
-      (pickup requests are created directly as "approved")
+    slot_type distinguishes whether the request operates on ShiftSlot (staff)
+    or SeniorShiftSlot (senior). Defaults to "staff" for backward compatibility.
     """
 
     request_type = ndb.StringProperty(
@@ -107,35 +119,30 @@ class ShiftRequest(ndb.Model):
         choices=["pending", "approved", "denied", "cancelled"],
     )
 
-    # Editor making the request.
+    # "staff" uses ShiftSlot, "senior" uses SeniorShiftSlot.
+    slot_type = ndb.StringProperty(default="staff", choices=["staff", "senior"])
+
     requester_id = ndb.StringProperty(required=True)
     requester_name = ndb.StringProperty(required=True)
 
-    # The shift the requester currently holds (or, for pickup, the shift being claimed).
     source_shift_date = ndb.DateProperty(required=True)
     source_shift_hour = ndb.IntegerProperty(required=True)
 
-    # Destination shift — populated for all swap types; None for drop/pickup.
     target_shift_date = ndb.DateProperty(default=None)
     target_shift_hour = ndb.IntegerProperty(default=None)
 
-    # Editor currently occupying the target shift — populated for swap_direct,
-    # swap_add, and swap_drop.
     target_editor_id = ndb.StringProperty(default=None)
     target_editor_name = ndb.StringProperty(default=None)
 
-    # Who must approve this request.
     approver_type = ndb.StringProperty(
         required=True,
         choices=["editor", "copy_chief", "none"],
     )
-    # Populated when approver_type == "editor".
     approver_id = ndb.StringProperty(default=None)
 
     created_at = ndb.DateTimeProperty(auto_now_add=True)
     resolved_at = ndb.DateTimeProperty(default=None)
 
-    # Slack message ID so the approval message can be updated in-place.
     slack_message_id = ndb.StringProperty(default=None)
 
     def to_dict(self):
@@ -143,6 +150,7 @@ class ShiftRequest(ndb.Model):
             "uid": self.key.id() if self.key else None,
             "request_type": self.request_type,
             "status": self.status,
+            "slot_type": self.slot_type,
             "requester_id": self.requester_id,
             "requester_name": self.requester_name,
             "source_shift_date": self.source_shift_date,
@@ -156,4 +164,21 @@ class ShiftRequest(ndb.Model):
             "created_at": self.created_at,
             "resolved_at": self.resolved_at,
             "slack_message_id": self.slack_message_id,
+        }
+
+
+class BreakWeek(ndb.Model):
+    """
+    Marks a specific week as a break week with a condensed 3-slot schedule.
+    Key: ISO date string of the Sunday starting that week (e.g. "2025-12-22").
+    """
+
+    created_at = ndb.DateTimeProperty(auto_now_add=True)
+    created_by = ndb.StringProperty(default=None)
+
+    def to_dict(self):
+        return {
+            "week_start": self.key.id() if self.key else None,
+            "created_at": self.created_at,
+            "created_by": self.created_by,
         }

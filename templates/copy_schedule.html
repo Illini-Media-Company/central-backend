@@ -1,593 +1,565 @@
 {% extends 'base.html' %}
 
-{% block title %}Shift Scheduler{% endblock %}
+{% block title %}My Schedule{% endblock %}
+
+{% block extra_head %}
+<style>
+    .page-content { overflow: hidden; }
+</style>
+{% endblock %}
 
 {% block content %}
 
 {% include "partials/button_alert.html" %}
 
-<div id="scheduler-container">
-  <div class="scheduler-header">
-    <h2>Welcome {{ editor.name }}! Today's date is {{ today_label }}.</h2>
-    <div class="week-nav">
-      <button onclick="navigateWeek(-1)">&lt;</button>
-      <button onclick="navigateWeek(1)">&gt;</button>
-    </div>
-  </div>
+<script>
+    const MY_SHIFTS          = {{ my_shifts | tojson }};
+    const INCOMING_REQUESTS  = {{ incoming_requests | tojson }};
+    const DROPPABLE          = {{ droppable_set | list | tojson }};
+    const SWAP_REQUESTED     = {{ swap_requested_set | list | tojson }};
+    const EDITOR_ID          = {{ editor.id | tojson }};
+    const EDITOR_NAME        = {{ editor.name | tojson }};
+    const REQUIRED_SHIFTS    = {{ editor.required_shifts_per_week | tojson }};
+    const WEEK_DAYS          = {{ week_days | tojson }};
+    const SHIFT_HOURS        = {{ shift_hours | tojson }};
+    const SHIFT_EDITOR_NAMES = {{ shift_editor_names | tojson }};
+    const CSRF_TOKEN         = '{{ csrf_token() }}';
+    const IS_BREAK_WEEK      = {{ is_break_week | tojson }};
+    const SLOT_HOURS         = {{ shift_hours | map(attribute='start') | list | tojson }};
 
-  <div class="shift-legend">
-    <span class="legend-item"><span class="legend-swatch shift-mine"></span> Your shift</span>
-    <span class="legend-item"><span class="legend-swatch shift-full"></span> Filled</span>
-    <span class="legend-item"><span class="legend-swatch shift-empty"></span> Open</span>
-    <span class="legend-item"><span class="legend-swatch shift-droppable"></span> Up for drop</span>
-    <span class="legend-item"><span class="legend-swatch shift-swap-requested"></span> Swap requested</span>
-  </div>
-
-  <table class="shift-grid" id="shiftGrid">
-    <thead>
-      <tr>
-        <th></th>
-        {% for day in week_days %}
-        <th>{{ day.label }}</th>
-        {% endfor %}
-      </tr>
-    </thead>
-    <tbody>
-      {% for hour in shift_hours %}
-      <tr>
-        <td class="time-label">{{ hour.label }}</td>
-        {% for day in week_days %}
-          {% set key = day.date_str ~ "_" ~ hour.start|string %}
-          {% set slot = shifts_map.get(key) %}
-          {% set is_filled = slot and slot.editor_id is not none %}
-          {% set is_mine = slot and slot.editor_id == editor.id %}
-          {% set is_droppable = key in droppable_set and not is_mine %}
-          {% set is_swap_requested = key in swap_requested_set %}
-          {% set is_mine_up_for_drop = is_mine and slot and slot.up_for_drop %}
-          <td
-            class="shift-cell
-              {% if is_mine_up_for_drop %}shift-mine-droppable
-              {% elif is_mine %}shift-mine
-              {% elif is_droppable %}shift-droppable
-              {% elif is_swap_requested and is_filled %}shift-swap-requested
-              {% elif is_filled %}shift-full
-              {% else %}shift-empty
-              {% endif %}"
-            data-date="{{ day.date_str }}"
-            data-hour="{{ hour.start }}"
-            data-editor-id="{{ slot.editor_id if is_filled else '' }}"
-            data-editor-name="{{ shift_editor_names.get(key, '') }}"
-            data-filled="{{ 'true' if is_filled else 'false' }}"
-            data-mine="{{ 'true' if is_mine else 'false' }}"
-            data-droppable="{{ 'true' if is_droppable else 'false' }}"
-          >
-            {% if is_droppable %}
-              <span class="slot-status">UP FOR DROP</span>
-            {% elif is_mine_up_for_drop %}
-              <span class="slot-status">DROPPING</span>
-            {% else %}
-              {{ "1/1" if is_filled else "0/1" }}
-            {% endif %}
-          </td>
-        {% endfor %}
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
-  {# MY SHIFTS LIST #}
-  <div class="my-shifts-section">
-    <p>
-      You are currently signed up for <strong>{{ my_shifts|length }}</strong>
-      out of <strong>{{ editor.required_shifts_per_week }}</strong> required slots this week:
-    </p>
-
-    {% for s in my_shifts %}
-      {% set s_key = s.date_str ~ "_" ~ s.start_hour|string %}
-      {% set pending_req = pending_map.get(s_key) %}
-      <div class="my-shift-row" data-date="{{ s.date_str }}" data-hour="{{ s.start_hour }}">
-        <span class="my-shift-label">
-          - {{ s.day_label }} at {{ s.hour_label }}
-          {% if s.up_for_drop %}
-            <span class="up-for-drop-badge">UP FOR DROP</span>
-          {% endif %}
-        </span>
-        <span class="my-shift-actions">
-          {% if pending_req %}
-            {% if pending_req.request_type == 'drop' %}
-              <button class="btn-pending" onclick="handleCancelRequest('{{ pending_req.key.id() }}')">
-                PENDING DROP
-              </button>
-              <button class="btn-action" onclick="startSwap('{{ s.date_str }}', {{ s.start_hour }})">
-                SWAP
-              </button>
-            {% else %}
-              <button class="btn-action" onclick="startDrop('{{ s.date_str }}', {{ s.start_hour }})">
-                DROP
-              </button>
-              <button class="btn-pending" onclick="handleCancelRequest('{{ pending_req.key.id() }}')">
-                PENDING (swap &rarr; {{ pending_req.target_label }})
-              </button>
-            {% endif %}
-          {% else %}
-            <button class="btn-action" onclick="startDrop('{{ s.date_str }}', {{ s.start_hour }})">
-              DROP
-            </button>
-            <button class="btn-action" onclick="startSwap('{{ s.date_str }}', {{ s.start_hour }})">
-              SWAP
-            </button>
-          {% endif %}
-        </span>
-      </div>
+    // Build shiftsMap as a flat lookup keyed by "date_hour"
+    const shiftsMap = {};
+    {% for key, slot in shifts_map.items() %}
+        {% if slot %}
+        shiftsMap[{{ key | tojson }}] = {
+            editor_id:     {{ slot.editor_id    | tojson if slot.editor_id    else 'null' }},
+            editor_name:   {{ slot.editor_name  | tojson if slot.editor_name  else 'null' }},
+            editor_id_2:   {{ slot.editor_id_2  | tojson if slot.editor_id_2  else 'null' }},
+            editor_name_2: {{ slot.editor_name_2 | tojson if slot.editor_name_2 else 'null' }},
+            up_for_drop:   {{ 'true' if slot.up_for_drop else 'false' }},
+        };
+        {% endif %}
     {% endfor %}
 
-    <div class="add-slot-row">
-      <button class="btn-action" onclick="startAddSlot()">ADD SLOT</button>
+    const droppableSet     = new Set(DROPPABLE);
+    const swapRequestedSet = new Set(SWAP_REQUESTED);
+
+    // Build pendingMap from server-side pending_map
+    const pendingMap = {};
+    {% for s in my_shifts %}
+        {% set s_key = s.date_str ~ "_" ~ s.start_hour|string %}
+        {% set pending_req = pending_map.get(s_key) %}
+        {% if pending_req %}
+        pendingMap[{{ s_key | tojson }}] = {
+            uid:          {{ pending_req.key.id() }},
+            request_type: {{ pending_req.request_type | tojson }},
+            target_label: {{ pending_req.target_label | tojson }},
+        };
+        {% endif %}
+    {% endfor %}
+</script>
+
+<!-- Sub-topbar -->
+<div id="sub-topbar" style="height:57px; background:white; border-bottom:1px solid #dee2e6; display:flex; align-items:center; justify-content:space-between; padding:0 1.5rem; flex-shrink:0;">
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+        <button onclick="prevWeek()" style="padding:4px 8px; border:1px solid #dee2e6; border-radius:4px; background:white; cursor:pointer;">&#8249;</button>
+        <span id="week-label" style="font-weight:500; min-width:140px; text-align:center;">---</span>
+        <button onclick="nextWeek()" style="padding:4px 8px; border:1px solid #dee2e6; border-radius:4px; background:white; cursor:pointer;">&#8250;</button>
+        <button onclick="thisWeek()" style="padding:4px 10px; border:1px solid #dee2e6; border-radius:4px; background:white; cursor:pointer; font-size:0.875rem;">This Week</button>
     </div>
-  </div>
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+        <span id="shifts-badge" style="padding:2px 10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:4px; font-size:0.75rem; color:#166534;">
+            My Shifts: 0 / {{ editor.required_shifts_per_week }}
+        </span>
+        {% if is_break_week %}
+        <span style="padding:2px 10px; background:#fef9c3; border:1px solid #fde047; border-radius:4px; font-size:0.75rem; color:#854d0e; font-weight:500;">Break Week</span>
+        {% endif %}
+        <span style="font-size:0.75rem; color:#6b7280;">{{ today_label }}</span>
+    </div>
+    <div>
+        <button onclick="startAddSlot()" class="button-primary" style="font-size:0.875rem;">+ Add Slot</button>
+    </div>
 </div>
 
-{# SWAP CHOICE MODAL (for filled, non-droppable slots - 3 buttons)       #}
-<div id="swap-choice-screen">
-  <div class="swap-choice-container">
-    <h3 style="margin-top: 1rem;" id="swap-choice-header">Swap Options</h3>
-    <p id="swap-choice-text"></p>
-    <p id="swap-choice-description"></p>
-    <div class="swap-choice-button-container">
-      <button id="swap-choice-cancel" class="button-secondary">Cancel</button>
-      <button id="swap-choice-add-into" class="button-secondary">Request Copy Chief</button>
-      <button id="swap-choice-direct" class="button-primary">Request</button>
+<!-- Main content: grid (70%) + sidebar (30%) -->
+<div style="display:flex; height:100%; overflow:hidden;">
+
+    <!-- Grid area -->
+    <div style="flex: 0 0 70%; overflow:auto; padding:1.5rem; border-right:1px solid #dee2e6;">
+        <div style="display:flex; gap:1rem; margin-bottom:1rem; font-size:0.75rem; color:#6b7280; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:0.4rem;"><div style="width:14px; height:14px; background:#c6f6d5; border:1px solid #86efac; border-radius:2px;"></div> My shift</div>
+            <div style="display:flex; align-items:center; gap:0.4rem;"><div style="width:14px; height:14px; background:#fefcbf; border:1px solid #fde047; border-radius:2px;"></div> Dropping</div>
+            <div style="display:flex; align-items:center; gap:0.4rem;"><div style="width:14px; height:14px; background:#fed7aa; border:1px solid #fdba74; border-radius:2px;"></div> Claimable</div>
+            <div style="display:flex; align-items:center; gap:0.4rem;"><div style="width:14px; height:14px; background:#f8d7da; border:1px solid #fca5a5; border-radius:2px;"></div> Filled</div>
+            <div style="display:flex; align-items:center; gap:0.4rem;"><div style="width:14px; height:14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:2px;"></div> Open</div>
+            <div style="display:flex; align-items:center; gap:0.4rem;"><div style="width:14px; height:14px; background:#e9d5ff; border:1px solid #d8b4fe; border-radius:2px;"></div> Swap requested</div>
+        </div>
+        <div style="border:1px solid #dee2e6; border-radius:6px; overflow:hidden;">
+            <table style="width:100%; border-collapse:collapse; min-width:560px;">
+                <thead>
+                    <tr style="background:#f9fafb; border-bottom:1px solid #dee2e6;">
+                        <th style="width:90px; padding:0.5rem; border-right:1px solid #dee2e6;"></th>
+                        {% for i in range(7) %}
+                        <th id="grid-hdr-{{ i }}" style="padding:0.5rem; text-align:center; border-right:1px solid #dee2e6; min-width:80px;"></th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sh in shift_hours %}
+                    {% set slot_idx = loop.index0 %}
+                    <tr style="border-bottom:1px solid #dee2e6;">
+                        <td style="padding:0.5rem; font-size:0.75rem; color:#6b7280; background:#f9fafb; border-right:1px solid #dee2e6; white-space:nowrap;">{{ sh.label }}</td>
+                        {% for day in range(7) %}
+                        <td id="cell-{{ slot_idx }}-{{ day }}" style="height:72px; border-right:1px solid #dee2e6; padding:0.4rem; vertical-align:top;"></td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+
+                </tbody>
+            </table>
+        </div>
     </div>
-  </div>
+
+    <!-- Sidebar -->
+    <div style="flex:0 0 30%; overflow:auto; padding:1.5rem;">
+
+        <!-- Incoming swap requests -->
+        <div style="margin-bottom:1.5rem;">
+            <h6 style="font-weight:600; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;">
+                <i class="bi bi-arrow-left-right"></i> Incoming Swap Requests
+            </h6>
+            <div id="incoming-requests-list">
+                <p style="color:#9ca3af; font-size:0.875rem;">No incoming requests.</p>
+            </div>
+        </div>
+
+        <!-- My shifts -->
+        <div>
+            <h6 style="font-weight:600; margin-bottom:0.75rem;">My Shifts This Week</h6>
+            <div id="my-shifts-list">
+                <p style="color:#9ca3af; font-size:0.875rem;">No shifts this week.</p>
+            </div>
+        </div>
+
+    </div>
 </div>
 
-<div id="selectionBanner" style="display:none;">
-  <span id="selectionBannerText"></span>
-  <button onclick="exitSelectionMode()">Cancel</button>
+<!-- Selection banner -->
+<div id="selectionBanner" style="display:none; position:fixed; bottom:0; left:0; right:0; background:#ebf4ff; border-top:2px solid #3182ce; padding:0.75rem 1.5rem; justify-content:space-between; align-items:center; z-index:999; font-weight:500;">
+    <span id="selectionBannerText"></span>
+    <button onclick="exitSelectionMode()" style="padding:0.35rem 1rem; border:1px solid #000; background:#fff; cursor:pointer;">Cancel</button>
+</div>
+
+<!-- Swap choice modal -->
+<div id="swap-choice-screen" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:8px; padding:1.5rem; width:420px; max-width:95vw; box-shadow:0 4px 24px rgba(0,0,0,0.15);">
+        <h6 style="font-weight:600; margin-bottom:0.75rem;">Swap Options</h6>
+        <p id="swap-choice-text" style="font-size:0.875rem; color:#374151; margin-bottom:0.5rem;"></p>
+        <p id="swap-choice-description" style="font-size:0.8rem; color:#6b7280; margin-bottom:1rem;"></p>
+        <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+            <button id="swap-choice-cancel"   class="button-secondary">Cancel</button>
+            <button id="swap-choice-add-into" class="button-secondary">Request Copy Chief</button>
+            <button id="swap-choice-direct"   class="button-primary">Request</button>
+        </div>
+    </div>
 </div>
 
 <script>
-  let currentMode = null; // null | "swap" | "add"
-  let sourceDate = null;
-  let sourceHour = null;
-  let targetDate = null;
-  let targetHour = null;
 
-  const csrfToken = '{{ csrf_token() }}';
+// ─── State ────────────────────────────────────────────────────────────────────
+let currentMode = null;
+let sourceDate  = null;
+let sourceHour  = null;
+let targetDate  = null;
+let targetHour  = null;
 
-  function postJSON(url, body) {
-    body['_csrf_token'] = csrfToken;
-    return fetch(`${url}?_csrf_token=${encodeURIComponent(csrfToken)}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': csrfToken,
-      },
-      body: JSON.stringify(body),
-    }).then(r => r.json());
-  }
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+function getSunday(d) {
+    const s = new Date(d);
+    s.setDate(d.getDate() - d.getDay());
+    s.setHours(0, 0, 0, 0);
+    return s;
+}
+function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+function toDateStr(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function fmtDate(d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
 
-  function navigateWeek(delta) {
-    const currentWeekStart = '{{ week_days[0].date_str }}';
-    const d = new Date(currentWeekStart + 'T00:00:00');
-    d.setDate(d.getDate() + delta * 7);
-    const iso = d.toISOString().split('T')[0];
-    window.location.href = '{{ url_for("copy_scheduler_routes.scheduler") }}?week=' + iso;
-  }
+const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-  function enterSelectionMode(mode, bannerText) {
+// ─── Week navigation (always reloads — server renders break-week-aware context) ──
+function prevWeek() {
+    const d = new Date(WEEK_DAYS[0].date_str + 'T00:00:00');
+    d.setDate(d.getDate() - 7);
+    window.location.href = '{{ url_for("copy_scheduler_routes.scheduler") }}?week=' + d.toISOString().split('T')[0];
+}
+function nextWeek() {
+    const d = new Date(WEEK_DAYS[0].date_str + 'T00:00:00');
+    d.setDate(d.getDate() + 7);
+    window.location.href = '{{ url_for("copy_scheduler_routes.scheduler") }}?week=' + d.toISOString().split('T')[0];
+}
+function thisWeek() {
+    window.location.href = '{{ url_for("copy_scheduler_routes.scheduler") }}';
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function renderAll() {
+    renderDateHeaders();
+    renderGrid();
+    renderSidebar();
+    renderShiftsBadge();
+}
+
+function renderDateHeaders() {
+    const start = new Date(WEEK_DAYS[0].date_str + 'T00:00:00');
+    const end   = new Date(WEEK_DAYS[6].date_str + 'T00:00:00');
+    document.getElementById('week-label').textContent = `${fmtDate(start)} – ${fmtDate(end)}`;
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(WEEK_DAYS[i].date_str + 'T00:00:00');
+        const hdr = document.getElementById(`grid-hdr-${i}`);
+        const isToday = WEEK_DAYS[i].date_str === toDateStr(new Date());
+        hdr.innerHTML = `
+            <div style="font-size:0.75rem; color:#6b7280;">${DAY_NAMES[i]}</div>
+            <div style="font-weight:${isToday?'700':'500'}; color:${isToday?'#1d4ed8':'inherit'};">${fmtDate(d)}</div>`;
+    }
+}
+
+function renderGrid() {
+    // SLOT_HOURS comes from the server and is already break-week-aware
+    for (let slot = 0; slot < SLOT_HOURS.length; slot++) {
+        for (let day = 0; day < 7; day++) {
+            const cell    = document.getElementById(`cell-${slot}-${day}`);
+            const dateStr = WEEK_DAYS[day].date_str;
+            const hour    = SLOT_HOURS[slot];
+            const key     = `${dateStr}_${hour}`;
+            const shift   = shiftsMap[key] || null;
+
+            const isFilled        = shift && shift.editor_id;
+            const isMine          = shift && shift.editor_id === EDITOR_ID;
+            const isDroppable     = droppableSet.has(key) && !isMine;
+            const isSwapRequested = swapRequestedSet.has(key);
+            const isMineDropping  = isMine && shift.up_for_drop;
+
+            let bg, border;
+            if (isMineDropping)                   { bg = '#fefcbf'; border = '#fde047'; }
+            else if (isMine)                      { bg = '#c6f6d5'; border = '#86efac'; }
+            else if (isDroppable)                 { bg = '#fed7aa'; border = '#fdba74'; }
+            else if (isSwapRequested && isFilled) { bg = '#e9d5ff'; border = '#d8b4fe'; }
+            else if (isFilled)                    { bg = '#f8d7da'; border = '#fca5a5'; }
+            else                                  { bg = '#eff6ff'; border = '#bfdbfe'; }
+
+            cell.style.cssText = `height:72px; border-right:1px solid #dee2e6; padding:0.4rem; vertical-align:top; cursor:pointer; background:${bg}; border:1px solid ${border};`;
+
+            if (!isFilled) {
+                cell.innerHTML = `<span style="font-size:0.7rem; color:#9ca3af;">Open</span>`;
+            } else if (isMineDropping) {
+                cell.innerHTML = `
+                    <div style="font-size:0.75rem; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${shift.editor_name || ''}</div>
+                    <div style="font-size:0.65rem; color:#92400e; margin-top:2px; font-weight:600;">DROPPING</div>
+                    <div style="display:flex; gap:2px; margin-top:4px;">
+                        <button onclick="event.stopPropagation(); startSwap('${dateStr}', ${hour})" style="font-size:0.65rem; padding:1px 5px; border:1px solid #dee2e6; border-radius:3px; background:white; cursor:pointer;">Swap</button>
+                    </div>`;
+            } else if (isMine) {
+                const pending = pendingMap[key];
+                cell.innerHTML = `
+                    <div style="font-size:0.75rem; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${shift.editor_name || ''}</div>
+                    ${pending ? `<div style="font-size:0.65rem; color:#92400e; margin-top:2px;">PENDING</div>` : ''}
+                    <div style="display:flex; gap:2px; margin-top:4px; flex-wrap:wrap;">
+                        ${!pending || pending.request_type !== 'drop'
+                            ? `<button onclick="event.stopPropagation(); startDrop('${dateStr}', ${hour})" style="font-size:0.65rem; padding:1px 5px; border:1px solid #dee2e6; border-radius:3px; background:white; cursor:pointer;">Drop</button>`
+                            : ''}
+                        ${!pending
+                            ? `<button onclick="event.stopPropagation(); startSwap('${dateStr}', ${hour})" style="font-size:0.65rem; padding:1px 5px; border:1px solid #dee2e6; border-radius:3px; background:white; cursor:pointer;">Swap</button>`
+                            : ''}
+                    </div>`;
+            } else if (isDroppable) {
+                cell.innerHTML = `
+                    <div style="font-size:0.75rem; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${shift.editor_name || ''}</div>
+                    <div style="font-size:0.65rem; color:#c2410c; font-weight:600; margin-top:2px;">CLAIMABLE</div>`;
+            } else {
+                const names = [shift.editor_name, shift.editor_name_2].filter(Boolean);
+                cell.innerHTML = names.map(n =>
+                    `<div style="font-size:0.75rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${n}</div>`
+                ).join('');
+            }
+
+            cell.onclick = () => handleCellClick(dateStr, hour, cell);
+        }
+    }
+}
+
+// ─── Sidebar ──────────────────────────────────────────────────────────────────
+function renderSidebar() {
+    renderIncomingRequests();
+    renderMyShifts();
+}
+
+function renderIncomingRequests() {
+    const el = document.getElementById('incoming-requests-list');
+    if (!INCOMING_REQUESTS.length) {
+        el.innerHTML = `<p style="color:#9ca3af; font-size:0.875rem;">No incoming requests.</p>`;
+        return;
+    }
+    el.innerHTML = INCOMING_REQUESTS.map(r => {
+        const typeLabel = r.request_type === 'swap_direct' ? 'Direct Swap' : 'Swap Offer';
+        const description = r.request_type === 'swap_direct'
+            ? `wants to swap their <strong>${r.source_label}</strong> shift with your <strong>${r.target_label}</strong> shift.`
+            : `wants to swap into your <strong>${r.target_label}</strong> shift instead of dropping it, giving you their <strong>${r.source_label}</strong> shift.`;
+        return `
+        <div style="border:1px solid #fca5a5; background:#fff1f2; border-radius:6px; padding:0.75rem; margin-bottom:0.5rem; font-size:0.875rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
+                <span style="font-weight:600;">${r.requester_name}</span>
+                <span style="font-size:0.7rem; background:#fee2e2; color:#dc2626; padding:1px 6px; border-radius:3px; font-weight:500;">${typeLabel}</span>
+            </div>
+            <p style="font-size:0.8rem; color:#374151; margin:0 0 0.5rem 0;">${r.requester_name} ${description}</p>
+            <div style="display:flex; gap:0.4rem;">
+                <button onclick="acceptSwapRequest(${r.uid})" class="button-primary" style="font-size:0.75rem; padding:3px 10px;">Accept</button>
+                <button onclick="declineSwapRequest(${r.uid})" class="button-secondary" style="font-size:0.75rem; padding:3px 10px;">Decline</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderMyShifts() {
+    const el = document.getElementById('my-shifts-list');
+    if (!MY_SHIFTS.length) {
+        el.innerHTML = `<p style="color:#9ca3af; font-size:0.875rem;">No shifts this week.</p>`;
+        return;
+    }
+    el.innerHTML = MY_SHIFTS.map(s => {
+        const key     = `${s.date_str}_${s.start_hour}`;
+        const pending = pendingMap[key];
+        return `
+        <div style="border:1px solid #dee2e6; border-radius:6px; padding:0.75rem; margin-bottom:0.5rem; font-size:0.875rem; background:white;">
+            <div style="font-weight:500; margin-bottom:0.25rem;">${s.day_label} · ${s.hour_label}</div>
+            ${s.up_for_drop ? `<div style="font-size:0.75rem; color:#92400e; background:#fef3c7; border:1px solid #fde68a; border-radius:3px; padding:1px 6px; display:inline-block; margin-bottom:0.4rem;">Dropping</div>` : ''}
+            ${pending ? `<div style="font-size:0.75rem; color:#6b7280; margin-bottom:0.4rem;">
+                ${pending.request_type === 'drop' ? '⏳ Drop pending' : `⏳ Swap pending → ${pending.target_label}`}
+            </div>` : ''}
+            <div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:0.25rem;">
+                ${pending && pending.request_type === 'drop'
+                    ? `<button onclick="handleCancelRequest(${pending.uid})" class="button-secondary" style="font-size:0.75rem; padding:3px 10px; color:#c2410c; border-color:#fca5a5;">Cancel Drop</button>
+                       <button onclick="startSwap('${s.date_str}', ${s.start_hour})" class="button-secondary" style="font-size:0.75rem; padding:3px 10px;">Swap</button>`
+                    : pending
+                    ? `<button onclick="startDrop('${s.date_str}', ${s.start_hour})" class="button-secondary" style="font-size:0.75rem; padding:3px 10px;">Drop</button>
+                       <button onclick="handleCancelRequest(${pending.uid})" class="button-secondary" style="font-size:0.75rem; padding:3px 10px; color:#c2410c; border-color:#fca5a5;">Cancel Swap</button>`
+                    : `<button onclick="startDrop('${s.date_str}', ${s.start_hour})" class="button-secondary" style="font-size:0.75rem; padding:3px 10px;">Drop</button>
+                       <button onclick="startSwap('${s.date_str}', ${s.start_hour})" class="button-secondary" style="font-size:0.75rem; padding:3px 10px;">Swap</button>`
+                }
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderShiftsBadge() {
+    const el     = document.getElementById('shifts-badge');
+    const count  = MY_SHIFTS.length;
+    const color  = count >= REQUIRED_SHIFTS ? '#166534' : '#92400e';
+    const bg     = count >= REQUIRED_SHIFTS ? '#f0fdf4' : '#fef3c7';
+    const border = count >= REQUIRED_SHIFTS ? '#bbf7d0' : '#fde68a';
+    el.style.cssText = `padding:2px 10px; background:${bg}; border:1px solid ${border}; border-radius:4px; font-size:0.75rem; color:${color};`;
+    el.textContent   = `My Shifts: ${count} / ${REQUIRED_SHIFTS}`;
+}
+
+// ─── Selection mode ───────────────────────────────────────────────────────────
+function enterSelectionMode(mode, bannerText) {
     currentMode = mode;
-    const banner = document.getElementById('selectionBanner');
     document.getElementById('selectionBannerText').textContent = bannerText;
-    banner.style.display = 'flex';
+    document.getElementById('selectionBanner').style.display = 'flex';
 
-    document.querySelectorAll('.shift-cell').forEach(cell => {
-      const isMine = cell.dataset.mine === 'true';
-      const isSource = (cell.dataset.date === sourceDate &&
-                        parseInt(cell.dataset.hour) === sourceHour);
-      const isFilled = cell.dataset.filled === 'true';
-      const isDroppable = cell.dataset.droppable === 'true';
+    // BUG FIX: use SLOT_HOURS.length, not hardcoded 8
+    for (let slot = 0; slot < SLOT_HOURS.length; slot++) {
+        for (let day = 0; day < 7; day++) {
+            const cell     = document.getElementById(`cell-${slot}-${day}`);
+            const dateStr  = WEEK_DAYS[day].date_str;
+            const hour     = SLOT_HOURS[slot];
+            const key      = `${dateStr}_${hour}`;
+            const shift    = shiftsMap[key] || null;
+            const isMine   = shift && shift.editor_id === EDITOR_ID;
+            const isSource = (dateStr === sourceDate && hour === sourceHour);
+            const isFilled = shift && shift.editor_id;
+            const isDroppable = droppableSet.has(key);
 
-      let selectable = false;
-      if (mode === 'add') {
-        // Add mode: empty slots + up-for-drop shifts (pickup)
-        selectable = (!isFilled && !isMine) || isDroppable;
-      } else if (mode === 'swap') {
-        // Swap mode: any non-mine slot (empty, filled, or droppable)
-        selectable = !isMine && !isSource;
-      }
+            let selectable = false;
+            if (mode === 'add') {
+                selectable = (!isFilled && !isMine) || (isDroppable && !isMine);
+            } else if (mode === 'swap') {
+                selectable = !isMine && !isSource;
+            }
 
-      if (selectable) {
-        cell.classList.add('selectable');
-        // Orange highlight for droppable slots
-        if (isDroppable) {
-          cell.classList.add('selectable-droppable');
+            if (selectable) {
+                cell.style.boxShadow = isDroppable ? 'inset 0 0 0 2px #c2410c' : 'inset 0 0 0 2px #3182ce';
+                cell.style.cursor = 'pointer';
+                cell.dataset.selectable = 'true';
+            } else {
+                cell.style.opacity = '0.4';
+                cell.dataset.selectable = 'false';
+            }
         }
-        cell.style.cursor = 'pointer';
-      }
-    });
-  }
+    }
+}
 
-  function exitSelectionMode() {
+function exitSelectionMode() {
     currentMode = null;
-    sourceDate = null;
-    sourceHour = null;
+    sourceDate  = null;
+    sourceHour  = null;
     document.getElementById('selectionBanner').style.display = 'none';
-    document.querySelectorAll('.shift-cell').forEach(c => {
-      c.classList.remove('selectable');
-      c.classList.remove('selectable-droppable');
-      c.style.cursor = '';
-    });
-  }
+    renderGrid();
+}
 
-  document.querySelectorAll('.shift-cell').forEach(cell => {
-    cell.addEventListener('click', function () {
-      if (!currentMode) return;  // No clicking in default view
-      if (!this.classList.contains('selectable')) return;
+// ─── Cell click ───────────────────────────────────────────────────────────────
+function handleCellClick(dateStr, hour, cell) {
+    if (!currentMode) return;
+    if (cell.dataset.selectable !== 'true') return;
 
-      targetDate = this.dataset.date;
-      targetHour = parseInt(this.dataset.hour);
-      const filled = this.dataset.filled === 'true';
-      const isDroppable = this.dataset.droppable === 'true';
-      const editorName = this.dataset.editorName;
+    targetDate = dateStr;
+    targetHour = hour;
+    const key      = `${dateStr}_${hour}`;
+    const shift    = shiftsMap[key] || null;
+    const isFilled = shift && shift.editor_id;
+    const isDroppable = droppableSet.has(key);
+    const editorName  = SHIFT_EDITOR_NAMES[key] || '';
 
-      if (currentMode === 'add') {
-        if (isDroppable) {
-          // Picking up an up-for-drop shift
-          handlePickup(targetDate, targetHour, editorName);
-        } else {
-          // Adding into empty slot
-          submitAdd(targetDate, targetHour);
-        }
-      } else if (currentMode === 'swap') {
-        if (isDroppable) {
-          // Swapping with someone who wants to drop
-          handleSwapDrop(editorName);
-        } else if (filled) {
-          // Normal filled slot — direct swap or add into
-          showSwapChoice(editorName);
-        } else {
-          // Empty slot — copy chief approval
-          handleSwapIntoEmpty();
-        }
-      }
-    });
-  });
-
-  async function handlePickup(dateStr, hour, editorName) {
-    const confirmed = await showButtonAlert(
-      'Pick Up Shift',
-      'This shift is up for drop by ' + editorName + '. Would you like to take it over?',
-      'Pick Up',
-      'Cancel'
-    );
-    if (confirmed) {
-      postJSON('{{ url_for("copy_scheduler_routes.api_pickup_shift") }}',
-        { date: dateStr, hour: hour }
-      ).then(data => {
-        exitSelectionMode();
-        if (data.status === 'error') {
-          showButtonAlert('Error', data.message, 'OK', '');
-        } else {
-          window.location.reload();
-        }
-      });
+    if (currentMode === 'add') {
+        isDroppable ? handlePickup(dateStr, hour, editorName) : submitAdd(dateStr, hour);
+    } else if (currentMode === 'swap') {
+        if (isDroppable)   handleSwapDrop(editorName);
+        else if (isFilled) showSwapChoice(editorName);
+        else               handleSwapIntoEmpty();
     }
-  }
+}
 
-  async function handleSwapDrop(editorName) {
-    const confirmed = await showButtonAlert(
-      'Swap with ' + editorName,
-      editorName + ' wants to drop this shift. Instead of dropping, you can offer to swap shifts with them. ' +
-      'They would take your current shift and you would take theirs. This requires their approval.',
-      'Request ' + editorName,
-      'Cancel'
-    );
-    if (confirmed) {
-      submitSwap('swap_drop');
-    }
-  }
+// ─── Actions ──────────────────────────────────────────────────────────────────
+function postJSON(url, body) {
+    return fetch(`${url}?_csrf_token=${encodeURIComponent(CSRF_TOKEN)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+        body: JSON.stringify(body),
+    }).then(r => r.json());
+}
 
-  async function startDrop(dateStr, hour) {
+async function startDrop(dateStr, hour) {
     sourceDate = dateStr;
     sourceHour = hour;
-
     const confirmed = await showButtonAlert(
-      'Drop Shift',
-      'Your shift will be marked as "up for drop" so another editor can pick it up. ' +
-      'If no one does, the Copy Chief will be asked to approve the drop.',
-      'Mark as Up for Drop',
-      'Cancel'
+        'Drop Shift',
+        'Your shift will be marked as "up for drop" so another editor can pick it up. If no one does, the Copy Chief will be asked to approve the drop.',
+        'Mark as Up for Drop', 'Cancel'
     );
-    if (confirmed) {
-      postJSON('{{ url_for("copy_scheduler_routes.api_drop_shift") }}',
-        { date: sourceDate, hour: sourceHour }
-      ).then(data => {
-        if (data.status === 'error') {
-          showButtonAlert('Error', data.message, 'OK', '');
-        } else {
-          window.location.reload();
-        }
-      });
-    }
-  }
+    if (!confirmed) return;
+    const data = await postJSON('{{ url_for("copy_scheduler_routes.api_drop_shift") }}', { date: dateStr, hour });
+    if (data.status === 'error') { showButtonAlert('Error', data.message, 'OK', ''); return; }
+    window.location.reload();
+}
 
-  async function handleSwapIntoEmpty() {
-    const confirmed = await showButtonAlert(
-      'Swap Into Empty Slot',
-      'Moving into an empty slot requires Copy Chief approval. Your current shift will be dropped once approved.',
-      'Request Copy Chief',
-      'Cancel'
-    );
-    if (confirmed) {
-      submitSwap('add_into');
-    }
-  }
-
-  function showSwapChoice(editorName) {
-    const screen = document.getElementById('swap-choice-screen');
-    document.getElementById('swap-choice-text').textContent =
-      'This slot is assigned to ' + editorName + '.';
-    document.getElementById('swap-choice-description').innerHTML =
-      '<strong>Direct Swap:</strong> You and ' + editorName +
-      ' exchange shift times. Requires their approval.<br>' +
-      '<strong>Add Into Slot:</strong> You join their slot and drop yours. ' +
-      'Requires Copy Chief approval.';
-    document.getElementById('swap-choice-direct').textContent =
-      'Request ' + editorName;
-
-    screen.style.display = 'flex';
-
-    document.getElementById('swap-choice-direct').onclick = () => {
-      screen.style.display = 'none';
-      submitSwap('direct');
-    };
-    document.getElementById('swap-choice-add-into').onclick = () => {
-      screen.style.display = 'none';
-      submitSwap('add_into');
-    };
-    document.getElementById('swap-choice-cancel').onclick = () => {
-      screen.style.display = 'none';
-    };
-  }
-
-  function submitSwap(mode) {
-    postJSON('{{ url_for("copy_scheduler_routes.api_swap_shift") }}', {
-      source_date: sourceDate,
-      source_hour: sourceHour,
-      target_date: targetDate,
-      target_hour: targetHour,
-      swap_mode: mode,
-    }).then(data => {
-      exitSelectionMode();
-      if (data.status === 'error') {
-        showButtonAlert('Error', data.message, 'OK', '');
-      } else {
-        window.location.reload();
-      }
-    });
-  }
-
-  function startSwap(dateStr, hour) {
+async function startSwap(dateStr, hour) {
     sourceDate = dateStr;
-    sourceHour = hour;
+    sourceHour = parseInt(hour);
     enterSelectionMode('swap', 'Select a slot to swap into, or click Cancel.');
-  }
+}
 
-  function startAddSlot() {
+function startAddSlot() {
     sourceDate = null;
     sourceHour = null;
-    enterSelectionMode('add', 'Select an open slot or an up-for-drop shift, or click Cancel.');
-  }
+    enterSelectionMode('add', 'Select an open slot or a claimable shift, or click Cancel.');
+}
 
-  function submitAdd(dateStr, hour) {
-    postJSON('{{ url_for("copy_scheduler_routes.api_add_slot") }}',
-      { date: dateStr, hour: parseInt(hour) }
-    ).then(() => {
-      exitSelectionMode();
-      window.location.reload();
-    });
-  }
-
-  async function handleCancelRequest(requestId) {
+async function handlePickup(dateStr, hour, editorName) {
     const confirmed = await showButtonAlert(
-      'Cancel Request',
-      'Do you want to cancel this pending request?',
-      'Yes, Cancel',
-      'No, Keep'
+        'Pick Up Shift',
+        `This shift is up for drop by ${editorName}. Would you like to take it over?`,
+        'Pick Up', 'Cancel'
     );
-    if (confirmed) {
-      postJSON('{{ url_for("copy_scheduler_routes.api_cancel_request") }}',
-        { request_id: requestId }
-      ).then(() => window.location.reload());
-    }
-  }
+    if (!confirmed) return;
+    const data = await postJSON('{{ url_for("copy_scheduler_routes.api_pickup_shift") }}', { date: dateStr, hour });
+    exitSelectionMode();
+    if (data.status === 'error') { showButtonAlert('Error', data.message, 'OK', ''); return; }
+    window.location.reload();
+}
+
+async function handleSwapDrop(editorName) {
+    const confirmed = await showButtonAlert(
+        `Swap with ${editorName}`,
+        `${editorName} wants to drop this shift. Instead of dropping, you can offer to swap. They would take your shift and you would take theirs. This requires their approval.`,
+        `Request ${editorName}`, 'Cancel'
+    );
+    if (confirmed) submitSwap('swap_drop');
+}
+
+async function handleSwapIntoEmpty() {
+    const confirmed = await showButtonAlert(
+        'Swap Into Empty Slot',
+        'Moving into an empty slot requires Copy Chief approval. Your current shift will be dropped once approved.',
+        'Request Copy Chief', 'Cancel'
+    );
+    if (confirmed) submitSwap('add_into');
+}
+
+function showSwapChoice(editorName) {
+    const screen = document.getElementById('swap-choice-screen');
+    document.getElementById('swap-choice-text').textContent = `This slot is assigned to ${editorName}.`;
+    document.getElementById('swap-choice-description').innerHTML =
+        `<strong>Direct Swap:</strong> You and ${editorName} exchange shifts. Requires their approval.<br>` +
+        `<strong>Add Into Slot:</strong> You join their slot and drop yours. Requires Copy Chief approval.`;
+    document.getElementById('swap-choice-direct').textContent = `Request ${editorName}`;
+    screen.style.display = 'flex';
+    document.getElementById('swap-choice-direct').onclick   = () => { screen.style.display = 'none'; submitSwap('direct'); };
+    document.getElementById('swap-choice-add-into').onclick = () => { screen.style.display = 'none'; submitSwap('add_into'); };
+    document.getElementById('swap-choice-cancel').onclick   = () => { screen.style.display = 'none'; };
+}
+
+async function submitSwap(mode) {
+    const data = await postJSON('{{ url_for("copy_scheduler_routes.api_swap_shift") }}', {
+        source_date: sourceDate, source_hour: sourceHour,
+        target_date: targetDate, target_hour: targetHour,
+        swap_mode: mode,
+    });
+    exitSelectionMode();
+    if (data.status === 'error') { showButtonAlert('Error', data.message, 'OK', ''); return; }
+    window.location.reload();
+}
+
+async function submitAdd(dateStr, hour) {
+    await postJSON('{{ url_for("copy_scheduler_routes.api_add_slot") }}', { date: dateStr, hour: parseInt(hour) });
+    exitSelectionMode();
+    window.location.reload();
+}
+
+async function handleCancelRequest(requestId) {
+    const confirmed = await showButtonAlert('Cancel Request', 'Do you want to cancel this pending request?', 'Yes, Cancel', 'No, Keep');
+    if (!confirmed) return;
+    await postJSON('{{ url_for("copy_scheduler_routes.api_cancel_request") }}', { request_id: requestId });
+    window.location.reload();
+}
+
+async function acceptSwapRequest(requestId) {
+    const confirmed = await showButtonAlert(
+        'Accept Swap',
+        'Are you sure you want to accept this swap? Your shifts will be exchanged.',
+        'Accept', 'Cancel'
+    );
+    if (!confirmed) return;
+    const data = await postJSON('{{ url_for("copy_scheduler_routes.api_accept_swap") }}', { request_id: requestId });
+    if (data.status === 'error') { showButtonAlert('Error', data.message, 'OK', ''); return; }
+    window.location.reload();
+}
+
+async function declineSwapRequest(requestId) {
+    const confirmed = await showButtonAlert(
+        'Decline Swap',
+        'Are you sure you want to decline this swap request?',
+        'Decline', 'Cancel'
+    );
+    if (!confirmed) return;
+    const data = await postJSON('{{ url_for("copy_scheduler_routes.api_decline_swap") }}', { request_id: requestId });
+    if (data.status === 'error') { showButtonAlert('Error', data.message, 'OK', ''); return; }
+    window.location.reload();
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+renderAll();
 </script>
 
-<style>
-  .scheduler-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-  }
-  .week-nav button {
-    margin-left: 0.25rem;
-    padding: 0.25rem 0.5rem;
-    cursor: pointer;
-  }
-
-  /* ---- Legend ---- */
-  .shift-legend {
-    display: flex;
-    gap: 1.25rem;
-    margin-bottom: 0.75rem;
-    font-size: 0.85rem;
-  }
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-  }
-  .legend-swatch {
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-    border: 1px solid #000;
-  }
-
-  /* ---- Grid ---- */
-  .shift-grid {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-  }
-  .shift-grid th,
-  .shift-grid td {
-    border: 1px solid #000;
-    text-align: center;
-    padding: 0.75rem 0.25rem;
-    font-size: 0.9rem;
-  }
-  .shift-grid th {
-    background: #f5f5f5;
-  }
-  .time-label {
-    font-weight: 600;
-    white-space: nowrap;
-    background: #f9f9f9;
-  }
-
-  /* Slot colors */
-  .shift-empty            { background: #fff; }
-  .shift-full             { background: #f8d7da; }
-  .shift-mine             { background: #c6f6d5; }
-  .shift-mine-droppable   { background: #fefcbf; }
-  .shift-droppable        { background: #fed7aa; }
-  .shift-swap-requested   { background: #e9d5ff; }
-
-  .slot-status {
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-  }
-
-  /* Selectable: blue inset border + blue hover (normal slots) */
-  .shift-cell.selectable {
-    box-shadow: inset 0 0 0 2px #3182ce;
-    cursor: pointer;
-  }
-  .shift-cell.selectable:hover {
-    background: #ebf4ff !important;
-  }
-
-  /* Selectable droppable: orange inset border + orange hover */
-  .shift-cell.selectable-droppable {
-    box-shadow: inset 0 0 0 2px #c2410c;
-  }
-  .shift-cell.selectable-droppable:hover {
-    background: #ffedd5 !important;
-  }
-
-  /* ---- My shifts list ---- */
-  .my-shifts-section { margin-top: 1.5rem; }
-
-  .my-shift-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #eee;
-  }
-  .my-shift-actions {
-    display: flex;
-    gap: 0.5rem;
-  }
-  .btn-action {
-    padding: 0.35rem 0.75rem;
-    border: 1px solid #000;
-    background: #fff;
-    cursor: pointer;
-    font-size: 0.85rem;
-  }
-  .btn-action:hover { background: #eee; }
-
-  .btn-pending {
-    padding: 0.35rem 0.75rem;
-    border: 1px solid #c9a800;
-    background: #fff8dc;
-    cursor: pointer;
-    font-size: 0.85rem;
-    color: #856404;
-  }
-  .btn-pending:hover { background: #fff3b0; }
-
-  .up-for-drop-badge {
-    font-size: 0.7rem;
-    font-weight: 600;
-    background: #fed7aa;
-    padding: 0.1rem 0.4rem;
-    border-radius: 3px;
-    margin-left: 0.5rem;
-  }
-
-  .add-slot-row {
-    margin-top: 0.75rem;
-    text-align: right;
-  }
-
-  /* ---- Selection banner ---- */
-  #selectionBanner {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: #ebf4ff;
-    border-top: 2px solid #3182ce;
-    padding: 0.75rem 1.5rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    z-index: 999;
-    font-weight: 500;
-  }
-  #selectionBanner button {
-    padding: 0.35rem 1rem;
-    border: 1px solid #000;
-    background: #fff;
-    cursor: pointer;
-  }
-
-  /* ---- Swap choice modal ---- */
-  #swap-choice-screen {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 100%;
-    background-color: rgba(255, 255, 255, 0.8);
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 9998;
-  }
-  .swap-choice-container {
-    background-color: var(--main-bg-color);
-    border-radius: var(--main-border-radius);
-    box-shadow: var(--main-box-shadow);
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    max-width: 50%;
-  }
-  .swap-choice-button-container {
-    display: flex;
-    flex-direction: row;
-    gap: 0.5rem;
-  }
-</style>
+{% include "partials/info_bar.html" %}
 {% endblock %}

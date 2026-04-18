@@ -1,23 +1,30 @@
 """
-shift_utils.py
-Utility / service functions for the shift scheduler.
+Utility / service functions for the editor's copy scheduler view.
 """
 
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 from google.cloud import ndb
 
-from db.copy_schedule import ShiftSlot, ShiftRequest
+from db.copy_schedule import ShiftSlot, SeniorShiftSlot, ShiftRequest, BreakWeek
+from db import client
 from constants import (
     COPY_EDITOR_GROUPS,
     SENIOR_COPY_EDITOR_GROUPS,
     COPY_CHIEF_GROUPS,
+    SHIFT_START_HOURS,
+    SHIFT_DURATION,
     SHIFT_REQUIREMENTS,
     WEEKEND_SHIFT_REDUCTION,
+    SENIOR_COPY_EDITOR_HOURS,
+    BREAK_WEEK_SHIFT_HOURS,
+    BREAK_WEEK_SHIFT_DURATION,
+    BREAK_WEEK_REQUIREMENTS,
     SCHEDULER_TIMEZONE,
+    ENV,
 )
+from util.slackbots.general import dm_user_by_email, dm_channel_by_id
 
-SHIFT_START_HOURS = [8, 10, 12, 14, 16, 18, 20, 22]
 DAYS_OF_WEEK = [
     "Sunday",
     "Monday",
@@ -27,12 +34,12 @@ DAYS_OF_WEEK = [
     "Friday",
     "Saturday",
 ]
-WEEKEND_DAY_INDICES = {5, 6}  # Saturday=5, Sunday=6 in Python weekday()
+WEEKEND_DAY_INDICES = {5, 6}
+COPY_SCHEDULE_NOTIFICATIONS_CHANNEL = "" if ENV == "prod" else "C0AUAPTJJ0Y"
 
 
-from util.slackbots.general import dm_user_by_email
-
-COPY_CHIEF_EMAIL = "alanxie2@illinimedia.com"
+def _notify_channel(msg: str) -> None:
+    dm_channel_by_id(COPY_SCHEDULE_NOTIFICATIONS_CHANNEL, msg)
 
 
 def get_user_role(user) -> str:
@@ -44,12 +51,84 @@ def get_user_role(user) -> str:
     return "copy_editor"
 
 
+def get_slot_class_for_user(user):
+    """
+    Returns the NDB model class (ShiftSlot or SeniorShiftSlot) appropriate
+    for this user's role. Copy chiefs see staff slots by default.
+    """
+    role = get_user_role(user)
+    return SeniorShiftSlot if role == "senior_copy_editor" else ShiftSlot
+
+
+def get_slot_type_for_user(user) -> str:
+    """Returns 'senior' or 'staff' string for ShiftRequest.slot_type."""
+    return "senior" if get_user_role(user) == "senior_copy_editor" else "staff"
+
+
+def is_break_week(reference_date: date = None) -> bool:
+    """Returns True if the week containing reference_date is a break week."""
+    sunday, _ = get_week_bounds(reference_date)
+    try:
+        return ndb.Key(BreakWeek, sunday.isoformat()).get() is not None
+    except Exception:
+        with client.context():
+            return ndb.Key(BreakWeek, sunday.isoformat()).get() is not None
+
+
+def get_week_schedule(reference_date: date = None) -> dict:
+    break_week = is_break_week(reference_date)
+    return {
+        "is_break_week": break_week,
+        "hours": BREAK_WEEK_SHIFT_HOURS if break_week else SHIFT_START_HOURS,
+        "duration": BREAK_WEEK_SHIFT_DURATION if break_week else SHIFT_DURATION,
+    }
+
+
+def get_all_break_weeks() -> list[str]:
+    with client.context():
+        entries = BreakWeek.query().fetch()
+        return [e.key.id() for e in entries]
+
+
+def toggle_break_week(week_start_iso: str, admin_email: str = None) -> dict:
+    with client.context():
+        key = ndb.Key(BreakWeek, week_start_iso)
+        existing = key.get()
+        if existing:
+            key.delete()
+            return {"is_break_week": False, "week_start": week_start_iso}
+        else:
+            entry = BreakWeek(id=week_start_iso, created_by=admin_email)
+            entry.put()
+            return {"is_break_week": True, "week_start": week_start_iso}
+
+
 def get_required_shifts(user, reference_date: date = None) -> int:
     role = get_user_role(user)
+    if is_break_week(reference_date):
+        return BREAK_WEEK_REQUIREMENTS.get(role, 1)
     base = SHIFT_REQUIREMENTS.get(role, 2)
-    if base > 0 and _has_weekend_shift(user.email, reference_date):
+    if (
+        role == "copy_editor"
+        and base > 0
+        and _has_weekend_shift(user.email, reference_date)
+    ):
         return max(0, base - WEEKEND_SHIFT_REDUCTION)
     return base
+
+
+def get_available_hours(user, reference_date: date = None) -> list:
+    """
+    Returns shift hours this user can sign up for.
+    Break weeks override all role restrictions to the 3 break slots.
+    Senior editors are restricted to 10am–10pm on regular weeks.
+    """
+    if is_break_week(reference_date):
+        return BREAK_WEEK_SHIFT_HOURS
+    role = get_user_role(user)
+    if role == "senior_copy_editor":
+        return SENIOR_COPY_EDITOR_HOURS
+    return SHIFT_START_HOURS
 
 
 def _has_weekend_shift(editor_id: str, reference_date: date = None) -> bool:
@@ -66,7 +145,7 @@ def get_week_bounds(reference_date: date = None):
     return sunday, saturday
 
 
-def shift_label(start_hour: int) -> str:
+def shift_label(start_hour: int, duration: int = 2) -> str:
     def _fmt(h):
         if h == 0 or h == 24:
             return "12am"
@@ -77,7 +156,7 @@ def shift_label(start_hour: int) -> str:
         else:
             return f"{h - 12}pm"
 
-    return f"{_fmt(start_hour)}-{_fmt(start_hour + 2)}"
+    return f"{_fmt(start_hour)}-{_fmt(start_hour + duration)}"
 
 
 def day_label(d: date) -> str:
@@ -100,13 +179,7 @@ def format_today() -> str:
 def is_shift_in_past(shift_date: date, start_hour: int) -> bool:
     tz = ZoneInfo(SCHEDULER_TIMEZONE)
     shift_start = datetime(
-        shift_date.year,
-        shift_date.month,
-        shift_date.day,
-        start_hour,
-        0,
-        0,
-        tzinfo=tz,
+        shift_date.year, shift_date.month, shift_date.day, start_hour, 0, 0, tzinfo=tz
     )
     return datetime.now(tz) >= shift_start
 
@@ -115,63 +188,75 @@ def _slot_key_name(d: date, start_hour: int) -> str:
     return f"{d.isoformat()}_{start_hour}"
 
 
-def get_shift(d: date, start_hour: int) -> ShiftSlot:
-    key = ndb.Key(ShiftSlot, _slot_key_name(d, start_hour))
+def _shift_duration_for_date(d: date) -> int:
+    return 4 if is_break_week(d) else 2
+
+
+def get_shift(d: date, start_hour: int, slot_class=ShiftSlot) -> ShiftSlot:
+    key = ndb.Key(slot_class, _slot_key_name(d, start_hour))
     return key.get()
 
 
-def get_shifts_for_week(reference_date: date = None) -> dict:
+def get_shifts_for_week(reference_date: date = None, slot_class=ShiftSlot) -> dict:
+    """Returns all shift slots for the week using break-week-aware hours."""
     sunday, saturday = get_week_bounds(reference_date)
+    schedule = get_week_schedule(reference_date)
+    hours = schedule["hours"]
     shifts = {}
     current = sunday
     while current <= saturday:
-        for hour in SHIFT_START_HOURS:
+        for hour in hours:
             key_name = _slot_key_name(current, hour)
-            shift = get_shift(current, hour)
-            shifts[key_name] = shift
+            shifts[key_name] = get_shift(current, hour, slot_class)
         current += timedelta(days=1)
     return shifts
 
 
-def get_droppable_shifts_for_week(reference_date: date = None) -> set:
+def get_droppable_shifts_for_week(
+    reference_date: date = None, slot_class=ShiftSlot
+) -> set:
     sunday, saturday = get_week_bounds(reference_date)
-    slots = ShiftSlot.query(
-        ShiftSlot.up_for_drop == True,  # noqa: E712
-        ShiftSlot.date >= sunday,
-        ShiftSlot.date <= saturday,
+    slots = slot_class.query(
+        slot_class.up_for_drop == True,  # noqa: E712
+        slot_class.date >= sunday,
+        slot_class.date <= saturday,
     ).fetch()
     return {_slot_key_name(s.date, s.start_hour) for s in slots}
 
 
-def get_editor_shifts_for_week(editor_id: str, reference_date: date = None) -> list:
+def get_editor_shifts_for_week(
+    editor_id: str, reference_date: date = None, slot_class=ShiftSlot
+) -> list:
     sunday, saturday = get_week_bounds(reference_date)
     return (
-        ShiftSlot.query(
-            ShiftSlot.editor_id == editor_id,
-            ShiftSlot.date >= sunday,
-            ShiftSlot.date <= saturday,
+        slot_class.query(
+            slot_class.editor_id == editor_id,
+            slot_class.date >= sunday,
+            slot_class.date <= saturday,
         )
-        .order(ShiftSlot.date, ShiftSlot.start_hour)
+        .order(slot_class.date, slot_class.start_hour)
         .fetch()
     )
 
 
-def count_editor_shifts_for_week(editor_id: str, reference_date: date = None) -> int:
+def count_editor_shifts_for_week(
+    editor_id: str, reference_date: date = None, slot_class=ShiftSlot
+) -> int:
     sunday, saturday = get_week_bounds(reference_date)
-    return ShiftSlot.query(
-        ShiftSlot.editor_id == editor_id,
-        ShiftSlot.date >= sunday,
-        ShiftSlot.date <= saturday,
+    return slot_class.query(
+        slot_class.editor_id == editor_id,
+        slot_class.date >= sunday,
+        slot_class.date <= saturday,
     ).count()
 
 
 def assign_shift(
-    d: date, start_hour: int, editor_id: str, editor_name: str
-) -> ShiftSlot:
+    d: date, start_hour: int, editor_id: str, editor_name: str, slot_class=ShiftSlot
+):
     key_name = _slot_key_name(d, start_hour)
-    slot = ndb.Key(ShiftSlot, key_name).get()
+    slot = ndb.Key(slot_class, key_name).get()
     if slot is None:
-        slot = ShiftSlot(id=key_name, date=d, start_hour=start_hour)
+        slot = slot_class(id=key_name, date=d, start_hour=start_hour)
     slot.editor_id = editor_id
     slot.editor_name = editor_name
     slot.up_for_drop = False
@@ -179,8 +264,8 @@ def assign_shift(
     return slot
 
 
-def clear_shift(d: date, start_hour: int) -> None:
-    slot = get_shift(d, start_hour)
+def clear_shift(d: date, start_hour: int, slot_class=ShiftSlot) -> None:
+    slot = get_shift(d, start_hour, slot_class)
     if slot:
         slot.editor_id = None
         slot.editor_name = None
@@ -188,45 +273,49 @@ def clear_shift(d: date, start_hour: int) -> None:
         slot.put()
 
 
-def mark_up_for_drop(d: date, start_hour: int) -> None:
-    slot = get_shift(d, start_hour)
+def mark_up_for_drop(d: date, start_hour: int, slot_class=ShiftSlot) -> None:
+    slot = get_shift(d, start_hour, slot_class)
     if slot:
         slot.up_for_drop = True
         slot.put()
 
 
 def get_pending_requests_for_editor(
-    editor_id: str, reference_date: date = None
+    editor_id: str, reference_date: date = None, slot_type: str = "staff"
 ) -> list:
     sunday, saturday = get_week_bounds(reference_date)
     return ShiftRequest.query(
         ShiftRequest.requester_id == editor_id,
+        ShiftRequest.slot_type == slot_type,
         ShiftRequest.status == "pending",
         ShiftRequest.source_shift_date >= sunday,
         ShiftRequest.source_shift_date <= saturday,
     ).fetch()
 
 
-def build_pending_map(editor_id: str, reference_date: date = None) -> dict:
-    requests = get_pending_requests_for_editor(editor_id, reference_date)
+def build_pending_map(
+    editor_id: str, reference_date: date = None, slot_type: str = "staff"
+) -> dict:
+    requests = get_pending_requests_for_editor(editor_id, reference_date, slot_type)
     pending = {}
     for req in requests:
         key = _slot_key_name(req.source_shift_date, req.source_shift_hour)
         if req.target_shift_date:
-            req.target_label = (
-                f"{day_label(req.target_shift_date)} "
-                f"{shift_label(req.target_shift_hour)}"
-            )
+            target_dur = _shift_duration_for_date(req.target_shift_date)
+            req.target_label = f"{day_label(req.target_shift_date)} {shift_label(req.target_shift_hour, target_dur)}"
         else:
             req.target_label = ""
         pending[key] = req
     return pending
 
 
-def build_swap_requested_set(reference_date: date = None) -> set:
+def build_swap_requested_set(
+    reference_date: date = None, slot_type: str = "staff"
+) -> set:
     sunday, saturday = get_week_bounds(reference_date)
     reqs = ShiftRequest.query(
         ShiftRequest.status == "pending",
+        ShiftRequest.slot_type == slot_type,
         ShiftRequest.target_shift_date >= sunday,
         ShiftRequest.target_shift_date <= saturday,
     ).fetch(projection=[ShiftRequest.target_shift_date, ShiftRequest.target_shift_hour])
@@ -237,20 +326,60 @@ def build_swap_requested_set(reference_date: date = None) -> set:
     }
 
 
+def get_incoming_requests_for_editor(
+    editor_id: str, reference_date: date = None, slot_type: str = "staff"
+) -> list:
+    sunday, saturday = get_week_bounds(reference_date)
+    return ShiftRequest.query(
+        ShiftRequest.target_editor_id == editor_id,
+        ShiftRequest.slot_type == slot_type,
+        ShiftRequest.status == "pending",
+        ShiftRequest.target_shift_date >= sunday,
+        ShiftRequest.target_shift_date <= saturday,
+    ).fetch()
+
+
+def build_incoming_map(
+    editor_id: str, reference_date: date = None, slot_type: str = "staff"
+) -> list:
+    requests = get_incoming_requests_for_editor(editor_id, reference_date, slot_type)
+    incoming = []
+    for req in requests:
+        src_dur = _shift_duration_for_date(req.source_shift_date)
+        tgt_dur = (
+            _shift_duration_for_date(req.target_shift_date)
+            if req.target_shift_date
+            else 2
+        )
+        incoming.append(
+            {
+                "uid": req.key.id(),
+                "request_type": req.request_type,
+                "requester_name": req.requester_name,
+                "requester_id": req.requester_id,
+                "source_label": f"{day_label(req.source_shift_date)} {shift_label(req.source_shift_hour, src_dur)}",
+                "target_label": f"{day_label(req.target_shift_date)} {shift_label(req.target_shift_hour, tgt_dur)}",
+                "source_shift_date": req.source_shift_date.isoformat(),
+                "source_shift_hour": req.source_shift_hour,
+                "target_shift_date": req.target_shift_date.isoformat(),
+                "target_shift_hour": req.target_shift_hour,
+            }
+        )
+    return incoming
+
+
 def request_drop(user, shift_date: date, shift_hour: int) -> dict:
-    """
-    Mark shift as up-for-drop. Stays assigned until someone picks it up
-    or copy chief approves the removal.
-    """
     if is_shift_in_past(shift_date, shift_hour):
         return {"error": "Cannot drop a shift that has already started."}
 
-    editor_id = user.email
-    mark_up_for_drop(shift_date, shift_hour)
+    sc = get_slot_class_for_user(user)
+    st = get_slot_type_for_user(user)
+    mark_up_for_drop(shift_date, shift_hour, sc)
 
     req = ShiftRequest(
         request_type="drop",
-        requester_id=editor_id,
+        slot_type=st,
+        requester_id=user.email,
         requester_name=user.name,
         source_shift_date=shift_date,
         source_shift_hour=shift_hour,
@@ -258,17 +387,87 @@ def request_drop(user, shift_date: date, shift_hour: int) -> dict:
     )
     req.put()
     send_drop_approval_to_slack(req)
+    _schedule_unclaimed_drop_reminder(shift_date, shift_hour, req.key.id())
     return {"request_id": req.key.id(), "up_for_drop": True}
 
 
+def _schedule_unclaimed_drop_reminder(
+    shift_date: date, shift_hour: int, request_id: int
+) -> None:
+    try:
+        from util.apscheduler import scheduler
+        from apscheduler.triggers.date import DateTrigger
+
+        tz = ZoneInfo(SCHEDULER_TIMEZONE)
+        shift_start = datetime(
+            shift_date.year,
+            shift_date.month,
+            shift_date.day,
+            shift_hour,
+            0,
+            0,
+            tzinfo=tz,
+        )
+        reminder_time = shift_start - timedelta(hours=2)
+        now = datetime.now(tz)
+        if reminder_time <= now:
+            reminder_time = now + timedelta(seconds=5)
+
+        scheduler.add_job(
+            func=_unclaimed_drop_reminder_job,
+            trigger=DateTrigger(run_date=reminder_time),
+            args=[shift_date.isoformat(), shift_hour, request_id],
+            id=f"drop_reminder_{shift_date.isoformat()}_{shift_hour}",
+            replace_existing=True,
+        )
+    except Exception:
+        pass
+
+
+def _unclaimed_drop_reminder_job(
+    shift_date_iso: str, shift_hour: int, request_id: int
+) -> None:
+    with client.context():
+        shift_date = date.fromisoformat(shift_date_iso)
+        req = ShiftRequest.get_by_id(request_id)
+        if not req or req.status != "pending":
+            return
+        sc = (
+            SeniorShiftSlot
+            if getattr(req, "slot_type", "staff") == "senior"
+            else ShiftSlot
+        )
+        slot = get_shift(shift_date, shift_hour, sc)
+        if not slot or not slot.up_for_drop:
+            return
+        _notify_channel(
+            f"⚠️ *Unclaimed Drop — Action Needed*\n"
+            f"{req.requester_name}'s shift on "
+            f"{day_label(shift_date)} {shift_label(shift_hour, _shift_duration_for_date(shift_date))} "
+            f"starts in 2 hours and has not been picked up.\n"
+            f"Please approve or deny the drop request in the admin dashboard."
+        )
+
+
+def _cancel_drop_reminder_job(shift_date: date, shift_hour: int) -> None:
+    try:
+        from util.apscheduler import scheduler
+
+        job_id = f"drop_reminder_{shift_date.isoformat()}_{shift_hour}"
+        if scheduler.get_job(job_id):
+            scheduler.remove_job(job_id)
+    except Exception:
+        pass
+
+
 def pickup_shift(user, shift_date: date, shift_hour: int) -> dict:
-    """
-    Pick up a shift marked as up_for_drop. Immediate, no approval needed.
-    """
     if is_shift_in_past(shift_date, shift_hour):
         return {"error": "Cannot pick up a shift that has already started."}
 
-    slot = get_shift(shift_date, shift_hour)
+    sc = get_slot_class_for_user(user)
+    st = get_slot_type_for_user(user)
+    slot = get_shift(shift_date, shift_hour, sc)
+
     if not slot or not slot.editor_id:
         return {"error": "This shift is not currently assigned to anyone."}
     if not slot.up_for_drop:
@@ -276,16 +475,14 @@ def pickup_shift(user, shift_date: date, shift_hour: int) -> dict:
 
     old_editor_id = slot.editor_id
     old_editor_name = slot.editor_name
-
-    # Assign to new editor (also clears up_for_drop)
-    assign_shift(shift_date, shift_hour, user.email, user.name)
-
-    # Cancel any pending drop request from the original editor
-    _cancel_drop_requests_for_shift(old_editor_id, shift_date, shift_hour)
+    assign_shift(shift_date, shift_hour, user.email, user.name, sc)
+    _cancel_drop_requests_for_shift(old_editor_id, shift_date, shift_hour, st)
+    _cancel_drop_reminder_job(shift_date, shift_hour)
 
     req = ShiftRequest(
         request_type="pickup",
         status="approved",
+        slot_type=st,
         requester_id=user.email,
         requester_name=user.name,
         source_shift_date=shift_date,
@@ -296,15 +493,17 @@ def pickup_shift(user, shift_date: date, shift_hour: int) -> dict:
         resolved_at=datetime.utcnow(),
     )
     req.put()
-
     notify_slack_shift_picked_up(req, old_editor_name)
     return {"success": True}
 
 
-def _cancel_drop_requests_for_shift(editor_id: str, shift_date: date, shift_hour: int):
+def _cancel_drop_requests_for_shift(
+    editor_id: str, shift_date: date, shift_hour: int, slot_type: str = "staff"
+):
     reqs = ShiftRequest.query(
         ShiftRequest.requester_id == editor_id,
         ShiftRequest.request_type == "drop",
+        ShiftRequest.slot_type == slot_type,
         ShiftRequest.status == "pending",
         ShiftRequest.source_shift_date == shift_date,
         ShiftRequest.source_shift_hour == shift_hour,
@@ -317,11 +516,11 @@ def _cancel_drop_requests_for_shift(editor_id: str, shift_date: date, shift_hour
 
 
 def add_slot(user, shift_date: date, shift_hour: int) -> dict:
-    """Add editor into an empty shift slot. No approval needed."""
-    slot = get_shift(shift_date, shift_hour)
+    sc = get_slot_class_for_user(user)
+    slot = get_shift(shift_date, shift_hour, sc)
     if slot and slot.editor_id is not None:
         return {"success": False, "reason": "Slot is already occupied."}
-    assign_shift(shift_date, shift_hour, user.email, user.name)
+    assign_shift(shift_date, shift_hour, user.email, user.name, sc)
     return {"success": True}
 
 
@@ -331,21 +530,14 @@ def request_swap(
     source_hour: int,
     target_date: date,
     target_hour: int,
-    swap_mode: str,  # "direct" | "add_into" | "swap_drop"
+    swap_mode: str,
 ) -> dict:
-    """
-    Handle a swap request.
-
-    swap_mode="direct": exchange shifts with target editor. Needs their approval.
-    swap_mode="add_into": join target slot, drop source. Needs copy chief approval.
-    swap_mode="swap_drop": swap with an editor who has their shift up for drop.
-        Instead of just picking up their shift, you offer to exchange slots.
-        Needs the dropping editor's approval (they swap instead of dropping).
-    """
     if is_shift_in_past(source_date, source_hour):
         return {"error": "Cannot swap a shift that has already started."}
 
-    target_slot = get_shift(target_date, target_hour)
+    sc = get_slot_class_for_user(user)
+    st = get_slot_type_for_user(user)
+    target_slot = get_shift(target_date, target_hour, sc)
     target_editor_id = target_slot.editor_id if target_slot else None
     target_editor_name = target_slot.editor_name if target_slot else None
 
@@ -354,6 +546,7 @@ def request_swap(
             return {"error": "Cannot direct swap with an empty slot."}
         req = ShiftRequest(
             request_type="swap_direct",
+            slot_type=st,
             requester_id=user.email,
             requester_name=user.name,
             source_shift_date=source_date,
@@ -370,11 +563,11 @@ def request_swap(
         return {"request_id": req.key.id()}
 
     elif swap_mode == "swap_drop":
-        # Swap with someone who wants to drop - they take your slot instead
         if target_editor_id is None:
             return {"error": "Cannot swap-drop with an empty slot."}
         req = ShiftRequest(
             request_type="swap_drop",
+            slot_type=st,
             requester_id=user.email,
             requester_name=user.name,
             source_shift_date=source_date,
@@ -394,6 +587,7 @@ def request_swap(
         request_type = "swap_add" if target_editor_id else "swap_empty"
         req = ShiftRequest(
             request_type=request_type,
+            slot_type=st,
             requester_id=user.email,
             requester_name=user.name,
             source_shift_date=source_date,
@@ -416,11 +610,15 @@ def cancel_request(request_id) -> dict:
     if not req or req.status != "pending":
         return {"success": False, "reason": "Request not found or not pending."}
 
+    sc = (
+        SeniorShiftSlot if getattr(req, "slot_type", "staff") == "senior" else ShiftSlot
+    )
     if req.request_type == "drop":
-        slot = get_shift(req.source_shift_date, req.source_shift_hour)
+        slot = get_shift(req.source_shift_date, req.source_shift_hour, sc)
         if slot:
             slot.up_for_drop = False
             slot.put()
+        _cancel_drop_reminder_job(req.source_shift_date, req.source_shift_hour)
 
     req.status = "cancelled"
     req.resolved_at = datetime.utcnow()
@@ -434,16 +632,19 @@ def approve_request(request_id) -> dict:
     if not req or req.status != "pending":
         return {"success": False, "reason": "Request not found or not pending."}
 
+    sc = (
+        SeniorShiftSlot if getattr(req, "slot_type", "staff") == "senior" else ShiftSlot
+    )
     req.status = "approved"
     req.resolved_at = datetime.utcnow()
 
     if req.request_type == "drop":
-        clear_shift(req.source_shift_date, req.source_shift_hour)
+        clear_shift(req.source_shift_date, req.source_shift_hour, sc)
+        _cancel_drop_reminder_job(req.source_shift_date, req.source_shift_hour)
 
     elif req.request_type in ("swap_direct", "swap_drop"):
-        # Exchange: A gets B's slot, B gets A's slot
-        source = get_shift(req.source_shift_date, req.source_shift_hour)
-        target = get_shift(req.target_shift_date, req.target_shift_hour)
+        source = get_shift(req.source_shift_date, req.source_shift_hour, sc)
+        target = get_shift(req.target_shift_date, req.target_shift_hour, sc)
         a_id, a_name = source.editor_id, source.editor_name
         b_id, b_name = target.editor_id, target.editor_name
         source.editor_id, source.editor_name = b_id, b_name
@@ -451,20 +652,19 @@ def approve_request(request_id) -> dict:
         source.up_for_drop = False
         target.up_for_drop = False
         ndb.put_multi([source, target])
-
-        # If this was a swap_drop, cancel the original drop request
         if req.request_type == "swap_drop":
             _cancel_drop_requests_for_shift(
                 req.target_editor_id,
                 req.target_shift_date,
                 req.target_shift_hour,
+                req.slot_type,
             )
+            _cancel_drop_reminder_job(req.target_shift_date, req.target_shift_hour)
 
     elif req.request_type in ("swap_add", "swap_empty"):
-        clear_shift(req.source_shift_date, req.source_shift_hour)
-        target_slot = get_shift(req.target_shift_date, req.target_shift_hour)
+        clear_shift(req.source_shift_date, req.source_shift_hour, sc)
+        target_slot = get_shift(req.target_shift_date, req.target_shift_hour, sc)
         if req.request_type == "swap_add" and target_slot and target_slot.editor_id:
-            # Slot already has an editor — add requester as second editor
             target_slot.editor_id_2 = req.requester_id
             target_slot.editor_name_2 = req.requester_name
             target_slot.up_for_drop = False
@@ -475,6 +675,7 @@ def approve_request(request_id) -> dict:
                 req.target_shift_hour,
                 req.requester_id,
                 req.requester_name,
+                sc,
             )
 
     req.put()
@@ -487,11 +688,15 @@ def deny_request(request_id) -> dict:
     if not req or req.status != "pending":
         return {"success": False, "reason": "Request not found or not pending."}
 
+    sc = (
+        SeniorShiftSlot if getattr(req, "slot_type", "staff") == "senior" else ShiftSlot
+    )
     if req.request_type == "drop":
-        slot = get_shift(req.source_shift_date, req.source_shift_hour)
+        slot = get_shift(req.source_shift_date, req.source_shift_hour, sc)
         if slot:
             slot.up_for_drop = False
             slot.put()
+        _cancel_drop_reminder_job(req.source_shift_date, req.source_shift_hour)
 
     req.status = "denied"
     req.resolved_at = datetime.utcnow()
@@ -500,190 +705,213 @@ def deny_request(request_id) -> dict:
     return {"success": True}
 
 
-# Slack integration TODO
-
-
 def _source_label(req: ShiftRequest) -> str:
-    """e.g. 'Monday 3/27 6pm-8pm'"""
-    return f"{day_label(req.source_shift_date)} {shift_label(req.source_shift_hour)}"
+    dur = _shift_duration_for_date(req.source_shift_date)
+    return (
+        f"{day_label(req.source_shift_date)} {shift_label(req.source_shift_hour, dur)}"
+    )
 
 
 def _target_label(req: ShiftRequest) -> str:
-    """e.g. 'Monday 3/27 8pm-10pm'"""
     if req.target_shift_date and req.target_shift_hour is not None:
-        return (
-            f"{day_label(req.target_shift_date)} {shift_label(req.target_shift_hour)}"
-        )
+        dur = _shift_duration_for_date(req.target_shift_date)
+        return f"{day_label(req.target_shift_date)} {shift_label(req.target_shift_hour, dur)}"
     return "—"
 
 
-def send_drop_approval_to_slack(request: ShiftRequest):
-    """Send to copy chief: editor wants to drop. Shift is up for pickup."""
-    msg = (
-        f"📋 *Drop Request*\n"
-        f"{request.requester_name} has requested to drop their shift on "
-        f"{_source_label(request)}.\n"
+def _slot_type_label(req: ShiftRequest) -> str:
+    return "Senior" if getattr(req, "slot_type", "staff") == "senior" else "Staff"
+
+
+def send_drop_approval_to_slack(request: ShiftRequest) -> None:
+    _notify_channel(
+        f"📋 *Drop Request ({_slot_type_label(request)} Copy)*\n"
+        f"{request.requester_name} has requested to drop their shift on {_source_label(request)}.\n"
         f"The shift is now marked as 'up for drop' so another editor can pick it up. "
-        f"If no one does, your approval is needed to remove it entirely.\n"
+        f"If no one does, copy chief approval is needed to remove it entirely.\n"
         f"👉 Review in the admin dashboard."
     )
-    dm_user_by_email(COPY_CHIEF_EMAIL, msg)
 
 
-def send_direct_swap_to_slack(request: ShiftRequest):
-    """Send DM to target editor: requester wants to exchange shifts."""
-    chief_msg = (
-        f"🔄 *Direct Swap Request*\n"
-        f"{request.requester_name} has requested to swap shifts with "
-        f"{request.target_editor_name}.\n"
+def send_direct_swap_to_slack(request: ShiftRequest) -> None:
+    _notify_channel(
+        f"🔄 *Direct Swap Request ({_slot_type_label(request)} Copy)*\n"
+        f"{request.requester_name} has requested to swap shifts with {request.target_editor_name}.\n"
         f"  • {request.requester_name}'s shift: {_source_label(request)}\n"
         f"  • {request.target_editor_name}'s shift: {_target_label(request)}\n"
-        f"This requires {request.target_editor_name}'s approval.\n"
-        f"👉 Review in the admin dashboard."
+        f"This requires {request.target_editor_name}'s approval via the shift dashboard."
     )
-    dm_user_by_email(COPY_CHIEF_EMAIL, chief_msg)
-
-    # Notify the target editor directly.
     if request.target_editor_id:
-        editor_msg = (
+        dm_user_by_email(
+            request.target_editor_id,
             f"🔄 *Swap Request — Action Needed*\n"
             f"{request.requester_name} has requested to swap shifts with you.\n"
             f"  • Their shift: {_source_label(request)}\n"
             f"  • Your shift: {_target_label(request)}\n"
-            f"👉 Check the shift dashboard to approve or deny."
+            f"👉 Check the shift dashboard to approve or deny.",
         )
-        dm_user_by_email(request.target_editor_id, editor_msg)
 
 
-def send_swap_drop_to_slack(request: ShiftRequest):
-    """
-    Send DM to the editor who has their shift up for drop:
-    'Instead of dropping, would you like to swap shifts with [requester]?
-    You would take their [source shift] and they would take your [target shift].'
-    Include Approve/Deny buttons.
-    """
-    chief_msg = (
-        f"🔄 *Swap-Drop Request*\n"
+def send_swap_drop_to_slack(request: ShiftRequest) -> None:
+    _notify_channel(
+        f"🔄 *Swap-Drop Request ({_slot_type_label(request)} Copy)*\n"
         f"{request.requester_name} wants to swap with {request.target_editor_name}, "
         f"who has their shift up for drop.\n"
         f"  • {request.requester_name}'s shift: {_source_label(request)}\n"
         f"  • {request.target_editor_name}'s shift: {_target_label(request)}\n"
-        f"Instead of dropping, {request.target_editor_name} would take "
-        f"{request.requester_name}'s slot. Requires {request.target_editor_name}'s approval.\n"
-        f"👉 Review in the admin dashboard."
+        f"Requires {request.target_editor_name}'s approval."
     )
-    dm_user_by_email(COPY_CHIEF_EMAIL, chief_msg)
-
-    # Notify the dropping editor.
     if request.target_editor_id:
-        editor_msg = (
+        dm_user_by_email(
+            request.target_editor_id,
             f"🔄 *Swap Offer — Action Needed*\n"
-            f"{request.requester_name} is offering to swap shifts with you instead of "
-            f"you dropping yours.\n"
+            f"{request.requester_name} is offering to swap shifts with you instead of you dropping yours.\n"
             f"  • Your shift: {_target_label(request)}\n"
             f"  • Their shift: {_source_label(request)}\n"
-            f"If you approve, you would take their shift and they would take yours.\n"
-            f"👉 Check the shift dashboard to approve or deny."
+            f"👉 Check the shift dashboard to approve or deny.",
         )
-        dm_user_by_email(request.target_editor_id, editor_msg)
 
 
-def send_swap_approval_to_slack(request: ShiftRequest):
-    """Send to copy chief: editor wants to swap-add or swap into empty slot."""
-    if request.request_type == "swap_add" and request.target_editor_name:
-        target_desc = f"a slot occupied by {request.target_editor_name}"
-    else:
-        target_desc = "an empty slot"
-
-    msg = (
-        f"📋 *Swap Request — Your Approval Needed*\n"
+def send_swap_approval_to_slack(request: ShiftRequest) -> None:
+    target_desc = (
+        f"a slot occupied by {request.target_editor_name}"
+        if request.request_type == "swap_add" and request.target_editor_name
+        else "an empty slot"
+    )
+    _notify_channel(
+        f"📋 *Swap Request — Copy Chief Approval Needed ({_slot_type_label(request)} Copy)*\n"
         f"{request.requester_name} wants to move from {_source_label(request)} "
         f"into {target_desc} ({_target_label(request)}).\n"
         f"Their current shift would be dropped once approved.\n"
         f"👉 Review and approve or deny in the admin dashboard."
     )
-    dm_user_by_email(COPY_CHIEF_EMAIL, msg)
 
 
 def notify_slack_swap_involves_your_shift(
     request: ShiftRequest, target_editor_name: str
-):
-    """Inform editor their shift is target of a swap_add (copy chief decides)."""
+) -> None:
     if request.target_editor_id:
-        editor_msg = (
+        dm_user_by_email(
+            request.target_editor_id,
             f"ℹ️ *Heads Up — Your Shift Is Involved in a Swap Request*\n"
-            f"{request.requester_name} has requested to join your shift on "
-            f"{_target_label(request)}.\n"
-            f"This is pending copy chief approval. You don't need to do anything — "
-            f"you'll be notified of the outcome."
+            f"{request.requester_name} has requested to join your shift on {_target_label(request)}.\n"
+            f"This is pending copy chief approval. You'll be notified of the outcome.",
         )
-        dm_user_by_email(request.target_editor_id, editor_msg)
 
 
-def notify_slack_shift_picked_up(request: ShiftRequest, old_editor_name: str):
-    """Notify original editor their up-for-drop shift was picked up."""
-    chief_msg = (
-        f"✅ *Shift Picked Up*\n"
+def notify_slack_shift_picked_up(request: ShiftRequest, old_editor_name: str) -> None:
+    _notify_channel(
+        f"✅ *Shift Picked Up ({_slot_type_label(request)} Copy)*\n"
         f"{request.requester_name} has picked up {old_editor_name}'s shift on "
         f"{_source_label(request)}. No further action needed."
     )
-    dm_user_by_email(COPY_CHIEF_EMAIL, chief_msg)
-
-    # Notify the original editor their shift is covered.
     if request.target_editor_id:
-        editor_msg = (
+        dm_user_by_email(
+            request.target_editor_id,
             f"✅ *Your Shift Has Been Picked Up*\n"
-            f"{request.requester_name} has taken over your shift on "
-            f"{_source_label(request)}. You're all set — no further action needed."
+            f"{request.requester_name} has taken over your shift on {_source_label(request)}. "
+            f"You're all set — no further action needed.",
         )
-        dm_user_by_email(request.target_editor_id, editor_msg)
 
 
-def notify_slack_cancelled(request: ShiftRequest):
-    msg = (
-        f"❌ *Request Cancelled*\n"
+def notify_slack_cancelled(request: ShiftRequest) -> None:
+    _notify_channel(
+        f"❌ *Request Cancelled ({_slot_type_label(request)} Copy)*\n"
         f"{request.requester_name} has cancelled their "
-        f"{request.request_type.replace('_', ' ')} request for "
-        f"{_source_label(request)}. No further action needed."
+        f"{request.request_type.replace('_', ' ')} request for {_source_label(request)}. "
+        f"No further action needed."
     )
-    dm_user_by_email(COPY_CHIEF_EMAIL, msg)
 
 
-def notify_slack_approved(request: ShiftRequest):
-    dm_user_by_email(
-        request.requester_id,
-        (
-            f"✅ *Your Request Was Approved*\n"
-            f"Your {request.request_type.replace('_', ' ')} request for "
-            f"{_source_label(request)} has been approved.\n"
+def notify_slack_approved(request: ShiftRequest) -> None:
+    if (
+        request.request_type in ("swap_direct", "swap_drop")
+        and request.target_editor_name
+    ):
+        requester_msg = (
+            f"✅ *Your Swap Request Was Accepted*\n"
+            f"{request.target_editor_name} has accepted your swap request.\n"
+            f"  • Your new shift: {_target_label(request)}\n"
+            f"  • {request.target_editor_name}'s new shift: {_source_label(request)}\n"
             f"👉 Check the shift dashboard to see your updated schedule."
-        ),
-    )
-    dm_user_by_email(
-        COPY_CHIEF_EMAIL,
-        (
-            f"✅ *Request Approved*\n"
-            f"{request.requester_name}'s {request.request_type.replace('_', ' ')} "
-            f"request for {_source_label(request)} has been approved."
-        ),
+        )
+    elif request.request_type == "swap_add":
+        requester_msg = (
+            f"✅ *Your Swap Request Was Approved*\n"
+            f"The copy chief has approved your request to move into the {_target_label(request)} slot.\n"
+            f"Your previous shift ({_source_label(request)}) has been cleared.\n"
+            f"👉 Check the shift dashboard to see your updated schedule."
+        )
+        if request.target_editor_id:
+            dm_user_by_email(
+                request.target_editor_id,
+                f"ℹ️ *Update on Your Shift*\n"
+                f"The copy chief has approved {request.requester_name} joining your shift on {_target_label(request)}.",
+            )
+    elif request.request_type == "swap_empty":
+        requester_msg = (
+            f"✅ *Your Swap Request Was Approved*\n"
+            f"The copy chief has approved your move from {_source_label(request)} to {_target_label(request)}.\n"
+            f"👉 Check the shift dashboard to see your updated schedule."
+        )
+    elif request.request_type == "drop":
+        requester_msg = (
+            f"✅ *Your Drop Request Was Approved*\n"
+            f"The copy chief has approved dropping your shift on {_source_label(request)}. You're all set."
+        )
+    else:
+        requester_msg = (
+            f"✅ *Your Request Was Approved*\n"
+            f"Your {request.request_type.replace('_', ' ')} request for {_source_label(request)} has been approved.\n"
+            f"👉 Check the shift dashboard to see your updated schedule."
+        )
+    dm_user_by_email(request.requester_id, requester_msg)
+    _notify_channel(
+        f"✅ *Request Approved ({_slot_type_label(request)} Copy)*\n"
+        f"{request.requester_name}'s {request.request_type.replace('_', ' ')} "
+        f"request for {_source_label(request)} has been approved."
     )
 
 
-def notify_slack_denied(request: ShiftRequest):
-    dm_user_by_email(
-        request.requester_id,
-        (
+def notify_slack_denied(request: ShiftRequest) -> None:
+    if (
+        request.request_type in ("swap_direct", "swap_drop")
+        and request.target_editor_name
+    ):
+        requester_msg = (
+            f"❌ *Your Swap Request Was Declined*\n"
+            f"{request.target_editor_name} has declined your swap request for "
+            f"{_source_label(request)} ↔ {_target_label(request)}.\n"
+            f"Your current schedule is unchanged."
+        )
+    elif request.request_type in ("swap_add", "swap_empty"):
+        requester_msg = (
+            f"❌ *Your Swap Request Was Denied*\n"
+            f"The copy chief has denied your request to move from {_source_label(request)} to {_target_label(request)}.\n"
+            f"Your current schedule is unchanged."
+        )
+        if request.request_type == "swap_add" and request.target_editor_id:
+            dm_user_by_email(
+                request.target_editor_id,
+                f"ℹ️ *Update on Your Shift*\n"
+                f"The copy chief has denied {request.requester_name}'s request to join your shift on {_target_label(request)}. "
+                f"No changes have been made to your schedule.",
+            )
+    elif request.request_type == "drop":
+        requester_msg = (
+            f"❌ *Your Drop Request Was Denied*\n"
+            f"The copy chief has denied your request to drop your shift on {_source_label(request)}.\n"
+            f"Your shift is still assigned to you and is no longer marked as up for drop."
+        )
+    else:
+        requester_msg = (
             f"❌ *Your Request Was Denied*\n"
-            f"Your {request.request_type.replace('_', ' ')} request for "
-            f"{_source_label(request)} has been denied.\n"
-            f"Please check the shift dashboard or reach out to the copy chief with questions."
-        ),
-    )
-    dm_user_by_email(
-        COPY_CHIEF_EMAIL,
-        (
-            f"❌ *Request Denied*\n"
-            f"{request.requester_name}'s {request.request_type.replace('_', ' ')} "
-            f"request for {_source_label(request)} has been denied."
-        ),
+            f"Your {request.request_type.replace('_', ' ')} request for {_source_label(request)} has been denied.\n"
+            f"Your current schedule is unchanged."
+        )
+    dm_user_by_email(request.requester_id, requester_msg)
+    _notify_channel(
+        f"❌ *Request Denied ({_slot_type_label(request)} Copy)*\n"
+        f"{request.requester_name}'s {request.request_type.replace('_', ' ')} "
+        f"request for {_source_label(request)} has been denied."
     )

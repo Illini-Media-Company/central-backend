@@ -309,7 +309,7 @@ COPY_ADMIN_ACCESS_GROUPS = [
 
 # Google Groups for shift scheduler access control
 COPY_EDITOR_GROUPS = ["di-staff-copy"]
-SENIOR_COPY_EDITOR_GROUPS = ["di-senior-copy"]
+SENIOR_COPY_EDITOR_GROUPS = ["di-senior-copy", "webdev-test-users"]
 COPY_CHIEF_GROUPS = ["copy-chief"]
 
 ALL_SCHEDULER_GROUPS = (
@@ -319,11 +319,26 @@ ALL_SCHEDULER_GROUPS = (
     + ["webdev", "imc-staff-webdev", "webdev-test-users"]
 )
 
-SHIFT_REQUIREMENTS = {
-    "copy_editor": 2,
-    "senior_copy_editor": 2,
-    "copy_chief": 0,  # copy chief may not need to sign up for shifts
-}
+SHIFT_START_HOURS = [8, 10, 12, 14, 16, 18, 20, 22]  # 2-hour slots
+SHIFT_DURATION = 2
 
-WEEKEND_SHIFT_REDUCTION = 1
+SHIFT_REQUIREMENTS = {
+    "copy_editor": 3,
+    "senior_copy_editor": 8,
+    "copy_chief": 0,
+}
+WEEKEND_SHIFT_REDUCTION = 1  # only for staff copy
+
+# Senior copy work 10am–10pm only on regular weeks
+SENIOR_COPY_EDITOR_HOURS = [10, 12, 14, 16, 18, 20]
+
 SCHEDULER_TIMEZONE = "America/Chicago"
+
+BREAK_WEEK_SHIFT_HOURS = [10, 14, 18]  # 10am–2pm, 2pm–6pm, 6pm–10pm
+BREAK_WEEK_SHIFT_DURATION = 4
+
+BREAK_WEEK_REQUIREMENTS = {
+    "copy_editor": 1,
+    "senior_copy_editor": 2,
+    "copy_chief": 0,
+}

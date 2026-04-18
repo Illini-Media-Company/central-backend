@@ -85,7 +85,8 @@ def add_user(
         tie_employee_to_user(user_uid=user.uid)
     return LoginUser(user)
 
-#Update a users query history, used for knwoledge slackbot to keep track of how many queries a user has made in the past 24 hours
+
+# Update a users query history, used for knwoledge slackbot to keep track of how many queries a user has made in the past 24 hours
 def update_user_entity(email, data):
     with client.context():
         user = User.query().filter(User.email == email).get()
@@ -95,6 +96,7 @@ def update_user_entity(email, data):
             user.put()
             return True
     return False
+
 
 # Update either a user's name, email or picture that already exists in the database
 def update_user(name, email, picture, last_login=None):
@@ -164,7 +166,7 @@ def set_user_ask_oauth_tokens(
     return user
 
 
-def get_user_name(email: str):
+def get_user_name(email: str, context=True):
     """
     Get the name of a user from their email.
     :param email: @illinimedia.com email of a user
@@ -172,6 +174,14 @@ def get_user_name(email: str):
     :returns: A name; None if not found
     :rtype: str | None
     """
+    if not context:
+        user = User.query().filter(User.email == email).get()
+
+        if user:
+            return user.name
+        else:
+            return None
+
     with client.context():
         user = User.query().filter(User.email == email).get()
 
@@ -234,6 +244,7 @@ def get_user_favorite_tools(email):
         else:
             return False
 
+
 def check_and_log_query(email, limit=10, hours=24):
     with client.context():
         user = User.query().filter(User.email == email).get()
@@ -247,11 +258,12 @@ def check_and_log_query(email, limit=10, hours=24):
 
         if len(recent_queries) >= limit:
             return False
-        
+
         recent_queries.append(now)
         user.query_history = recent_queries
         user.put()
         return True
+
 
 def get_user_profile_photo(uid):
     """

@@ -3,12 +3,17 @@ from flask_login import login_required, current_user
 from util.security import restrict_to
 from util.copy_schedule import (
     get_week_bounds,
+    get_week_schedule,
     get_shifts_for_week,
     get_droppable_shifts_for_week,
     get_editor_shifts_for_week,
     build_pending_map,
+    build_incoming_map,
     build_swap_requested_set,
     get_required_shifts,
+    get_available_hours,
+    get_slot_class_for_user,
+    get_slot_type_for_user,
     format_today,
     day_label,
     shift_label,
@@ -17,26 +22,28 @@ from util.copy_schedule import (
     add_slot,
     pickup_shift,
     cancel_request,
-    SHIFT_START_HOURS,
+    approve_request,
+    deny_request,
 )
 from db import client as dbclient
 from constants import ALL_SCHEDULER_GROUPS
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from views.copy_schedule_admin import copy_scheduler_routes
-
-
-# shift_scheduler_routes = Blueprint(
-#     "shift_scheduler_routes", __name__, url_prefix="/shift-scheduler"
-# )
-
-
-# Helper: build template context for a given week
 
 
 def _build_week_context(reference_date: date = None):
     sunday, saturday = get_week_bounds(reference_date)
     editor_id = current_user.email
+
+    # Role-appropriate slot class and slot_type string
+    slot_class = get_slot_class_for_user(current_user)
+    slot_type = get_slot_type_for_user(current_user)
+
+    # Break-week-aware schedule
+    week_schedule = get_week_schedule(reference_date)
+    is_break = week_schedule["is_break_week"]
+    duration = week_schedule["duration"]
 
     week_days = []
     current = sunday
@@ -49,35 +56,49 @@ def _build_week_context(reference_date: date = None):
         )
         current += timedelta(days=1)
 
-    shift_hours = [{"start": h, "label": shift_label(h)} for h in SHIFT_START_HOURS]
+    available_hours = get_available_hours(current_user, reference_date)
+    shift_hours = [
+        {"start": h, "label": shift_label(h, duration)} for h in available_hours
+    ]
 
     with dbclient.context():
-        shifts_map = get_shifts_for_week(reference_date)
+        shifts_map_raw = get_shifts_for_week(reference_date, slot_class=slot_class)
 
-        shift_editor_names = {}
-        for key, slot in shifts_map.items():
-            if slot and slot.editor_name:
-                shift_editor_names[key] = slot.editor_name
+        shifts_map = {
+            k: v.to_dict() if v is not None else None for k, v in shifts_map_raw.items()
+        }
 
-        droppable_set = get_droppable_shifts_for_week(reference_date)
-        swap_requested_set = build_swap_requested_set(reference_date)
+        shift_editor_names = {
+            key: slot.editor_name
+            for key, slot in shifts_map_raw.items()
+            if slot and slot.editor_name
+        }
 
-        my_shifts_raw = get_editor_shifts_for_week(editor_id, reference_date)
-        my_shifts = []
-        for s in my_shifts_raw:
-            my_shifts.append(
-                {
-                    "date": s.date,
-                    "date_str": s.date.isoformat(),
-                    "start_hour": s.start_hour,
-                    "day_label": day_label(s.date),
-                    "hour_label": shift_label(s.start_hour),
-                    "up_for_drop": s.up_for_drop,
-                }
-            )
+        droppable_set = get_droppable_shifts_for_week(
+            reference_date, slot_class=slot_class
+        )
+        swap_req_set = build_swap_requested_set(reference_date, slot_type=slot_type)
+        my_shifts_raw = get_editor_shifts_for_week(
+            editor_id, reference_date, slot_class=slot_class
+        )
 
-        pending_map = build_pending_map(editor_id, reference_date)
+        my_shifts = [
+            {
+                "date": s.date,
+                "date_str": s.date.isoformat(),
+                "start_hour": s.start_hour,
+                "day_label": day_label(s.date),
+                "hour_label": shift_label(s.start_hour, duration),
+                "up_for_drop": s.up_for_drop,
+            }
+            for s in my_shifts_raw
+        ]
+
+        pending_map = build_pending_map(editor_id, reference_date, slot_type=slot_type)
         required = get_required_shifts(current_user, reference_date)
+        incoming_requests = build_incoming_map(
+            editor_id, reference_date, slot_type=slot_type
+        )
 
     return {
         "editor": {
@@ -88,19 +109,17 @@ def _build_week_context(reference_date: date = None):
         "today_label": format_today(),
         "week_days": week_days,
         "shift_hours": shift_hours,
+        "is_break_week": is_break,
         "shifts_map": shifts_map,
         "shift_editor_names": shift_editor_names,
         "droppable_set": droppable_set,
-        "swap_requested_set": swap_requested_set,
+        "swap_requested_set": swap_req_set,
         "my_shifts": my_shifts,
         "pending_map": pending_map,
+        "incoming_requests": incoming_requests,
     }
 
 
-# Page route
-
-
-# @copy_schedule_routes.route("", methods=["GET"])
 @copy_scheduler_routes.route("/me", methods=["GET"])
 @login_required
 @restrict_to(ALL_SCHEDULER_GROUPS)
@@ -118,7 +137,28 @@ def scheduler():
     return render_template("copy_schedule.html", **ctx)
 
 
-# API routes
+@copy_scheduler_routes.route("/me/api/accept-swap", methods=["POST"])
+@login_required
+@restrict_to(ALL_SCHEDULER_GROUPS)
+def api_accept_swap():
+    data = request.get_json()
+    with dbclient.context():
+        result = approve_request(data["request_id"])
+    if result["success"]:
+        return jsonify({"status": "accepted"})
+    return jsonify({"status": "error", "message": result["reason"]}), 400
+
+
+@copy_scheduler_routes.route("/me/api/decline-swap", methods=["POST"])
+@login_required
+@restrict_to(ALL_SCHEDULER_GROUPS)
+def api_decline_swap():
+    data = request.get_json()
+    with dbclient.context():
+        result = deny_request(data["request_id"])
+    if result["success"]:
+        return jsonify({"status": "declined"})
+    return jsonify({"status": "error", "message": result["reason"]}), 400
 
 
 @copy_scheduler_routes.route("/me/api/drop", methods=["POST"])
@@ -126,15 +166,12 @@ def scheduler():
 @restrict_to(ALL_SCHEDULER_GROUPS)
 def api_drop_shift():
     data = request.get_json()
-    shift_date = date.fromisoformat(data["date"])
-    shift_hour = int(data["hour"])
-
     with dbclient.context():
-        result = request_drop(current_user, shift_date, shift_hour)
-
+        result = request_drop(
+            current_user, date.fromisoformat(data["date"]), int(data["hour"])
+        )
     if "error" in result:
         return jsonify({"status": "error", "message": result["error"]}), 400
-
     return jsonify({"status": "pending", "request_id": result["request_id"]})
 
 
@@ -143,25 +180,17 @@ def api_drop_shift():
 @restrict_to(ALL_SCHEDULER_GROUPS)
 def api_swap_shift():
     data = request.get_json()
-    source_date = date.fromisoformat(data["source_date"])
-    source_hour = int(data["source_hour"])
-    target_date = date.fromisoformat(data["target_date"])
-    target_hour = int(data["target_hour"])
-    swap_mode = data["swap_mode"]  # "direct" | "add_into" | "swap_drop"
-
     with dbclient.context():
         result = request_swap(
             current_user,
-            source_date,
-            source_hour,
-            target_date,
-            target_hour,
-            swap_mode,
+            date.fromisoformat(data["source_date"]),
+            int(data["source_hour"]),
+            date.fromisoformat(data["target_date"]),
+            int(data["target_hour"]),
+            data["swap_mode"],
         )
-
     if "error" in result:
         return jsonify({"status": "error", "message": result["error"]}), 400
-
     return jsonify({"status": "pending", "request_id": result["request_id"]})
 
 
@@ -170,16 +199,13 @@ def api_swap_shift():
 @restrict_to(ALL_SCHEDULER_GROUPS)
 def api_add_slot():
     data = request.get_json()
-    shift_date = date.fromisoformat(data["date"])
-    shift_hour = int(data["hour"])
-
     with dbclient.context():
-        result = add_slot(current_user, shift_date, shift_hour)
-
+        result = add_slot(
+            current_user, date.fromisoformat(data["date"]), int(data["hour"])
+        )
     if result["success"]:
         return jsonify({"status": "added"})
-    else:
-        return jsonify({"status": "error", "message": result["reason"]}), 400
+    return jsonify({"status": "error", "message": result["reason"]}), 400
 
 
 @copy_scheduler_routes.route("/me/api/pickup", methods=["POST"])
@@ -187,15 +213,12 @@ def api_add_slot():
 @restrict_to(ALL_SCHEDULER_GROUPS)
 def api_pickup_shift():
     data = request.get_json()
-    shift_date = date.fromisoformat(data["date"])
-    shift_hour = int(data["hour"])
-
     with dbclient.context():
-        result = pickup_shift(current_user, shift_date, shift_hour)
-
+        result = pickup_shift(
+            current_user, date.fromisoformat(data["date"]), int(data["hour"])
+        )
     if "error" in result:
         return jsonify({"status": "error", "message": result["error"]}), 400
-
     return jsonify({"status": "picked_up"})
 
 
@@ -204,11 +227,8 @@ def api_pickup_shift():
 @restrict_to(ALL_SCHEDULER_GROUPS)
 def api_cancel_request():
     data = request.get_json()
-
     with dbclient.context():
         result = cancel_request(data["request_id"])
-
     if result["success"]:
         return jsonify({"status": "cancelled"})
-    else:
-        return jsonify({"status": "error", "message": result["reason"]}), 400
+    return jsonify({"status": "error", "message": result["reason"]}), 400

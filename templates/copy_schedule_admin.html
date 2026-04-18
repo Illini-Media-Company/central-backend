@@ -9,62 +9,79 @@
     .tab-btn { padding: 6px 12px; border: none; border-radius: 4px; background: transparent; cursor: pointer; font-size: 0.875rem; }
     .tab-btn.active-tab { background: #e5e7eb; font-weight: 500; }
     .tab-btn:hover:not(.active-tab) { background: #f3f4f6; }
+    .grid-tab-btn { padding: 4px 12px; border: 1px solid #dee2e6; border-radius: 4px; background: white; cursor: pointer; font-size: 0.8rem; }
+    .grid-tab-btn.active-grid-tab { background: #1d4ed8; color: white; border-color: #1d4ed8; font-weight: 500; }
 </style>
 {% endblock %}
 
 {% block content%}
 
 <script>
-    const EDITORS = {{ editors | tojson}};
-    const SHIFTS = {{ shifts | tojson}};
-    const SHIFT_REQUESTS = {{ shift_requests | tojson}};
-    const CSRF_TOKEN = '{{ csrf_token() }}';
-    const EMAIL_TO_NAME = {{ email_to_name_map(editors) }};
+    const EDITORS        = {{ editors | tojson }};
+    const STAFF_SHIFTS   = {{ shifts | tojson }};
+    const SENIOR_SHIFTS  = {{ senior_shifts | tojson }};
+    const SHIFT_REQUESTS = {{ shift_requests | tojson }};
+    const CSRF_TOKEN     = '{{ csrf_token() }}';
+    const EMAIL_TO_NAME  = {{ email_to_name_map(editors) }};
+    const BREAK_WEEKS    = new Set({{ break_weeks | tojson }});
+    let   copyBotActive  = {{ copy_bot_active | tojson }};
 </script>
 
 <div id="sub-topbar" style="height:57px; background:white; border-bottom:1px solid #dee2e6; display:flex; align-items:center; justify-content:space-between; padding:0 1.5rem; flex-shrink:0;">
-    
-    <!-- Left: week navigation -->
+
+    <!-- Left: week navigation + break week -->
     <div style="display:flex; align-items:center; gap:0.5rem;">
         <button onclick="prevWeek()" style="padding:4px 8px; border:1px solid #dee2e6; border-radius:4px; background:white; cursor:pointer;">&#8249;</button>
         <span id="date-range-label" style="font-weight:500; min-width:140px; text-align:center;">---</span>
         <button onclick="nextWeek()" style="padding:4px 8px; border:1px solid #dee2e6; border-radius:4px; background:white; cursor:pointer;">&#8250;</button>
         <button onclick="thisWeek()" style="padding:4px 10px; border:1px solid #dee2e6; border-radius:4px; background:white; cursor:pointer; font-size:0.875rem;">This Week</button>
+        <button id="break-week-btn" onclick="toggleBreakWeek()" class="button-secondary" style="font-size:0.875rem; padding:4px 10px;">Mark as Break Week</button>
     </div>
 
     <!-- Center: coverage badges -->
-     <div style="display:flex; align-items:center; gap:0.5rem;">
-        <span id="coverage-open" style="padding:2px 10px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; font-size:0.75rem; color:#1e40af;">Open: 0</span>
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+        <span id="coverage-open"    style="padding:2px 10px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; font-size:0.75rem; color:#1e40af;">Open: 0</span>
         <span id="coverage-staffed" style="padding:2px 10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:4px; font-size:0.75rem; color:#166534;">Staffed: 0</span>
-        <span id="coverage-full" style="padding:2px 10px; background:#faf5ff; border:1px solid #e9d5ff; border-radius:4px; font-size:0.75rem; color:#6b21a8;">Full: 0</span>
-     </div>
+        <span id="coverage-full"    style="padding:2px 10px; background:#faf5ff; border:1px solid #e9d5ff; border-radius:4px; font-size:0.75rem; color:#6b21a8;">Full: 0</span>
+    </div>
 
-     <!-- Right: tabs + search -->
-      <div style="display:flex; align-items:center; gap:0.5rem;">
+    <!-- Right: copy bot flag + view tabs + search -->
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+        <button id="copy-bot-btn" onclick="toggleCopyBotFlag()" class="button-secondary" style="font-size:0.8rem; padding:4px 10px;">---</button>
         <button id="tab-schedule" onclick="switchTab('schedule')" class="tab-btn active-tab">Schedule</button>
-        <button id="tab-editors" onclick="switchTab('editors')" class="tab-btn">Editors</button>
-<div style="position:relative;">
+        <button id="tab-editors"  onclick="switchTab('editors')"  class="tab-btn">Editors</button>
+        <div style="position:relative;">
             <i class="bi bi-search" style="position:absolute; left:8px; top:50%; transform:translateY(-50%); color:#9ca3af; font-size:0.875rem;"></i>
             <input id="search-input" type="text" placeholder="Search editor, shift, status..." oninput="handleSearch(this.value)" style="padding:6px 8px 6px 28px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem; width:240px;">
         </div>
-      </div>
+    </div>
 
 </div>
 
 <!-- Main content area -->
- <div id="main-content" style="display:flex; flex-direction: column; flex:1; overflow:auto;">
+<div id="main-content" style="display:flex; flex-direction:column; flex:1; overflow:auto;">
 
-    <!-- VIEW: Schedule (default visible) -->
-     <div id="view-schedule" style="display:flex; height:100%; overflow:hidden;">
-        
-        <!-- Left: grid area (70%) -->
-         <div id="grid-area" style="flex: 0 0 70%; overflow:auto; padding:1.5rem; border-right:1px solid #dee2e6">
-            <!-- Legend -->
-            <div style="display:flex; gap:1rem; margin-bottom:1rem; font-size:0.75rem; color:#6b7280;">
-                <div style="display:flex; align-items:center; gap:0.4rem;"><div style="width:14px; height:14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:2px;"></div> Open</div>
-                <div style="display:flex; align-items:center; gap:0.4rem;"><div style="width:14px; height:14px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:2px;"></div> Staffed</div>
-                <div style="display:flex; align-items:center; gap:0.4rem;"><div style="width:14px; height:14px; background:#faf5ff; border:1px solid #e9d5ff; border-radius:2px;"></div> Full</div>
-                <div style="display:flex; align-items:center; gap:0.4rem;"><div style="width:14px; height:14px; background:#fff1f2; border:1px solid #fca5a5; border-radius:2px;"></div> Action needed</div>
+    <!-- VIEW: Schedule -->
+    <div id="view-schedule" style="display:flex; height:100%; overflow:hidden;">
+
+        <!-- Left: grid area -->
+        <div id="grid-area" style="flex:0 0 70%; overflow:auto; padding:1.5rem; border-right:1px solid #dee2e6;">
+
+            <!-- Grid sub-tabs + legend row -->
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+                <!-- Staff / Senior tabs -->
+                <div style="display:flex; gap:0.4rem;">
+                    <button id="grid-tab-staff"  onclick="switchGridTab('staff')"  class="grid-tab-btn active-grid-tab">Staff Copy</button>
+                    <button id="grid-tab-senior" onclick="switchGridTab('senior')" class="grid-tab-btn">Senior Copy</button>
+                </div>
+                <!-- Legend -->
+                <div style="display:flex; gap:1rem; font-size:0.75rem; color:#6b7280; flex-wrap:wrap;">
+                    <div style="display:flex; align-items:center; gap:0.4rem;"><div style="width:12px; height:12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:2px;"></div> Open</div>
+                    <div style="display:flex; align-items:center; gap:0.4rem;"><div style="width:12px; height:12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:2px;"></div> Staffed</div>
+                    <div style="display:flex; align-items:center; gap:0.4rem;"><div style="width:12px; height:12px; background:#faf5ff; border:1px solid #e9d5ff; border-radius:2px;"></div> Full</div>
+                    <div style="display:flex; align-items:center; gap:0.4rem;"><div style="width:12px; height:12px; background:#fff1f2; border:1px solid #fca5a5; border-radius:2px;"></div> Action needed</div>
+                    <div id="break-week-badge" style="display:none; align-items:center; gap:0.4rem; padding:1px 8px; background:#fef9c3; border:1px solid #fde047; border-radius:4px; color:#854d0e; font-weight:500;">☀️ Break Week</div>
+                </div>
             </div>
 
             <!-- Grid table -->
@@ -78,24 +95,13 @@
                             {% endfor %}
                         </tr>
                     </thead>
-                    <tbody>
-                        {% set time_labels = ['8am–10am','10am–12pm','12pm–2pm','2pm–4pm','4pm–6pm','6pm–8pm','8pm–10pm','10pm–12am'] %}
-                        {% for slot in range(8) %}
-                        <tr style="border-bottom:1px solid #dee2e6;">
-                            <td style="padding:0.5rem; font-size:0.75rem; color:#6b7280; background:#f9fafb; border-right:1px solid #dee2e6; white-space:nowrap;">{{ time_labels[slot] }}</td>
-                            {% for day in range(7) %}
-                            <td id="cell-{{ slot }}-{{ day }}" style="height:72px; border-right:1px solid #dee2e6; padding:0.4rem; vertical-align:top; cursor:default;"></td>
-                            {% endfor %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
+                    <tbody id="shift-grid-body"></tbody>
                 </table>
             </div>
-         </div>
+        </div>
 
-        <!-- Right: action panel (30%) -->
+        <!-- Right: action panel -->
         <div id="action-panel" style="flex:0 0 30%; overflow:auto; padding:1.5rem;">
-            <!-- Pending Actions -->
             <div style="margin-bottom:1.5rem;">
                 <h6 style="font-weight:600; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;">
                     <i class="bi bi-exclamation-circle"></i> Pending Actions
@@ -104,16 +110,12 @@
                     <p style="color:#9ca3af; font-size:0.875rem;">No pending actions</p>
                 </div>
             </div>
-
-            <!-- Weekly Load -->
             <div>
                 <h6 style="font-weight:600; margin-bottom:0.75rem;">Weekly Load by Editor</h6>
                 <div id="weekly-load-list">
                     <p style="color:#9ca3af; font-size:0.875rem;">No editors</p>
                 </div>
             </div>
-
-            <!-- Add Shift button -->
             <div style="margin-top:1.5rem; border-top:1px solid #dee2e6; padding-top:1rem;">
                 <button onclick="openAddShiftModal()" class="button-primary" style="width:100%;">
                     + Add Shift
@@ -121,75 +123,70 @@
             </div>
         </div>
 
-     </div>
+    </div>
 
-     <!-- VIEW: Editors (hidden) -->
-    <div id="view-editors" style="display:none; height:100%; overflow:auto; padding:1.5rem;">
+    <!-- VIEW: Editors -->
+    <div id="view-editors" style="display:none; overflow-y:auto; flex:1; padding:1.5rem;">
         <div style="max-width:1200px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-            <h5 style="font-weight:600; margin:0;">Editors</h5>
-            <button onclick="syncFromGroups()" id="sync-groups-btn" class="button-secondary" style="font-size:0.875rem;">
-                <i class="bi bi-arrow-repeat"></i> Sync from Google Groups
-            </button>
-        </div>
-        <div style="display:flex; gap:1.5rem;">
-
-            <!-- Copy Editors table -->
-            <div style="flex:1;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-                    <h6 style="margin:0;">Copy Editors (<span id="copy-editors-count">0</span>)</h6>
-                    <button onclick="openAddEditorModal('Copy Editor')" class="button-secondary" style="font-size:0.8rem;">
-                        <i class="bi bi-plus"></i> Add Editor
-                    </button>
-                </div>
-                <input type="text" id="copy-editor-search" placeholder="Filter editors..." oninput="renderEditorsView()" style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem; margin-bottom:0.5rem;">
-                <div style="border:1px solid #dee2e6; border-radius:6px; overflow:hidden;">
-                    <table style="width:100%; border-collapse:collapse;">
-                        <thead style="background:#f9fafb; border-bottom:1px solid #dee2e6;">
-                            <tr>
-                                <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Editor</th>
-                                <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Shifts</th>
-                                <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Weekend</th>
-                                <th style="width:40px;"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="copy-editors-tbody"></tbody>
-                    </table>
-                </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h5 style="font-weight:600; margin:0;">Editors</h5>
+                <button onclick="syncFromGroups()" id="sync-groups-btn" class="button-secondary" style="font-size:0.875rem;">
+                    <i class="bi bi-arrow-repeat"></i> Sync from Google Groups
+                </button>
             </div>
+            <div style="display:flex; gap:1.5rem;">
 
-            <!-- Senior Copy Editors table -->
-            <div style="flex:1;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-                    <h6 style="margin:0;">Senior Copy Editors (<span id="senior-editors-count">0</span>)</h6>
-                    <button onclick="openAddEditorModal('Senior Copy Editor')" class="button-secondary" style="font-size:0.8rem;">
-                        <i class="bi bi-plus"></i> Add Editor
-                    </button>
+                <!-- Copy Editors -->
+                <div style="flex:1;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                        <h6 style="margin:0;">Copy Editors (<span id="copy-editors-count">0</span>)</h6>
+                        <button onclick="openAddEditorModal('Copy Editor')" class="button-secondary" style="font-size:0.8rem;"><i class="bi bi-plus"></i> Add Editor</button>
+                    </div>
+                    <input type="text" id="copy-editor-search" placeholder="Filter editors..." oninput="renderEditorsView()" style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem; margin-bottom:0.5rem;">
+                    <div style="border:1px solid #dee2e6; border-radius:6px; overflow:hidden;">
+                        <table style="width:100%; border-collapse:collapse;">
+                            <thead style="background:#f9fafb; border-bottom:1px solid #dee2e6;">
+                                <tr>
+                                    <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Editor</th>
+                                    <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Shifts</th>
+                                    <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Weekend</th>
+                                    <th style="width:40px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="copy-editors-tbody"></tbody>
+                        </table>
+                    </div>
                 </div>
-                <input type="text" id="senior-editor-search" placeholder="Filter editors..." oninput="renderEditorsView()" style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem; margin-bottom:0.5rem;">
-                <div style="border:1px solid #dee2e6; border-radius:6px; overflow:hidden;">
-                    <table style="width:100%; border-collapse:collapse;">
-                        <thead style="background:#f9fafb; border-bottom:1px solid #dee2e6;">
-                            <tr>
-                                <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Editor</th>
-                                <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Shifts</th>
-                                <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Weekend</th>
-                                <th style="width:40px;"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="senior-editors-tbody"></tbody>
-                    </table>
+
+                <!-- Senior Copy Editors -->
+                <div style="flex:1;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                        <h6 style="margin:0;">Senior Copy Editors (<span id="senior-editors-count">0</span>)</h6>
+                        <button onclick="openAddEditorModal('Senior Copy Editor')" class="button-secondary" style="font-size:0.8rem;"><i class="bi bi-plus"></i> Add Editor</button>
+                    </div>
+                    <input type="text" id="senior-editor-search" placeholder="Filter editors..." oninput="renderEditorsView()" style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem; margin-bottom:0.5rem;">
+                    <div style="border:1px solid #dee2e6; border-radius:6px; overflow:hidden;">
+                        <table style="width:100%; border-collapse:collapse;">
+                            <thead style="background:#f9fafb; border-bottom:1px solid #dee2e6;">
+                                <tr>
+                                    <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Editor</th>
+                                    <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Shifts</th>
+                                    <th style="padding:10px 16px; text-align:left; font-size:0.875rem;">Weekend</th>
+                                    <th style="width:40px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="senior-editors-tbody"></tbody>
+                        </table>
+                    </div>
                 </div>
+
             </div>
-
         </div>
     </div>
 
-    </div>
+</div>
 
- </div>
-
- <!-- MODAL: Add / Edit Shift -->
+<!-- MODAL: Add / Edit Shift -->
 <div id="modal-shift" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000; align-items:center; justify-content:center;">
     <div style="background:white; border-radius:8px; padding:1.5rem; width:420px; max-width:95vw; box-shadow:0 4px 24px rgba(0,0,0,0.15);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
@@ -203,33 +200,20 @@
             </div>
             <div style="margin-bottom:0.75rem;">
                 <label style="font-size:0.875rem; font-weight:500; display:block; margin-bottom:0.25rem;">Time Slot</label>
-                <select id="shift-hour" required style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem;">
-                    <option value="8">8am – 10am</option>
-                    <option value="10">10am – 12pm</option>
-                    <option value="12">12pm – 2pm</option>
-                    <option value="14">2pm – 4pm</option>
-                    <option value="16">4pm – 6pm</option>
-                    <option value="18">6pm – 8pm</option>
-                    <option value="20">8pm – 10pm</option>
-                    <option value="22">10pm – 12am</option>
-                </select>
+                <select id="shift-hour" required style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem;"></select>
             </div>
             <div style="margin-bottom:0.75rem;">
                 <label style="font-size:0.875rem; font-weight:500; display:block; margin-bottom:0.25rem;">Editor 1</label>
                 <div style="display:flex; gap:0.4rem; align-items:center;">
-                    <select id="shift-editor-1" style="flex:1; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem;">
-                        <option value="">— Unassigned —</option>
-                    </select>
-                    <button type="button" onclick="document.getElementById('shift-editor-1').value=''" title="Remove editor" style="flex-shrink:0; background:none; border:1px solid #dee2e6; border-radius:4px; padding:5px 8px; cursor:pointer; color:#9ca3af; font-size:1rem; line-height:1;">&times;</button>
+                    <select id="shift-editor-1" style="flex:1; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem;"></select>
+                    <button type="button" onclick="document.getElementById('shift-editor-1').value=''" style="flex-shrink:0; background:none; border:1px solid #dee2e6; border-radius:4px; padding:5px 8px; cursor:pointer; color:#9ca3af;">&times;</button>
                 </div>
             </div>
             <div style="margin-bottom:1rem;">
                 <label style="font-size:0.875rem; font-weight:500; display:block; margin-bottom:0.25rem;">Editor 2</label>
                 <div style="display:flex; gap:0.4rem; align-items:center;">
-                    <select id="shift-editor-2" style="flex:1; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem;">
-                        <option value="">— Unassigned —</option>
-                    </select>
-                    <button type="button" onclick="document.getElementById('shift-editor-2').value=''" title="Remove editor" style="flex-shrink:0; background:none; border:1px solid #dee2e6; border-radius:4px; padding:5px 8px; cursor:pointer; color:#9ca3af; font-size:1rem; line-height:1;">&times;</button>
+                    <select id="shift-editor-2" style="flex:1; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem;"></select>
+                    <button type="button" onclick="document.getElementById('shift-editor-2').value=''" style="flex-shrink:0; background:none; border:1px solid #dee2e6; border-radius:4px; padding:5px 8px; cursor:pointer; color:#9ca3af;">&times;</button>
                 </div>
             </div>
             <div style="display:flex; gap:0.5rem; justify-content:space-between; align-items:center;">
@@ -297,12 +281,8 @@
             <div id="detail-editor-shifts" style="font-size:0.875rem; color:#6b7280;">—</div>
         </div>
         <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
-            <button onclick="openEditEditorFromDetail()" class="button-secondary" style="font-size:0.875rem;">
-                <i class="bi bi-pencil"></i> Edit
-            </button>
-            <button onclick="deleteEditorFromDetail()" class="button-secondary" style="font-size:0.875rem; color:#dc2626; border-color:#fca5a5;">
-                <i class="bi bi-trash"></i> Delete
-            </button>
+            <button onclick="openEditEditorFromDetail()" class="button-secondary" style="font-size:0.875rem;"><i class="bi bi-pencil"></i> Edit</button>
+            <button onclick="deleteEditorFromDetail()" class="button-secondary" style="font-size:0.875rem; color:#dc2626; border-color:#fca5a5;"><i class="bi bi-trash"></i> Delete</button>
             <button onclick="closeEditorDetailModal()" class="button-primary" style="font-size:0.875rem;">Close</button>
         </div>
     </div>
@@ -310,103 +290,120 @@
 
 <script>
 
-// ─── State ───────────────────────────────────────────────────────────────────
-let editors = EDITORS.slice();
-let shifts = SHIFTS.slice();
+// ─── State ────────────────────────────────────────────────────────────────────
+let editors       = EDITORS.slice();
+let staffShifts   = STAFF_SHIFTS.slice();
+let seniorShifts  = SENIOR_SHIFTS.slice();
 let shiftRequests = SHIFT_REQUESTS.slice();
 let currentWeekStart = getSunday(new Date());
-let searchQuery = '';
+let searchQuery   = '';
+let currentGridTab = 'staff';   // 'staff' | 'senior'
 
-// Modal edit state
-let editingShiftUid = null;   // null = adding, string = editing
-let editingEditorUid = null;  // null = adding, int = editing
-let detailEditorUid = null;
+let editingShiftUid  = null;
+let editingEditorUid = null;
+let detailEditorUid  = null;
 
-// ─── Date Helpers ─────────────────────────────────────────────────────────────
-function getSunday(d) {
-    const sun = new Date(d);
-    sun.setDate(d.getDate() - d.getDay());
-    sun.setHours(0, 0, 0, 0);
-    return sun;
+// ─── Break week helpers ───────────────────────────────────────────────────────
+const BREAK_WEEK_HOURS  = [10, 14, 18];
+const BREAK_WEEK_LABELS = ['10am–2pm', '2pm–6pm', '6pm–10pm'];
+const REGULAR_HOURS     = [8,10,12,14,16,18,20,22];
+const REGULAR_LABELS    = ['8am–10am','10am–12pm','12pm–2pm','2pm–4pm','4pm–6pm','6pm–8pm','8pm–10pm','10pm–12am'];
+const SENIOR_REG_HOURS  = [10,12,14,16,18,20];
+const SENIOR_REG_LABELS = ['10am–12pm','12pm–2pm','2pm–4pm','4pm–6pm','6pm–8pm','8pm–10pm'];
+
+function isCurrentWeekBreak() { return BREAK_WEEKS.has(toDateStr(currentWeekStart)); }
+function getSlotHours() {
+    if (isCurrentWeekBreak()) return BREAK_WEEK_HOURS;
+    return currentGridTab === 'senior' ? SENIOR_REG_HOURS : REGULAR_HOURS;
+}
+function getTimeLabels() {
+    if (isCurrentWeekBreak()) return BREAK_WEEK_LABELS;
+    return currentGridTab === 'senior' ? SENIOR_REG_LABELS : REGULAR_LABELS;
+}
+function getCurrentShifts() {
+    return currentGridTab === 'senior' ? seniorShifts : staffShifts;
 }
 
-function addDays(d, n) {
-    const r = new Date(d);
-    r.setDate(r.getDate() + n);
-    return r;
-}
-
-function toDateStr(d) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`; // local date, not UTC
-}
-
-function fmtDate(d) {
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-function fmtHour(h) {
+function fmtHour(h, isSeniorOrBreak) {
+    if (isCurrentWeekBreak()) {
+        const bwMap = {10:'10am–2pm', 14:'2pm–6pm', 18:'6pm–10pm'};
+        if (bwMap[h]) return bwMap[h];
+    }
     const labels = {8:'8am',10:'10am',12:'12pm',14:'2pm',16:'4pm',18:'6pm',20:'8pm',22:'10pm'};
     const ends   = {8:'10am',10:'12pm',12:'2pm',14:'4pm',16:'6pm',18:'8pm',20:'10pm',22:'12am'};
     return `${labels[h]}–${ends[h]}`;
 }
 
-// ─── Week Navigation ──────────────────────────────────────────────────────────
-function prevWeek() { currentWeekStart = addDays(currentWeekStart, -7); renderAll(); }
-function nextWeek() { currentWeekStart = addDays(currentWeekStart,  7); renderAll(); }
-function thisWeek() { currentWeekStart = getSunday(new Date());          renderAll(); }
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+function getSunday(d) { const s=new Date(d); s.setDate(d.getDate()-d.getDay()); s.setHours(0,0,0,0); return s; }
+function addDays(d,n)  { const r=new Date(d); r.setDate(r.getDate()+n); return r; }
+function toDateStr(d)  { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function fmtDate(d)    { return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
 
-// ─── Tab Switching ────────────────────────────────────────────────────────────
-function switchTab(tab) {
-    ['schedule','editors'].forEach(t => {
-        document.getElementById(`view-${t}`).style.display = 'none';
-        document.getElementById(`tab-${t}`).classList.remove('active-tab');
+// ─── Navigation ───────────────────────────────────────────────────────────────
+function prevWeek()  { currentWeekStart = addDays(currentWeekStart,-7); renderAll(); }
+function nextWeek()  { currentWeekStart = addDays(currentWeekStart, 7); renderAll(); }
+function thisWeek()  { currentWeekStart = getSunday(new Date());         renderAll(); }
+
+// ─── Grid tab switching ───────────────────────────────────────────────────────
+function switchGridTab(tab) {
+    currentGridTab = tab;
+    ['staff','senior'].forEach(t => {
+        document.getElementById(`grid-tab-${t}`).classList.toggle('active-grid-tab', t === tab);
     });
-    document.getElementById(`view-${tab}`).style.display = (tab === 'schedule') ? 'flex' : 'block';
-    document.getElementById(`tab-${tab}`).classList.add('active-tab');
-    if (tab === 'editors') renderEditorsView();
-}
-
-// ─── Search ───────────────────────────────────────────────────────────────────
-function handleSearch(val) {
-    searchQuery = val.toLowerCase();
-    renderAll();
-}
-
-// ─── Render All ───────────────────────────────────────────────────────────────
-function renderAll() {
-    renderDateHeaders();
     renderGrid();
     renderCoverageBadges();
     renderActionPanel();
 }
 
-// ─── Date Headers ─────────────────────────────────────────────────────────────
-const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+// ─── View tab switching ───────────────────────────────────────────────────────
+function switchTab(tab) {
+    ['schedule','editors'].forEach(t => {
+        document.getElementById(`view-${t}`).style.display = 'none';
+        document.getElementById(`tab-${t}`).classList.remove('active-tab');
+    });
+    document.getElementById(`view-${tab}`).style.display = tab==='schedule' ? 'flex' : 'block';
+    document.getElementById(`tab-${tab}`).classList.add('active-tab');
+    if (tab==='editors') renderEditorsView();
+}
 
+function handleSearch(val) { searchQuery = val.toLowerCase(); renderAll(); }
+
+// ─── Render all ───────────────────────────────────────────────────────────────
+function renderAll() {
+    renderDateHeaders();
+    renderGrid();
+    renderCoverageBadges();
+    renderActionPanel();
+    updateBreakWeekButton();
+    updateCopyBotButton();
+}
+
+// ─── Date headers ─────────────────────────────────────────────────────────────
+const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 function renderDateHeaders() {
-    const start = currentWeekStart;
-    const end   = addDays(start, 6);
-    document.getElementById('date-range-label').textContent =
-        `${fmtDate(start)} – ${fmtDate(end)}`;
-    for (let i = 0; i < 7; i++) {
-        const d = addDays(start, i);
+    const start = currentWeekStart, end = addDays(start,6);
+    document.getElementById('date-range-label').textContent = `${fmtDate(start)} – ${fmtDate(end)}`;
+    for (let i=0; i<7; i++) {
+        const d = addDays(start,i);
         const hdr = document.getElementById(`grid-hdr-${i}`);
-        const isToday = toDateStr(d) === toDateStr(new Date());
-        hdr.innerHTML = `<div style="font-size:0.75rem; color:#6b7280;">${DAY_NAMES[i]}</div>
-            <div style="font-weight:${isToday?'700':'500'}; color:${isToday?'#1d4ed8':'inherit'};">${fmtDate(d)}</div>`;
+        const isToday = toDateStr(d)===toDateStr(new Date());
+        hdr.innerHTML = `<div style="font-size:0.75rem;color:#6b7280;">${DAY_NAMES[i]}</div>
+            <div style="font-weight:${isToday?'700':'500'};color:${isToday?'#1d4ed8':'inherit'};">${fmtDate(d)}</div>`;
     }
 }
 
 // ─── Grid ─────────────────────────────────────────────────────────────────────
-const SLOT_HOURS = [8,10,12,14,16,18,20,22];
+const STATUS_STYLE = {
+    open:    'background:#eff6ff;border:1px solid #bfdbfe;',
+    staffed: 'background:#f0fdf4;border:1px solid #bbf7d0;',
+    full:    'background:#faf5ff;border:1px solid #e9d5ff;',
+    action:  'background:#fff1f2;border:1px solid #fca5a5;',
+};
 
 function getShiftForCell(dateStr, hour) {
-    return shifts.find(s => s.date === dateStr && s.start_hour === hour) || null;
+    return getCurrentShifts().find(s => s.date===dateStr && s.start_hour===hour) || null;
 }
-
 function cellStatus(shift) {
     if (!shift) return 'open';
     if (shift.editor_id && shift.editor_id_2) return 'full';
@@ -414,56 +411,57 @@ function cellStatus(shift) {
     return 'open';
 }
 
-const STATUS_STYLE = {
-    open:    'background:#eff6ff; border:1px solid #bfdbfe;',
-    staffed: 'background:#f0fdf4; border:1px solid #bbf7d0;',
-    full:    'background:#faf5ff; border:1px solid #e9d5ff;',
-    action:  'background:#fff1f2; border:1px solid #fca5a5;',
-};
-
 function renderGrid() {
-    for (let slot = 0; slot < 8; slot++) {
-        for (let day = 0; day < 7; day++) {
-            const cell = document.getElementById(`cell-${slot}-${day}`);
-            const dateStr = toDateStr(addDays(currentWeekStart, day));
-            const hour    = SLOT_HOURS[slot];
+    const slotHours  = getSlotHours();
+    const timeLabels = getTimeLabels();
+
+    document.getElementById('shift-grid-body').innerHTML = slotHours.map((hour, slot) => `
+        <tr style="border-bottom:1px solid #dee2e6;">
+            <td style="padding:0.5rem;font-size:0.75rem;color:#6b7280;background:#f9fafb;border-right:1px solid #dee2e6;white-space:nowrap;">${timeLabels[slot]}</td>
+            ${Array.from({length:7},(_,day)=>
+                `<td id="cell-${slot}-${day}" style="height:72px;border-right:1px solid #dee2e6;padding:0.4rem;vertical-align:top;cursor:default;"></td>`
+            ).join('')}
+        </tr>`
+    ).join('');
+
+    for (let slot=0; slot<slotHours.length; slot++) {
+        for (let day=0; day<7; day++) {
+            const cell    = document.getElementById(`cell-${slot}-${day}`);
+            const dateStr = toDateStr(addDays(currentWeekStart,day));
+            const hour    = slotHours[slot];
             const shift   = getShiftForCell(dateStr, hour);
             const hasAction = shift && shift.up_for_drop;
             const status  = hasAction ? 'action' : cellStatus(shift);
 
-            // Search filter dims non-matching cells
             let dimmed = false;
             if (searchQuery && shift) {
-                const haystack = [shift.editor_name, shift.editor_name_2, dateStr, fmtHour(hour)].join(' ').toLowerCase();
-                dimmed = !haystack.includes(searchQuery);
+                const hay = [shift.editor_name, shift.editor_name_2, dateStr, fmtHour(hour)].join(' ').toLowerCase();
+                dimmed = !hay.includes(searchQuery);
             }
 
-            cell.style.cssText = `height:72px; border-right:1px solid #dee2e6; padding:0.4rem; vertical-align:top; cursor:pointer; ${STATUS_STYLE[status]} ${dimmed ? 'opacity:0.3;' : ''}`;
+            cell.style.cssText = `height:72px;border-right:1px solid #dee2e6;padding:0.4rem;vertical-align:top;cursor:pointer;${STATUS_STYLE[status]}${dimmed?'opacity:0.3;':''}`;
             cell.onclick = () => openShiftModal(dateStr, hour);
 
             if (!shift || (!shift.editor_id && !shift.editor_id_2)) {
-                cell.innerHTML = `<span style="font-size:0.7rem; color:#9ca3af;">+ Add</span>`;
+                cell.innerHTML = `<span style="font-size:0.7rem;color:#9ca3af;">+ Add</span>`;
             } else {
                 const names = [shift.editor_name, shift.editor_name_2].filter(Boolean);
-                cell.innerHTML = names.map(n =>
-                    `<div style="font-size:0.75rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${n}</div>`
-                ).join('') + (hasAction ? `<div style="font-size:0.7rem; color:#dc2626; margin-top:2px;">Drop requested</div>` : '');
+                cell.innerHTML = names.map(n=>
+                    `<div style="font-size:0.75rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n}</div>`
+                ).join('') + (hasAction ? `<div style="font-size:0.7rem;color:#dc2626;margin-top:2px;">Drop requested</div>` : '');
             }
         }
     }
 }
 
-// ─── Coverage Badges ──────────────────────────────────────────────────────────
+// ─── Coverage badges ──────────────────────────────────────────────────────────
 function renderCoverageBadges() {
-    let open = 0, staffed = 0, full = 0;
-    for (let slot = 0; slot < 8; slot++) {
-        for (let day = 0; day < 7; day++) {
-            const dateStr = toDateStr(addDays(currentWeekStart, day));
-            const shift   = getShiftForCell(dateStr, SLOT_HOURS[slot]);
-            const s = cellStatus(shift);
-            if (s === 'open')    open++;
-            if (s === 'staffed') staffed++;
-            if (s === 'full')    full++;
+    const slotHours = getSlotHours();
+    let open=0, staffed=0, full=0;
+    for (let slot=0; slot<slotHours.length; slot++) {
+        for (let day=0; day<7; day++) {
+            const s = cellStatus(getShiftForCell(toDateStr(addDays(currentWeekStart,day)), slotHours[slot]));
+            if (s==='open') open++; else if (s==='staffed') staffed++; else if (s==='full') full++;
         }
     }
     document.getElementById('coverage-open').textContent    = `Open: ${open}`;
@@ -471,31 +469,85 @@ function renderCoverageBadges() {
     document.getElementById('coverage-full').textContent    = `Full: ${full}`;
 }
 
-// ─── Action Panel ─────────────────────────────────────────────────────────────
-function renderActionPanel() {
-    renderPendingActions();
-    renderWeeklyLoad();
+// ─── Break week ───────────────────────────────────────────────────────────────
+function updateBreakWeekButton() {
+    const btn   = document.getElementById('break-week-btn');
+    const badge = document.getElementById('break-week-badge');
+    const isBreak = isCurrentWeekBreak();
+    btn.textContent = isBreak ? 'Remove Break Week' : 'Mark as Break Week';
+    btn.style.color = isBreak ? '#dc2626' : '';
+    btn.style.borderColor = isBreak ? '#fca5a5' : '';
+    badge.style.display = isBreak ? 'flex' : 'none';
 }
 
+async function toggleBreakWeek() {
+    const weekStart = toDateStr(currentWeekStart);
+    const isBreak   = isCurrentWeekBreak();
+    const confirmed = await showButtonAlert(
+        isBreak ? 'Remove Break Week' : 'Mark as Break Week',
+        isBreak
+            ? 'This will revert this week to the regular schedule.'
+            : 'This will switch this week to break schedule (10am–2pm, 2pm–6pm, 6pm–10pm). Shift requirements change to 1 for copy editors and 2 for senior copy editors.',
+        isBreak ? 'Remove' : 'Confirm', 'Cancel'
+    );
+    if (!confirmed) return;
+    const resp = await fetch('/copy-schedule/admin/break-week/toggle', {
+        method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF_TOKEN},
+        body: JSON.stringify({week_start: weekStart}),
+    });
+    if (!resp.ok) { showInfoBar('Error toggling break week.'); return; }
+    const data = await resp.json();
+    if (data.is_break_week) BREAK_WEEKS.add(weekStart); else BREAK_WEEKS.delete(weekStart);
+    renderAll();
+    showInfoBar(data.is_break_week ? '☀️ Week marked as break week.' : 'Break week removed.');
+}
+
+// ─── Copy bot flag ────────────────────────────────────────────────────────────
+function updateCopyBotButton() {
+    const btn = document.getElementById('copy-bot-btn');
+    btn.textContent   = copyBotActive ? '🤖 Copy Bot: Schedule' : '🗓️ Copy Bot: Calendar';
+    btn.style.color   = copyBotActive ? '#166534' : '#92400e';
+    btn.style.background = copyBotActive ? '#f0fdf4' : '#fef3c7';
+    btn.style.borderColor = copyBotActive ? '#bbf7d0' : '#fde068';
+}
+
+async function toggleCopyBotFlag() {
+    const label = copyBotActive ? 'Switch to Google Calendar' : 'Switch to Shift Schedule';
+    const desc  = copyBotActive
+        ? 'The copy bot will resume reading editor assignments from Google Calendar.'
+        : 'The copy bot will read editor assignments from the new shift schedule system. Make sure the copy team has migrated before switching.';
+    const confirmed = await showButtonAlert(label, desc, 'Confirm', 'Cancel');
+    if (!confirmed) return;
+    const resp = await fetch('/copy-schedule/admin/flag/copy-bot/toggle', {
+        method:'POST', headers:{'X-CSRFToken':CSRF_TOKEN},
+    });
+    if (!resp.ok) { showInfoBar('Error toggling copy bot flag.'); return; }
+    const data = await resp.json();
+    copyBotActive = data.active;
+    updateCopyBotButton();
+    showInfoBar(copyBotActive ? '✅ Copy bot now using shift schedule.' : '↩️ Copy bot reverted to Google Calendar.');
+}
+
+// ─── Action panel ─────────────────────────────────────────────────────────────
+function renderActionPanel() { renderPendingActions(); renderWeeklyLoad(); }
+
 function renderPendingActions() {
-    const pending = shiftRequests.filter(r => r.status === 'pending');
+    const pending = shiftRequests.filter(r => r.status==='pending');
     const el = document.getElementById('pending-actions-list');
-    if (!pending.length) {
-        el.innerHTML = `<p style="color:#9ca3af; font-size:0.875rem;">No pending actions</p>`;
-        return;
-    }
+    if (!pending.length) { el.innerHTML=`<p style="color:#9ca3af;font-size:0.875rem;">No pending actions</p>`; return; }
     el.innerHTML = pending.map(r => {
         const sourceLabel = `${r.source_shift_date} ${fmtHour(r.source_shift_hour)}`;
-        const targetLabel = r.target_shift_date
-            ? ` → ${r.target_shift_date} ${fmtHour(r.target_shift_hour)}`
-            : '';
+        const targetLabel = r.target_shift_date ? ` → ${r.target_shift_date} ${fmtHour(r.target_shift_hour)}` : '';
+        const typeTag = r.slot_type === 'senior'
+            ? `<span style="font-size:0.7rem;background:#ede9fe;color:#7c3aed;padding:1px 5px;border-radius:3px;margin-left:4px;">Senior</span>`
+            : `<span style="font-size:0.7rem;background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:3px;margin-left:4px;">Staff</span>`;
         return `
-        <div style="border:1px solid #fca5a5; background:#fff1f2; border-radius:6px; padding:0.75rem; margin-bottom:0.5rem; font-size:0.875rem;">
-            <div style="font-weight:500;">${r.requester_name || EMAIL_TO_NAME[r.requester_id] || r.requester_id} — ${r.request_type.replace(/_/g,' ')}</div>
-            <div style="color:#6b7280; font-size:0.75rem; margin:2px 0;">${sourceLabel}${targetLabel}</div>
-            <div style="display:flex; gap:0.4rem; margin-top:0.4rem;">
-                <button onclick="approveRequest(${r.uid})" class="button-primary" style="font-size:0.75rem; padding:3px 10px;">Approve</button>
-                <button onclick="denyRequest(${r.uid})"    class="button-secondary" style="font-size:0.75rem; padding:3px 10px;">Deny</button>
+        <div style="border:1px solid #fca5a5;background:#fff1f2;border-radius:6px;padding:0.75rem;margin-bottom:0.5rem;font-size:0.875rem;">
+            <div style="font-weight:500;">${r.requester_name||EMAIL_TO_NAME[r.requester_id]||r.requester_id} — ${r.request_type.replace(/_/g,' ')}${typeTag}</div>
+            <div style="color:#6b7280;font-size:0.75rem;margin:2px 0;">${sourceLabel}${targetLabel}</div>
+            <div style="display:flex;gap:0.4rem;margin-top:0.4rem;">
+                <button onclick="approveRequest(${r.uid})" class="button-primary"    style="font-size:0.75rem;padding:3px 10px;">Approve</button>
+                <button onclick="denyRequest(${r.uid})"    class="button-secondary"  style="font-size:0.75rem;padding:3px 10px;">Deny</button>
             </div>
         </div>`;
     }).join('');
@@ -503,143 +555,127 @@ function renderPendingActions() {
 
 function renderWeeklyLoad() {
     const el = document.getElementById('weekly-load-list');
-    if (!editors.length) {
-        el.innerHTML = `<p style="color:#9ca3af; font-size:0.875rem;">No editors</p>`;
-        return;
-    }
+
+    // Only show editors matching the current grid tab
+    const isSenior   = currentGridTab === 'senior';
+    const category   = isSenior ? 'Senior Copy Editor' : 'Copy Editor';
+    const shiftSrc   = isSenior ? seniorShifts : staffShifts;
+    const tabEditors = editors.filter(e => e.category === category);
+
+    if (!tabEditors.length) { el.innerHTML=`<p style="color:#9ca3af;font-size:0.875rem;">No editors</p>`; return; }
+
     const counts = {};
-    // editors.forEach(e => counts[e.uid] = 0);
-    // shifts.forEach(s => {
-    //     const d = new Date(s.date + 'T00:00:00');
-    //     const weekEnd = addDays(currentWeekStart, 7);
-    //     if (d >= currentWeekStart && d < weekEnd) {
-    //         if (s.editor_id   && counts[s.editor_id]   !== undefined)   counts[s.editor_id]++;
-    //         if (s.editor_id_2 && counts[s.editor_id_2] !== undefined) counts[s.editor_id_2]++;
-    //     }
-    // });
-    editors.forEach(e => counts[e.email] = 0);
-    shifts.forEach(s => {
-        const d = new Date(s.date + 'T00:00:00');
+    tabEditors.forEach(e => counts[e.email] = 0);
+    shiftSrc.forEach(s => {
+        const d = new Date(s.date+'T00:00:00');
         const weekEnd = addDays(currentWeekStart, 7);
         if (d >= currentWeekStart && d < weekEnd) {
             if (s.editor_id   && counts[s.editor_id]   !== undefined) counts[s.editor_id]++;
             if (s.editor_id_2 && counts[s.editor_id_2] !== undefined) counts[s.editor_id_2]++;
         }
     });
-    el.innerHTML = editors.map(e => `
-        <div onclick="openEditorDetailModal(${e.uid})" style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:0.875rem; border-bottom:1px solid #f3f4f6; cursor:pointer;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
-            <span>${EMAIL_TO_NAME[e.email] || e.name}</span>
-            <span style="font-weight:500;">${counts[e.email] || 0} shift${counts[e.email] === 1 ? '' : 's'}</span>
+
+    el.innerHTML = tabEditors.map(e => `
+        <div onclick="openEditorDetailModal(${e.uid})" style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:0.875rem;border-bottom:1px solid #f3f4f6;cursor:pointer;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
+            <span>${EMAIL_TO_NAME[e.email]||e.name}</span>
+            <span style="font-weight:500;">${counts[e.email]||0} shift${counts[e.email]===1?'':'s'}</span>
         </div>`).join('');
 }
 
-// ─── Editors View ─────────────────────────────────────────────────────────────
+// ─── Editors view ─────────────────────────────────────────────────────────────
 async function syncFromGroups() {
     const btn = document.getElementById('sync-groups-btn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Syncing...';
+    btn.disabled=true; btn.innerHTML='<i class="bi bi-arrow-repeat"></i> Syncing...';
     try {
-        const res = await fetch('/copy-schedule/admin/sync-from-groups', {
-            method: 'POST',
-            headers: { 'X-CSRFToken': CSRF_TOKEN },
-        });
+        const res  = await fetch('/copy-schedule/admin/sync-from-groups',{method:'POST',headers:{'X-CSRFToken':CSRF_TOKEN}});
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Sync failed');
+        if (!res.ok) throw new Error(data.error||'Sync failed');
         alert(`Sync complete: ${data.added} added, ${data.skipped} skipped.`);
         location.reload();
-    } catch (e) {
-        alert('Error syncing from Google Groups: ' + e.message);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sync from Google Groups';
-    }
+    } catch(e) { alert('Error: '+e.message); }
+    finally { btn.disabled=false; btn.innerHTML='<i class="bi bi-arrow-repeat"></i> Sync from Google Groups'; }
 }
 
 function renderEditorsView() {
     const copyQ   = document.getElementById('copy-editor-search').value.toLowerCase();
     const seniorQ = document.getElementById('senior-editor-search').value.toLowerCase();
-
-    const displayName = e => EMAIL_TO_NAME[e.email] || e.name;
-    const copyEditors   = editors
-        .filter(e => e.category === 'Copy Editor'        && displayName(e).toLowerCase().includes(copyQ))
-        .sort((a, b) => displayName(a).localeCompare(displayName(b)));
-    const seniorEditors = editors
-        .filter(e => e.category === 'Senior Copy Editor' && displayName(e).toLowerCase().includes(seniorQ))
-        .sort((a, b) => displayName(a).localeCompare(displayName(b)));
-
-    document.getElementById('copy-editors-count').textContent   = copyEditors.length;
-    document.getElementById('senior-editors-count').textContent = seniorEditors.length;
-
-    renderEditorTable('copy-editors-tbody',   copyEditors);
-    renderEditorTable('senior-editors-tbody', seniorEditors);
+    const dn = e => EMAIL_TO_NAME[e.email]||e.name;
+    const copyEds   = editors.filter(e=>e.category==='Copy Editor'&&dn(e).toLowerCase().includes(copyQ)).sort((a,b)=>dn(a).localeCompare(dn(b)));
+    const seniorEds = editors.filter(e=>e.category==='Senior Copy Editor'&&dn(e).toLowerCase().includes(seniorQ)).sort((a,b)=>dn(a).localeCompare(dn(b)));
+    document.getElementById('copy-editors-count').textContent   = copyEds.length;
+    document.getElementById('senior-editors-count').textContent = seniorEds.length;
+    renderEditorTable('copy-editors-tbody', copyEds, staffShifts);
+    renderEditorTable('senior-editors-tbody', seniorEds, seniorShifts);
 }
 
-function renderEditorTable(tbodyId, list) {
+function renderEditorTable(tbodyId, list, shiftList) {
     const tbody = document.getElementById(tbodyId);
-    if (!list.length) {
-        tbody.innerHTML = `<tr><td colspan="4" style="padding:1rem; text-align:center; color:#9ca3af; font-size:0.875rem;">No editors</td></tr>`;
-        return;
-    }
+    if (!list.length) { tbody.innerHTML=`<tr><td colspan="4" style="padding:1rem;text-align:center;color:#9ca3af;font-size:0.875rem;">No editors</td></tr>`; return; }
     tbody.innerHTML = list.map(e => {
-        // const shiftCount = shifts.filter(s => s.editor_id === String(e.uid) || s.editor_id_2 === String(e.uid)).length;
-        // const weekendCount = shifts.filter(s => {
-        //     if (s.editor_id !== String(e.uid) && s.editor_id_2 !== String(e.uid)) return false;
-        //     const dow = new Date(s.date + 'T00:00:00').getDay();
-        //     return dow === 0 || dow === 6;
-        // }).length;
-        const shiftCount = shifts.filter(s => 
-            s.editor_id === e.email || s.editor_id_2 === e.email
-        ).length;
-        const weekendCount = shifts.filter(s => {
-            if (s.editor_id !== e.email && s.editor_id_2 !== e.email) return false;
-            const dow = new Date(s.date + 'T00:00:00').getDay();
-            return dow === 0 || dow === 6;
+        const sc = shiftList.filter(s=>s.editor_id===e.email||s.editor_id_2===e.email).length;
+        const wc = shiftList.filter(s=>{
+            if(s.editor_id!==e.email&&s.editor_id_2!==e.email) return false;
+            const dow=new Date(s.date+'T00:00:00').getDay(); return dow===0||dow===6;
         }).length;
-
         return `
-        <tr style="border-bottom:1px solid #dee2e6; cursor:pointer;" onclick="openEditorDetailModal(${e.uid})" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
-            <td style="padding:10px 16px; font-size:0.875rem;">${EMAIL_TO_NAME[e.email] || e.name}</td>
-            <td style="padding:10px 16px; font-size:0.875rem;">${shiftCount}</td>
-            <td style="padding:10px 16px; font-size:0.875rem;">${weekendCount}</td>
+        <tr style="border-bottom:1px solid #dee2e6;cursor:pointer;" onclick="openEditorDetailModal(${e.uid})" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
+            <td style="padding:10px 16px;font-size:0.875rem;">${EMAIL_TO_NAME[e.email]||e.name}</td>
+            <td style="padding:10px 16px;font-size:0.875rem;">${sc}</td>
+            <td style="padding:10px 16px;font-size:0.875rem;">${wc}</td>
             <td style="padding:10px 16px;">
-                <button onclick="event.stopPropagation(); openAddEditorModal('${e.category}', ${e.uid})" style="background:none; border:none; cursor:pointer; color:#6b7280; font-size:0.875rem;" title="Edit">
-                    <i class="bi bi-pencil"></i>
-                </button>
+                <button onclick="event.stopPropagation();openAddEditorModal('${e.category}',${e.uid})" style="background:none;border:none;cursor:pointer;color:#6b7280;font-size:0.875rem;"><i class="bi bi-pencil"></i></button>
             </td>
         </tr>`;
     }).join('');
 }
 
-// ─── Shift Modal ──────────────────────────────────────────────────────────────
-// function populateEditorDropdowns() {
-//     const opts = `<option value="">— Unassigned —</option>` +
-//         editors.map(e => `<option value="${e.uid}">${e.name}</option>`).join('');
-//     document.getElementById('shift-editor-1').innerHTML = opts;
-//     document.getElementById('shift-editor-2').innerHTML = opts;
-// }
-
+// ─── Shift modal ──────────────────────────────────────────────────────────────
 function populateEditorDropdowns() {
+    // Filter editor list by grid tab so only same-role editors appear
+    const filtered = currentGridTab === 'senior'
+        ? editors.filter(e => e.category === 'Senior Copy Editor')
+        : editors.filter(e => e.category === 'Copy Editor');
     const opts = `<option value="">— Unassigned —</option>` +
-        editors.map(e => `<option value="${e.email}">${EMAIL_TO_NAME[e.email] || e.name}</option>`).join('');
+        filtered.map(e=>`<option value="${e.email}">${EMAIL_TO_NAME[e.email]||e.name}</option>`).join('');
     document.getElementById('shift-editor-1').innerHTML = opts;
     document.getElementById('shift-editor-2').innerHTML = opts;
 }
 
+function populateHourOptions(dateStr) {
+    const weekSun  = getSunday(new Date(dateStr+'T00:00:00'));
+    const isBreak  = BREAK_WEEKS.has(toDateStr(weekSun));
+    const isSenior = currentGridTab === 'senior';
+    const hourSel  = document.getElementById('shift-hour');
+    if (isBreak) {
+        hourSel.innerHTML = `<option value="10">10am – 2pm</option><option value="14">2pm – 6pm</option><option value="18">6pm – 10pm</option>`;
+    } else if (isSenior) {
+        hourSel.innerHTML = `
+            <option value="10">10am – 12pm</option><option value="12">12pm – 2pm</option>
+            <option value="14">2pm – 4pm</option><option value="16">4pm – 6pm</option>
+            <option value="18">6pm – 8pm</option><option value="20">8pm – 10pm</option>`;
+    } else {
+        hourSel.innerHTML = `
+            <option value="8">8am – 10am</option><option value="10">10am – 12pm</option>
+            <option value="12">12pm – 2pm</option><option value="14">2pm – 4pm</option>
+            <option value="16">4pm – 6pm</option><option value="18">6pm – 8pm</option>
+            <option value="20">8pm – 10pm</option><option value="22">10pm – 12am</option>`;
+    }
+}
+
 function openAddShiftModal() {
-    openShiftModal(toDateStr(new Date()), 8);
+    const defaultHour = isCurrentWeekBreak() ? 10 : (currentGridTab==='senior' ? 10 : 8);
+    openShiftModal(toDateStr(new Date()), defaultHour);
 }
 
 function openShiftModal(dateStr, hour) {
     const existing = getShiftForCell(dateStr, hour);
-    editingShiftUid = existing
-        ? (existing.uid || `${existing.date}_${String(existing.start_hour).padStart(2, '0')}`)
-        : null;
+    editingShiftUid = existing ? (existing.uid||`${existing.date}_${String(existing.start_hour).padStart(2,'0')}`) : null;
 
-    document.getElementById('modal-shift-title').textContent  = existing ? 'Edit Shift' : 'Add Shift';
+    document.getElementById('modal-shift-title').textContent  = existing ? 'Edit Shift' : `Add ${currentGridTab==='senior'?'Senior':'Staff'} Shift`;
     document.getElementById('modal-shift-submit').textContent = existing ? 'Save Changes' : 'Add Shift';
     document.getElementById('shift-date').value = dateStr;
+    populateHourOptions(dateStr);
     document.getElementById('shift-hour').value = hour;
-
     populateEditorDropdowns();
 
     if (existing) {
@@ -649,82 +685,62 @@ function openShiftModal(dateStr, hour) {
         document.getElementById('shift-editor-1').value = '';
         document.getElementById('shift-editor-2').value = '';
     }
-
     document.getElementById('modal-shift-delete').style.display = existing ? 'inline-flex' : 'none';
     document.getElementById('modal-shift').style.display = 'flex';
 }
 
-function closeShiftModal() {
-    document.getElementById('modal-shift').style.display = 'none';
-    editingShiftUid = null;
-}
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('shift-date').addEventListener('change', function() {
+        if (this.value) populateHourOptions(this.value);
+    });
+});
+
+function closeShiftModal() { document.getElementById('modal-shift').style.display='none'; editingShiftUid=null; }
 
 async function submitShiftModal(e) {
     e.preventDefault();
-    const date      = document.getElementById('shift-date').value;
+    const dateVal   = document.getElementById('shift-date').value;
     const startHour = document.getElementById('shift-hour').value;
-    // const e1uid     = document.getElementById('shift-editor-1').value;
-    // const e2uid     = document.getElementById('shift-editor-2').value;
+    const e1email   = document.getElementById('shift-editor-1').value;
+    const e2email   = document.getElementById('shift-editor-2').value;
+    const ed1 = editors.find(x=>x.email===e1email)||null;
+    const ed2 = editors.find(x=>x.email===e2email)||null;
 
-    // const ed1 = editors.find(x => String(x.uid) === e1uid);
-    // const ed2 = editors.find(x => String(x.uid) === e2uid);
-
-    const e1email = document.getElementById('shift-editor-1').value;
-    const e2email = document.getElementById('shift-editor-2').value;
-
-    const ed1 = editors.find(x => x.email === e1email) || null;
-    const ed2 = editors.find(x => x.email === e2email) || null;
-
-
-    if (!ed1 && !ed2) {
-        showInfoBar('Please assign at least one editor before saving.');
-        return;
-    }
-    if (ed1 && ed2 && ed1.uid === ed2.uid) {
-        showInfoBar('Editor 1 and Editor 2 cannot be the same person.');
-        return;
-    }
+    if (!ed1 && !ed2) { showInfoBar('Please assign at least one editor before saving.'); return; }
+    if (ed1 && ed2 && ed1.uid===ed2.uid) { showInfoBar('Editor 1 and Editor 2 cannot be the same person.'); return; }
 
     const body = new FormData();
-    body.append('date',        date);
-    body.append('start_hour',  startHour);
-    // body.append('editor_id',   ed1 ? String(ed1.uid)  : '');
-    // body.append('editor_name', ed1 ? ed1.name          : '');
-    // body.append('editor_id_2', ed2 ? String(ed2.uid)   : '');
-    // body.append('editor_name_2', ed2 ? ed2.name        : '');
+    body.append('date',         dateVal);
+    body.append('start_hour',   startHour);
+    body.append('editor_id',    ed1?ed1.email:'');
+    body.append('editor_name',  ed1?ed1.name:'');
+    body.append('editor_id_2',  ed2?ed2.email:'');
+    body.append('editor_name_2',ed2?ed2.name:'');
 
-    body.append('editor_id',     ed1 ? ed1.email : '');
-    body.append('editor_name',   ed1 ? ed1.name  : '');
-    body.append('editor_id_2',   ed2 ? ed2.email : '');
-    body.append('editor_name_2', ed2 ? ed2.name  : '');
-
+    // Route to staff or senior endpoint based on current grid tab
+    const prefix = currentGridTab==='senior' ? 'senior-shift' : 'shift';
     const url = editingShiftUid
-        ? `/copy-schedule/admin/shift/${editingShiftUid}/update`
-        : `/copy-schedule/admin/shift`;
+        ? `/copy-schedule/admin/${prefix}/${editingShiftUid}/update`
+        : `/copy-schedule/admin/${prefix}`;
 
     let resp;
-    try {
-        resp = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': CSRF_TOKEN }, body });
-    } catch (err) {
-        showInfoBar('Network error — re-accept the HTTPS certificate at https://127.0.0.1:5001 and try again.');
-        return;
-    }
+    try { resp = await fetch(url,{method:'POST',headers:{'X-CSRFToken':CSRF_TOKEN},body}); }
+    catch(err) { showInfoBar('Network error.'); return; }
     if (!resp.ok) { showInfoBar('Error saving shift.'); return; }
     const saved = await resp.json();
     if (!saved) { showInfoBar('Server error: shift not found in database.'); return; }
 
+    const targetArray = currentGridTab==='senior' ? seniorShifts : staffShifts;
     const wasEditing = !!editingShiftUid;
     if (wasEditing) {
         const sep = editingShiftUid.lastIndexOf('_');
-        const editDate = editingShiftUid.slice(0, sep);
-        const editHour = parseInt(editingShiftUid.slice(sep + 1), 10);
-        shifts = shifts.map(s =>
-            (s && s.date === editDate && s.start_hour === editHour) ? saved : s
-        );
+        const editDate = editingShiftUid.slice(0,sep);
+        const editHour = parseInt(editingShiftUid.slice(sep+1),10);
+        const updated = targetArray.map(s=>(s&&s.date===editDate&&s.start_hour===editHour)?saved:s);
+        if (currentGridTab==='senior') seniorShifts=updated; else staffShifts=updated;
     } else {
-        shifts.push(saved);
+        targetArray.push(saved);
     }
-
     closeShiftModal();
     renderAll();
     showInfoBar(wasEditing ? 'Shift updated.' : 'Shift added.');
@@ -733,190 +749,106 @@ async function submitShiftModal(e) {
 async function deleteCurrentShift() {
     const uid = editingShiftUid;
     if (!uid) return;
-    const confirmed = await showButtonAlert('Delete Shift', 'Remove this shift slot entirely?', 'Delete', 'Cancel');
+    const confirmed = await showButtonAlert('Delete Shift','Remove this shift slot entirely?','Delete','Cancel');
     if (!confirmed) return;
-
+    const prefix = currentGridTab==='senior' ? 'senior-shift' : 'shift';
     let resp;
-    try {
-        resp = await fetch(`/copy-schedule/admin/shift/${uid}/delete`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': CSRF_TOKEN },
-        });
-    } catch (err) {
-        showInfoBar('Network error — re-accept the HTTPS certificate at https://127.0.0.1:5001 and try again.');
-        return;
-    }
+    try { resp = await fetch(`/copy-schedule/admin/${prefix}/${uid}/delete`,{method:'POST',headers:{'X-CSRFToken':CSRF_TOKEN}}); }
+    catch(err) { showInfoBar('Network error.'); return; }
     if (!resp.ok) { showInfoBar('Error deleting shift.'); return; }
 
     const sep = uid.lastIndexOf('_');
-    const deleteDate = uid.slice(0, sep);
-    const deleteHour = parseInt(uid.slice(sep + 1), 10);
-    shifts = shifts.filter(s => !(s.date === deleteDate && s.start_hour === deleteHour));
-    shiftRequests = shiftRequests.filter(r => {
-        const rUid = r.source_shift_date + '_' + String(r.source_shift_hour).padStart(2, '0');
-        return rUid !== uid;
-    });
+    const delDate = uid.slice(0,sep);
+    const delHour = parseInt(uid.slice(sep+1),10);
+    if (currentGridTab==='senior') seniorShifts=seniorShifts.filter(s=>!(s.date===delDate&&s.start_hour===delHour));
+    else staffShifts=staffShifts.filter(s=>!(s.date===delDate&&s.start_hour===delHour));
     closeShiftModal();
     renderAll();
     showInfoBar('Shift deleted.');
 }
 
-// ─── Editor Modal ─────────────────────────────────────────────────────────────
-function openAddEditorModal(category, uid = null) {
-    editingEditorUid = uid;
-    const editor = uid !== null ? editors.find(e => e.uid === uid) : null;
-
-    document.getElementById('modal-editor-title').textContent  = editor ? 'Edit Editor'  : 'Add Editor';
-    document.getElementById('modal-editor-submit').textContent = editor ? 'Save Changes' : 'Add Editor';
-    document.getElementById('editor-name').value     = editor ? editor.name     : '';
-    document.getElementById('editor-email').value    = editor ? editor.email    : '';
-    document.getElementById('editor-phone').value    = editor ? (editor.phone  || '') : '';
-    document.getElementById('editor-category').value = editor ? (editor.category || category) : category;
-
-    document.getElementById('modal-editor').style.display = 'flex';
-}
-
-function closeEditorModal() {
-    document.getElementById('modal-editor').style.display = 'none';
-    editingEditorUid = null;
-}
-
-async function submitEditorModal(e) {
-    e.preventDefault();
-    const body = new FormData();
-    body.append('name',     document.getElementById('editor-name').value);
-    body.append('email',    document.getElementById('editor-email').value);
-    body.append('phone',    document.getElementById('editor-phone').value);
-    body.append('category', document.getElementById('editor-category').value);
-
-    const url = editingEditorUid !== null
-        ? `/copy-schedule/admin/editor/${editingEditorUid}/update`
-        : `/copy-schedule/admin/editor`;
-
-    let resp;
-    try {
-        resp = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': CSRF_TOKEN }, body });
-    } catch (err) {
-        showInfoBar('Network error — re-accept the HTTPS certificate at https://127.0.0.1:5001 and try again.');
-        return;
-    }
-    if (!resp.ok) { showInfoBar('Error saving editor.'); return; }
-    const saved = await resp.json();
-
-    const wasEditingEditor = editingEditorUid !== null;
-    if (wasEditingEditor) {
-        editors = editors.map(ed => ed.uid === saved.uid ? saved : ed);
-    } else {
-        editors.push(saved);
-    }
-
-    closeEditorModal();
-    renderEditorsView();
-    renderWeeklyLoad();
-    showInfoBar(wasEditingEditor ? 'Editor updated.' : 'Editor added.');
-}
-
-// ─── Editor Detail Modal ──────────────────────────────────────────────────────
-function openEditorDetailModal(uid) {
-    detailEditorUid = uid;
-    const e = editors.find(x => x.uid === uid);
-    if (!e) return;
-
-    document.getElementById('detail-editor-name').textContent     = EMAIL_TO_NAME[e.email] || e.name;
-    document.getElementById('detail-editor-email').textContent    = e.email;
-    document.getElementById('detail-editor-phone').textContent    = e.phone    || '—';
-    document.getElementById('detail-editor-category').textContent = e.category || '—';
-
-    const upcoming = shifts
-        // .filter(s => s.editor_id === String(uid) || s.editor_id_2 === String(uid))
-        .filter(s => s.editor_id === e.email || s.editor_id_2 === e.email)
-        .filter(s => s.date >= toDateStr(new Date()))
-        .sort((a, b) => a.date.localeCompare(b.date))
-        .slice(0, 5);
-
-    document.getElementById('detail-editor-shifts').innerHTML = upcoming.length
-        ? upcoming.map(s => `<div>${s.date} ${fmtHour(s.start_hour)}</div>`).join('')
-        : 'No upcoming shifts.';
-
-    document.getElementById('modal-editor-detail').style.display = 'flex';
-}
-
-function closeEditorDetailModal() {
-    document.getElementById('modal-editor-detail').style.display = 'none';
-    detailEditorUid = null;
-}
-
-function openEditEditorFromDetail() {
-    const uid = detailEditorUid;
-    closeEditorDetailModal();
-    openAddEditorModal(null, uid);
-}
-
-async function deleteEditorFromDetail() {
-    const uid = detailEditorUid;
-    const e   = editors.find(x => x.uid === uid);
-    const confirmed = await showButtonAlert('Delete Editor', `Remove ${e.name}? This cannot be undone.`, 'Delete', 'Cancel');
-    if (!confirmed) return;
-
-    let resp;
-    try {
-        resp = await fetch(`/copy-schedule/admin/editor/${uid}/delete`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': CSRF_TOKEN },
-        });
-    } catch (err) {
-        showInfoBar('Network error — re-accept the HTTPS certificate at https://127.0.0.1:5001 and try again.');
-        return;
-    }
-    if (!resp.ok) { showInfoBar('Error deleting editor.'); return; }
-
-    editors = editors.filter(x => x.uid !== uid);
-    closeEditorDetailModal();
-    renderEditorsView();
-    renderWeeklyLoad();
-    showInfoBar('Editor deleted.');
-}
-
-// ─── Approve / Deny Requests ──────────────────────────────────────────────────
+// ─── Approve / Deny ───────────────────────────────────────────────────────────
 async function refreshShifts() {
-    const resp = await fetch('/copy-schedule/admin/shifts');
-    if (resp.ok) shifts = await resp.json();
+    const [sr, snr] = await Promise.all([
+        fetch('/copy-schedule/admin/shifts').then(r=>r.json()),
+        fetch('/copy-schedule/admin/senior-shifts').then(r=>r.json()),
+    ]);
+    staffShifts  = sr;
+    seniorShifts = snr;
 }
 
 async function approveRequest(uid) {
-    let resp;
-    try {
-        resp = await fetch(`/copy-schedule/admin/request/${uid}/approve`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': CSRF_TOKEN },
-        });
-    } catch (err) {
-        showInfoBar('Network error — re-accept the HTTPS certificate at https://127.0.0.1:5001 and try again.');
-        return;
-    }
-    if (!resp.ok) { showInfoBar('Error approving request.'); return; }
-    shiftRequests = shiftRequests.map(r => r.uid === uid ? {...r, status: 'approved'} : r);
-    await refreshShifts();
-    renderAll();
-    showInfoBar('Request approved.');
+    try { await fetch(`/copy-schedule/admin/request/${uid}/approve`,{method:'POST',headers:{'X-CSRFToken':CSRF_TOKEN}}); }
+    catch(err) { showInfoBar('Network error.'); return; }
+    shiftRequests = shiftRequests.map(r=>r.uid===uid?{...r,status:'approved'}:r);
+    await refreshShifts(); renderAll(); showInfoBar('Request approved.');
 }
 
 async function denyRequest(uid) {
+    try { await fetch(`/copy-schedule/admin/request/${uid}/deny`,{method:'POST',headers:{'X-CSRFToken':CSRF_TOKEN}}); }
+    catch(err) { showInfoBar('Network error.'); return; }
+    shiftRequests = shiftRequests.map(r=>r.uid===uid?{...r,status:'denied'}:r);
+    await refreshShifts(); renderAll(); showInfoBar('Request denied.');
+}
+
+// ─── Editor modal ─────────────────────────────────────────────────────────────
+function openAddEditorModal(category, uid=null) {
+    editingEditorUid = uid;
+    const editor = uid!==null ? editors.find(e=>e.uid===uid) : null;
+    document.getElementById('modal-editor-title').textContent  = editor?'Edit Editor':'Add Editor';
+    document.getElementById('modal-editor-submit').textContent = editor?'Save Changes':'Add Editor';
+    document.getElementById('editor-name').value     = editor?editor.name:'';
+    document.getElementById('editor-email').value    = editor?editor.email:'';
+    document.getElementById('editor-phone').value    = editor?(editor.phone||''):'';
+    document.getElementById('editor-category').value = editor?(editor.category||category):category;
+    document.getElementById('modal-editor').style.display='flex';
+}
+function closeEditorModal() { document.getElementById('modal-editor').style.display='none'; editingEditorUid=null; }
+
+async function submitEditorModal(e) {
+    e.preventDefault();
+    const body=new FormData();
+    body.append('name',    document.getElementById('editor-name').value);
+    body.append('email',   document.getElementById('editor-email').value);
+    body.append('phone',   document.getElementById('editor-phone').value);
+    body.append('category',document.getElementById('editor-category').value);
+    const url = editingEditorUid!==null ? `/copy-schedule/admin/editor/${editingEditorUid}/update` : `/copy-schedule/admin/editor`;
     let resp;
-    try {
-        resp = await fetch(`/copy-schedule/admin/request/${uid}/deny`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': CSRF_TOKEN },
-        });
-    } catch (err) {
-        showInfoBar('Network error — re-accept the HTTPS certificate at https://127.0.0.1:5001 and try again.');
-        return;
-    }
-    if (!resp.ok) { showInfoBar('Error denying request.'); return; }
-    shiftRequests = shiftRequests.map(r => r.uid === uid ? {...r, status: 'denied'} : r);
-    await refreshShifts();
-    renderAll();
-    showInfoBar('Request denied.');
+    try { resp=await fetch(url,{method:'POST',headers:{'X-CSRFToken':CSRF_TOKEN},body}); }
+    catch(err) { showInfoBar('Network error.'); return; }
+    if (!resp.ok) { showInfoBar('Error saving editor.'); return; }
+    const saved=await resp.json();
+    if (editingEditorUid!==null) editors=editors.map(ed=>ed.uid===saved.uid?saved:ed);
+    else editors.push(saved);
+    closeEditorModal(); renderEditorsView(); renderWeeklyLoad();
+    showInfoBar(editingEditorUid!==null?'Editor updated.':'Editor added.');
+}
+
+// ─── Editor detail modal ──────────────────────────────────────────────────────
+function openEditorDetailModal(uid) {
+    detailEditorUid = uid;
+    const e = editors.find(x=>x.uid===uid); if (!e) return;
+    document.getElementById('detail-editor-name').textContent     = EMAIL_TO_NAME[e.email]||e.name;
+    document.getElementById('detail-editor-email').textContent    = e.email;
+    document.getElementById('detail-editor-phone').textContent    = e.phone||'—';
+    document.getElementById('detail-editor-category').textContent = e.category||'—';
+    const isSenior = e.category==='Senior Copy Editor';
+    const shiftSrc = isSenior ? seniorShifts : staffShifts;
+    const upcoming = shiftSrc.filter(s=>s.editor_id===e.email||s.editor_id_2===e.email)
+        .filter(s=>s.date>=toDateStr(new Date())).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,5);
+    document.getElementById('detail-editor-shifts').innerHTML = upcoming.length
+        ? upcoming.map(s=>`<div>${s.date} ${fmtHour(s.start_hour)}</div>`).join('') : 'No upcoming shifts.';
+    document.getElementById('modal-editor-detail').style.display='flex';
+}
+function closeEditorDetailModal() { document.getElementById('modal-editor-detail').style.display='none'; detailEditorUid=null; }
+function openEditEditorFromDetail() { const uid=detailEditorUid; closeEditorDetailModal(); openAddEditorModal(null,uid); }
+async function deleteEditorFromDetail() {
+    const uid=detailEditorUid, e=editors.find(x=>x.uid===uid);
+    if (!await showButtonAlert('Delete Editor',`Remove ${e.name}? This cannot be undone.`,'Delete','Cancel')) return;
+    try { await fetch(`/copy-schedule/admin/editor/${uid}/delete`,{method:'POST',headers:{'X-CSRFToken':CSRF_TOKEN}}); }
+    catch(err) { showInfoBar('Network error.'); return; }
+    editors=editors.filter(x=>x.uid!==uid);
+    closeEditorDetailModal(); renderEditorsView(); renderWeeklyLoad(); showInfoBar('Editor deleted.');
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
