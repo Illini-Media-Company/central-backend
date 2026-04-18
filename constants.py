@@ -319,6 +319,8 @@ SOCIAL_MEDIA_GCAL_ID = (
 )
 ONBOARDING_EMAIL = "onboarding@illinimedia.com"
 
+########## START COPY SHIFT SCHEDULING PLATFORM CONSTANTS ##########
+
 # Google Groups for copy admin dashboard access control
 COPY_ADMIN_ACCESS_GROUPS = [
     "webdev",
@@ -361,3 +363,7 @@ BREAK_WEEK_REQUIREMENTS = {
     "senior_copy_editor": 2,
     "copy_chief": 0,
 }
+
+COPY_SCHEDULE_NOTIFICATIONS_CHANNEL = "C0AUKUX78UQ" if ENV == "prod" else "C0AUAPTJJ0Y"
+
+########## END COPY SHIFT SCHEDULING PLATFORM CONSTANTS ##########

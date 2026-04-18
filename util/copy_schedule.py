@@ -21,7 +21,7 @@ from constants import (
     BREAK_WEEK_SHIFT_DURATION,
     BREAK_WEEK_REQUIREMENTS,
     SCHEDULER_TIMEZONE,
-    ENV,
+    COPY_SCHEDULE_NOTIFICATIONS_CHANNEL,
 )
 from util.slackbots.general import dm_user_by_email, dm_channel_by_id
 
@@ -35,7 +35,6 @@ DAYS_OF_WEEK = [
     "Saturday",
 ]
 WEEKEND_DAY_INDICES = {5, 6}
-COPY_SCHEDULE_NOTIFICATIONS_CHANNEL = "C0AUKUX78UQ" if ENV == "prod" else "C0AUAPTJJ0Y"
 
 
 def _notify_channel(msg: str) -> None:
