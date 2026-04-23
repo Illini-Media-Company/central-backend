@@ -7,27 +7,17 @@
     
     <title>WPGU 107.1 | Song Request</title>
     
+    <link rel="stylesheet" href="/static/globals.css">
     <link rel="stylesheet" href="https://use.typekit.net/tid3tgd.css">
     
     <style>
-        :root {
-            /* WPGU Colors */
-            --wpgu-bg: #000000;           /* True Black Background */
-            --wpgu-surface: #111111;      /* Slightly lifted surface for cards */
-            --wpgu-text-main: #FAFAFA;    /* Off-White Text on dark bg */
-            --wpgu-text-muted: #757575;   /* Gray */
-            --wpgu-primary: #4CAF50;      /* Primary Green */
-            --wpgu-secondary: #C8E6C9;    /* Secondary Light Green */
-            --wpgu-off-black: #212121;    /* Off-Black (used for button text on green) */
-        }
-
         * {
             box-sizing: border-box;
         }
 
         body {
-            background-color: var(--wpgu-bg);
-            color: var(--wpgu-text-main);
+            background-color: var(--black);
+            color: var(--gray-50);
             font-family: "din-2014", sans-serif;
             font-weight: 300;
             font-style: normal;
@@ -62,12 +52,12 @@
         .header-section h2 {
             font-size: 1.5rem;
             margin-bottom: 0.5rem;
-            color: var(--wpgu-primary);
+            color: var(--wpgu-green-500);
             text-transform: uppercase;
         }
 
         .header-section p {
-            color: var(--wpgu-text-muted);
+            color: var(--gray-600);
             font-size: 1.1rem;
             margin: 0;
             font-weight: 300;
@@ -77,8 +67,8 @@
             background-color: var(--wpgu-surface);
             padding: 2.5rem;
             border-radius: 8px;
-            border: 2px solid var(--wpgu-text-muted);
-            box-shadow: 8px 8px 0px var(--wpgu-primary);
+            border: 2px solid var(--gray-600);
+            box-shadow: 8px 8px 0px var(--wpgu-green-500);
             width: 100%;
             max-width: 450px;
         }
@@ -91,31 +81,31 @@
             display: block;
             margin-bottom: 0.5rem;
             font-size: 1rem;
-            color: var(--wpgu-text-main);
+            color: var(--gray-50);
             text-transform: uppercase;
         }
 
         input[type="text"], input[type="email"] {
             width: 100%;
             padding: 0.85rem 1rem;
-            border: 2px solid var(--wpgu-text-muted);
+            border: 2px solid var(--gray-600);
             border-radius: 4px;
             font-family: "din-2014", sans-serif;
             font-weight: 300;
             font-size: 1.05rem;
-            background-color: var(--wpgu-bg);
-            color: var(--wpgu-text-main);
+            background-color: var(--black);
+            color: var(--gray-50);
             transition: all 0.2s ease-in-out;
         }
 
         input[type="text"]:focus, input[type="email"]:focus {
             outline: none;
-            border-color: var(--wpgu-primary);
+            border-color: var(--wpgu-green-500);
             box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
         }
 
         input::placeholder {
-            color: var(--wpgu-text-muted);
+            color: var(--gray-600);
             font-style: italic;
         }
 
@@ -128,7 +118,7 @@
             padding: 1rem;
             background-color: rgba(200, 230, 201, 0.08);
             border-radius: 4px;
-            border: 1px solid var(--wpgu-primary);
+            border: 1px solid var(--wpgu-green-500);
         }
 
         .checkbox-group label {
@@ -137,23 +127,23 @@
             cursor: pointer;
             text-transform: none;
             font-weight: 700;
-            color: var(--wpgu-text-main);
+            color: var(--gray-50);
         }
 
         input[type="checkbox"] {
             width: 1.2rem;
             height: 1.2rem;
             cursor: pointer;
-            accent-color: var(--wpgu-primary);
+            accent-color: var(--wpgu-green-500);
             flex-shrink: 0;
         }
 
         button {
             width: 100%;
             padding: 1rem;
-            background-color: var(--wpgu-primary);
-            color: var(--wpgu-off-black);
-            border: 2px solid var(--wpgu-primary);
+            background-color: var(--wpgu-green-500);
+            color: var(--gray-900);
+            border: 2px solid var(--wpgu-green-500);
             border-radius: 4px;
             font-family: "din-2014", sans-serif;
             font-weight: 700;
@@ -165,9 +155,9 @@
         }
 
         button:hover {
-            background-color: var(--wpgu-text-main);
-            border-color: var(--wpgu-text-main);
-            color: var(--wpgu-off-black);
+            background-color: var(--gray-50);
+            border-color: var(--gray-50);
+            color: var(--gray-900);
         }
 
         button:active {
@@ -175,9 +165,9 @@
         }
 
         button:disabled {
-            background-color: var(--wpgu-text-muted);
-            border-color: var(--wpgu-text-muted);
-            color: var(--wpgu-bg);
+            background-color: var(--gray-600);
+            border-color: var(--gray-600);
+            color: var(--black);
             cursor: not-allowed;
             transform: none;
         }
@@ -191,11 +181,11 @@
         .success-icon {
             font-size: 3.5rem;
             margin-bottom: 1rem;
-            color: var(--wpgu-primary);
+            color: var(--wpgu-green-500);
         }
 
         .success-text {
-            color: var(--wpgu-text-main);
+            color: var(--gray-50);
             font-weight: 700;
             margin-bottom: 2rem;
             font-size: 1.4rem;
@@ -203,19 +193,19 @@
 
         #submitAnotherBtn {
             background-color: transparent;
-            color: var(--wpgu-text-main);
-            border: 2px solid var(--wpgu-text-main);
+            color: var(--gray-50);
+            border: 2px solid var(--gray-50);
         }
 
         #submitAnotherBtn:hover {
-            background-color: var(--wpgu-primary);
-            border-color: var(--wpgu-primary);
-            color: var(--wpgu-off-black);
+            background-color: var(--wpgu-green-500);
+            border-color: var(--wpgu-green-500);
+            color: var(--gray-900);
         }
 
         .optional-label {
             text-transform: none;
-            color: var(--wpgu-text-muted);
+            color: var(--gray-600);
             font-weight: 300;
         }
 
@@ -231,7 +221,7 @@
         
         <div class="header-section">
             <svg class="wpgu-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 181.64" aria-label="WPGU 107.1">
-              <defs><style>.cls-1{fill:#4caf50;}</style></defs>
+              <defs><style>.cls-1{fill:var(--wpgu-green-500);}</style></defs>
               <g>
                 <g>
                   <rect class="cls-1" x="0" y="0" width="30.27" height="151.37" rx="15.14" ry="15.14"/>
@@ -277,8 +267,8 @@
             </div>
 
             <div class="form-group" id="email_group">
-                <label for="email">Email <span class="optional-label">(Optional)</span></label>
-                <input type="email" id="email" name="email" placeholder="Get notified when it's added">
+                <label for="email">Email <span class="optional-label">(Optional, used for confirmation and status updates)</span></label>
+                <input type="email" id="email" name="email" placeholder="Get a submission confirmation and status updates">
             </div>
 
             <button type="submit" id="submitBtn">Submit Request</button>
@@ -286,7 +276,7 @@
 
         <div id="success-message">
             <div class="success-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="56" height="56" fill="#4CAF50" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="56" height="56" fill="var(--wpgu-green-500)" aria-hidden="true">
                     <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/>
                 </svg>
             </div>

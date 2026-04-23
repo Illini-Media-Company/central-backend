@@ -10,6 +10,7 @@ from constants import SLACK_BOT_TOKEN, WPGU_SONG_REQUESTS_ID
 from util.slackbots._slackbot import app
 from util.slackbots.general import dm_channel_by_id, dm_user_by_email
 from db.song_request import update_request_status, get_song_request_by_id
+from util.song_request import send_song_request_update_email
 
 
 def build_song_request_blocks(
@@ -93,7 +94,11 @@ def build_song_request_blocks(
                     },
                     {
                         "type": "button",
-                        "text": {"type": "plain_text", "text": "❌ Deny", "emoji": True},
+                        "text": {
+                            "type": "plain_text",
+                            "text": "❌ Deny",
+                            "emoji": True,
+                        },
                         "action_id": "song_request_deny",
                         "value": json.dumps({"request_id": str(request_id)}),
                         "style": "danger",
@@ -301,8 +306,15 @@ def _do_approve(body, logger):
             channel_id=channel_id,
         )
 
-        # DM submitter
-        if updated.is_imc_employee:
+        # Notify submitter
+        if not updated.is_imc_employee and updated.submitter_email:
+            send_song_request_update_email(
+                to_email=updated.submitter_email,
+                song_name=updated.song_name,
+                artist_name=updated.artist_name,
+                status="accepted",
+            )
+        elif updated.is_imc_employee:
             msg = f'✅ Your song request "*{updated.song_name}*" by "*{updated.artist_name}*" has been approved!'
             if updated.submitter_slack_id:
                 dm_channel_by_id(channel_id=updated.submitter_slack_id, text=msg)
@@ -402,9 +414,17 @@ def _do_deny(body, logger):
             rejection_reason=rejection_reason,
         )
 
-        # DM submitter
+        # Notify submitter
         reason_text = f"\n*Reason:* {rejection_reason}" if rejection_reason else ""
-        if updated.is_imc_employee:
+        if not updated.is_imc_employee and updated.submitter_email:
+            send_song_request_update_email(
+                to_email=updated.submitter_email,
+                song_name=updated.song_name,
+                artist_name=updated.artist_name,
+                status="declined",
+                rejection_reason=rejection_reason,
+            )
+        elif updated.is_imc_employee:
             msg = f'❌ Your song request "*{updated.song_name}*" by "*{updated.artist_name}*" was not approved.{reason_text}'
             if updated.submitter_slack_id:
                 dm_channel_by_id(channel_id=updated.submitter_slack_id, text=msg)

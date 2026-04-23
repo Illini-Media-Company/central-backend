@@ -10,7 +10,10 @@ from db.song_request import (
     delete_all_song_requests,
     delete_song_request,
 )
-from util.song_request import send_song_request_update_email
+from util.song_request import (
+    send_song_request_submission_email,
+    send_song_request_update_email,
+)
 from db.song_request import update_slack_ts
 from util.slackbots.general import (
     dm_channel_by_id,
@@ -33,18 +36,21 @@ def form():
     is_logged_in = current_user.is_authenticated
 
     if request.method == "POST":
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
 
-        song_name = data.get("song_name")
-        artist_name = data.get("artist_name")
-        is_employee = data.get("is_employee", False)
+        song_name = (data.get("song_name") or "").strip()
+        artist_name = (data.get("artist_name") or "").strip()
+        is_imc_employee = bool(data.get("is_employee")) and is_logged_in
 
         submitter_name = None
-        submitter_email = data.get("email")
+        submitter_email = (data.get("email") or "").strip() or None
         submitter_slack_id = None
 
-        # If they claim to be an employee and are authenticated, use session data
-        if is_employee and is_logged_in:
+        if not song_name or not artist_name:
+            return jsonify({"error": "Song title and artist are required."}), 400
+
+        # Only authenticated users can submit as IMC employees.
+        if is_imc_employee:
             submitter_name = current_user.name
             submitter_email = current_user.email
             submitter_slack_id = getattr(current_user, "slack_id", None)
@@ -55,7 +61,7 @@ def form():
             artist_name=artist_name,
             submitter_name=submitter_name,
             submitter_email=submitter_email,
-            is_imc_employee=is_employee,
+            is_imc_employee=is_imc_employee,
             submitter_slack_id=submitter_slack_id,
         )
 
@@ -69,8 +75,14 @@ def form():
         if slack_res.get("ok") and new_request.key:
             update_slack_ts(new_request.key.id(), slack_res["ts"])
 
-        # TODO: Trigger Slack confirmation DM to employee here
-        if is_employee and is_logged_in:
+        if not is_imc_employee and submitter_email:
+            send_song_request_submission_email(
+                to_email=submitter_email,
+                song_name=song_name,
+                artist_name=artist_name,
+            )
+
+        if is_imc_employee:
             if submitter_slack_id:
                 dm_channel_by_id(
                     channel_id=submitter_slack_id,
