@@ -115,7 +115,7 @@ def form():
 @song_request_routes.route("/dashboard", methods=["GET"])
 @song_request_routes.route("/dashboard/<filter_type>", methods=["GET"])
 @login_required
-@restrict_to(["wpgu-music", "imc-staff-webdev"])
+@restrict_to(["wpgu-staff-operations", "wpgu-directors", "imc-staff-webdev"])
 def dashboard(filter_type="all"):
     """
     Dashboard to view and manage song requests. Matches IMC styling.
@@ -148,6 +148,7 @@ def dashboard(filter_type="all"):
 
 @song_request_routes.route("/get-requests", methods=["GET"])
 @login_required
+@restrict_to(["wpgu-staff-operations", "imc-staff-webdev"])
 def get_requests():
     """Returns all song requests in JSON format."""
     requests = get_all_song_requests()
@@ -166,6 +167,7 @@ def get_requests():
 
 @song_request_routes.route("/api/<uid>/claim", methods=["POST"])
 @login_required
+@restrict_to(["wpgu-staff-operations", "imc-staff-webdev"])
 def api_claim(uid):
     """Allows a user to claim a song request for review."""
     reviewer_name = current_user.name
@@ -196,7 +198,7 @@ def api_claim(uid):
 
 @song_request_routes.route("/clear-all", methods=["POST", "DELETE"])
 @login_required
-@restrict_to(["imc-staff-webdev"])
+@restrict_to(["radiooperations", "imc-staff-webdev"])
 def api_clear_all():
     """Wipes all song requests from the database for storage cleanup."""
     deleted_count = delete_all_song_requests()
@@ -209,6 +211,7 @@ def api_clear_all():
 
 @song_request_routes.route("/api/<uid>/approve", methods=["POST"])
 @login_required
+@restrict_to(["wpgu-staff-operations", "imc-staff-webdev"])
 def api_approve(uid):
     """Marks a song request as accepted."""
     reviewer_name = current_user.name
@@ -249,7 +252,7 @@ def api_approve(uid):
 
 @song_request_routes.route("/api/<uid>/deny", methods=["POST"])
 @login_required
-@restrict_to(["wpgu-music", "imc-staff-webdev"])
+@restrict_to(["wpgu-staff-operations", "imc-staff-webdev"])
 def api_deny(uid):
     """Marks a song request as declined and saves the reasoning."""
     data = request.get_json() or {}
@@ -297,7 +300,7 @@ def api_deny(uid):
 
 @song_request_routes.route("/api/<uid>/remove", methods=["POST"])
 @login_required
-@restrict_to(["wpgu-music", "imc-staff-webdev"])
+@restrict_to(["wpgu-staff-operations", "imc-staff-webdev"])
 def api_remove_single(uid):
     """Deletes a single song request and removes its Slack channel message."""
     song_request = get_song_request_by_id(uid)
