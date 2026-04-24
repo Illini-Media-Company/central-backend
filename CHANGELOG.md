@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.11.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.11.0...v2.11.1) (2026-04-24)
+
+
+### Bug Fixes
+
+* **Song-Req:** Update access for staff and directors ([023a146](https://github.com/Illini-Media-Company/central-backend/commit/023a1468ec044028b441ebc86cba1a1884cace98))
+
 ## [2.11.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.10.1...v2.11.0) (2026-04-24)
 
 
