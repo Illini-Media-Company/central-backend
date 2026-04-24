@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    
+    <title>WPGU 107.1 | Song Request</title>
+    
+    <link rel="stylesheet" href="/static/globals.css">
+    <link rel="stylesheet" href="https://use.typekit.net/tid3tgd.css">
+    
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--black);
+            color: var(--gray-50);
+            font-family: "din-2014", sans-serif;
+            font-weight: 300;
+            font-style: normal;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 2rem 1rem;
+        }
+
+        h1, h2, h3, h4, h5, h6, label, .bold-text {
+            font-family: "din-2014", sans-serif;
+            font-weight: 700;
+            font-style: normal;
+            margin: 0;
+        }
+
+        .header-section {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header-section .wpgu-logo {
+            width: 100%;
+            max-width: 260px;
+            height: auto;
+            display: block;
+            margin: 0 auto 1rem auto;
+        }
+
+        .header-section h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--wpgu-green-500);
+            text-transform: uppercase;
+        }
+
+        .header-section p {
+            color: var(--gray-600);
+            font-size: 1.1rem;
+            margin: 0;
+            font-weight: 300;
+        }
+
+        .form-container {
+            background-color: var(--wpgu-surface);
+            padding: 2.5rem;
+            border-radius: 8px;
+            border: 2px solid var(--gray-600);
+            box-shadow: 8px 8px 0px var(--wpgu-green-500);
+            width: 100%;
+            max-width: 450px;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+            color: var(--gray-50);
+            text-transform: uppercase;
+        }
+
+        input[type="text"], input[type="email"] {
+            width: 100%;
+            padding: 0.85rem 1rem;
+            border: 2px solid var(--gray-600);
+            border-radius: 4px;
+            font-family: "din-2014", sans-serif;
+            font-weight: 300;
+            font-size: 1.05rem;
+            background-color: var(--black);
+            color: var(--gray-50);
+            transition: all 0.2s ease-in-out;
+        }
+
+        input[type="text"]:focus, input[type="email"]:focus {
+            outline: none;
+            border-color: var(--wpgu-green-500);
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+        }
+
+        input::placeholder {
+            color: var(--gray-600);
+            font-style: italic;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 1rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background-color: rgba(200, 230, 201, 0.08);
+            border-radius: 4px;
+            border: 1px solid var(--wpgu-green-500);
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            font-size: 0.95rem;
+            cursor: pointer;
+            text-transform: none;
+            font-weight: 700;
+            color: var(--gray-50);
+        }
+
+        input[type="checkbox"] {
+            width: 1.2rem;
+            height: 1.2rem;
+            cursor: pointer;
+            accent-color: var(--wpgu-green-500);
+            flex-shrink: 0;
+        }
+
+        button {
+            width: 100%;
+            padding: 1rem;
+            background-color: var(--wpgu-green-500);
+            color: var(--gray-900);
+            border: 2px solid var(--wpgu-green-500);
+            border-radius: 4px;
+            font-family: "din-2014", sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--gray-50);
+            border-color: var(--gray-50);
+            color: var(--gray-900);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:disabled {
+            background-color: var(--gray-600);
+            border-color: var(--gray-600);
+            color: var(--black);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #success-message {
+            display: none;
+            text-align: center;
+            animation: fadeIn 0.4s ease-in;
+        }
+
+        .success-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            color: var(--wpgu-green-500);
+        }
+
+        .success-text {
+            color: var(--gray-50);
+            font-weight: 700;
+            margin-bottom: 2rem;
+            font-size: 1.4rem;
+        }
+
+        #submitAnotherBtn {
+            background-color: transparent;
+            color: var(--gray-50);
+            border: 2px solid var(--gray-50);
+        }
+
+        #submitAnotherBtn:hover {
+            background-color: var(--wpgu-green-500);
+            border-color: var(--wpgu-green-500);
+            color: var(--gray-900);
+        }
+
+        .optional-label {
+            text-transform: none;
+            color: var(--gray-600);
+            font-weight: 300;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="form-container">
+        
+        <div class="header-section">
+            <svg class="wpgu-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 181.64" aria-label="WPGU 107.1">
+              <defs><style>.cls-1{fill:var(--wpgu-green-500);}</style></defs>
+              <g>
+                <g>
+                  <rect class="cls-1" x="0" y="0" width="30.27" height="151.37" rx="15.14" ry="15.14"/>
+                  <rect class="cls-1" x="37.84" y="90.82" width="30.27" height="90.82" rx="15.14" ry="15.14"/>
+                  <rect class="cls-1" x="75.69" y="55.8" width="30.27" height="60.55" rx="15.14" ry="15.14"/>
+                  <rect class="cls-1" x="113.53" y="90.82" width="30.27" height="90.82" rx="15.14" ry="15.14"/>
+                  <rect class="cls-1" x="151.37" y="0" width="30.27" height="151.37" rx="15.14" ry="15.14"/>
+                </g>
+                <g>
+                  <path class="cls-1" d="M247.57,116.99v62.34h-35.92V2.31h63.37c40.79,0,66.19,18.73,66.19,56.7s-25.14,57.98-66.19,57.98h-27.45ZM269.89,86.72c24.89,0,35.4-8.72,35.4-27.71,0-16.93-10.52-26.17-35.4-26.17h-22.32v53.88h22.32Z"/>
+                  <path class="cls-1" d="M490.53,87.23v16.16c0,54.13-25.14,78.25-65.17,78.25s-67.73-24.12-67.73-78.25v-22.58C357.63,23.6,385.6,0,425.36,0,462.56,0,484.88,21.04,490.27,57.21h-34.38c-3.08-16.16-12.57-26.94-30.53-26.94-20.78,0-31.81,14.11-31.81,47.98v25.14c0,33.87,11.03,47.98,31.81,47.98s28.48-12.57,30.53-33.87h-29.76v-30.27h64.4Z"/>
+                  <path class="cls-1" d="M656.01,2.31v105.19c0,52.34-28.73,74.14-67.99,74.14s-67.99-21.81-67.99-73.89V2.31h35.92v105.45c0,30.27,10.01,43.61,32.07,43.61s32.07-13.34,32.07-43.61V2.31h35.92Z"/>
+                </g>
+              </g>
+              <g>
+                <path class="cls-1" d="M682.2,8.53v-3.15s33.67,0,33.67,0L712.02,0h3.53s4.13,5.38,4.13,5.38v3.15s-37.47,0-37.47,0Z"/>
+                <path class="cls-1" d="M692.68,36.87c-6.9,0-10.81-4.83-10.81-10.48,0-5.65,3.91-10.48,10.86-10.48h16.4c6.95,0,10.86,4.83,10.86,10.48,0,5.65-3.91,10.48-10.81,10.48h-16.51ZM717.07,26.39c0-4.18-2.99-7.39-7.87-7.39h-16.51c-4.89,0-7.87,3.2-7.87,7.39s2.99,7.33,7.87,7.33h16.51c4.89,0,7.87-3.2,7.87-7.33Z"/>
+                <path class="cls-1" d="M709.68,43.01h9.99s0,20.53,0,20.53h-2.93s-34.54-12.38-34.54-12.38v-3.37s34.54,12.44,34.54,12.44v-14.28s-7.06,0-7.06,0v-2.93Z"/>
+                <path class="cls-1" d="M682.2,72.87v-4.4s4.4,0,4.4,0v4.4s-4.4,0-4.4,0Z"/>
+                <path class="cls-1" d="M682.2,92.21v-3.15s33.67,0,33.67,0l-3.86-5.38h3.53s4.13,5.38,4.13,5.38v3.15s-37.47,0-37.47,0Z"/>
+                <path class="cls-1" d="M719.67,143.52h-2.93s0-18.9,0-18.9h-14.55s0,17.27,0,17.27h-2.93s0-17.27,0-17.27h-17.05s0-3.15,0-3.15h37.47s0,22.05,0,22.05Z"/>
+                <path class="cls-1" d="M694.75,166.11l24.93,12.44v3.1s-37.47,0-37.47,0v-3.15s30.57,0,30.57,0l-22.21-11.02v-2.82s22.16-10.92,22.16-10.92h-30.52s0-3.15,0-3.15h37.47s0,3.04,0,3.04l-24.93,12.49Z"/>
+              </g>
+            </svg>
+            <h2>Song Request</h2>
+            <p>Submit a song for the library</p>
+        </div>
+
+        <form id="songRequestForm">
+            <div class="checkbox-group">
+                <input type="checkbox" id="is_employee" name="is_employee" {{ 'checked' if current_user.is_authenticated else '' }}>
+                <label for="is_employee">I am an IMC Employee</label>
+            </div>
+
+            <div class="form-group">
+                <label for="song_name">Song Title *</label>
+                <input type="text" id="song_name" name="song_name" placeholder="e.g. Mr. Brightside" required>
+            </div>
+
+            <div class="form-group">
+                <label for="artist_name">Artist *</label>
+                <input type="text" id="artist_name" name="artist_name" placeholder="e.g. The Killers" required>
+            </div>
+
+            <div class="form-group" id="email_group">
+                <label for="email">Email <span class="optional-label">(Optional, used for confirmation and status updates)</span></label>
+                <input type="email" id="email" name="email" placeholder="Get a submission confirmation and status updates">
+            </div>
+
+            <button type="submit" id="submitBtn">Submit Request</button>
+        </form>
+
+        <div id="success-message">
+            <div class="success-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="56" height="56" fill="var(--wpgu-green-500)" aria-hidden="true">
+                    <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/>
+                </svg>
+            </div>
+            <div class="success-text">Request submitted successfully!</div>
+            <button type="button" id="submitAnotherBtn">Submit Another Song</button>
+        </div>
+
+    </div>
+
+    <script>
+        const isAuthenticated = {{ 'true' if current_user.is_authenticated else 'false' }};
+
+        const employeeCheckbox = document.getElementById('is_employee');
+        const emailGroup = document.getElementById('email_group');
+        const form = document.getElementById('songRequestForm');
+        const successMessage = document.getElementById('success-message');
+        const submitBtn = document.getElementById('submitBtn');
+        const submitAnotherBtn = document.getElementById('submitAnotherBtn');
+
+        if (isAuthenticated) {
+            emailGroup.style.display = 'none';
+        }
+
+        employeeCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                if (!isAuthenticated) {
+                    window.location.href = `/login?state=${encodeURIComponent(window.location.pathname)}`;
+                } else {
+                    emailGroup.style.display = 'none';
+                }
+            } else {
+                emailGroup.style.display = 'block';
+            }
+        });
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+
+            const payload = {
+                song_name: document.getElementById('song_name').value,
+                artist_name: document.getElementById('artist_name').value,
+                is_employee: employeeCheckbox.checked,
+                email: document.getElementById('email').value
+            };
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+            try {
+                const response = await fetch('/wpgu-song-requests/form', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    form.style.display = 'none';
+                    successMessage.style.display = 'block';
+                } else {
+                    alert('There was an error submitting your request. Please try again.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit Request';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('A network error occurred.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Request';
+            }
+        });
+
+        submitAnotherBtn.addEventListener('click', function() {
+            document.getElementById('song_name').value = '';
+            document.getElementById('artist_name').value = '';
+            document.getElementById('email').value = '';
+            employeeCheckbox.checked = isAuthenticated ? true : employeeCheckbox.checked;
+            emailGroup.style.display = employeeCheckbox.checked ? 'none' : 'block';
+            successMessage.style.display = 'none';
+            form.style.display = 'block';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Request';
+            document.getElementById('song_name').focus();
+        });
+    </script>
+</body>
+</html>

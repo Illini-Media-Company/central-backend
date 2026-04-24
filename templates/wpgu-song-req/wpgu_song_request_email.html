@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: Arial, Helvetica, sans-serif; color: #111111;">
+    <div style="display: none; max-height: 0; overflow: hidden; opacity: 0; mso-hide: all;">
+        {{ preheader }}
+    </div>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; margin: 0; padding: 24px 0;">
+        <tr>
+            <td align="center">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 640px; background-color: #111111; border-radius: 16px; overflow: hidden;">
+                    <tr>
+                        <td style="padding: 28px 32px; background-color: #000000; text-align: center;">
+                            <div style="font-size: 12px; line-height: 16px; letter-spacing: 1.5px; text-transform: uppercase; color: #81C784; margin-bottom: 8px;">
+                                WPGU 107.1 FM
+                            </div>
+                            <div style="font-size: 28px; line-height: 32px; font-weight: 700; color: #4CAF50;">
+                                Song Request
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 32px; color: #FAFAFA;">
+                            <div style="display: inline-block; padding: 6px 12px; margin-bottom: 20px; border-radius: 999px; background-color: #1b1b1b; border: 1px solid {{ status_accent }}; color: {{ status_tint }}; font-size: 12px; line-height: 16px; text-transform: uppercase; letter-spacing: 0.8px;">
+                                {{ status_label }}
+                            </div>
+
+                            <h1 style="margin: 0 0 20px 0; font-size: 28px; line-height: 34px; font-weight: 700; color: #FAFAFA;">
+                                {{ headline }}
+                            </h1>
+
+                            {% for paragraph in body_paragraphs %}
+                            <p style="margin: 0 0 16px 0; font-size: 16px; line-height: 24px; color: #E5E7EB;">
+                                {{ paragraph }}
+                            </p>
+                            {% endfor %}
+
+                            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 24px 0; border: 1px solid #2A2A2A; border-radius: 12px; background-color: #191919;">
+                                <tr>
+                                    <td style="padding: 16px; border-bottom: 1px solid #2A2A2A; font-size: 12px; line-height: 16px; text-transform: uppercase; letter-spacing: 0.8px; color: #9CA3AF; width: 120px;">
+                                        Song
+                                    </td>
+                                    <td style="padding: 16px; border-bottom: 1px solid #2A2A2A; font-size: 16px; line-height: 22px; font-weight: 700; color: #FAFAFA;">
+                                        {{ song_name }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 16px; font-size: 12px; line-height: 16px; text-transform: uppercase; letter-spacing: 0.8px; color: #9CA3AF; width: 120px;">
+                                        Artist
+                                    </td>
+                                    <td style="padding: 16px; font-size: 16px; line-height: 22px; color: #FAFAFA;">
+                                        {{ artist_name }}
+                                    </td>
+                                </tr>
+                            </table>
+
+                            {% if rejection_reason %}
+                            <div style="margin: 24px 0; padding: 16px; border-radius: 12px; background-color: #1A1A1A; border-left: 4px solid {{ status_accent }};">
+                                <div style="margin-bottom: 8px; font-size: 12px; line-height: 16px; text-transform: uppercase; letter-spacing: 0.8px; color: {{ status_tint }};">
+                                    Reason Provided
+                                </div>
+                                <div style="font-size: 15px; line-height: 22px; color: #E5E7EB;">
+                                    {{ rejection_reason }}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <p style="margin: 24px 0 0 0; font-size: 16px; line-height: 24px; color: #E5E7EB;">
+                                The WPGU Music Team
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 18px 32px; background-color: #000000; text-align: center; font-size: 12px; line-height: 18px; color: #9CA3AF;">
+                            WPGU 107.1 FM
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
