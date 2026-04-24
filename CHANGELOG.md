@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.11.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.10.1...v2.11.0) (2026-04-24)
+
+
+### Features
+
+* Add WPGU song request form and dashboard ([#84](https://github.com/Illini-Media-Company/central-backend/issues/84)) ([cabc442](https://github.com/Illini-Media-Company/central-backend/commit/cabc442bd57f096c5f88f7195891ac77cac67063))
+
 ## [2.10.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.10.0...v2.10.1) (2026-04-16)
 
 
