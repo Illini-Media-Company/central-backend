@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.11.2](https://github.com/Illini-Media-Company/central-backend/compare/v2.11.1...v2.11.2) (2026-04-24)
+
+
+### Bug Fixes
+
+* **Scout:** Prefer more concise responses from knowledge base ([a551efd](https://github.com/Illini-Media-Company/central-backend/commit/a551efd3e9eede5f2854584631cfb929204707c6))
+
 ## [2.11.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.11.0...v2.11.1) (2026-04-24)
 
 
