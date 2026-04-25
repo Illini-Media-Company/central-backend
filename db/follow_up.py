@@ -52,16 +52,40 @@ def get_all_active_items():
 
 
 def get_item_by_id(uid):
-    pass
+    logger.info(f"Fetching item with UID: {uid}")
+    item = FollowUpItem.get_by_id(uid)
+    if item is None:
+        return None
+    return item.to_dict()
 
 
 def update_item(uid, **fields):
-    pass
+    logger.info(f"Updating item with UID: {uid}")
+    item = FollowUpItem.get_by_id(uid)
+    if item is None:
+        return None
+    for key, value in fields.items():
+        if hasattr(item, key):
+            setattr(item, key, value)
+    item.updated_at = datetime.now(ZoneInfo("America/Chicago")).replace(tzinfo=None)
+    item.put()
+    return item.to_dict()
 
 
 def resolve_item(uid):
-    pass
+    logger.info(f"Resolving item with UID: {uid}")
+    item = FollowUpItem.get_by_id(uid)
+    if item is None:
+        return None
+    item.status = "Resolved"
+    item.updated_at = datetime.now(ZoneInfo("America/Chicago")).replace(tzinfo=None)
+    item.put()
+    return item.to_dict()
 
 
 def get_resolved_items():
-    pass
+    logger.info("Fetching all resolved followup items...")
+    query = FollowUpItem.query(FollowUpItem.status == "Resolved")
+    items = [item.to_dict() for item in query.fetch()]
+    logger.info(f"Found {len(items)} resolved items.")
+    return items

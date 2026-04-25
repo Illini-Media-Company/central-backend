@@ -52,25 +52,46 @@ def list_active():
     return jsonify(items), 200
 
 
-@follow_up_routes.route("/<uid>", methods=["GET"])
+@follow_up_routes.route("/<int:uid>", methods=["GET"])
 @login_required
 def get_item(uid):
-    pass
+    with client.context():
+        item = get_item_by_id(uid)
+    if item is None:
+        return "Item not found.", 404
+    return jsonify(item), 200
 
 
-@follow_up_routes.route("/<uid>", methods=["POST"])
+@follow_up_routes.route("/<int:uid>", methods=["POST"])
 @login_required
 def update(uid):
-    pass
+    fields = {
+        key: request.form[key]
+        for key in ["title", "notes", "status", "priority", "category", "owner", "email_link"]
+        if key in request.form
+    }
+    if not fields:
+        return "No fields provided.", 400
+    with client.context():
+        item = update_item(uid, **fields)
+    if item is None:
+        return "Item not found.", 404
+    return jsonify(item), 200
 
 
-@follow_up_routes.route("/<uid>/resolve", methods=["POST"])
+@follow_up_routes.route("/<int:uid>/resolve", methods=["POST"])
 @login_required
 def resolve(uid):
-    pass
+    with client.context():
+        item = resolve_item(uid)
+    if item is None:
+        return "Item not found.", 404
+    return jsonify(item), 200
 
 
 @follow_up_routes.route("/resolved", methods=["GET"])
 @login_required
 def list_resolved():
-    pass
+    with client.context():
+        items = get_resolved_items()
+    return jsonify(items), 200
