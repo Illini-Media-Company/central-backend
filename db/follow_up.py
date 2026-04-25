@@ -25,11 +25,30 @@ class FollowUpItem(ndb.Model):
 
 
 def create_item(title, notes, status, priority, category, owner, email_link=None):
-    pass
+    logger.info(f"Creating followup item: {title}")
+    now = datetime.now(ZoneInfo("America/Chicago")).replace(tzinfo=None)
+    item = FollowUpItem(
+        title=title,
+        notes=notes,
+        status=status,
+        priority=priority,
+        category=category,
+        owner=owner,
+        email_link=email_link,
+        created_at=now,
+        updated_at=now,
+    )
+    item.put()
+    logger.info(f"Created followup item with UID: {item.uid}")
+    return item.to_dict()
 
 
 def get_all_active_items():
-    pass
+    logger.info("Fetching all active followup items...")
+    query = FollowUpItem.query(FollowUpItem.status != "Resolved")
+    items = [item.to_dict() for item in query.fetch()]
+    logger.info(f"Found {len(items)} active items.")
+    return items
 
 
 def get_item_by_id(uid):

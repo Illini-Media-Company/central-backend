@@ -20,13 +20,36 @@ follow_up_routes = Blueprint("follow_up_routes", __name__, url_prefix="/follow-u
 @follow_up_routes.route("/", methods=["POST"])
 @login_required
 def create():
-    pass
+    title = request.form.get("title")
+    notes = request.form.get("notes")
+    status = request.form.get("status", "New")
+    priority = request.form.get("priority", "Normal")
+    category = request.form.get("category", "General")
+    owner = request.form.get("owner", "Unassigned")
+    email_link = request.form.get("email_link")
+
+    if not title or not notes:
+        return "Title and notes are required.", 400
+
+    with client.context():
+        item = create_item(
+            title=title,
+            notes=notes,
+            status=status,
+            priority=priority,
+            category=category,
+            owner=owner,
+            email_link=email_link,
+        )
+    return jsonify(item), 201
 
 
 @follow_up_routes.route("/", methods=["GET"])
 @login_required
 def list_active():
-    pass
+    with client.context():
+        items = get_all_active_items()
+    return jsonify(items), 200
 
 
 @follow_up_routes.route("/<uid>", methods=["GET"])
