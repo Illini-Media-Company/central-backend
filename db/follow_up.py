@@ -18,12 +18,13 @@ class FollowUpItem(ndb.Model):
     priority = ndb.StringProperty()   
     category = ndb.StringProperty()
     owner = ndb.StringProperty()
-    filed = ndb.BooleanProperty(default=False)
+    # link has no purpose for now since no google API integration yet
+    email_link = ndb.StringProperty()  
     created_at = ndb.DateTimeProperty()
     updated_at = ndb.DateTimeProperty()
 
 
-def create_item(title, notes, status, priority, category, owner):
+def create_item(title, notes, status, priority, category, owner, email_link=None):
     pass
 
 
