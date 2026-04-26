@@ -159,6 +159,7 @@ with InitTimer("Views"):
     from views.map_points import map_points_routes
     from views.overlooked import overlooked_routes
     from views.food_truck import food_truck_routes
+    from views.followup_tracker import followup_tracker_routes
     from views.employee_agreement import employee_agreement_routes
     from views.rotate_tv import rotate_tv_routes
     from views.photo_request import photo_request_routes
@@ -200,6 +201,7 @@ app.register_blueprint(copy_schedule_routes)
 app.register_blueprint(map_points_routes)
 app.register_blueprint(overlooked_routes)
 app.register_blueprint(food_truck_routes)
+app.register_blueprint(followup_tracker_routes)
 app.register_blueprint(employee_agreement_routes)
 app.register_blueprint(rotate_tv_routes)
 app.register_blueprint(photo_request_routes)
