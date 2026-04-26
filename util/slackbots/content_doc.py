@@ -1,15 +1,19 @@
 import datetime
 import logging 
-from util.slackbots._slackbot import app
-from constants import SLACK_BOT_TOKEN
-from util.slackbots.general import dm_user_by_email, dm_channel_by_id
 
+from util.slackbots.general import ( 
+    dm_user_by_email,
+    dm_channel_by_id
+)
+
+# Initialize logger for this module
 logger = logging.getLogger(__name__)
 
-TEMP_ID = "C12345678"  # Placeholder channel ID for notifications
+COPY_CHIEF_CHANNEL_ID = "C1234567890" 
 
 def send_writer_assignment_notification(email: str, story_title: str) -> dict:
     """Notifies a writer they have been assigned a new story via DM."""
+    logger.info("[Slackbot] Triggering writer assignment notification for '%s' to %s.", story_title, email)
     
     message_text = (
         f"📰 *New Assignment!*\n"
@@ -17,12 +21,12 @@ def send_writer_assignment_notification(email: str, story_title: str) -> dict:
         f"Please check the Content Doc to update your status and add any graphic requests."
     )
     
-    # dm_user_by_email automatically handles the email-to-ID lookup and error logging
     return dm_user_by_email(email=email, text=message_text)
-    
 
-def send_copy_chief_notification(story_title: str, snow_link: str) ->dict:
+
+def send_copy_chief_notification(story_title: str, snow_link: str) -> dict:
     """Pings the copy chief channel when a story hits 2nd edited."""
+    logger.info("[Slackbot] Triggering copy chief 'Ready for Slotting' notification for '%s'.", story_title)
     
     message_text = (
         f"✅ *Story Ready for Slotting*\n"
@@ -30,12 +34,12 @@ def send_copy_chief_notification(story_title: str, snow_link: str) ->dict:
         f"Snow Link: {snow_link}"
     )
     
-    # dm_channel_by_id sends directly to the specified channel
-    return dm_channel_by_id(channel_id=TEMP_ID, text=message_text)
-    
-    
+    return dm_channel_by_id(channel_id=COPY_CHIEF_CHANNEL_ID, text=message_text)
+
+
 def send_visual_reminder_notification(email: str, story_title: str, visual_type: str, due_date: datetime.date) -> dict:
     """Reminds photo/graphics editors via DM for missing assets."""
+    logger.info("[Slackbot] Triggering %s reminder for '%s' to %s.", visual_type, story_title, email)
     
     formatted_date = due_date.strftime("%B %d, %Y")
     
