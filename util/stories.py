@@ -1,15 +1,36 @@
+#
+#
+# Created by
+# Last modified by Jacob Slabosz on April 25, 2026
+
 import re
 
 from bs4 import BeautifulSoup
 import requests
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_title_from_url(url):
     try:
-        response = requests.get(url + "feed/?withoutcomments=1")
-        soup = BeautifulSoup(response.content, "xml")
-        return soup.find("channel").find("item").find("title").text
-    except:
+        logging.info(f"Getting title from URL: {url}")
+        response = requests.get(url)
+        response.raise_for_status()
+        logging.info(f"Received response with status code: {response.status_code}")
+
+        soup = BeautifulSoup(response.content, "html.parser")
+
+        if soup.title:
+            full_title = soup.title.text.strip()
+            clean_title = full_title.removesuffix(" - The Daily Illini").strip()
+
+            return clean_title
+
+        logging.warning(f"No title tag found in URL: {url}")
+        return None
+    except Exception as e:
+        logging.exception(f"Error getting title from URL: {e}")
         return None
 
 
