@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.11.3](https://github.com/Illini-Media-Company/central-backend/compare/v2.11.2...v2.11.3) (2026-04-26)
+
+
+### Bug Fixes
+
+* **ILLordle:** Fix issue where stories were not being recognized ([c281e30](https://github.com/Illini-Media-Company/central-backend/commit/c281e30e2994c56a8115d36d9f3fc6d90db4d0e0))
+
 ## [2.11.2](https://github.com/Illini-Media-Company/central-backend/compare/v2.11.1...v2.11.2) (2026-04-24)
 
 
