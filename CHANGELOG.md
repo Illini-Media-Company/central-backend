@@ -1,5 +1,33 @@
 # Changelog
 
+## [2.11.3](https://github.com/Illini-Media-Company/central-backend/compare/v2.11.2...v2.11.3) (2026-04-26)
+
+
+### Bug Fixes
+
+* **ILLordle:** Fix issue where stories were not being recognized ([c281e30](https://github.com/Illini-Media-Company/central-backend/commit/c281e30e2994c56a8115d36d9f3fc6d90db4d0e0))
+
+## [2.11.2](https://github.com/Illini-Media-Company/central-backend/compare/v2.11.1...v2.11.2) (2026-04-24)
+
+
+### Bug Fixes
+
+* **Scout:** Prefer more concise responses from knowledge base ([a551efd](https://github.com/Illini-Media-Company/central-backend/commit/a551efd3e9eede5f2854584631cfb929204707c6))
+
+## [2.11.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.11.0...v2.11.1) (2026-04-24)
+
+
+### Bug Fixes
+
+* **Song-Req:** Update access for staff and directors ([023a146](https://github.com/Illini-Media-Company/central-backend/commit/023a1468ec044028b441ebc86cba1a1884cace98))
+
+## [2.11.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.10.1...v2.11.0) (2026-04-24)
+
+
+### Features
+
+* Add WPGU song request form and dashboard ([#84](https://github.com/Illini-Media-Company/central-backend/issues/84)) ([cabc442](https://github.com/Illini-Media-Company/central-backend/commit/cabc442bd57f096c5f88f7195891ac77cac67063))
+
 ## [2.10.1](https://github.com/Illini-Media-Company/central-backend/compare/v2.10.0...v2.10.1) (2026-04-16)
 
 

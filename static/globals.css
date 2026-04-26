@@ -18,6 +18,7 @@
     --main-dk-gray-color:           var(--gray-900);
     --main-accent-color:            var(--imc-orange-500);
     --main-accent-color-darkened:   var(--imc-orange-600);
+    --wpgu-surface:                 #111111;
 
     /* Define global corner radius */
     --main-border-radius: 1rem;

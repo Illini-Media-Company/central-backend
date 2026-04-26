@@ -22,3 +22,9 @@ cron:
   schedule: 30 of aug 00:00
   timezone: America/Chicago
   target: default
+
+- description: "Clean up WPGU song requests older than 60 days"
+  url: /cron/wpgu-song-requests-cleanup
+  schedule: every sunday 03:00
+  timezone: America/Chicago
+  target: default

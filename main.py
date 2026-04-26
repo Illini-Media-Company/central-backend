@@ -98,6 +98,7 @@ with InitTimer("Database Functions"):
     from db.json_store import json_store_set
     from db.employee_management import initialize_ems_settings
     from db.cu_calender import delete_expired_events
+    from db.song_request import delete_old_song_requests
 
 ################################################################################
 # UTIL IMPORTS #################################################################
@@ -138,6 +139,7 @@ with InitTimer("Utility Functions"):
 with InitTimer("Slackbots"):
     import util.slackbots.employee_agreement_slackbot
     import util.slackbots.photo_request
+    import util.slackbots.song_request
     import util.slackbots.socials_slackbot
     import util.slackbots.knowledge_slackbot
 
@@ -169,6 +171,7 @@ with InitTimer("Views"):
         calendar_routes,
         public_calendar_api_routes,
     )
+    from views.song_request import song_request_routes
 
 ################################################################################
 ############################# IMPORTS COMPLETE #################################
@@ -205,6 +208,7 @@ app.register_blueprint(ems_routes)
 app.register_blueprint(calendar_routes)
 app.register_blueprint(admin_calendar_routes)
 app.register_blueprint(public_calendar_api_routes)
+app.register_blueprint(song_request_routes)
 logging.info("Done registering blueprints.")
 
 logging.info("Initializing login manager...")
@@ -506,6 +510,29 @@ def cron_cu_calendar_sync_year():
         return {"success": True, "added": added}, 200
     except Exception as e:
         logging.exception("cu_calendar yearly sync failed")
+        return {"success": False, "error": str(e)}, 500
+
+
+@app.route("/cron/wpgu-song-requests-cleanup", methods=["GET", "POST"])
+@csrf.exempt
+@talisman(force_https=False)
+def cron_wpgu_song_requests_cleanup():
+    """
+    Cron endpoint: delete WPGU song requests older than 60 days.
+    Intended to run weekly via cron.yaml.
+    """
+    if request.headers.get("X-Appengine-Cron") != "true":
+        logging.warning(
+            "Unauthorized attempt to trigger WPGU song request cleanup cron job"
+        )
+        return "Unauthorized", 403
+
+    try:
+        deleted_count = delete_old_song_requests(days_old=60)
+        logging.info(f"WPGU song requests cleanup completed: deleted={deleted_count}")
+        return {"success": True, "deleted": deleted_count}, 200
+    except Exception as e:
+        logging.exception("WPGU song requests cleanup cron job failed")
         return {"success": False, "error": str(e)}, 500
 
 
