@@ -7,6 +7,7 @@ from db.follow_up import (
     update_item,
     resolve_item,
     get_resolved_items,
+    delete_item,
 )
 from util.security import restrict_to, csrf
 from db import client
@@ -63,11 +64,20 @@ def get_item(uid):
 
 
 @follow_up_routes.route("/<int:uid>", methods=["POST"])
+@csrf.exempt
 @login_required
 def update(uid):
     fields = {
         key: request.form[key]
-        for key in ["title", "notes", "status", "priority", "category", "owner", "email_link"]
+        for key in [
+            "title",
+            "notes",
+            "status",
+            "priority",
+            "category",
+            "owner",
+            "email_link",
+        ]
         if key in request.form
     }
     if not fields:
@@ -87,6 +97,15 @@ def resolve(uid):
     if item is None:
         return "Item not found.", 404
     return jsonify(item), 200
+
+
+@follow_up_routes.route("/<int:uid>/delete", methods=["POST"])
+@csrf.exempt
+@login_required
+def delete(uid):
+    with client.context():
+        delete_item(uid)
+    return "", 204
 
 
 @follow_up_routes.route("/resolved", methods=["GET"])

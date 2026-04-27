@@ -14,17 +14,26 @@ class FollowUpItem(ndb.Model):
     )
     title = ndb.StringProperty()
     notes = ndb.StringProperty()
-    status = ndb.StringProperty()     
-    priority = ndb.StringProperty()   
+    status = ndb.StringProperty()
+    priority = ndb.StringProperty()
     category = ndb.StringProperty()
     owner = ndb.StringProperty()
     # link has no purpose for now since no google API integration yet
-    email_link = ndb.StringProperty()  
+    email_link = ndb.StringProperty()
     created_at = ndb.DateTimeProperty()
     updated_at = ndb.DateTimeProperty()
 
 
-def create_item(title, notes, status, priority, category, owner, email_link=None):
+def create_item(
+    title,
+    notes,
+    status,
+    priority,
+    category,
+    email_link=None,
+    owner=None,
+    created_at=None,
+):
     logger.info(f"Creating followup item: {title}")
     now = datetime.now(ZoneInfo("America/Chicago")).replace(tzinfo=None)
     item = FollowUpItem(
@@ -35,7 +44,7 @@ def create_item(title, notes, status, priority, category, owner, email_link=None
         category=category,
         owner=owner,
         email_link=email_link,
-        created_at=now,
+        created_at=created_at or now,
         updated_at=now,
     )
     item.put()
@@ -45,10 +54,30 @@ def create_item(title, notes, status, priority, category, owner, email_link=None
 
 def get_all_active_items():
     logger.info("Fetching all active followup items...")
-    query = FollowUpItem.query(FollowUpItem.status != "Resolved")
-    items = [item.to_dict() for item in query.fetch()]
+    active_statuses = ["New", "In Progress", "Waiting"]
+    items = []
+    for status in active_statuses:
+        query = FollowUpItem.query(FollowUpItem.status == status)
+        items.extend(item.to_dict() for item in query.fetch())
     logger.info(f"Found {len(items)} active items.")
     return items
+
+
+def get_all_items():
+    logger.info("Fetching all followup items...")
+    active_statuses = ["New", "In Progress", "Waiting"]
+    active = []
+    for status in active_statuses:
+        active.extend(
+            item.to_dict()
+            for item in FollowUpItem.query(FollowUpItem.status == status).fetch()
+        )
+    resolved = [
+        item.to_dict()
+        for item in FollowUpItem.query(FollowUpItem.status == "Resolved").fetch()
+    ]
+    logger.info(f"Found {len(active)} active and {len(resolved)} resolved items.")
+    return active + resolved
 
 
 def get_item_by_id(uid):
@@ -81,6 +110,13 @@ def resolve_item(uid):
     item.updated_at = datetime.now(ZoneInfo("America/Chicago")).replace(tzinfo=None)
     item.put()
     return item.to_dict()
+
+
+def delete_item(uid):
+    logger.info(f"Deleting item with UID: {uid}")
+    item = FollowUpItem.get_by_id(uid)
+    if item:
+        item.key.delete()
 
 
 def get_resolved_items():
