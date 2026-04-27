@@ -1,0 +1,623 @@
+{% extends "base.html" %}
+
+{% block title %}Follow-Up Tracker{% endblock %}
+
+{% block content %}
+
+{% set demo_items = [
+    {
+        "id": 1,
+        "title": "Housing doc issue – Sarah",
+        "category": "Housing",
+        "status": "New",
+        "priority": "High",
+        "assigned_to": "Sarah",
+        "date": "Apr 13",
+        "notes": "Missing signature page on room assignment form",
+        "email_link": "https://mail.google.com/mail/u/0/#inbox/abc123"
+    },
+    {
+        "id": 2,
+        "title": "Payment plan follow-up",
+        "category": "Finance",
+        "status": "In Progress",
+        "priority": "Medium",
+        "assigned_to": "Jessica",
+        "date": "Apr 12",
+        "notes": "",
+        "email_link": ""
+    },
+    {
+        "id": 3,
+        "title": "Senior pics rescheduling",
+        "category": "Senior Pics",
+        "status": "Waiting",
+        "priority": "Low",
+        "assigned_to": "Mike",
+        "date": "Apr 12",
+        "notes": "",
+        "email_link": ""
+    },
+    {
+        "id": 4,
+        "title": "Transcript delay inquiry",
+        "category": "General",
+        "status": "New",
+        "priority": "Medium",
+        "assigned_to": "Unassigned",
+        "date": "Apr 11",
+        "notes": "",
+        "email_link": ""
+    }
+] %}
+
+{% set tracker_items = items if items is defined else demo_items %}
+{% set category_options = categories if categories is defined else ["General", "Finance", "Housing", "Senior Pics"] %}
+{% set person_options = people if people is defined else ["Unassigned", "Sarah", "Mike", "Jessica"] %}
+
+<style>
+    .tracker-page {
+        width: 96%;
+        max-width: 1720px;
+        margin: 28px auto 48px auto;
+        font-family: Arial, sans-serif;
+    }
+
+    .tracker-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 18px;
+    }
+
+    .tracker-title h1 {
+        margin: 0;
+        font-size: 30px;
+        font-weight: 700;
+        color: #111111;
+        letter-spacing: -0.02em;
+    }
+
+    .tracker-title p {
+        margin: 10px 0 22px 0;
+        font-size: 15px;
+        color: #76768b;
+    }
+
+    .add-btn {
+        background: #03031d;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 16px 24px;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        min-width: 176px;
+    }
+
+    .show-completed {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #76768b;
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 22px;
+    }
+
+    .show-completed input {
+        width: 17px;
+        height: 17px;
+        accent-color: #03031d;
+    }
+
+    .item-list {
+        border-top: 1px solid #dddddf;
+        padding-top: 18px;
+    }
+
+    .item {
+        background: #f7f7fa;
+        border-radius: 12px;
+        margin-bottom: 8px;
+        overflow: hidden;
+    }
+
+    .item-row {
+        display: grid;
+        grid-template-columns: 26px minmax(260px, 1.4fr) 180px 150px 16px 110px 145px 72px 34px;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 18px;
+    }
+
+    .arrow {
+        border: none;
+        background: none;
+        font-size: 15px;
+        color: #76768b;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    .item-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #191919;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .item-row select {
+        width: 100%;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 14px;
+        height: 40px;
+        cursor: pointer;
+        box-sizing: border-box;
+    }
+
+    .cat-housing { background: #f1defc; color: #9927ff; }
+    .cat-finance { background: #dfeafc; color: #2563eb; }
+    .cat-senior { background: #f8ecb8; color: #d96a00; }
+    .cat-general { background: #f0f1f5; color: #4b5563; }
+
+    .status-new { background: #e8f2ff; color: #2563eb; }
+    .status-progress { background: #f8efcb; color: #b07100; }
+    .status-waiting { background: #fcf0e3; color: #dd5a0a; }
+    .status-resolved { background: #e6f7ea; color: #1d7c43; }
+
+    .dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+
+    .dot-high { background: #ff3045; }
+    .dot-medium { background: #ff8a00; }
+    .dot-low { background: #98a2b3; }
+
+    .date-text {
+        font-size: 14px;
+        color: #7c7c91;
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    .mail-icon {
+        font-size: 22px;
+        color: #7c7c91;
+        text-decoration: none;
+        text-align: center;
+        display: inline-block;
+    }
+
+    .details {
+        padding: 0 22px 18px 46px;
+        border-left: 2px solid #dddddf;
+        margin-left: 19px;
+        display: none;
+        background: #f7f7fa;
+    }
+
+    .details label {
+        display: block;
+        font-size: 14px;
+        font-weight: 700;
+        color: #76768b;
+        margin: 12px 0 7px 0;
+    }
+
+    .details textarea,
+    .details input {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #d9d9de;
+        border-radius: 10px;
+        padding: 13px 14px;
+        font-size: 14px;
+        background: #ffffff;
+    }
+
+    .details textarea {
+        min-height: 94px;
+        resize: vertical;
+    }
+
+    .followup-modal-bg {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.42);
+        z-index: 99999;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+
+    .followup-modal {
+        background: white;
+        width: 610px;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 14px 44px rgba(0, 0, 0, 0.18);
+        position: relative;
+        z-index: 100000;
+    }
+
+    .modal-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 24px;
+        border-bottom: 1px solid #dddddf;
+    }
+
+    .modal-head h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 700;
+    }
+
+    .close-btn {
+        border: none;
+        background: none;
+        font-size: 24px;
+        color: #76768b;
+        cursor: pointer;
+    }
+
+    .modal-body {
+        padding: 22px 24px;
+    }
+
+    .modal-body label {
+        display: block;
+        font-size: 14px;
+        font-weight: 700;
+        margin: 0 0 8px 0;
+    }
+
+    .modal-body input,
+    .modal-body select,
+    .modal-body textarea {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #d8d8dd;
+        border-radius: 10px;
+        padding: 12px 14px;
+        font-size: 14px;
+        margin-bottom: 16px;
+        background: #ffffff;
+    }
+
+    .modal-body textarea {
+        min-height: 120px;
+        resize: vertical;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 18px 24px;
+        border-top: 1px solid #dddddf;
+    }
+
+    .cancel-btn {
+        border: none;
+        background: #ededf2;
+        color: #111111;
+        border-radius: 10px;
+        padding: 12px 22px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .save-btn {
+        border: none;
+        background: #03031d;
+        color: white;
+        border-radius: 10px;
+        padding: 12px 22px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .save-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .page-modal-open {
+        overflow: hidden;
+    }
+</style>
+
+<div class="tracker-page">
+    <div class="tracker-header">
+        <div class="tracker-title">
+            <h1>Follow-Up Tracker</h1>
+            <p>Track requests that still need to be handled</p>
+
+            <label class="show-completed">
+                <input type="checkbox" id="showCompleted" name="show_completed" onchange="toggleCompletedItems()">
+                Show completed
+            </label>
+        </div>
+
+        <button class="add-btn" type="button" onclick="openModal()">＋ Add Item</button>
+    </div>
+
+    <div class="item-list" id="itemList">
+        {% for item in tracker_items %}
+            {% set category_class = "cat-general" %}
+            {% if item.category == "Housing" %}
+                {% set category_class = "cat-housing" %}
+            {% elif item.category == "Finance" %}
+                {% set category_class = "cat-finance" %}
+            {% elif item.category == "Senior Pics" %}
+                {% set category_class = "cat-senior" %}
+            {% endif %}
+
+            {% set status_class = "status-resolved" %}
+            {% if item.status == "New" %}
+                {% set status_class = "status-new" %}
+            {% elif item.status == "In Progress" %}
+                {% set status_class = "status-progress" %}
+            {% elif item.status == "Waiting" %}
+                {% set status_class = "status-waiting" %}
+            {% endif %}
+
+            {% set dot_class = "dot-low" %}
+            {% if item.priority == "High" %}
+                {% set dot_class = "dot-high" %}
+            {% elif item.priority == "Medium" %}
+                {% set dot_class = "dot-medium" %}
+            {% endif %}
+
+            <div class="item" data-status="{{ item.status }}" data-item-id="{{ item.id }}">
+                <div class="item-row">
+                    <button class="arrow" type="button" onclick="toggleItem(this)">⌄</button>
+
+                    <div class="item-title">{{ item.title }}</div>
+
+                    <select name="category" class="{{ category_class }}">
+                        {% for category in category_options %}
+                            <option value="{{ category }}" {% if category == item.category %}selected{% endif %}>{{ category }}</option>
+                        {% endfor %}
+                        <option value="__add_category__">+ Add new category</option>
+                    </select>
+
+                    <select name="status" class="{{ status_class }}" onchange="handleStatusChange(this)">
+                        <option value="New" {% if item.status == "New" %}selected{% endif %}>New</option>
+                        <option value="In Progress" {% if item.status == "In Progress" %}selected{% endif %}>In Progress</option>
+                        <option value="Waiting" {% if item.status == "Waiting" %}selected{% endif %}>Waiting</option>
+                        <option value="Resolved" {% if item.status == "Resolved" %}selected{% endif %}>Resolved</option>
+                    </select>
+
+                    <span class="dot {{ dot_class }}"></span>
+
+                    <select name="priority" onchange="handlePriorityChange(this)">
+                        <option value="Low" {% if item.priority == "Low" %}selected{% endif %}>Low</option>
+                        <option value="Medium" {% if item.priority == "Medium" %}selected{% endif %}>Medium</option>
+                        <option value="High" {% if item.priority == "High" %}selected{% endif %}>High</option>
+                    </select>
+
+                    <select name="assigned_to">
+                        {% for person in person_options %}
+                            <option value="{{ person }}" {% if person == item.assigned_to %}selected{% endif %}>{{ person }}</option>
+                        {% endfor %}
+                        <option value="__add_person__">+ Add person</option>
+                    </select>
+
+                    <div class="date-text">{{ item.date }}</div>
+
+                    <a class="mail-icon" href="{{ item.email_link if item.email_link else '#' }}" target="_blank">✉</a>
+                </div>
+
+                <div class="details">
+                    <label>Notes</label>
+                    <textarea name="notes">{{ item.notes }}</textarea>
+
+                    <label>Email Link</label>
+                    <input name="email_link" value="{{ item.email_link }}">
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="followup-modal-bg" id="modalBg" onclick="closeModalFromBackdrop(event)">
+    <div class="followup-modal" onclick="event.stopPropagation()">
+        <form id="newFollowupForm" method="POST" action="/followup-tracker/create">
+            <div class="modal-head">
+                <h2>Add Follow-Up Item</h2>
+                <button class="close-btn" type="button" onclick="closeModal()">×</button>
+            </div>
+
+            <div class="modal-body">
+                <label for="newTitle">Title <span style="color:red">*</span></label>
+                <input id="newTitle" name="title" placeholder="e.g. Housing doc issue – Sarah" oninput="checkAddButton()" required>
+
+                <div class="form-grid">
+                    <div>
+                        <label for="newCategory">Category</label>
+                        <select id="newCategory" name="category">
+                            {% for category in category_options %}
+                                <option value="{{ category }}">{{ category }}</option>
+                            {% endfor %}
+                            <option value="__add_category__">+ Add new category</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="newPriority">Priority</label>
+                        <select id="newPriority" name="priority">
+                            <option value="Low">Low</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+                </div>
+
+                <label for="newOwner">Assigned To</label>
+                <select id="newOwner" name="assigned_to">
+                    {% for person in person_options %}
+                        <option value="{{ person }}">{{ person }}</option>
+                    {% endfor %}
+                    <option value="__add_person__">+ Add person</option>
+                </select>
+
+                <label for="newEmail">Email Link (optional)</label>
+                <input id="newEmail" name="email_link" placeholder="Paste Gmail URL">
+
+                <label for="newNotes">Notes (optional)</label>
+                <textarea id="newNotes" name="notes" placeholder="Add any context or details"></textarea>
+            </div>
+
+            <div class="modal-footer">
+                <button class="cancel-btn" type="button" onclick="closeModal()">Cancel</button>
+                <button class="save-btn" id="addItemBtn" type="button" onclick="addItem()" disabled>Add Item</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function toggleItem(button) {
+        const item = button.closest(".item");
+        const details = item.querySelector(".details");
+
+        if (details.style.display === "block") {
+            details.style.display = "none";
+            button.innerText = "⌄";
+        } else {
+            details.style.display = "block";
+            button.innerText = "⌃";
+        }
+    }
+
+    function toggleCompletedItems() {
+        const showCompleted = document.getElementById("showCompleted").checked;
+        const items = document.querySelectorAll(".item");
+
+        items.forEach(function (item) {
+            if (item.dataset.status === "Resolved" && !showCompleted) {
+                item.style.display = "none";
+            } else {
+                item.style.display = "block";
+            }
+        });
+    }
+
+    function handleStatusChange(selectEl) {
+        const item = selectEl.closest(".item");
+        item.dataset.status = selectEl.value;
+
+        selectEl.className = "";
+        if (selectEl.value === "New") {
+            selectEl.classList.add("status-new");
+        } else if (selectEl.value === "In Progress") {
+            selectEl.classList.add("status-progress");
+        } else if (selectEl.value === "Waiting") {
+            selectEl.classList.add("status-waiting");
+        } else {
+            selectEl.classList.add("status-resolved");
+        }
+
+        toggleCompletedItems();
+    }
+
+    function handlePriorityChange(selectEl) {
+        const item = selectEl.closest(".item");
+        const dot = item.querySelector(".dot");
+
+        dot.className = "dot";
+        if (selectEl.value === "High") {
+            dot.classList.add("dot-high");
+        } else if (selectEl.value === "Medium") {
+            dot.classList.add("dot-medium");
+        } else {
+            dot.classList.add("dot-low");
+        }
+    }
+
+    function openModal() {
+        document.getElementById("modalBg").style.display = "flex";
+        document.body.classList.add("page-modal-open");
+        checkAddButton();
+    }
+
+    function closeModal() {
+        document.getElementById("modalBg").style.display = "none";
+        document.body.classList.remove("page-modal-open");
+    }
+
+    function closeModalFromBackdrop(event) {
+        if (event.target.id === "modalBg") {
+            closeModal();
+        }
+    }
+
+    function checkAddButton() {
+        const title = document.getElementById("newTitle").value.trim();
+        document.getElementById("addItemBtn").disabled = title === "";
+    }
+
+    function addItem() {
+        const title = document.getElementById("newTitle").value.trim();
+
+        if (!title) {
+            alert("Title is required.");
+            return;
+        }
+
+        alert("Frontend item form is ready. Backend can now connect this form to saving.");
+
+        closeModal();
+    }
+
+    document.getElementById("newCategory").addEventListener("change", function () {
+        if (this.value === "__add_category__") {
+            const newCategory = prompt("Enter category name:");
+            if (newCategory && newCategory.trim()) {
+                const option = document.createElement("option");
+                option.value = newCategory.trim();
+                option.textContent = newCategory.trim();
+                this.insertBefore(option, this.lastElementChild);
+                this.value = newCategory.trim();
+            }
+        }
+    });
+
+    document.getElementById("newOwner").addEventListener("change", function () {
+        if (this.value === "__add_person__") {
+            const newPerson = prompt("Enter person name:");
+            if (newPerson && newPerson.trim()) {
+                const option = document.createElement("option");
+                option.value = newPerson.trim();
+                option.textContent = newPerson.trim();
+                this.insertBefore(option, this.lastElementChild);
+                this.value = newPerson.trim();
+            }
+        }
+    });
+
+    toggleCompletedItems();
+</script>
+{% endblock %}

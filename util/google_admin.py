@@ -109,6 +109,41 @@ def update_group_membership(
     return True, None
 
 
+def get_group_members(group_email: str) -> list[dict]:
+    """
+    Returns all direct members of a Google Group.
+
+    Arguments:
+        `group_email` (`str`): The email of the Google Group
+    Returns:
+        `list[dict]`: List of member dicts with 'email' and 'displayName' keys
+    """
+    creds = get_admin_creds(MEMBER_SCOPE + [USER_SCOPE])
+    members = []
+
+    with build("admin", "directory_v1", credentials=creds) as service:
+        request = service.members().list(groupKey=group_email)
+        while request is not None:
+            response = request.execute()
+            for m in response.get("members", []):
+                if m.get("type") == "USER":
+                    email = m.get("email", "")
+                    try:
+                        user = service.users().get(userKey=email).execute()
+                        name_obj = user.get("name", {})
+                        display_name = (
+                            name_obj.get("fullName")
+                            or f"{name_obj.get('givenName', '')} {name_obj.get('familyName', '')}".strip()
+                            or email
+                        )
+                    except Exception:
+                        display_name = email
+                    members.append({"email": email, "displayName": display_name})
+            request = service.members().list_next(request, response)
+
+    return members
+
+
 def check_group_exists(group_email: str) -> bool:
     """
     Checks if a Google Group exists.
