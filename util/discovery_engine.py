@@ -106,6 +106,15 @@ def answer_query(
             "ignoreNonAnswerSeekingQuery": False,
             "ignoreLowRelevantContent": True,
             "modelSpec": {"modelVersion": "stable"},
+            "promptSpec": {
+                "preamble": (
+                    "You are a highly concise assistant. Provide short, "
+                    "direct answers. Do not include background information, formatting "
+                    "rules, or explanatory paragraphs unless explicitly requested. "
+                    "If the answer is not present in the provided context, reply "
+                    "exactly with: 'I don't have access to enough information to answer that.'."
+                )
+            },
         },
     }
     if user_pseudo_id:

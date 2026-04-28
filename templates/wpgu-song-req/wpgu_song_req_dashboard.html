@@ -1,0 +1,345 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    WPGU Song Requests
+{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="/static/styles/styles_index.css">
+    <link rel="stylesheet" href="/static/macros/form.css">
+    <style>
+        table {
+            border-collapse: separate;
+            border-spacing: 0 0.5rem;
+            width: 100%;
+            background-color: var(--main-bg-color);
+            border-radius: var(--main-border-radius);
+        }
+
+        tr {
+            border-radius: var(--main-border-radius);
+        }
+
+        tr:hover td {
+            background-color: var(--main-extralight-color);
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            background-color: var(--main-bg-color);
+            vertical-align: top;
+        }
+
+        td:first-child {
+            border-top-left-radius: var(--main-border-radius);
+            border-bottom-left-radius: var(--main-border-radius);
+        }
+
+            td:last-child {
+            border-top-right-radius: var(--main-border-radius);
+            border-bottom-right-radius: var(--main-border-radius);
+        }
+
+        th {
+            padding: 0.75rem 1rem;
+            white-space: nowrap;
+            border-bottom: 1px solid var(--main-lt-gray-color);
+            align-items: center;
+        }
+
+        .status-label {
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .status-label.in-progress {
+            color: var(--blue-500);
+        }
+
+        .status-label.accepted {
+            color: var(--wpgu-green-500);
+        }
+
+        .status-label.declined {
+            color: var(--red-500);
+        }
+
+        .status-label.pending {
+            color: var(--imc-orange-500);
+        }
+    </style>
+{% endblock %}
+
+{% import "macros/form.html" as form %}
+{% include "partials/loading.html" %}
+{% include "partials/button_alert.html" %}
+{% include "partials/text_alert.html" %}
+{% include "partials/text_entry_alert.html" %}
+{% include "partials/info_bar.html" %}
+
+{% block content %}
+<h1>WPGU Song Requests</h1>
+
+<hr>
+
+<a style="text-decoration: none; display: block; color: inherit;" href="/wpgu-song-requests/form" target="_blank">
+    <button class="button-secondary">
+        Submit a Request
+    </button>
+</a>
+
+<hr style="margin-bottom: 2rem;">
+
+<section class="section-container" id="requests-container">
+    <div class="section-header">
+        <h2 style="margin-bottom: 0">{{ selection }}</h2>
+    </div>
+
+    <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+        <div style="display: flex; flex-direction: row; align-items: center;" id="querySearchBar">
+            <i class="bi bi-search"></i>
+            {{ form.text_input( 
+                name="searchQuery",
+                placeholder="Search...",
+                class=""
+            ) }}
+        </div>
+
+        <div style="display: flex; flex-direction: row; gap: 1rem; align-items: center;">
+            {{ form.select_input( 
+                name="filterInput",
+                label="Filter Requests",
+                options=["All", "Pending", "In-Progress", "Accepted", "Declined"],
+                class=""
+            ) }} 
+            <button class="button-primary" onclick="filterInput()" disabled="true" id="filterInputButton">Search</button>
+        </div>
+    </div>
+
+    {% if not requests %}
+    <div class="inner-container" style="align-items: center; text-align: center;" id="no-favs-message">
+        <p style="margin-bottom: 0;">There are no song requests for this selection.</p>
+    </div>
+    {% else %}
+    <div style="overflow-x: auto; max-width: 100%; border-radius: var(--main-border-radius); box-shadow: var(--input-box-shadow);">
+        <table>
+            <tr>
+                <th style="padding-right: 3rem;"><span><i class="bi bi-caret-up"></i></span> Status / Action</th>
+                <th style="padding-right: 3rem;"><span><i class="bi bi-caret-up"></i></span> Song</th>
+                <th style="padding-right: 3rem;"><span><i class="bi bi-caret-up"></i></span> Artist</th>
+                <th style="padding-right: 5rem;"><span><i class="bi bi-caret-up"></i></span> Submitter</th>
+                <th style="padding-right: 2rem;"><span><i class="bi bi-caret-up"></i></span> Date Submitted</th>
+                <th>Delete</th>
+            </tr>
+            {% for r in requests %}
+            <tr>
+                <td>
+                    {% if r.status == "in_progress" %}
+                        <p class="status-label in-progress">In Progress</p>
+                        <p style="font-size: 0.75rem; margin-top: 0.25rem; margin-bottom: 0;">Reviewing: {{ r.reviewer_name }}</p>
+
+                        {% if r.reviewer_name == current_user.name %}
+                            <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
+                                <button class="button-primary" onclick="approveSong('{{ r.uid }}')">Approve</button>
+                                <button class="button-secondary" onclick="denySong('{{ r.uid }}')">Deny</button>
+                            </div>
+                        {% endif %}
+
+                    {% elif r.status == "accepted" %}
+                        <p class="status-label accepted">Accepted</p>
+                        <p style="font-size: 0.75rem; margin-top: 0.25rem; margin-bottom: 0;">By {{ r.reviewer_name }}</p>
+
+                    {% elif r.status == "declined" %}
+                        <p class="status-label declined">Declined</p>
+                        <p style="font-size: 0.75rem; margin-top: 0.25rem; margin-bottom: 0;">By {{ r.reviewer_name }}</p>
+                        {% if r.rejection_reason %}
+                            <p style="font-size: 0.75rem; margin-top: 0.25rem; margin-bottom: 0; font-style: italic;">Reason: {{ r.rejection_reason }}</p>
+                        {% endif %}
+
+                    {% else %}
+                        <p class="status-label pending">Pending</p>
+                        <button class="button-primary" style="margin-top: 0.5rem;" onclick="claimSong('{{ r.uid }}')">Claim Review</button>
+                    {% endif %}                    
+                </td>
+                <td><strong>{{ r.song_name }}</strong></td>
+                <td>{{ r.artist_name }}</td>
+                <td>
+                    {% if r.is_imc_employee %}
+                        <a href="https://thedailyillini.slack.com/team/{{ r.submitter_slack_id }}" target="_blank">{{ r.submitter_name }}</a> (Staff)
+                    {% else %}
+                        Outside User
+                        {% if r.submitter_email %}
+                            <br><a href="mailto:{{ r.submitter_email }}" style="font-size: 0.85rem;">{{ r.submitter_email }}</a>
+                        {% endif %}
+                    {% endif %}
+                </td>
+                <td>{{ r.timestamp|ap_datetime }}</td>
+                <td>
+                    <button class="button-secondary" onclick="deleteRequest('{{ r.uid }}')"><i class="bi bi-trash3-fill"></i></button>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    {% endif %}
+</section>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const msg = sessionStorage.getItem("infoBarMessage");
+        if (msg) {
+            showInfoBar(msg);
+            sessionStorage.removeItem("infoBarMessage");
+        }
+    });
+
+    // Helper for API Calls using the built-in modals
+    async function executeApiAction(endpoint, payload, successMessage) {
+        showLoading("Processing request...");
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': "{{ csrf_token() }}"
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (response.status === 200) {
+            sessionStorage.setItem("infoBarMessage", successMessage); 
+            window.location.reload();
+        } else {
+            const message = await response.text();
+            console.error(message);
+            await showTextAlert("There was an error:", message, "Dismiss");
+            hideLoading();
+        }
+    }
+
+    // ACTIONS
+    async function claimSong(uid) {
+        result = await showButtonAlert(
+            "Confirm", 
+            "Are you sure you want to claim this song request for review?", 
+            "Claim", 
+            "Cancel"
+        );
+        if (result) {
+            await executeApiAction(`/wpgu-song-requests/api/${uid}/claim`, {}, "Request successfully claimed.");
+        }
+    }
+
+    async function approveSong(uid) {
+        result = await showButtonAlert(
+            "Approve Song", 
+            "Are you sure you want to approve this song and mark it as added?", 
+            "Approve", 
+            "Cancel"
+        );
+        if (result) {
+            await executeApiAction(`/wpgu-song-requests/api/${uid}/approve`, {}, "Song successfully approved.");
+        }
+    }
+
+    async function denySong(uid) {
+        result = await showTextEntryAlert(
+            "Deny Song Request", 
+            "Please provide a brief reason why this song cannot be added (optional):", 
+            "Reason (e.g., Doesn't fit format, already in library)",
+            "Deny", 
+            "Cancel"
+        );
+        
+        if (result !== false) { 
+            await executeApiAction(`/wpgu-song-requests/api/${uid}/deny`, { rejection_reason: result }, "Song request declined.");
+        }
+    }
+
+    async function deleteRequest(uid) {
+        result = await showButtonAlert(
+            "Are you sure?",
+            "Are you sure you want to delete this request? This action cannot be undone.",
+            "Delete",
+            "Cancel"
+        );
+        if (result) {
+            await executeApiAction(`/wpgu-song-requests/api/${uid}/remove`, {}, "Request successfully deleted.");
+        }
+    }
+
+    async function filterInput() {
+        const selection = document.getElementById("filterInput").value;
+        let selection_param = selection.toLowerCase();
+        window.location.href = `/wpgu-song-requests/dashboard/${selection_param}`;
+    }
+
+    window.addEventListener('load', () => {
+        const selectionInput = document.getElementById("filterInput");
+        if (selectionInput) {
+            selectionInput.addEventListener("input", () => {
+                if (selectionInput.value != "Select...") {
+                    document.getElementById("filterInputButton").disabled = false;
+                }
+            });
+        }
+
+        const searchInput = document.getElementById("searchQuery");
+        const table = document.querySelector("table");
+        if(table) {
+            const tbody = table.querySelector("tbody");
+            const headers = table.querySelectorAll("th");
+
+            searchInput.addEventListener("input", () => {
+                const query = searchInput.value.toLowerCase().trim();
+
+                Array.from(tbody.querySelectorAll("tr:not(:first-child)")).forEach(row => {
+                    const text = row.innerText.toLowerCase();
+                    row.style.display = text.includes(query) ? "" : "none";
+                });
+            });
+
+            headers.forEach((header, index) => {
+                header.style.cursor = "pointer";
+                const caret = header.querySelector("i");
+                let asc = true;
+
+                header.addEventListener("click", () => {
+                    const rows = Array.from(tbody.querySelectorAll("tr:not(:first-child)")).filter(
+                        row => row.style.display !== "none"
+                    );
+
+                    rows.sort((a, b) => {
+                        const cellA = a.children[index].innerText.trim().toLowerCase();
+                        const cellB = b.children[index].innerText.trim().toLowerCase();
+
+                        const dateA = Date.parse(cellA);
+                        const dateB = Date.parse(cellB);
+
+                        let cmp;
+                        if (!isNaN(dateA) && !isNaN(dateB)) {
+                            cmp = dateA - dateB;
+                        } else if (!isNaN(parseFloat(cellA)) && !isNaN(parseFloat(cellB))) {
+                            cmp = Number(cellA) - Number(cellB);
+                        } else {
+                            cmp = cellA.localeCompare(cellB);
+                        }
+
+                        return asc ? cmp : -cmp;
+                    });
+
+                    rows.forEach(row => tbody.appendChild(row));
+
+                    headers.forEach(h => {
+                        const c = h.querySelector("i");
+                        if (c) c.className = "bi bi-caret-up";
+                    });
+
+                    if (caret) caret.className = asc ? "bi bi-caret-up-fill" : "bi bi-caret-down-fill";
+                    asc = !asc;
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}
