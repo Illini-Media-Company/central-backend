@@ -1,0 +1,72 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "username": "Olivia",
+      "email": "",
+      "slack_user_id": "",
+      "task_description": "Housing Guide",
+      "task_frequency": "As orders come in from Melissa or Jake",
+      "is_done": false,
+      "shifts": [
+        {"day": "wednesday", "start_time": "09:00"}
+      ]
+    },
+    {
+      "id": 2,
+      "username": "Gus",
+      "email": "",
+      "slack_user_id": "",
+      "task_description": "ISUU Linking",
+      "task_frequency": "Every publication date",
+      "is_done": false,
+      "shifts": [
+        {"day": "tuesday", "start_time": "09:00"},
+        {"day": "thursday", "start_time": "09:00"},
+        {"day": "friday", "start_time": "09:00"}
+      ]
+    },
+    {
+      "id": 3,
+      "username": "Natalie",
+      "email": "",
+      "slack_user_id": "",
+      "task_description": "Kitchen Restock + Cleaning",
+      "task_frequency": "Daily restock/cleaning when supplies available",
+      "is_done": false,
+      "shifts": [
+        {"day": "monday", "start_time": "14:00"},
+        {"day": "wednesday", "start_time": "13:00"}
+      ]
+    },
+    {
+      "id": 4,
+      "username": "Alaina",
+      "email": "",
+      "slack_user_id": "",
+      "task_description": "Postering",
+      "task_frequency": "As orders come in from Jake",
+      "is_done": false,
+      "shifts": [
+        {"day": "monday", "start_time": "09:00"},
+        {"day": "tuesday", "start_time": "15:00"},
+        {"day": "thursday", "start_time": "13:00"},
+        {"day": "friday", "start_time": "11:00"}
+      ]
+    },
+    {
+      "id": 5,
+      "username": "Connor",
+      "email": "",
+      "slack_user_id": "",
+      "task_description": "Office Organization",
+      "task_frequency": "Always and when Jacob/Olivia/Jake need you to",
+      "is_done": false,
+      "shifts": [
+        {"day": "tuesday", "start_time": "12:00"},
+        {"day": "thursday", "start_time": "12:00"},
+        {"day": "friday", "start_time": "14:00"}
+      ]
+    }
+  ]
+}
