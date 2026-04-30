@@ -56,6 +56,13 @@
         required=true,
         class="graphic-req-form-row"
     ) }}
+    {{ form.radio_input( 
+        name="graphicType",
+        label="Type of graphic?",
+        options=["Illustration", "Infographic", "Comic", "Advertisement"],
+        required=true,
+        class="graphic-req-form-row"
+    ) }}
     {{ form.select_input( 
         name="department",
         label="Department",
@@ -78,6 +85,65 @@
         maxlength=400,
         class="graphic-req-form-row"
     ) }}
+    {{ form.textarea_input( 
+        name="ifInfographictitle",
+        label="Infographic tile",
+        subtext="This is the title that will begin at the top of the infographic",
+        required=true,
+        maxlength=400,
+        class="graphic-req-form-row initial-no-show"
+    ) }}
+    {{ form.textarea_input( 
+        name="ifInfographicintro",
+        label="Infographic intro",
+        subtext="Similar to a caption, this is a brief explanation of the infographic.",
+        required=true,
+        class="graphic-req-form-row initial-no-show"
+    ) }}
+    {{ form.textarea_input( 
+        name="ifInfographicdata",
+        label="Infographic data",
+        subtext="Please put your data that you would like to appear on the infographic here.",
+        required=true,
+        maxlength=400,
+        class="graphic-req-form-row initial-no-show"
+    ) }}
+    {{ form.textarea_input( 
+        name="ifInfographiclink",
+        label="Link to data",
+        subtext="Please provide either a link to the data or a brief description of how/where you got it.",
+        required=true,
+        maxlength=400,
+        class="graphic-req-form-row initial-no-show"
+    ) }}
+    {{ form.textarea_input( 
+        name="ifIllustrationdescription",
+        label="Brief description of the illustration",
+        required=true,
+        maxlength=400,
+        class="graphic-req-form-row initial-no-show"
+    ) }}
+    {{ form.textarea_input( 
+        name="ifIllustrationpurpose",
+        label="Purpose of illustration",
+        required=true,
+        maxlength=400,
+        class="graphic-req-form-row initial-no-show"
+    ) }}
+    {{ form.textarea_input( 
+        name="ifComicdescription",
+        label="Brief description of the comic idea",
+        required=true,
+        maxlength=400,
+        class="graphic-req-form-row initial-no-show"
+    ) }}
+    {{ form.textarea_input( 
+        name="ifComicinformation",
+        label="Any other information?",
+        required=false,
+        maxlength=400,
+        class="graphic-req-form-row initial-no-show"
+    ) }}
     {{ form.text_input( 
         name="url",
         label="Reference link",
@@ -92,154 +158,82 @@
         subtext="If your story is going in PRINT, mark the publication date well in advance of when it will actually be printed so that we have enough time to make your graphic! At the latest, mark the date as Saturday of the week before we print.",
         alt_type="date",
         required=true,
-        class="graphic-req-form-row"
+        class="graphic-req-form-row initial-no-show"
+    ) }}
+    {{ form.text_input( 
+        name="adDate",
+        label="When is the run date?",
+        subtext="If your advertisement is going in PRINT, mark the run date well in advance of when it will actually be printed so that we have enough time to make your graphic! At the latest, mark the date as Saturday of the week before we print.",
+        alt_type="date",
+        required=true,
+        class="graphic-req-form-row initial-no-show"
+    ) }}
+    {{ form.radio_input( 
+        name="adLocation",
+        label="Where will the ad be released?",
+        options=["Online Only", "Print/Online"],
+        required=true,
+        class="graphic-req-form-row initial-no-show"
     ) }}
     {{ form.radio_input( 
         name="publishLocation",
         label="Where will it be published?",
         options=["Online Only", "Print/Online"],
         required=true,
-        class="graphic-req-form-row"
-    ) }}
-    {{ form.radio_input( 
-        name="graphicType",
-        label="Type of graphic?",
-        options=["Illustration", "Infographic", "Comic", "Advertisement"],
-        required=true,
-        class="graphic-req-form-row"
-    ) }}
-    {{ form.textarea_input( 
-        name="illustrationDescription",
-        label="Brief description of the illustration",
-        class="graphic-req-form-row"
-    ) }}
-    {{ form.textarea_input( 
-        name="illustrationPurpose",
-        label="Purpose of illustration",
-        class="graphic-req-form-row"
+        class="graphic-req-form-row initial-no-show"
     ) }}
     {{ form.submit_button(text="Submit", label="submitButton") }}
 {% endcall %}
-
+         
 <script>
     // Prefill the email and name fields with the current user's info
-    window.addEventListener("load", () => {
-        const submissionForm = document.getElementById("graphicRequestForm");
-        const emailInput = submissionForm.querySelector("#email");
-        const nameInput = submissionForm.querySelector("#name");
-
-        emailInput.value = "{{ current_user.email }}";
-        nameInput.value = "{{ current_user.name }}";
+        document.addEventListener("DOMContentLoaded", () => {
+        console.log("script loaded");
     });
+        const submissionForm = document.getElementById("graphicRequestForm");
+        console.log("submissionForm:", submissionForm);
 
-    document.addEventListener("DOMContentLoaded", () => {
         const msg = sessionStorage.getItem("infoBarMessage");
         if (msg) {
             showInfoBar(msg);
             sessionStorage.removeItem("infoBarMessage"); // Clear it after showing
         }
-    });
 
-    // Submit the graphic request
-    async function submitRequest(event) {
-        event.preventDefault();
-        console.log("Submitting...");
+        const emailInput = submissionForm.querySelector("#email");
+        const nameInput = submissionForm.querySelector("#name");
 
-        showLoading("Verifying input...");
+        emailInput.value = "{{ current_user.email }}";
+        nameInput.value = "{{ current_user.name }}";
 
-        // Get the response data from the form (all as strings)
-        const formData = new FormData(event.target);
-        const valEmail = formData.get("email");
-        const valName = formData.get("name");
-        const valDept = formData.get("department");
-        const valHeadline = formData.get("storyheadline");
-        const valDetails = formData.get("storyDetails");
-        const valUrl = formData.get("url");
-        const valDue = formData.get("dueDate");
-        const valLocation = formData.get("publishLocation-options");
-        const valType = formData.get("graphicType-options");
-        const valDesc = formData.get("illustrationDescription");
-        const valPurpose = formData.get("illustrationPurpose");
-                  
+        console.log("form HTML:", submissionForm ? submissionForm.innerHTML : "no form");
 
-        // Validate the input, cancel the submission if not valid
-        const valid = await validateInput(
-            valDue,
-            valEmail,
-            valName,
-            valHeadline,
-            valDetails,
-            valDept,
-            valLocation,
-            valType
-        );
-        if (!valid) {
-            hideLoading();
-            return;
+        function showRelevantGraphicRows() {
+        const graphicType = getSelectedValue(document.getElementsByName("graphicType-options"));
+        console.log("Showing relevant rows for graphic type:", graphicType);
+
+        if (graphicType === "Infographic") {
+            infotitleContainer.classList.remove("initial-no-show");
+            infointroContainer.classList.remove("initial-no-show");
+            infodataContainer.classList.remove("initial-no-show");
+            infolinkContainer.classList.remove("initial-no-show");
+            duedateContainer.classList.remove("initial-no-show");
+            publishlocationContainer.classList.remove("initial-no-show");
+        } else if (graphicType === "Illustration") {
+            illustrationdescContainer.classList.remove("initial-no-show");
+            illustrationpurposeContainer.classList.remove("initial-no-show");
+            duedateContainer.classList.remove("initial-no-show");
+            publishlocationContainer.classList.remove("initial-no-show");
+        } else if (graphicType === "Comic") {
+            comicdescContainer.classList.remove("initial-no-show");
+            comicinfoContainer.classList.remove("initial-no-show");
+            duedateContainer.classList.remove("initial-no-show");
+            publishlocationContainer.classList.remove("initial-no-show");
+        } else if (graphicType === "Advertisement") {
+            addateContainer.classList.remove("initial-no-show");
+            adlocationContainer.classList.remove("initial-no-show");
         }
-
-        // Turn the valCourt into boolean
-        // if (valCourt == "Yes") 
-        //     valCourt = true;
-        // else 
-        //     valCourt = false;
-        
-        // // Turn the valEvent into boolean
-        // if (valEvent == "Yes")
-        //     valEvent = true;
-        // else
-        //     valEvent = false;
-        
-        // // Turn the valPass into boolean
-        // if (valPass == "Yes")
-        //     valPass = true;
-        // else
-        //     valPass = false;
-
-        showLoading("Submitting...:");
-        
-        // Send the data to the backend endpoint
-        let endpoint = "/graphic-requests/api/submit";
-        const payload = {
-            _csrf_token: "{{ csrf_token() }}",
-            submitterEmail: valEmail,
-            submitterName: valName,
-            department: valDept,
-            storyheadline: valHeadline,
-            storyDetails: valDetails,
-            referenceURL: valUrl,
-            dueDate: valDue,
-            publishLocation: valLocation,
-            graphicType: valType,
-            illustrationDescription: valDesc,
-            illustrationPurpose: valPurpose,
-        };
-
-        console.log("payload being sent:", payload);
-
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-        });
-
-        // Check if it was successful
-        if (response.status === 200) {
-            // Trigger a reload of the window
-            sessionStorage.setItem("infoBarMessage", "Request successfully submitted."); // Safe so we can display after reload
-            window.location.reload();
-        } else {
-            // Alert of the error
-            console.log("Submitting Graphic Request to database failed!");
-            const message = await response.text();
-            console.error(message);
-            await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
-            hideLoading();
-        }
-
     }
+
 
     // Function to validate the input of the form
     // async function validateInput(valEmail, valName, valDest, valDept, valMemo,
@@ -373,178 +367,332 @@
     // }
 
     // Function to validate the input of the form
-        async function validateInput(valDue, valEmail, valName, valHeadline, valDetails, valDept, valLocation, valType) {
-        if (!valEmail || !valEmail.endsWith("@illinimedia.com")) {
-            await showTextAlert(
-                header="Invalid input",
-                body="Please enter a valid @illinimedia.com email address.",
-                buttonText="Dismiss"
-            );
-            return false;
+            async function validateInput(valDue, valEmail, valName, valGraphicType, valLocation, valHeadline, valDetails, valDept, valInfotitle, valInfointro, valInfodata, valInfolink, valIllustrationdesc, valIllustrationpurpose, valComicdesc, valComicinfo, valUrl, valAddate, valAdlocation) {
+            if (!valEmail || !valEmail.endsWith("@illinimedia.com")) {
+                await showTextAlert(
+                    header="Invalid input",
+                    body="Please enter a valid @illinimedia.com email address.",
+                    buttonText="Dismiss"
+                );
+                return false;
+            }
+
+            if (!valName || valName.trim() === "") {
+                await showTextAlert(
+                    header="Invalid input",
+                    body="Please enter your full name.",
+                    buttonText="Dismiss"
+                );
+                return false;
+            }
+
+            if (!valDept || valDept.trim() === "") {
+                await showTextAlert(
+                    header="Invalid input",
+                    body="Please select a department.",
+                    buttonText="Dismiss"
+                );
+                return false;
+            }
+
+            if (!valHeadline || valHeadline.trim() === "") {
+                await showTextAlert(
+                    header="Invalid input",
+                    body="Please enter a story headline or short description.",
+                    buttonText="Dismiss"
+                );
+                return false;
+            }
+
+            if (!valDetails || valDetails.trim() === "") {
+                await showTextAlert(
+                    header="Invalid input",
+                    body="Please enter a brief description of the story.",
+                    buttonText="Dismiss"
+                );
+                return false;
+            }
+
+            if (!valLocation || valLocation.trim() === "") {
+                await showTextAlert(
+                    header="Invalid input",
+                    body="Please select where it will be published.",
+                    buttonText="Dismiss"
+                );
+                return false;
+            }
+
+            if (!valGraphicType || valGraphicType.trim() === "") {
+                await showTextAlert(
+                    header="Invalid input",
+                    body="Please select a graphic type.",
+                    buttonText="Dismiss"
+                );
+                return false;
+            }
+
+            const inputDueDate = new Date(valDue + "T23:59");
+            const now = new Date();
+            const diffMs = inputDueDate - now;
+            const requiredDiff = 48 * 60 * 60 * 1000;
+
+            if (diffMs <= 0) {
+                await showTextAlert(
+                    header="Heads up!",
+                    body="It looks like the due date you provided is in the past. Please double check that it's correct.",
+                    buttonText="Dismiss"
+                );
+                return false;
+            } else if (diffMs < requiredDiff) {
+                const result = await showButtonAlert(
+                    header="Heads up!",
+                    body="It looks like the due date you provided is less than 48 hours from now. You can still submit this request, but it may not be completed on time.",
+                    alertButtonText="Submit anyway",
+                    cancelButtonText="Cancel"
+                );
+                if (result === false) return false;
+            }
+
+            return true;
+        }
+            
+            const graphicTypeInput = submissionForm.querySelectorAll('input[name="graphicType-options"]');
+            console.log("graphicTypeInput:", graphicTypeInput);;
+            const duedateInput = submissionForm.querySelector("#dueDate");
+            const addateInput = submissionForm.querySelector("#adDate");
+            const publishlocationInput = submissionForm.querySelectorAll('input[name="publishLocation-options"]');
+            const adlocationInput = submissionForm.querySelectorAll('input[name="adLocation-options"]');
+
+
+            const infotitleContainer = submissionForm.querySelector("#formfield-ifInfographictitle");
+            const infointroContainer = submissionForm.querySelector("#formfield-ifInfographicintro");
+            const infodataContainer = submissionForm.querySelector("#formfield-ifInfographicdata");
+            const infolinkContainer = submissionForm.querySelector("#formfield-ifInfographiclink");
+
+            const illustrationdescContainer = submissionForm.querySelector("#formfield-ifIllustrationdescription");
+            const illustrationpurposeContainer = submissionForm.querySelector("#formfield-ifIllustrationpurpose");
+
+            const comicdescContainer = submissionForm.querySelector("#formfield-ifComicdescription");
+            const comicinfoContainer = submissionForm.querySelector("#formfield-ifComicinformation");
+
+            const addateContainer = submissionForm.querySelector("#formfield-adDate");
+            const duedateContainer = submissionForm.querySelector("#formfield-dueDate");
+            const adlocationContainer = submissionForm.querySelector("#formfield-adLocation");
+            const publishlocationContainer = submissionForm.querySelector("#formfield-publishLocation");
+
+            function hideAllGraphicRows() {
+            infotitleContainer.classList.add("initial-no-show");
+            infointroContainer.classList.add("initial-no-show");
+            infodataContainer.classList.add("initial-no-show");
+            infolinkContainer.classList.add("initial-no-show");
+
+            illustrationdescContainer.classList.add("initial-no-show");
+            illustrationpurposeContainer.classList.add("initial-no-show");
+
+            comicdescContainer.classList.add("initial-no-show");
+            comicinfoContainer.classList.add("initial-no-show");
+
+            addateContainer.classList.add("initial-no-show");
+            duedateContainer.classList.add("initial-no-show");
+            adlocationContainer.classList.add("initial-no-show");
+            publishlocationContainer.classList.add("initial-no-show");
         }
 
-        if (!valName || valName.trim() === "") {
-            await showTextAlert(
-                header="Invalid input",
-                body="Please enter your full name.",
-                buttonText="Dismiss"
-            );
-            return false;
+            graphicTypeInput.forEach(input => {
+            console.log("Adding event listener to:", input);
+            input.addEventListener("change", () => {
+            const selected = getSelectedValue(graphicTypeInput);
+            console.log("Selected graphic type:", selected);
+
+            hideAllGraphicRows();
+
+            if (selected === "Infographic") {
+                infotitleContainer.classList.remove("initial-no-show");
+                infointroContainer.classList.remove("initial-no-show");
+                infodataContainer.classList.remove("initial-no-show");
+                infolinkContainer.classList.remove("initial-no-show");
+            } else if (selected === "Illustration") {
+                illustrationdescContainer.classList.remove("initial-no-show");
+                illustrationpurposeContainer.classList.remove("initial-no-show");
+            } else if (selected === "Comic") {
+                comicdescContainer.classList.remove("initial-no-show");
+                comicinfoContainer.classList.remove("initial-no-show");
+            } else if (selected === "Advertisement") {
+                addateContainer.classList.remove("initial-no-show");
+                adlocationContainer.classList.remove("initial-no-show");
+            }
+        });
+    });
+    async function submitRequest(event){
+        event.preventDefault();
+        console.log("Submitting...");
+        showLoading("Verifying input...");
+
+    // Get the response data from the form (all as strings)
+        const formData = new FormData(event.target);
+        const valEmail = formData.get("email");
+        const valName = formData.get("name");
+        const valDept = formData.get("department");
+        const valHeadline = formData.get("storyheadline");
+        const valDetails = formData.get("storyDetails");
+        const valInfotitle = formData.get("ifInfographictitle"); // not always submitted
+        const valInfointro = formData.get("ifInfographicintro"); // not always submitted
+        const valInfodata = formData.get("ifInfographicdata"); // not always submitted
+        const valInfolink = formData.get("ifInfographiclink"); // not always submitted
+        const valIllustrationdesc = formData.get("ifIllustrationdescription"); // not always submitted
+        const valIllustrationpurpose = formData.get("ifIllustrationpurpose"); // not always submitted
+        const valComicdesc = formData.get("ifComicdescription"); // not always submitted
+        const valComicinfo = formData.get("ifComicinformation"); // not always submitted
+        const valUrl = formData.get("url");
+        const valDue = formData.get("dueDate");
+        const valAddate = formData.get("adDate"); // not always submitted
+        const valGraphicType = formData.get("graphicType-options");
+        const valAdlocation = formData.get("adLocation-options");
+        const valLocation = formData.get("publishLocation-options");
+          
+
+    // Validate the input, cancel the submission if not valid
+        const valid = await validateInput(
+            valEmail,
+            valName,
+            valGraphicType,
+            valDept,
+            valHeadline,
+            valDetails,
+            valInfotitle,
+            valInfointro,
+            valInfodata,
+            valInfolink,
+            valIllustrationdesc,
+            valIllustrationpurpose,
+            valComicdesc,
+            valComicinfo,
+            valUrl,
+            valDue,
+            valAddate,
+            valAdlocation,
+            valLocation,
+        );
+        if (!valid) {
+            hideLoading();
+            return;
         }
 
-        if (!valDept || valDept.trim() === "") {
+        // Turn the valCourt into boolean
+        // if (valCourt == "Yes") 
+        //     valCourt = true;
+        // else 
+        //     valCourt = false;
+        
+        // // Turn the valEvent into boolean
+        // if (valEvent == "Yes")
+        //     valEvent = true;
+        // else
+        //     valEvent = false;
+        
+        // // Turn the valPass into boolean
+        // if (valPass == "Yes")
+        //     valPass = true;
+        // else
+        //     valPass = false;
+
+        showLoading("Submitting...:");
+        
+    // Send the data to the backend endpoint
+        let endpoint = "/graphic-requests/api/submit";
+        const payload = {
+            _csrf_token: "{{ csrf_token() }}",
+            submitterEmail: valEmail,
+            submitterName: valName,
+            graphicType: valGraphicType,
+            department: valDept,
+            storyheadline: valHeadline,
+            storyDetails: valDetails,
+            ifInfographictitle: valInfotitle,
+            ifInfographicintro: valInfointro,
+            ifInfographicdata: valInfodata,
+            ifInfographiclink: valInfolink,
+            ifIllustrationdescription: valIllustrationdesc,
+            ifIllustrationpurpose: valIllustrationpurpose,
+            ifComicdescription: valComicdesc,
+            ifComicinformation: valComicinfo,
+            referenceURL: valUrl,
+            dueDate: valDue,
+            adDate: valAddate,
+            publishLocation: valLocation,
+            adLocation: valAdlocation,
+        };
+
+        console.log("payload being sent:", payload);
+
+        let response;
+
+        try {
+            response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+        } catch (error) {
+            console.error("Fetch error:", error);
             await showTextAlert(
-                header="Invalid input",
-                body="Please select a department.",
-                buttonText="Dismiss"
+                header = "Error",
+                body = "Failed to submit the request. Please try again.",
+                buttonText = "Dismiss"
             );
-            return false;
+            hideLoading();
+            return;
         }
 
-        if (!valHeadline || valHeadline.trim() === "") {
-            await showTextAlert(
-                header="Invalid input",
-                body="Please enter a story headline or short description.",
-                buttonText="Dismiss"
-            );
-            return false;
+    // Check if it was successful
+        if (response.status === 200) {
+        // Trigger a reload of the window
+            sessionStorage.setItem("infoBarMessage", "Request successfully submitted."); // Safe so we can display after reload
+            window.location.reload();
+        } else {
+        // Alert of the error
+            console.log("Submitting Graphic Request to database failed!");
+            const message = await response.text();
+            console.error(message);
+            await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
+            hideLoading();
         }
-
-        if (!valDetails || valDetails.trim() === "") {
-            await showTextAlert(
-                header="Invalid input",
-                body="Please enter a brief description of the story.",
-                buttonText="Dismiss"
-            );
-            return false;
-        }
-
-        if (!valLocation || valLocation.trim() === "") {
-            await showTextAlert(
-                header="Invalid input",
-                body="Please select where it will be published.",
-                buttonText="Dismiss"
-            );
-            return false;
-        }
-
-        if (!valType || valType.trim() === "") {
-            await showTextAlert(
-                header="Invalid input",
-                body="Please select a graphic type.",
-                buttonText="Dismiss"
-            );
-            return false;
-        }
-
-        const inputDueDate = new Date(valDue + "T23:59");
-        const now = new Date();
-        const diffMs = inputDueDate - now;
-        const requiredDiff = 48 * 60 * 60 * 1000;
-
-        if (diffMs <= 0) {
-            await showTextAlert(
-                header="Heads up!",
-                body="It looks like the due date you provided is in the past. Please double check that it's correct.",
-                buttonText="Dismiss"
-            );
-            return false;
-        } else if (diffMs < requiredDiff) {
-            const result = await showButtonAlert(
-                header="Heads up!",
-                body="It looks like the due date you provided is less than 48 hours from now. You can still submit this request, but it may not be completed on time.",
-                alertButtonText="Submit anyway",
-                cancelButtonText="Cancel"
-            );
-            if (result === false) return false;
-        }
-
-        return true;
     }
-    // // Get all the relevant form elements for dynamic showing/hiding
-    // const submissionForm = document.getElementById("graphicRequestForm");
-    // const destInput = submissionForm.querySelector("#destination");
-    // const deptInput = submissionForm.querySelector("#department");
-    // const courtInput = submissionForm.querySelectorAll('input[name="isCourtesy-options"]');
-    // const eventInput = submissionForm.querySelectorAll('input[name="isEvent-options"]');
-    // const evDateInput = submissionForm.querySelector("#eventDate");
-    // const evLocInput = submissionForm.querySelector("#eventLocation");
-    // const passInput = submissionForm.querySelectorAll('input[name="presspass-options"]');
-    // const ppReqInput = submissionForm.querySelector("#presspassRequestor");
+    // Submit the graphic request
+    function getSelectedValue(nodeList) {
+        const selected = Array.from(nodeList).find(input => input.checked);
+        console.log("Selected value:", selected ? selected.value : "None");
+        return selected ? selected.value : "";
+    }
+    // Get all the relevant form elements for dynamic showing/hiding
+    function hideAllGraphicRows() {
+            console.log("Hiding all graphic rows...");
+            console.log("infotitleContainer:", infotitleContainer);
+            console.log("infointroContainer:", infointroContainer);
 
-    // const deptContainer = submissionForm.querySelector("#formfield-department");
-    // const eventContainer = submissionForm.querySelector("#formfield-isEvent");
-    // const evDateContainer = submissionForm.querySelector("#formfield-eventDate");
-    // const evLocContainer = submissionForm.querySelector("#formfield-eventLocation");
-    // const passContainer = submissionForm.querySelector("#formfield-presspass");
-    // const ppReqContainer = submissionForm.querySelector("#formfield-presspassRequestor");
+            infotitleContainer.classList.add("initial-no-show");
+            infointroContainer.classList.add("initial-no-show");
+            infodataContainer.classList.add("initial-no-show");
+            infolinkContainer.classList.add("initial-no-show");
 
-    // // Event listener to show the department question if the destination is The Daily Illini
-    // destInput.addEventListener("input", () => {
-    //     if (destInput.value == "The Daily Illini") {
-    //         deptContainer.classList.remove("initial-no-show");
-    //     } else {
-    //         // Hide the question again and clear its value
-    //         deptContainer.classList.add("initial-no-show");
-    //         deptInput.value = "";
-    //     }
-    // });
+            illustrationdescContainer.classList.add("initial-no-show");
+            illustrationpurposeContainer.classList.add("initial-no-show");
 
-    // // Event listener to show the event question if it's not a courtesy
-    // courtInput.forEach(input => {
-    //     input.addEventListener("change", () => {
-    //         if (input.value == "No") {
-    //             eventContainer.classList.remove("initial-no-show");
-    //         } else {
-    //             eventContainer.classList.add("initial-no-show");
-    //             evDateContainer.classList.add("initial-no-show");
-    //             evLocContainer.classList.add("initial-no-show");
-    //             passContainer.classList.add("initial-no-show");
-    //             ppReqContainer.classList.add("initial-no-show");
+            comicdescContainer.classList.add("initial-no-show");
+            comicinfoContainer.classList.add("initial-no-show");
 
-    //             // Clear the input for the following questions
-    //             eventInput.forEach(evt => evt.checked = false);
-    //             evDateInput.value = "";
-    //             evLocInput.value = "";
-    //             passInput.forEach(evt => evt.checked = false);
-    //             ppReqInput.value = "";
-    //         }
-    //     });
-    // });
-
-    // // Event listener to show the other event questions if it's not a courtesy
-    // eventInput.forEach(input => {
-    //     input.addEventListener("change", () => {
-    //         if (input.value == "Yes") {
-    //             evDateContainer.classList.remove("initial-no-show");
-    //             evLocContainer.classList.remove("initial-no-show");
-    //             passContainer.classList.remove("initial-no-show");
-    //         } else {
-    //             evDateContainer.classList.add("initial-no-show");
-    //             evLocContainer.classList.add("initial-no-show");
-    //             passContainer.classList.add("initial-no-show");
-    //             ppReqContainer.classList.add("initial-no-show");
-
-    //             // Clear the input for the following questions
-    //             evDateInput.value = "";
-    //             evLocInput.value = "";
-    //             passInput.forEach(evt => evt.checked = false);
-    //             ppReqInput.value = "";
-    //         }
-    //     });
-    // });
-
-    // // Event listener to show the presspass requestor question if it needs a press pass
-    // passInput.forEach(input => {
-    //     input.addEventListener("change", () => {
-    //         if (input.value == "Yes") {
-    //             ppReqContainer.classList.remove("initial-no-show");
-    //         } else {
-    //             ppReqContainer.classList.add("initial-no-show");
-    //             ppReqInput.value = "";
-    //         }
-    //     });
-    // });
+            addateContainer.classList.add("initial-no-show");
+            duedateContainer.classList.add("initial-no-show");
+            adlocationContainer.classList.add("initial-no-show");
+            publishlocationContainer.classList.add("initial-no-show");
+        }  
+    
 </script>
 
 {% endblock %}
