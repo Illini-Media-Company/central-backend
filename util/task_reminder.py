@@ -6,8 +6,7 @@ from db.task_reminder import (
     reset_all_tasks,
     get_tasks_for_shift,
 )
-from util.slackbots._slackbot import app
-from constants import SLACK_BOT_TOKEN
+from util.slackbots.general import dm_user_by_email
 
 logger = logging.getLogger(__name__)
 
@@ -31,45 +30,49 @@ def reset_weekly_tasks():
 
 
 def send_slack_notification(task):
-    slack_id = task.get("slack_user_id")
-    if not slack_id:
-        logger.warning(f"No Slack ID for {task['username']}, skipping notification")
-        return None, (f"No Slack ID set for {task['username']}", 400)
+    email = task.get("email")
+    if not email:
+        logger.warning(f"No email set for {task['username']}, skipping notification")
+        return None, (f"No email set for {task['username']}", 400)
 
     if task.get("is_done"):
         logger.info(f"Task for {task['username']} already done this week, skipping")
         return None, (f"Task already completed this week for {task['username']}", 200)
 
-    try:
-        result = app.client.chat_postMessage(
-            token=SLACK_BOT_TOKEN,
-            channel=slack_id,
-            blocks=[
-                {
-                    "type": "header",
-                    "text": {
-                        "type": "plain_text",
-                        "text": f"Task Reminder: {task['task_description']}",
-                        "emoji": True,
-                    },
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"Hi {task['username']}! Here is your task reminder for this shift:\n\n*Task:* {task['task_description']}\n*How often:* {task['task_frequency']}",
-                    },
-                },
-            ],
-            text=f"Task Reminder: {task['task_description']}",
-        )
-        logger.info(f"Slack notification sent to {task['username']} ({slack_id})")
+    blocks = [
+        {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": f"Task Reminder: {task['task_description']}",
+                "emoji": True,
+            },
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": (
+                    f"Hi {task['username']}! Here is your task reminder for this shift:\n\n"
+                    f"*Task:* {task['task_description']}\n"
+                    f"*How often:* {task['task_frequency']}"
+                ),
+            },
+        },
+    ]
+
+    result = dm_user_by_email(
+        email=email,
+        text=f"Task Reminder: {task['task_description']}",
+        blocks=blocks,
+    )
+
+    if result.get("ok"):
+        logger.info(f"Slack notification sent to {task['username']} ({email})")
         return result, None
-    except Exception as e:
-        logger.exception(
-            f"Failed to send Slack notification to {task['username']}: {e}"
-        )
-        return None, (str(e), 500)
+    else:
+        logger.error(f"Failed to notify {task['username']}: {result.get('error')}")
+        return None, (result.get("error"), 500)
 
 
 def notify_shift_start(day, start_time):

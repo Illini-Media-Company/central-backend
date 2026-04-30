@@ -52,11 +52,11 @@ def get_tasks_for_shift(day, start_time):
     ]
 
 
-def update_task_slack_id(task_id, slack_user_id):
+def update_task_email(task_id, email):
     data = _load()
     for task in data["tasks"]:
         if task["id"] == task_id:
-            task["slack_user_id"] = slack_user_id
+            task["email"] = email
             _save(data)
             return task
     return None
