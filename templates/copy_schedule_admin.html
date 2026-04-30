@@ -1,0 +1,586 @@
+{% extends 'base.html' %}
+{% from 'macros/editors.html' import email_to_name_map %}
+
+{% block title %} Copy Admin Dashboard {% endblock %}
+
+{% block extra_head %}
+<style>
+    .page-content { overflow: auto; }
+    .tab-btn { padding: 6px 12px; border: none; border-radius: 4px; background: transparent; cursor: pointer; font-size: 0.875rem; }
+    .tab-btn.active-tab { background: #e5e7eb; font-weight: 500; }
+    .tab-btn:hover:not(.active-tab) { background: #f3f4f6; }
+    .grid-tab-btn { padding: 4px 12px; border: 1px solid #dee2e6; border-radius: 4px; background: white; cursor: pointer; font-size: 0.8rem; }
+    .grid-tab-btn.active-grid-tab { background: #1d4ed8; color: white; border-color: #1d4ed8; font-weight: 500; }
+
+    /* Mobile layout */
+    @media (max-width: 768px) {
+        #sub-topbar {
+            height: auto !important;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            padding: 0.6rem 1rem !important;
+        }
+        #sub-topbar > div { flex-wrap: wrap; gap: 0.4rem; }
+        /* Hide coverage badges on mobile — shown in action panel */
+        #coverage-wrap { display: none !important; }
+        #search-input { width: 140px !important; }
+
+        #view-schedule {
+            flex-direction: column !important;
+            height: auto !important;
+            overflow: visible !important;
+        }
+        #grid-area {
+            flex: none !important;
+            width: 100% !important;
+            border-right: none !important;
+            border-bottom: 1px solid #dee2e6;
+            padding: 1rem !important;
+            overflow-x: auto !important;
+        }
+        #action-panel {
+            flex: none !important;
+            width: 100% !important;
+            padding: 1rem !important;
+        }
+        .editors-flex { flex-wrap: wrap !important; }
+        .editors-flex > div { min-width: 100% !important; }
+    }
+</style>
+{% endblock %}
+
+{% block content%}
+
+<script>
+    const EDITORS        = {{ editors | tojson }};
+    const STAFF_SHIFTS   = {{ shifts | tojson }};
+    const SENIOR_SHIFTS  = {{ senior_shifts | tojson }};
+    const SHIFT_REQUESTS = {{ shift_requests | tojson }};
+    const CSRF_TOKEN     = '{{ csrf_token() }}';
+    const EMAIL_TO_NAME  = {{ email_to_name_map(editors) }};
+    const BREAK_WEEKS    = new Set({{ break_weeks | tojson }});
+    let   copyBotActive  = {{ copy_bot_active | tojson }};
+</script>
+
+<div id="sub-topbar" style="height:57px; background:white; border-bottom:1px solid #dee2e6; display:flex; align-items:center; justify-content:space-between; padding:0 1.5rem; flex-shrink:0;">
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+        <button onclick="prevWeek()" style="padding:4px 8px; border:1px solid #dee2e6; border-radius:4px; background:white; cursor:pointer;">&#8249;</button>
+        <span id="date-range-label" style="font-weight:500; min-width:130px; text-align:center; font-size:0.875rem;">---</span>
+        <button onclick="nextWeek()" style="padding:4px 8px; border:1px solid #dee2e6; border-radius:4px; background:white; cursor:pointer;">&#8250;</button>
+        <button onclick="thisWeek()" style="padding:4px 10px; border:1px solid #dee2e6; border-radius:4px; background:white; cursor:pointer; font-size:0.875rem;">This Week</button>
+        <button id="break-week-btn" onclick="toggleBreakWeek()" class="button-secondary" style="font-size:0.8rem; padding:4px 10px;">Mark as Break Week</button>
+    </div>
+    <div id="coverage-wrap" style="display:flex; align-items:center; gap:0.5rem;">
+        <span id="coverage-open"    style="padding:2px 10px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; font-size:0.75rem; color:#1e40af;">Open: 0</span>
+        <span id="coverage-staffed" style="padding:2px 10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:4px; font-size:0.75rem; color:#166534;">Staffed: 0</span>
+        <span id="coverage-full"    style="padding:2px 10px; background:#faf5ff; border:1px solid #e9d5ff; border-radius:4px; font-size:0.75rem; color:#6b21a8;">Full: 0</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+        <button id="copy-bot-btn" onclick="toggleCopyBotFlag()" class="button-secondary" style="font-size:0.8rem; padding:4px 10px;">---</button>
+        <button id="tab-schedule" onclick="switchTab('schedule')" class="tab-btn active-tab">Schedule</button>
+        <button id="tab-editors"  onclick="switchTab('editors')"  class="tab-btn">Editors</button>
+        <div style="position:relative;">
+            <i class="bi bi-search" style="position:absolute; left:8px; top:50%; transform:translateY(-50%); color:#9ca3af; font-size:0.875rem;"></i>
+            <input id="search-input" type="text" placeholder="Search..." oninput="handleSearch(this.value)" style="padding:6px 8px 6px 28px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem; width:200px;">
+        </div>
+    </div>
+</div>
+
+<div id="main-content" style="display:flex; flex-direction:column; flex:1; overflow:auto;">
+
+    <!-- VIEW: Schedule -->
+    <div id="view-schedule" style="display:flex; height:100%; overflow:hidden;">
+
+        <div id="grid-area" style="flex:0 0 70%; overflow:auto; padding:1.5rem; border-right:1px solid #dee2e6;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+                <div style="display:flex; gap:0.4rem;">
+                    <button id="grid-tab-staff"  onclick="switchGridTab('staff')"  class="grid-tab-btn active-grid-tab">Staff Copy</button>
+                    <button id="grid-tab-senior" onclick="switchGridTab('senior')" class="grid-tab-btn">Senior Copy</button>
+                </div>
+                <div style="display:flex; gap:0.6rem; font-size:0.75rem; color:#6b7280; flex-wrap:wrap; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:0.3rem;"><div style="width:11px;height:11px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:2px;"></div>Open</div>
+                    <div style="display:flex; align-items:center; gap:0.3rem;"><div style="width:11px;height:11px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:2px;"></div>Staffed</div>
+                    <div style="display:flex; align-items:center; gap:0.3rem;"><div style="width:11px;height:11px;background:#faf5ff;border:1px solid #e9d5ff;border-radius:2px;"></div>Full</div>
+                    <div style="display:flex; align-items:center; gap:0.3rem;"><div style="width:11px;height:11px;background:#fff1f2;border:1px solid #fca5a5;border-radius:2px;"></div>Action</div>
+                    <div id="break-week-badge" style="display:none;align-items:center;gap:0.3rem;padding:1px 6px;background:#fef9c3;border:1px solid #fde047;border-radius:4px;color:#854d0e;font-weight:500;">☀️ Break Week</div>
+                </div>
+            </div>
+            <div style="border:1px solid #dee2e6; border-radius:6px; overflow:hidden; min-width:560px;">
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr style="background:#f9fafb; border-bottom:1px solid #dee2e6;">
+                            <th style="width:90px; padding:0.5rem; border-right:1px solid #dee2e6;"></th>
+                            {% for i in range(7) %}
+                            <th id="grid-hdr-{{ i }}" style="padding:0.5rem; text-align:center; border-right:1px solid #dee2e6; min-width:80px;"></th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody id="shift-grid-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="action-panel" style="flex:0 0 30%; overflow:auto; padding:1.5rem;">
+            <div style="margin-bottom:1.5rem;">
+                <h6 style="font-weight:600; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;">
+                    <i class="bi bi-exclamation-circle"></i> Pending Actions
+                </h6>
+                <div id="pending-actions-list"><p style="color:#9ca3af;font-size:0.875rem;">No pending actions</p></div>
+            </div>
+            <div>
+                <h6 style="font-weight:600; margin-bottom:0.75rem;">Weekly Load by Editor</h6>
+                <div id="weekly-load-list"><p style="color:#9ca3af;font-size:0.875rem;">No editors</p></div>
+            </div>
+            <div style="margin-top:1.5rem; border-top:1px solid #dee2e6; padding-top:1rem;">
+                <button onclick="openAddShiftModal()" class="button-primary" style="width:100%;">+ Add Shift</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW: Editors -->
+    <div id="view-editors" style="display:none; overflow-y:auto; flex:1; padding:1.5rem;">
+        <div style="max-width:1200px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:0.5rem;">
+                <h5 style="font-weight:600; margin:0;">Editors</h5>
+                <button onclick="syncFromGroups()" id="sync-groups-btn" class="button-secondary" style="font-size:0.875rem;">
+                    <i class="bi bi-arrow-repeat"></i> Sync from Google Groups
+                </button>
+            </div>
+            <div class="editors-flex" style="display:flex; gap:1.5rem;">
+                <div style="flex:1; min-width:280px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                        <h6 style="margin:0;">Copy Editors (<span id="copy-editors-count">0</span>)</h6>
+                        <button onclick="openAddEditorModal('Copy Editor')" class="button-secondary" style="font-size:0.8rem;"><i class="bi bi-plus"></i> Add</button>
+                    </div>
+                    <input type="text" id="copy-editor-search" placeholder="Filter..." oninput="renderEditorsView()" style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem; margin-bottom:0.5rem; box-sizing:border-box;">
+                    <div style="border:1px solid #dee2e6; border-radius:6px; overflow:auto;">
+                        <table style="width:100%; border-collapse:collapse; min-width:260px;">
+                            <thead style="background:#f9fafb; border-bottom:1px solid #dee2e6;">
+                                <tr>
+                                    <th style="padding:10px 12px; text-align:left; font-size:0.875rem;">Editor</th>
+                                    <th style="padding:10px 12px; text-align:left; font-size:0.875rem;">Shifts</th>
+                                    <th style="padding:10px 12px; text-align:left; font-size:0.875rem;">Weekend</th>
+                                    <th style="width:36px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="copy-editors-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div style="flex:1; min-width:280px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                        <h6 style="margin:0;">Senior Copy Editors (<span id="senior-editors-count">0</span>)</h6>
+                        <button onclick="openAddEditorModal('Senior Copy Editor')" class="button-secondary" style="font-size:0.8rem;"><i class="bi bi-plus"></i> Add</button>
+                    </div>
+                    <input type="text" id="senior-editor-search" placeholder="Filter..." oninput="renderEditorsView()" style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem; margin-bottom:0.5rem; box-sizing:border-box;">
+                    <div style="border:1px solid #dee2e6; border-radius:6px; overflow:auto;">
+                        <table style="width:100%; border-collapse:collapse; min-width:260px;">
+                            <thead style="background:#f9fafb; border-bottom:1px solid #dee2e6;">
+                                <tr>
+                                    <th style="padding:10px 12px; text-align:left; font-size:0.875rem;">Editor</th>
+                                    <th style="padding:10px 12px; text-align:left; font-size:0.875rem;">Shifts</th>
+                                    <th style="padding:10px 12px; text-align:left; font-size:0.875rem;">Weekend</th>
+                                    <th style="width:36px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="senior-editors-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Shift -->
+<div id="modal-shift" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000; align-items:center; justify-content:center; padding:1rem;">
+    <div style="background:white; border-radius:8px; padding:1.5rem; width:420px; max-width:95vw; box-shadow:0 4px 24px rgba(0,0,0,0.15);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h6 id="modal-shift-title" style="font-weight:600; margin:0;">Add Shift</h6>
+            <button onclick="closeShiftModal()" style="background:none; border:none; font-size:1.25rem; cursor:pointer; color:#6b7280;">&times;</button>
+        </div>
+        <form id="form-shift" onsubmit="submitShiftModal(event)">
+            <div style="margin-bottom:0.75rem;">
+                <label style="font-size:0.875rem; font-weight:500; display:block; margin-bottom:0.25rem;">Date</label>
+                <input type="date" id="shift-date" required style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem; box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:0.75rem;">
+                <label style="font-size:0.875rem; font-weight:500; display:block; margin-bottom:0.25rem;">Time Slot</label>
+                <select id="shift-hour" required style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem;"></select>
+            </div>
+            <div style="margin-bottom:0.75rem;">
+                <label style="font-size:0.875rem; font-weight:500; display:block; margin-bottom:0.25rem;">Editor 1</label>
+                <div style="display:flex; gap:0.4rem; align-items:center;">
+                    <select id="shift-editor-1" style="flex:1; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem;"></select>
+                    <button type="button" onclick="document.getElementById('shift-editor-1').value=''" style="flex-shrink:0; background:none; border:1px solid #dee2e6; border-radius:4px; padding:5px 8px; cursor:pointer; color:#9ca3af;">&times;</button>
+                </div>
+            </div>
+            <div style="margin-bottom:1rem;">
+                <label style="font-size:0.875rem; font-weight:500; display:block; margin-bottom:0.25rem;">Editor 2</label>
+                <div style="display:flex; gap:0.4rem; align-items:center;">
+                    <select id="shift-editor-2" style="flex:1; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem;"></select>
+                    <button type="button" onclick="document.getElementById('shift-editor-2').value=''" style="flex-shrink:0; background:none; border:1px solid #dee2e6; border-radius:4px; padding:5px 8px; cursor:pointer; color:#9ca3af;">&times;</button>
+                </div>
+            </div>
+            <div style="display:flex; gap:0.5rem; justify-content:space-between; align-items:center; flex-wrap:wrap;">
+                <button type="button" id="modal-shift-delete" onclick="deleteCurrentShift()" class="button-secondary" style="color:#dc2626; border-color:#fca5a5; display:none;"><i class="bi bi-trash"></i> Delete</button>
+                <div style="display:flex; gap:0.5rem; margin-left:auto;">
+                    <button type="button" onclick="closeShiftModal()" class="button-secondary">Cancel</button>
+                    <button type="submit" id="modal-shift-submit" class="button-primary">Add Shift</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: Editor -->
+<div id="modal-editor" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000; align-items:center; justify-content:center; padding:1rem;">
+    <div style="background:white; border-radius:8px; padding:1.5rem; width:420px; max-width:95vw; box-shadow:0 4px 24px rgba(0,0,0,0.15);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h6 id="modal-editor-title" style="font-weight:600; margin:0;">Add Editor</h6>
+            <button onclick="closeEditorModal()" style="background:none; border:none; font-size:1.25rem; cursor:pointer; color:#6b7280;">&times;</button>
+        </div>
+        <form id="form-editor" onsubmit="submitEditorModal(event)">
+            <div style="margin-bottom:0.75rem;">
+                <label style="font-size:0.875rem; font-weight:500; display:block; margin-bottom:0.25rem;">Name</label>
+                <input type="text" id="editor-name" required placeholder="Full name" style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem; box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:0.75rem;">
+                <label style="font-size:0.875rem; font-weight:500; display:block; margin-bottom:0.25rem;">Email</label>
+                <input type="email" id="editor-email" required placeholder="email@example.com" style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem; box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:0.75rem;">
+                <label style="font-size:0.875rem; font-weight:500; display:block; margin-bottom:0.25rem;">Phone <span style="color:#9ca3af;">(optional)</span></label>
+                <input type="tel" id="editor-phone" placeholder="(555) 000-0000" style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem; box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:1rem;">
+                <label style="font-size:0.875rem; font-weight:500; display:block; margin-bottom:0.25rem;">Category</label>
+                <select id="editor-category" style="width:100%; padding:6px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:0.875rem;">
+                    <option value="Copy Editor">Copy Editor</option>
+                    <option value="Senior Copy Editor">Senior Copy Editor</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                <button type="button" onclick="closeEditorModal()" class="button-secondary">Cancel</button>
+                <button type="submit" id="modal-editor-submit" class="button-primary">Add Editor</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: Editor Detail -->
+<div id="modal-editor-detail" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000; align-items:center; justify-content:center; padding:1rem;">
+    <div style="background:white; border-radius:8px; padding:1.5rem; width:480px; max-width:95vw; box-shadow:0 4px 24px rgba(0,0,0,0.15);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h6 id="detail-editor-name" style="font-weight:600; margin:0;">Editor Name</h6>
+            <button onclick="closeEditorDetailModal()" style="background:none; border:none; font-size:1.25rem; cursor:pointer; color:#6b7280;">&times;</button>
+        </div>
+        <div style="margin-bottom:1rem; font-size:0.875rem; color:#6b7280;">
+            <div style="margin-bottom:0.4rem;"><i class="bi bi-envelope" style="margin-right:0.4rem;"></i><span id="detail-editor-email">—</span></div>
+            <div style="margin-bottom:0.4rem;"><i class="bi bi-telephone" style="margin-right:0.4rem;"></i><span id="detail-editor-phone">—</span></div>
+            <div><i class="bi bi-tag" style="margin-right:0.4rem;"></i><span id="detail-editor-category">—</span></div>
+        </div>
+        <div style="margin-bottom:1rem;">
+            <h6 style="font-size:0.875rem; font-weight:600; margin-bottom:0.5rem;">Upcoming Shifts</h6>
+            <div id="detail-editor-shifts" style="font-size:0.875rem; color:#6b7280;">—</div>
+        </div>
+        <div style="display:flex; gap:0.5rem; justify-content:flex-end; flex-wrap:wrap;">
+            <button onclick="openEditEditorFromDetail()" class="button-secondary" style="font-size:0.875rem;"><i class="bi bi-pencil"></i> Edit</button>
+            <button onclick="deleteEditorFromDetail()" class="button-secondary" style="font-size:0.875rem; color:#dc2626; border-color:#fca5a5;"><i class="bi bi-trash"></i> Delete</button>
+            <button onclick="closeEditorDetailModal()" class="button-primary" style="font-size:0.875rem;">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let editors=EDITORS.slice(), staffShifts=STAFF_SHIFTS.slice(), seniorShifts=SENIOR_SHIFTS.slice();
+let shiftRequests=SHIFT_REQUESTS.slice(), currentWeekStart=getSunday(new Date());
+let searchQuery='', currentGridTab='staff';
+let editingShiftUid=null, editingEditorUid=null, detailEditorUid=null;
+
+const BREAK_WEEK_HOURS  = [10,14,18];
+const BREAK_WEEK_LABELS = ['10 a.m.–2 p.m.','2 p.m.–6 p.m.','6 p.m.–10 p.m.'];
+const REGULAR_HOURS     = [8,10,12,14,16,18,20,22];
+const REGULAR_LABELS    = ['8 a.m.–10 a.m.','10 a.m.–12 p.m.','12 p.m.–2 p.m.','2 p.m.–4 p.m.','4 p.m.–6 p.m.','6 p.m.–8 p.m.','8 p.m.–10 p.m.','10 p.m.–12 a.m.'];
+const SENIOR_REG_HOURS  = [10,12,14,16,18,20];
+const SENIOR_REG_LABELS = ['10 a.m.–12 p.m.','12 p.m.–2 p.m.','2 p.m.–4 p.m.','4 p.m.–6 p.m.','6 p.m.–8 p.m.','8 p.m.–10 p.m.'];
+
+function isCurrentWeekBreak() { return BREAK_WEEKS.has(toDateStr(currentWeekStart)); }
+function getSlotHours()  { return isCurrentWeekBreak()?BREAK_WEEK_HOURS:currentGridTab==='senior'?SENIOR_REG_HOURS:REGULAR_HOURS; }
+function getTimeLabels() { return isCurrentWeekBreak()?BREAK_WEEK_LABELS:currentGridTab==='senior'?SENIOR_REG_LABELS:REGULAR_LABELS; }
+function getCurrentShifts() { return currentGridTab==='senior'?seniorShifts:staffShifts; }
+
+function fmtHour(h) {
+    if (isCurrentWeekBreak()) { const m={10:'10 a.m.–2 p.m.',14:'2 p.m.–6 p.m.',18:'6 p.m.–10 p.m.'}; if(m[h]) return m[h]; }
+    const s={8:'8 a.m.',10:'10 a.m.',12:'12 p.m.',14:'2 p.m.',16:'4 p.m.',18:'6 p.m.',20:'8 p.m.',22:'10 p.m.'};
+    const e={8:'10 a.m.',10:'12 p.m.',12:'2 p.m.',14:'4 p.m.',16:'6 p.m.',18:'8 p.m.',20:'10 p.m.',22:'12 a.m.'};
+    return `${s[h]}–${e[h]}`;
+}
+
+function getSunday(d){const s=new Date(d);s.setDate(d.getDate()-d.getDay());s.setHours(0,0,0,0);return s;}
+function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r;}
+function toDateStr(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function fmtDate(d){return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
+const DAY_NAMES=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function prevWeek(){currentWeekStart=addDays(currentWeekStart,-7);renderAll();}
+function nextWeek(){currentWeekStart=addDays(currentWeekStart, 7);renderAll();}
+function thisWeek(){currentWeekStart=getSunday(new Date());renderAll();}
+
+function switchGridTab(tab){
+    currentGridTab=tab;
+    ['staff','senior'].forEach(t=>document.getElementById(`grid-tab-${t}`).classList.toggle('active-grid-tab',t===tab));
+    renderGrid();renderCoverageBadges();renderActionPanel();
+}
+function switchTab(tab){
+    ['schedule','editors'].forEach(t=>{document.getElementById(`view-${t}`).style.display='none';document.getElementById(`tab-${t}`).classList.remove('active-tab');});
+    document.getElementById(`view-${tab}`).style.display=tab==='schedule'?'flex':'block';
+    document.getElementById(`tab-${tab}`).classList.add('active-tab');
+    if(tab==='editors') renderEditorsView();
+}
+function handleSearch(val){searchQuery=val.toLowerCase();renderAll();}
+
+function renderAll(){renderDateHeaders();renderGrid();renderCoverageBadges();renderActionPanel();updateBreakWeekButton();updateCopyBotButton();}
+
+function renderDateHeaders(){
+    document.getElementById('date-range-label').textContent=`${fmtDate(currentWeekStart)} – ${fmtDate(addDays(currentWeekStart,6))}`;
+    for(let i=0;i<7;i++){
+        const d=addDays(currentWeekStart,i),hdr=document.getElementById(`grid-hdr-${i}`),isToday=toDateStr(d)===toDateStr(new Date());
+        hdr.innerHTML=`<div style="font-size:0.7rem;color:#6b7280;">${DAY_NAMES[i]}</div><div style="font-weight:${isToday?700:500};font-size:0.8rem;color:${isToday?'#1d4ed8':'inherit'};">${fmtDate(d)}</div>`;
+    }
+}
+
+const STATUS_STYLE={open:'background:#eff6ff;border:1px solid #bfdbfe;',staffed:'background:#f0fdf4;border:1px solid #bbf7d0;',full:'background:#faf5ff;border:1px solid #e9d5ff;',action:'background:#fff1f2;border:1px solid #fca5a5;'};
+function getShiftForCell(ds,h){return getCurrentShifts().find(s=>s.date===ds&&s.start_hour===h)||null;}
+function cellStatus(s){if(!s)return'open';if(s.editor_id&&s.editor_id_2)return'full';if(s.editor_id||s.editor_id_2)return'staffed';return'open';}
+
+function renderGrid(){
+    const sh=getSlotHours(),tl=getTimeLabels();
+    document.getElementById('shift-grid-body').innerHTML=sh.map((hour,slot)=>`
+        <tr style="border-bottom:1px solid #dee2e6;">
+            <td style="padding:0.5rem;font-size:0.7rem;color:#6b7280;background:#f9fafb;border-right:1px solid #dee2e6;white-space:nowrap;">${tl[slot]}</td>
+            ${Array.from({length:7},(_,day)=>`<td id="cell-${slot}-${day}" style="height:72px;border-right:1px solid #dee2e6;padding:0.4rem;vertical-align:top;cursor:default;"></td>`).join('')}
+        </tr>`).join('');
+    for(let slot=0;slot<sh.length;slot++) for(let day=0;day<7;day++){
+        const cell=document.getElementById(`cell-${slot}-${day}`);
+        const ds=toDateStr(addDays(currentWeekStart,day)),hour=sh[slot],shift=getShiftForCell(ds,hour);
+        const hasAction=shift&&shift.up_for_drop,status=hasAction?'action':cellStatus(shift);
+        let dimmed=false;
+        if(searchQuery&&shift) dimmed=![shift.editor_name,shift.editor_name_2,ds,fmtHour(hour)].join(' ').toLowerCase().includes(searchQuery);
+        cell.style.cssText=`height:72px;border-right:1px solid #dee2e6;padding:0.4rem;vertical-align:top;cursor:pointer;${STATUS_STYLE[status]}${dimmed?'opacity:0.3;':''}`;
+        cell.onclick=()=>openShiftModal(ds,hour);
+        if(!shift||(!shift.editor_id&&!shift.editor_id_2)){
+            cell.innerHTML=`<span style="font-size:0.65rem;color:#9ca3af;">+ Add</span>`;
+        } else {
+            const names=[shift.editor_name,shift.editor_name_2].filter(Boolean);
+            cell.innerHTML=names.map(n=>`<div style="font-size:0.7rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n}</div>`).join('')
+                +(hasAction?`<div style="font-size:0.65rem;color:#dc2626;margin-top:2px;">Drop requested</div>`:'');
+        }
+    }
+}
+
+function renderCoverageBadges(){
+    const h=getSlotHours();let open=0,staffed=0,full=0;
+    for(let s=0;s<h.length;s++) for(let d=0;d<7;d++){const st=cellStatus(getShiftForCell(toDateStr(addDays(currentWeekStart,d)),h[s]));if(st==='open')open++;else if(st==='staffed')staffed++;else if(st==='full')full++;}
+    document.getElementById('coverage-open').textContent=`Open: ${open}`;
+    document.getElementById('coverage-staffed').textContent=`Staffed: ${staffed}`;
+    document.getElementById('coverage-full').textContent=`Full: ${full}`;
+}
+
+function updateBreakWeekButton(){
+    const btn=document.getElementById('break-week-btn'),badge=document.getElementById('break-week-badge'),isBreak=isCurrentWeekBreak();
+    btn.textContent=isBreak?'Remove Break Week':'Mark as Break Week';
+    btn.style.color=isBreak?'#dc2626':'';btn.style.borderColor=isBreak?'#fca5a5':'';
+    badge.style.display=isBreak?'flex':'none';
+}
+async function toggleBreakWeek(){
+    const ws=toDateStr(currentWeekStart),isBreak=isCurrentWeekBreak();
+    if(!await showButtonAlert(isBreak?'Remove Break Week':'Mark as Break Week',isBreak?'This will revert this week to the regular schedule.':'This will switch this week to break schedule (10 a.m.–2 p.m., 2 p.m.–6 p.m., 6 p.m.–10 p.m.).',isBreak?'Remove':'Confirm','Cancel')) return;
+    const resp=await fetch('/copy-schedule/admin/break-week/toggle',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF_TOKEN},body:JSON.stringify({week_start:ws})});
+    if(!resp.ok){showInfoBar('Error toggling break week.');return;}
+    const data=await resp.json();
+    if(data.is_break_week)BREAK_WEEKS.add(ws);else BREAK_WEEKS.delete(ws);
+    renderAll();showInfoBar(data.is_break_week?'☀️ Week marked as break week.':'Break week removed.');
+}
+
+function updateCopyBotButton(){
+    const btn=document.getElementById('copy-bot-btn');
+    btn.textContent=copyBotActive?'🤖 Bot: Schedule':'🗓️ Bot: Calendar';
+    btn.style.color=copyBotActive?'#166534':'#92400e';
+    btn.style.background=copyBotActive?'#f0fdf4':'#fef3c7';
+    btn.style.borderColor=copyBotActive?'#bbf7d0':'#fde068';
+}
+async function toggleCopyBotFlag(){
+    if(!await showButtonAlert(copyBotActive?'Switch to Google Calendar':'Switch to Shift Schedule',copyBotActive?'The copy bot will resume reading from Google Calendar.':'The copy bot will read from the shift schedule. Make sure the copy team has migrated.','Confirm','Cancel')) return;
+    const resp=await fetch('/copy-schedule/admin/flag/copy-bot/toggle',{method:'POST',headers:{'X-CSRFToken':CSRF_TOKEN}});
+    if(!resp.ok){showInfoBar('Error toggling copy bot flag.');return;}
+    const data=await resp.json();copyBotActive=data.active;updateCopyBotButton();
+    showInfoBar(copyBotActive?'✅ Copy bot now using shift schedule.':'↩️ Copy bot reverted to Google Calendar.');
+}
+
+function renderActionPanel(){renderPendingActions();renderWeeklyLoad();}
+function renderPendingActions(){
+    const pending=shiftRequests.filter(r=>r.status==='pending'),el=document.getElementById('pending-actions-list');
+    if(!pending.length){el.innerHTML=`<p style="color:#9ca3af;font-size:0.875rem;">No pending actions</p>`;return;}
+    el.innerHTML=pending.map(r=>{
+        const sl=`${r.source_shift_date} ${fmtHour(r.source_shift_hour)}`,tl=r.target_shift_date?` → ${r.target_shift_date} ${fmtHour(r.target_shift_hour)}`:'';
+        const tag=r.slot_type==='senior'?`<span style="font-size:0.7rem;background:#ede9fe;color:#7c3aed;padding:1px 5px;border-radius:3px;margin-left:4px;">Senior</span>`:`<span style="font-size:0.7rem;background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:3px;margin-left:4px;">Staff</span>`;
+        return `<div style="border:1px solid #fca5a5;background:#fff1f2;border-radius:6px;padding:0.75rem;margin-bottom:0.5rem;font-size:0.875rem;">
+            <div style="font-weight:500;">${r.requester_name||EMAIL_TO_NAME[r.requester_id]||r.requester_id} — ${r.request_type.replace(/_/g,' ')}${tag}</div>
+            <div style="color:#6b7280;font-size:0.75rem;margin:2px 0;">${sl}${tl}</div>
+            <div style="display:flex;gap:0.4rem;margin-top:0.4rem;">
+                <button onclick="approveRequest(${r.uid})" class="button-primary" style="font-size:0.75rem;padding:3px 10px;">Approve</button>
+                <button onclick="denyRequest(${r.uid})" class="button-secondary" style="font-size:0.75rem;padding:3px 10px;">Deny</button>
+            </div></div>`;
+    }).join('');
+}
+
+function renderWeeklyLoad(){
+    const el=document.getElementById('weekly-load-list'),isSenior=currentGridTab==='senior';
+    const tabEditors=editors.filter(e=>e.category===(isSenior?'Senior Copy Editor':'Copy Editor'));
+    const shiftSrc=isSenior?seniorShifts:staffShifts;
+    if(!tabEditors.length){el.innerHTML=`<p style="color:#9ca3af;font-size:0.875rem;">No editors</p>`;return;}
+    const counts={};tabEditors.forEach(e=>counts[e.email]=0);
+    shiftSrc.forEach(s=>{const d=new Date(s.date+'T00:00:00'),we=addDays(currentWeekStart,7);if(d>=currentWeekStart&&d<we){if(s.editor_id&&counts[s.editor_id]!==undefined)counts[s.editor_id]++;if(s.editor_id_2&&counts[s.editor_id_2]!==undefined)counts[s.editor_id_2]++;}});
+    el.innerHTML=tabEditors.map(e=>`<div onclick="openEditorDetailModal(${e.uid})" style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:0.875rem;border-bottom:1px solid #f3f4f6;cursor:pointer;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''"><span>${EMAIL_TO_NAME[e.email]||e.name}</span><span style="font-weight:500;">${counts[e.email]||0} shift${counts[e.email]===1?'':'s'}</span></div>`).join('');
+}
+
+async function syncFromGroups(){
+    const btn=document.getElementById('sync-groups-btn');btn.disabled=true;btn.innerHTML='<i class="bi bi-arrow-repeat"></i> Syncing...';
+    try{const res=await fetch('/copy-schedule/admin/sync-from-groups',{method:'POST',headers:{'X-CSRFToken':CSRF_TOKEN}});const data=await res.json();if(!res.ok)throw new Error(data.error||'Sync failed');alert(`Sync complete: ${data.added} added, ${data.skipped} skipped.`);location.reload();}
+    catch(e){alert('Error: '+e.message);}finally{btn.disabled=false;btn.innerHTML='<i class="bi bi-arrow-repeat"></i> Sync from Google Groups';}
+}
+
+function renderEditorsView(){
+    const cq=document.getElementById('copy-editor-search').value.toLowerCase(),sq=document.getElementById('senior-editor-search').value.toLowerCase();
+    const dn=e=>EMAIL_TO_NAME[e.email]||e.name;
+    const ce=editors.filter(e=>e.category==='Copy Editor'&&dn(e).toLowerCase().includes(cq)).sort((a,b)=>dn(a).localeCompare(dn(b)));
+    const se=editors.filter(e=>e.category==='Senior Copy Editor'&&dn(e).toLowerCase().includes(sq)).sort((a,b)=>dn(a).localeCompare(dn(b)));
+    document.getElementById('copy-editors-count').textContent=ce.length;document.getElementById('senior-editors-count').textContent=se.length;
+    renderEditorTable('copy-editors-tbody',ce,staffShifts);renderEditorTable('senior-editors-tbody',se,seniorShifts);
+}
+function renderEditorTable(id,list,shifts){
+    const tbody=document.getElementById(id);
+    if(!list.length){tbody.innerHTML=`<tr><td colspan="4" style="padding:1rem;text-align:center;color:#9ca3af;font-size:0.875rem;">No editors</td></tr>`;return;}
+    tbody.innerHTML=list.map(e=>{
+        const sc=shifts.filter(s=>s.editor_id===e.email||s.editor_id_2===e.email).length;
+        const wc=shifts.filter(s=>{if(s.editor_id!==e.email&&s.editor_id_2!==e.email)return false;const dow=new Date(s.date+'T00:00:00').getDay();return dow===0||dow===6;}).length;
+        return `<tr style="border-bottom:1px solid #dee2e6;cursor:pointer;" onclick="openEditorDetailModal(${e.uid})" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
+            <td style="padding:10px 12px;font-size:0.875rem;">${EMAIL_TO_NAME[e.email]||e.name}</td>
+            <td style="padding:10px 12px;font-size:0.875rem;">${sc}</td>
+            <td style="padding:10px 12px;font-size:0.875rem;">${wc}</td>
+            <td style="padding:10px 12px;"><button onclick="event.stopPropagation();openAddEditorModal('${e.category}',${e.uid})" style="background:none;border:none;cursor:pointer;color:#6b7280;font-size:0.875rem;"><i class="bi bi-pencil"></i></button></td></tr>`;
+    }).join('');
+}
+
+function populateEditorDropdowns(){
+    const filtered=currentGridTab==='senior'?editors.filter(e=>e.category==='Senior Copy Editor'):editors.filter(e=>e.category==='Copy Editor');
+    const opts=`<option value="">— Unassigned —</option>`+filtered.map(e=>`<option value="${e.email}">${EMAIL_TO_NAME[e.email]||e.name}</option>`).join('');
+    document.getElementById('shift-editor-1').innerHTML=opts;document.getElementById('shift-editor-2').innerHTML=opts;
+}
+
+function populateHourOptions(ds){
+    const isBreak=BREAK_WEEKS.has(toDateStr(getSunday(new Date(ds+'T00:00:00')))),isSenior=currentGridTab==='senior',sel=document.getElementById('shift-hour');
+    if(isBreak){sel.innerHTML=`<option value="10">10 a.m. – 2 p.m.</option><option value="14">2 p.m. – 6 p.m.</option><option value="18">6 p.m. – 10 p.m.</option>`;}
+    else if(isSenior){sel.innerHTML=`<option value="10">10 a.m. – 12 p.m.</option><option value="12">12 p.m. – 2 p.m.</option><option value="14">2 p.m. – 4 p.m.</option><option value="16">4 p.m. – 6 p.m.</option><option value="18">6 p.m. – 8 p.m.</option><option value="20">8 p.m. – 10 p.m.</option>`;}
+    else{sel.innerHTML=`<option value="8">8 a.m. – 10 a.m.</option><option value="10">10 a.m. – 12 p.m.</option><option value="12">12 p.m. – 2 p.m.</option><option value="14">2 p.m. – 4 p.m.</option><option value="16">4 p.m. – 6 p.m.</option><option value="18">6 p.m. – 8 p.m.</option><option value="20">8 p.m. – 10 p.m.</option><option value="22">10 p.m. – 12 a.m.</option>`;}
+}
+
+function openAddShiftModal(){openShiftModal(toDateStr(new Date()),isCurrentWeekBreak()?10:currentGridTab==='senior'?10:8);}
+function openShiftModal(ds,hour){
+    const ex=getShiftForCell(ds,hour);editingShiftUid=ex?(ex.uid||`${ex.date}_${String(ex.start_hour).padStart(2,'0')}`):null;
+    document.getElementById('modal-shift-title').textContent=ex?'Edit Shift':`Add ${currentGridTab==='senior'?'Senior':'Staff'} Shift`;
+    document.getElementById('modal-shift-submit').textContent=ex?'Save Changes':'Add Shift';
+    document.getElementById('shift-date').value=ds;populateHourOptions(ds);document.getElementById('shift-hour').value=hour;populateEditorDropdowns();
+    if(ex){document.getElementById('shift-editor-1').value=ex.editor_id||'';document.getElementById('shift-editor-2').value=ex.editor_id_2||'';}
+    else{document.getElementById('shift-editor-1').value='';document.getElementById('shift-editor-2').value='';}
+    document.getElementById('modal-shift-delete').style.display=ex?'inline-flex':'none';
+    document.getElementById('modal-shift').style.display='flex';
+}
+document.addEventListener('DOMContentLoaded',()=>document.getElementById('shift-date').addEventListener('change',function(){if(this.value)populateHourOptions(this.value);}));
+function closeShiftModal(){document.getElementById('modal-shift').style.display='none';editingShiftUid=null;}
+
+async function submitShiftModal(ev){
+    ev.preventDefault();
+    const dv=document.getElementById('shift-date').value,sh=document.getElementById('shift-hour').value;
+    const e1=document.getElementById('shift-editor-1').value,e2=document.getElementById('shift-editor-2').value;
+    const ed1=editors.find(x=>x.email===e1)||null,ed2=editors.find(x=>x.email===e2)||null;
+    if(!ed1&&!ed2){showInfoBar('Please assign at least one editor.');return;}
+    if(ed1&&ed2&&ed1.uid===ed2.uid){showInfoBar('Editor 1 and Editor 2 cannot be the same person.');return;}
+    const body=new FormData();
+    body.append('date',dv);body.append('start_hour',sh);
+    body.append('editor_id',ed1?ed1.email:'');body.append('editor_name',ed1?ed1.name:'');
+    body.append('editor_id_2',ed2?ed2.email:'');body.append('editor_name_2',ed2?ed2.name:'');
+    const pfx=currentGridTab==='senior'?'senior-shift':'shift';
+    const url=editingShiftUid?`/copy-schedule/admin/${pfx}/${editingShiftUid}/update`:`/copy-schedule/admin/${pfx}`;
+    let resp;try{resp=await fetch(url,{method:'POST',headers:{'X-CSRFToken':CSRF_TOKEN},body});}catch{showInfoBar('Network error.');return;}
+    if(!resp.ok){showInfoBar('Error saving shift.');return;}
+    const saved=await resp.json();if(!saved){showInfoBar('Server error.');return;}
+    const wasEditing=!!editingShiftUid;
+    if(wasEditing){const sep=editingShiftUid.lastIndexOf('_'),ed=editingShiftUid.slice(0,sep),eh=parseInt(editingShiftUid.slice(sep+1),10);const upd=(currentGridTab==='senior'?seniorShifts:staffShifts).map(s=>(s&&s.date===ed&&s.start_hour===eh)?saved:s);if(currentGridTab==='senior')seniorShifts=upd;else staffShifts=upd;}
+    else{(currentGridTab==='senior'?seniorShifts:staffShifts).push(saved);}
+    closeShiftModal();renderAll();showInfoBar(wasEditing?'Shift updated.':'Shift added.');
+}
+
+async function deleteCurrentShift(){
+    const uid=editingShiftUid;if(!uid)return;
+    if(!await showButtonAlert('Delete Shift','Remove this shift slot entirely?','Delete','Cancel'))return;
+    const pfx=currentGridTab==='senior'?'senior-shift':'shift';
+    let resp;try{resp=await fetch(`/copy-schedule/admin/${pfx}/${uid}/delete`,{method:'POST',headers:{'X-CSRFToken':CSRF_TOKEN}});}catch{showInfoBar('Network error.');return;}
+    if(!resp.ok){showInfoBar('Error deleting shift.');return;}
+    const sep=uid.lastIndexOf('_'),dd=uid.slice(0,sep),dh=parseInt(uid.slice(sep+1),10);
+    if(currentGridTab==='senior')seniorShifts=seniorShifts.filter(s=>!(s.date===dd&&s.start_hour===dh));
+    else staffShifts=staffShifts.filter(s=>!(s.date===dd&&s.start_hour===dh));
+    closeShiftModal();renderAll();showInfoBar('Shift deleted.');
+}
+
+async function refreshShifts(){const[sr,snr]=await Promise.all([fetch('/copy-schedule/admin/shifts').then(r=>r.json()),fetch('/copy-schedule/admin/senior-shifts').then(r=>r.json())]);staffShifts=sr;seniorShifts=snr;}
+async function approveRequest(uid){try{await fetch(`/copy-schedule/admin/request/${uid}/approve`,{method:'POST',headers:{'X-CSRFToken':CSRF_TOKEN}});}catch{showInfoBar('Network error.');return;}shiftRequests=shiftRequests.map(r=>r.uid===uid?{...r,status:'approved'}:r);await refreshShifts();renderAll();showInfoBar('Request approved.');}
+async function denyRequest(uid){try{await fetch(`/copy-schedule/admin/request/${uid}/deny`,{method:'POST',headers:{'X-CSRFToken':CSRF_TOKEN}});}catch{showInfoBar('Network error.');return;}shiftRequests=shiftRequests.map(r=>r.uid===uid?{...r,status:'denied'}:r);await refreshShifts();renderAll();showInfoBar('Request denied.');}
+
+function openAddEditorModal(cat,uid=null){
+    editingEditorUid=uid;const ed=uid!==null?editors.find(e=>e.uid===uid):null;
+    document.getElementById('modal-editor-title').textContent=ed?'Edit Editor':'Add Editor';
+    document.getElementById('modal-editor-submit').textContent=ed?'Save Changes':'Add Editor';
+    document.getElementById('editor-name').value=ed?ed.name:'';document.getElementById('editor-email').value=ed?ed.email:'';
+    document.getElementById('editor-phone').value=ed?(ed.phone||''):'';document.getElementById('editor-category').value=ed?(ed.category||cat):cat;
+    document.getElementById('modal-editor').style.display='flex';
+}
+function closeEditorModal(){document.getElementById('modal-editor').style.display='none';editingEditorUid=null;}
+async function submitEditorModal(ev){
+    ev.preventDefault();const body=new FormData();
+    body.append('name',document.getElementById('editor-name').value);body.append('email',document.getElementById('editor-email').value);
+    body.append('phone',document.getElementById('editor-phone').value);body.append('category',document.getElementById('editor-category').value);
+    const url=editingEditorUid!==null?`/copy-schedule/admin/editor/${editingEditorUid}/update`:`/copy-schedule/admin/editor`;
+    let resp;try{resp=await fetch(url,{method:'POST',headers:{'X-CSRFToken':CSRF_TOKEN},body});}catch{showInfoBar('Network error.');return;}
+    if(!resp.ok){showInfoBar('Error saving editor.');return;}
+    const saved=await resp.json();
+    if(editingEditorUid!==null)editors=editors.map(ed=>ed.uid===saved.uid?saved:ed);else editors.push(saved);
+    closeEditorModal();renderEditorsView();renderWeeklyLoad();showInfoBar(editingEditorUid!==null?'Editor updated.':'Editor added.');
+}
+
+function openEditorDetailModal(uid){
+    detailEditorUid=uid;const e=editors.find(x=>x.uid===uid);if(!e)return;
+    document.getElementById('detail-editor-name').textContent=EMAIL_TO_NAME[e.email]||e.name;
+    document.getElementById('detail-editor-email').textContent=e.email;document.getElementById('detail-editor-phone').textContent=e.phone||'—';
+    document.getElementById('detail-editor-category').textContent=e.category||'—';
+    const ss=e.category==='Senior Copy Editor'?seniorShifts:staffShifts;
+    const up=ss.filter(s=>s.editor_id===e.email||s.editor_id_2===e.email).filter(s=>s.date>=toDateStr(new Date())).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,5);
+    document.getElementById('detail-editor-shifts').innerHTML=up.length?up.map(s=>`<div>${s.date} ${fmtHour(s.start_hour)}</div>`).join(''):'No upcoming shifts.';
+    document.getElementById('modal-editor-detail').style.display='flex';
+}
+function closeEditorDetailModal(){document.getElementById('modal-editor-detail').style.display='none';detailEditorUid=null;}
+function openEditEditorFromDetail(){const uid=detailEditorUid;closeEditorDetailModal();openAddEditorModal(null,uid);}
+async function deleteEditorFromDetail(){
+    const uid=detailEditorUid,e=editors.find(x=>x.uid===uid);
+    if(!await showButtonAlert('Delete Editor',`Remove ${e.name}? This cannot be undone.`,'Delete','Cancel'))return;
+    try{await fetch(`/copy-schedule/admin/editor/${uid}/delete`,{method:'POST',headers:{'X-CSRFToken':CSRF_TOKEN}});}catch{showInfoBar('Network error.');return;}
+    editors=editors.filter(x=>x.uid!==uid);closeEditorDetailModal();renderEditorsView();renderWeeklyLoad();showInfoBar('Editor deleted.');
+}
+
+renderAll();
+</script>
+
+{% include "partials/button_alert.html" %}
+{% include "partials/info_bar.html" %}
+{% endblock %}
