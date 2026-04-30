@@ -37,8 +37,18 @@ DAYS_OF_WEEK = [
 WEEKEND_DAY_INDICES = {5, 6}
 
 
+# ---------------------------------------------------------------------------
+# Slack helpers
+# ---------------------------------------------------------------------------
+
+
 def _notify_channel(msg: str) -> None:
     dm_channel_by_id(COPY_SCHEDULE_NOTIFICATIONS_CHANNEL, msg)
+
+
+# ---------------------------------------------------------------------------
+# Role / slot class helpers
+# ---------------------------------------------------------------------------
 
 
 def get_user_role(user) -> str:
@@ -62,6 +72,11 @@ def get_slot_class_for_user(user):
 def get_slot_type_for_user(user) -> str:
     """Returns 'senior' or 'staff' string for ShiftRequest.slot_type."""
     return "senior" if get_user_role(user) == "senior_copy_editor" else "staff"
+
+
+# ---------------------------------------------------------------------------
+# Break week helpers
+# ---------------------------------------------------------------------------
 
 
 def is_break_week(reference_date: date = None) -> bool:
@@ -102,6 +117,11 @@ def toggle_break_week(week_start_iso: str, admin_email: str = None) -> dict:
             return {"is_break_week": True, "week_start": week_start_iso}
 
 
+# ---------------------------------------------------------------------------
+# Shift requirement helpers
+# ---------------------------------------------------------------------------
+
+
 def get_required_shifts(user, reference_date: date = None) -> int:
     role = get_user_role(user)
     if is_break_week(reference_date):
@@ -135,6 +155,11 @@ def _has_weekend_shift(editor_id: str, reference_date: date = None) -> bool:
     return any(s.date.weekday() in WEEKEND_DAY_INDICES for s in shifts)
 
 
+# ---------------------------------------------------------------------------
+# Date / time helpers
+# ---------------------------------------------------------------------------
+
+
 def get_week_bounds(reference_date: date = None):
     if reference_date is None:
         reference_date = date.today()
@@ -145,15 +170,17 @@ def get_week_bounds(reference_date: date = None):
 
 
 def shift_label(start_hour: int, duration: int = 2) -> str:
+    """Returns AP-style time range, e.g. '10 a.m.-12 p.m.'"""
+
     def _fmt(h):
         if h == 0 or h == 24:
-            return "12am"
+            return "12 a.m."
         elif h == 12:
-            return "12pm"
+            return "12 p.m."
         elif h < 12:
-            return f"{h}am"
+            return f"{h} a.m."
         else:
-            return f"{h - 12}pm"
+            return f"{h - 12} p.m."
 
     return f"{_fmt(start_hour)}-{_fmt(start_hour + duration)}"
 
@@ -183,12 +210,22 @@ def is_shift_in_past(shift_date: date, start_hour: int) -> bool:
     return datetime.now(tz) >= shift_start
 
 
+# ---------------------------------------------------------------------------
+# Shift key helpers
+# ---------------------------------------------------------------------------
+
+
 def _slot_key_name(d: date, start_hour: int) -> str:
     return f"{d.isoformat()}_{start_hour}"
 
 
 def _shift_duration_for_date(d: date) -> int:
     return 4 if is_break_week(d) else 2
+
+
+# ---------------------------------------------------------------------------
+# Shift queries — all accept slot_class, defaulting to ShiftSlot
+# ---------------------------------------------------------------------------
 
 
 def get_shift(d: date, start_hour: int, slot_class=ShiftSlot) -> ShiftSlot:
@@ -279,6 +316,11 @@ def mark_up_for_drop(d: date, start_hour: int, slot_class=ShiftSlot) -> None:
         slot.put()
 
 
+# ---------------------------------------------------------------------------
+# ShiftRequest queries
+# ---------------------------------------------------------------------------
+
+
 def get_pending_requests_for_editor(
     editor_id: str, reference_date: date = None, slot_type: str = "staff"
 ) -> list:
@@ -365,6 +407,11 @@ def build_incoming_map(
             }
         )
     return incoming
+
+
+# ---------------------------------------------------------------------------
+# Business logic: Drop
+# ---------------------------------------------------------------------------
 
 
 def request_drop(user, shift_date: date, shift_hour: int) -> dict:
@@ -459,6 +506,11 @@ def _cancel_drop_reminder_job(shift_date: date, shift_hour: int) -> None:
         pass
 
 
+# ---------------------------------------------------------------------------
+# Business logic: Pickup
+# ---------------------------------------------------------------------------
+
+
 def pickup_shift(user, shift_date: date, shift_hour: int) -> dict:
     if is_shift_in_past(shift_date, shift_hour):
         return {"error": "Cannot pick up a shift that has already started."}
@@ -514,6 +566,11 @@ def _cancel_drop_requests_for_shift(
         ndb.put_multi(reqs)
 
 
+# ---------------------------------------------------------------------------
+# Business logic: Add Slot
+# ---------------------------------------------------------------------------
+
+
 def add_slot(user, shift_date: date, shift_hour: int) -> dict:
     sc = get_slot_class_for_user(user)
     slot = get_shift(shift_date, shift_hour, sc)
@@ -521,6 +578,11 @@ def add_slot(user, shift_date: date, shift_hour: int) -> dict:
         return {"success": False, "reason": "Slot is already occupied."}
     assign_shift(shift_date, shift_hour, user.email, user.name, sc)
     return {"success": True}
+
+
+# ---------------------------------------------------------------------------
+# Business logic: Swap
+# ---------------------------------------------------------------------------
 
 
 def request_swap(
@@ -602,6 +664,11 @@ def request_swap(
         if target_editor_id:
             notify_slack_swap_involves_your_shift(req, target_editor_name)
         return {"request_id": req.key.id()}
+
+
+# ---------------------------------------------------------------------------
+# Business logic: Cancel / Approve / Deny
+# ---------------------------------------------------------------------------
 
 
 def cancel_request(request_id) -> dict:
@@ -704,6 +771,11 @@ def deny_request(request_id) -> dict:
     return {"success": True}
 
 
+# ---------------------------------------------------------------------------
+# Slack label helpers
+# ---------------------------------------------------------------------------
+
+
 def _source_label(req: ShiftRequest) -> str:
     dur = _shift_duration_for_date(req.source_shift_date)
     return (
@@ -720,6 +792,11 @@ def _target_label(req: ShiftRequest) -> str:
 
 def _slot_type_label(req: ShiftRequest) -> str:
     return "Senior" if getattr(req, "slot_type", "staff") == "senior" else "Staff"
+
+
+# ---------------------------------------------------------------------------
+# Slack notifications
+# ---------------------------------------------------------------------------
 
 
 def send_drop_approval_to_slack(request: ShiftRequest) -> None:
