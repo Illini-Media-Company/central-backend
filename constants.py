@@ -326,13 +326,13 @@ ONBOARDING_EMAIL = "onboarding@illinimedia.com"
 COPY_ADMIN_ACCESS_GROUPS = [
     "webdev",
     "imc-staff-webdev",
-    "copy-chief",
+    "copy",
 ]
 
 # Google Groups for shift scheduler access control
 COPY_EDITOR_GROUPS = ["di-staff-copy"]
 SENIOR_COPY_EDITOR_GROUPS = ["di-senior-copy", "webdev-test-users"]
-COPY_CHIEF_GROUPS = ["copy-chief"]
+COPY_CHIEF_GROUPS = ["copy"]
 
 ALL_SCHEDULER_GROUPS = (
     COPY_EDITOR_GROUPS
