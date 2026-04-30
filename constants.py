@@ -327,6 +327,7 @@ COPY_ADMIN_ACCESS_GROUPS = [
     "webdev",
     "imc-staff-webdev",
     "copy",
+    "editors",
 ]
 
 # Google Groups for shift scheduler access control
