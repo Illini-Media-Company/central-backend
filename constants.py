@@ -319,3 +319,52 @@ SOCIAL_MEDIA_GCAL_ID = (
     else "c_d8a24ec91409fb265af98492cb51c1a19b396c15adc55ed4cad9a8c10f50633a@group.calendar.google.com"
 )
 ONBOARDING_EMAIL = "onboarding@illinimedia.com"
+
+########## START COPY SHIFT SCHEDULING PLATFORM CONSTANTS ##########
+
+# Google Groups for copy admin dashboard access control
+COPY_ADMIN_ACCESS_GROUPS = [
+    "webdev",
+    "imc-staff-webdev",
+    "copy-chief",
+]
+
+# Google Groups for shift scheduler access control
+COPY_EDITOR_GROUPS = ["di-staff-copy"]
+SENIOR_COPY_EDITOR_GROUPS = ["di-senior-copy", "webdev-test-users"]
+COPY_CHIEF_GROUPS = ["copy-chief"]
+
+ALL_SCHEDULER_GROUPS = (
+    COPY_EDITOR_GROUPS
+    + SENIOR_COPY_EDITOR_GROUPS
+    + COPY_CHIEF_GROUPS
+    + ["webdev", "imc-staff-webdev", "webdev-test-users"]
+)
+
+SHIFT_START_HOURS = [8, 10, 12, 14, 16, 18, 20, 22]  # 2-hour slots
+SHIFT_DURATION = 2
+
+SHIFT_REQUIREMENTS = {
+    "copy_editor": 3,
+    "senior_copy_editor": 8,
+    "copy_chief": 0,
+}
+WEEKEND_SHIFT_REDUCTION = 1  # only for staff copy
+
+# Senior copy work 10am–10pm only on regular weeks
+SENIOR_COPY_EDITOR_HOURS = [10, 12, 14, 16, 18, 20]
+
+SCHEDULER_TIMEZONE = "America/Chicago"
+
+BREAK_WEEK_SHIFT_HOURS = [10, 14, 18]  # 10am–2pm, 2pm–6pm, 6pm–10pm
+BREAK_WEEK_SHIFT_DURATION = 4
+
+BREAK_WEEK_REQUIREMENTS = {
+    "copy_editor": 1,
+    "senior_copy_editor": 2,
+    "copy_chief": 0,
+}
+
+COPY_SCHEDULE_NOTIFICATIONS_CHANNEL = "C0AUKUX78UQ" if ENV == "prod" else "C0AUAPTJJ0Y"
+
+########## END COPY SHIFT SCHEDULING PLATFORM CONSTANTS ##########

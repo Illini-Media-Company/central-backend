@@ -165,7 +165,7 @@ def set_user_ask_oauth_tokens(
     return user
 
 
-def get_user_name(email: str):
+def get_user_name(email: str, context=True):
     """
     Get the name of a user from their email.
     :param email: @illinimedia.com email of a user
@@ -173,6 +173,14 @@ def get_user_name(email: str):
     :returns: A name; None if not found
     :rtype: str | None
     """
+    if not context:
+        user = User.query().filter(User.email == email).get()
+
+        if user:
+            return user.name
+        else:
+            return None
+
     with client.context():
         user = User.query().filter(User.email == email).get()
 

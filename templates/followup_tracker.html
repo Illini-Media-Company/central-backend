@@ -1,0 +1,889 @@
+{% extends "base.html" %}
+
+{% block title %}Follow-Up Tracker{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="/static/macros/form.css">
+    <style>
+        .tracker-status-summary {
+            font-size: 13px;
+            color: var(--gray-500);
+            font-weight: 500;
+            margin-top: 0.25rem;
+            letter-spacing: 0.01em;
+        }
+
+        /* ── filter bar ─────────────────────────────────────────────── */
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .view-resolved-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--gray-600);
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+
+        .view-resolved-label input {
+            width: 15px;
+            height: 15px;
+            accent-color: var(--main-accent-color);
+            cursor: pointer;
+        }
+
+        .filter-search {
+            flex: 1;
+            min-width: 160px;
+            border: 1px solid var(--main-md-gray-color);
+            border-radius: var(--main-border-radius);
+            padding: 8px 12px;
+            font-size: 14px;
+            outline: none;
+            background: var(--white);
+            box-shadow: var(--input-box-shadow);
+        }
+
+        .filter-search:focus { border-color: var(--gray-500); }
+
+        .filter-select {
+            border: 1px solid var(--main-md-gray-color);
+            border-radius: var(--main-border-radius);
+            padding: 8px 12px;
+            font-size: 14px;
+            background: var(--white);
+            cursor: pointer;
+            outline: none;
+            box-shadow: var(--input-box-shadow);
+        }
+
+        /* ── item list ──────────────────────────────────────────────── */
+        .item-list {
+            border-top: 1px solid var(--main-md-gray-color);
+            padding-top: 18px;
+        }
+
+        .item {
+            background: var(--gray-50);
+            border-radius: 12px;
+            margin-bottom: 8px;
+            overflow: hidden;
+            border-left: 3px solid transparent;
+        }
+
+        .item[data-priority="High"]   { border-left: 3px solid var(--red-500); }
+        .item[data-priority="Medium"] { border-left: 3px solid var(--imc-orange-600); }
+        .item[data-priority="Low"]    { border-left: 3px solid var(--gray-400); }
+
+        .item.stale { background: var(--imc-orange-50); }
+
+        .item-row {
+            display: grid;
+            grid-template-columns: 26px minmax(260px, 1.4fr) 180px 150px 16px 110px 88px 28px;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 18px;
+        }
+
+        .arrow {
+            border: none;
+            background: none;
+            font-size: 15px;
+            color: var(--gray-600);
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .item-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--gray-900);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            outline: none;
+            border-radius: 6px;
+            padding: 2px 4px;
+            margin: -2px -4px;
+            cursor: text;
+        }
+
+        .item-title:focus {
+            background: var(--white);
+            box-shadow: 0 0 0 2px rgba(19,41,75,0.15);
+            white-space: normal;
+            overflow: visible;
+        }
+
+        .item-row select {
+            width: 100%;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 14px;
+            height: 40px;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+
+        .status-new      { background: var(--blue-50);        color: var(--blue-600); }
+        .status-progress { background: var(--yellow-100);     color: var(--imc-orange-700); }
+        .status-waiting  { background: var(--imc-orange-50);  color: var(--illini-orange-500); }
+        .status-resolved { background: var(--wpgu-green-50);  color: var(--wpgu-green-700); }
+
+        .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+        .dot-high   { background: var(--red-500); }
+        .dot-medium { background: var(--imc-orange-600); }
+        .dot-low    { background: var(--gray-400); }
+
+        .date-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .date-text {
+            font-size: 14px;
+            color: var(--gray-600);
+            white-space: nowrap;
+        }
+
+        .age-badge {
+            font-size: 11px;
+            font-weight: 700;
+            border-radius: 4px;
+            padding: 1px 5px;
+        }
+
+        .age-warn { color: var(--imc-orange-800); background: var(--yellow-100); }
+        .age-old  { color: var(--red-700); background: var(--red-100); }
+
+        .delete-btn {
+            display: none;
+            border: none;
+            background: none;
+            color: var(--red-600);
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .item[data-status="Resolved"] .delete-btn { display: inline-block; }
+
+        /* ── details panel ──────────────────────────────────────────── */
+        .details {
+            padding: 0 22px 18px 46px;
+            border-left: 2px solid var(--main-md-gray-color);
+            margin-left: 19px;
+            display: none;
+            background: inherit;
+        }
+
+        .details label {
+            display: block;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--gray-600);
+            margin: 12px 0 7px 0;
+        }
+
+        .details textarea,
+        .details input {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid var(--main-md-gray-color);
+            border-radius: var(--main-border-radius);
+            padding: 13px 14px;
+            font-size: 14px;
+            background: var(--white);
+            box-shadow: var(--input-box-shadow);
+        }
+
+        .details textarea { min-height: 94px; resize: vertical; }
+
+        /* ── empty state ────────────────────────────────────────────── */
+        .empty-state {
+            text-align: center;
+            padding: 56px 20px;
+            color: var(--gray-600);
+        }
+
+        .empty-state .empty-icon  { font-size: 38px; margin-bottom: 12px; }
+        .empty-state .empty-title { font-size: 16px; font-weight: 700; color: var(--gray-700); }
+        .empty-state .empty-sub   { font-size: 14px; margin-top: 5px; }
+
+        /* ── modals ─────────────────────────────────────────────────── */
+        .followup-modal-bg {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.42);
+            z-index: 99999;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .followup-modal {
+            background: var(--white);
+            width: 610px;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 14px 44px rgba(0,0,0,0.18);
+            position: relative;
+            z-index: 100000;
+        }
+
+        .modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--main-md-gray-color);
+        }
+
+        .modal-head h2 { margin: 0; font-size: 24px; font-weight: 700; }
+
+        .close-btn {
+            border: none;
+            background: none;
+            font-size: 24px;
+            color: var(--gray-600);
+            cursor: pointer;
+        }
+
+        .modal-body { padding: 22px 24px; }
+
+        .modal-body .form-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.25rem;
+            margin-bottom: 16px;
+        }
+
+        .modal-body .field-label { font-size: 14px; font-weight: 600; }
+
+        .modal-body .text-input,
+        .modal-body .textarea-input,
+        .modal-body .select-input select {
+            padding: 12px 14px;
+            font-size: 14px;
+            margin-bottom: 0;
+        }
+
+        .modal-body .textarea-input { min-height: 120px; resize: vertical; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 18px 24px;
+            border-top: 1px solid var(--main-md-gray-color);
+        }
+
+        .page-modal-open { overflow: hidden; }
+
+        /* ── manage categories modal ────────────────────────────────── */
+        .cat-entry {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .cat-swatch { width: 16px; height: 16px; border-radius: 4px; flex-shrink: 0; }
+        .cat-entry-name { flex: 1; font-size: 15px; }
+
+        .cat-delete-btn {
+            border: none;
+            background: none;
+            color: var(--red-600);
+            font-size: 18px;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0 4px;
+        }
+
+        .manage-cat-add { display: flex; gap: 10px; margin-top: 16px; }
+
+        .manage-cat-add input {
+            flex: 1;
+            border: 1px solid var(--main-md-gray-color);
+            border-radius: var(--main-border-radius);
+            padding: 10px 12px;
+            font-size: 14px;
+            box-shadow: var(--input-box-shadow);
+        }
+    </style>
+{% endblock %}
+
+{% import "macros/form.html" as form %}
+
+{% block content %}
+
+{% set demo_items = [
+    {
+        "uid": 1,
+        "title": "Housing doc issue – Sarah",
+        "category": "Housing",
+        "status": "New",
+        "priority": "High",
+        "date": "Apr 13",
+        "age_days": 13,
+        "notes": "Missing signature page on room assignment form",
+        "email_link": "https://mail.google.com/mail/u/0/#inbox/abc123"
+    },
+    {
+        "uid": 2,
+        "title": "Payment plan follow-up",
+        "category": "Finance",
+        "status": "In Progress",
+        "priority": "Medium",
+        "date": "Apr 12",
+        "age_days": 14,
+        "notes": "",
+        "email_link": ""
+    }
+] %}
+
+{% set tracker_items = items if items is defined else demo_items %}
+
+<h1>Follow-Up Tracker</h1>
+<p>Track emails that still need to be handled</p>
+<div id="statusSummary" class="tracker-status-summary"></div>
+
+<hr style="margin-bottom: 1.5rem;">
+
+<section class="section-container">
+    <div class="section-header">
+        <h2 style="margin-bottom: 0">Items</h2>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button class="button-bg-color" type="button" onclick="openManageCategories()">⚙ Manage Categories</button>
+            <button class="button-primary" type="button" onclick="openModal()">＋ Add Item</button>
+        </div>
+    </div>
+
+    <div class="inner-container">
+        <div class="filter-bar">
+            <label class="view-resolved-label">
+                <input type="checkbox" id="viewResolved" onchange="applyFilters()">
+                View Resolved
+            </label>
+            <input class="filter-search" id="searchInput" type="text" placeholder="Search items…" oninput="applyFilters()">
+            <select class="filter-select" id="filterCategory" onchange="applyFilters()">
+                <option value="">All categories</option>
+                {% for cat in categories %}
+                <option value="{{ cat.name }}">{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+            <select class="filter-select" id="filterPriority" onchange="applyFilters()">
+                <option value="">All priorities</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+                <option value="Unassigned">Unassigned</option>
+            </select>
+        </div>
+
+        <div class="item-list" id="itemList">
+            {% for item in tracker_items %}
+                {% set status_class = "status-resolved" %}
+                {% if item.status == "New" %}
+                    {% set status_class = "status-new" %}
+                {% elif item.status == "In Progress" %}
+                    {% set status_class = "status-progress" %}
+                {% elif item.status == "Waiting" %}
+                    {% set status_class = "status-waiting" %}
+                {% endif %}
+
+                {% set dot_class = "dot-low" %}
+                {% if item.priority == "High" %}
+                    {% set dot_class = "dot-high" %}
+                {% elif item.priority == "Medium" %}
+                    {% set dot_class = "dot-medium" %}
+                {% endif %}
+
+                {% set cat_bg = "var(--gray-100)" %}
+                {% set cat_text = "var(--gray-600)" %}
+                {% if category_map and item.category in category_map %}
+                    {% set cat_bg = category_map[item.category].bg_color %}
+                    {% set cat_text = category_map[item.category].text_color %}
+                {% endif %}
+
+                {% set is_stale = item.age_days >= 7 and item.status != "Resolved" %}
+
+                <div class="item{% if is_stale %} stale{% endif %}"
+                     data-status="{{ item.status }}"
+                     data-priority="{{ item.priority or 'Unassigned' }}"
+                     data-item-id="{{ item.uid }}">
+                    <div class="item-row">
+                        <button class="arrow" type="button" onclick="toggleItem(this)">⌄</button>
+
+                        <div class="item-title"
+                             contenteditable="true"
+                             spellcheck="false"
+                             onfocus="trackOriginalTitle(this)"
+                             onblur="saveTitleIfChanged(this)"
+                             onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}">{{ item.title }}</div>
+
+                        <select name="category" style="background:{{ cat_bg }};color:{{ cat_text }}" onchange="handleCategoryChange(this)">
+                            <option value="Uncategorized" {% if item.category == "Uncategorized" or not item.category %}selected{% endif %}>Uncategorized</option>
+                            {% for cat in categories %}
+                                <option value="{{ cat.name }}" {% if cat.name == item.category %}selected{% endif %}>{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <select name="status" class="{{ status_class }}" onchange="handleStatusChange(this)">
+                            <option value="New"         {% if item.status == "New" %}selected{% endif %}>New</option>
+                            <option value="In Progress" {% if item.status == "In Progress" %}selected{% endif %}>In Progress</option>
+                            <option value="Waiting"     {% if item.status == "Waiting" %}selected{% endif %}>Waiting</option>
+                            <option value="Resolved"    {% if item.status == "Resolved" %}selected{% endif %}>Resolved</option>
+                        </select>
+
+                        <span class="dot {{ dot_class }}"></span>
+
+                        <select name="priority" onchange="handlePriorityChange(this)">
+                            <option value="Unassigned" {% if not item.priority or item.priority == "Unassigned" %}selected{% endif %}>Unassigned</option>
+                            <option value="Low"    {% if item.priority == "Low" %}selected{% endif %}>Low</option>
+                            <option value="Medium" {% if item.priority == "Medium" %}selected{% endif %}>Medium</option>
+                            <option value="High"   {% if item.priority == "High" %}selected{% endif %}>High</option>
+                        </select>
+
+                        <div class="date-col">
+                            <div class="date-text">{{ item.date }}</div>
+                            {% if item.status != "Resolved" %}
+                                {% if item.age_days >= 7 %}
+                                    <span class="age-badge age-old">{{ item.age_days }}d</span>
+                                {% elif item.age_days >= 3 %}
+                                    <span class="age-badge age-warn">{{ item.age_days }}d</span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+
+                        <button class="delete-btn" type="button" title="Delete item" onclick="deleteItem(this, {{ item.uid }})"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+                    </div>
+
+                    <div class="details">
+                        <label>Notes</label>
+                        <textarea name="notes" onfocus="trackOriginal(this)" onblur="saveIfNotEmpty(this, 'notes')">{{ item.notes or "" }}</textarea>
+
+                        <label>Email Link {% if item.email_link %}<a href="{{ item.email_link }}" target="_blank" style="font-size:12px;font-weight:400;margin-left:6px">Open ↗</a>{% endif %}</label>
+                        <input name="email_link" value="{{ item.email_link or "" }}" onfocus="trackOriginal(this)" onblur="saveIfNotEmpty(this, 'email_link')" oninput="updateEmailLink(this)">
+                    </div>
+                </div>
+            {% endfor %}
+
+            <div id="emptyState" class="empty-state" style="display:none">
+                <div class="empty-icon">📭</div>
+                <div class="empty-title" id="emptyTitle">No items here</div>
+                <div class="empty-sub" id="emptySub">Add a new item to get started</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Add Item Modal -->
+<div class="followup-modal-bg" id="modalBg" onclick="closeModalFromBackdrop(event)">
+    <div class="followup-modal" onclick="event.stopPropagation()">
+        <form id="newFollowupForm" method="POST" action="/followup-tracker/create">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="modal-head">
+                <h2>Add Follow-Up Item</h2>
+                <button class="close-btn" type="button" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                {{ form.text_input(name="title", label="Title", required=true, placeholder="e.g. Housing doc issue – Sarah") }}
+                <div class="form-grid">
+                    <div>
+                        <div class="form-row" id="formfield-category">
+                            <label for="category" class="field-label">Category</label>
+                            <div class="select-input">
+                                <select id="category" name="category">
+                                    <option value="Uncategorized" selected>Uncategorized</option>
+                                    {% for cat in categories %}
+                                        <option value="{{ cat.name }}">{{ cat.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <i class="bi bi-caret-down-fill select-dropdown-icon"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        {{ form.select_input(name="priority", label="Priority", required=true, options=["Low", "Medium", "High"]) }}
+                    </div>
+                </div>
+                {{ form.text_input(name="email_link", label="Email Link", required=true, placeholder="Paste Gmail URL") }}
+                {{ form.textarea_input(name="notes", label="Notes", required=true, placeholder="Add any context or details") }}
+            </div>
+            <div class="modal-footer">
+                <button class="button-secondary" type="button" onclick="closeModal()">Cancel</button>
+                <button class="button-primary" id="addItemBtn" type="submit" disabled>Confirm</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Manage Categories Modal -->
+<div class="followup-modal-bg" id="manageCatBg" onclick="closeManageCatFromBackdrop(event)">
+    <div class="followup-modal" onclick="event.stopPropagation()">
+        <div class="modal-head">
+            <h2>Manage Categories</h2>
+            <button class="close-btn" type="button" onclick="closeManageCategories()">×</button>
+        </div>
+        <div class="modal-body">
+            <div id="catList">
+                {% for cat in categories %}
+                <div class="cat-entry" data-uid="{{ cat.uid }}" data-name="{{ cat.name }}">
+                    <span class="cat-swatch" style="background:{{ cat.bg_color }}"></span>
+                    <span class="cat-entry-name">{{ cat.name }}</span>
+                    <button class="cat-delete-btn" type="button" onclick="deleteCategoryFromModal(this, {{ cat.uid }})">×</button>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="manage-cat-add">
+                <input id="newCatInput" type="text" placeholder="New category name" oninput="document.getElementById('addCatBtn').disabled=!this.value.trim()">
+                <button id="addCatBtn" class="button-primary" type="button" onclick="addCategory()" disabled>Add</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="saveToast" style="display:none;position:fixed;bottom:28px;right:28px;background:var(--illini-blue-900);color:var(--white);padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;z-index:999999;transition:opacity 0.4s">Saved ✓</div>
+
+<script>
+    const CSRF_TOKEN = "{{ csrf_token() }}";
+
+    const CATEGORY_COLORS = {
+        {% for cat in categories %}
+        "{{ cat.name }}": { bg: "{{ cat.bg_color }}", text: "{{ cat.text_color }}" },
+        {% endfor %}
+    };
+
+    // ── toast ──────────────────────────────────────────────────────
+    function showToast(msg, error) {
+        const toast = document.getElementById("saveToast");
+        toast.textContent = msg || "Saved ✓";
+        toast.style.background = error ? "var(--red-800)" : "var(--illini-blue-900)";
+        toast.style.display = "block";
+        toast.style.opacity = "1";
+        clearTimeout(toast._timer);
+        toast._timer = setTimeout(() => {
+            toast.style.opacity = "0";
+            setTimeout(() => toast.style.display = "none", 400);
+        }, 2000);
+    }
+
+    // ── inline save helpers ────────────────────────────────────────
+    function trackOriginal(el) {
+        el.dataset.original = el.value;
+    }
+
+    function trackOriginalTitle(el) {
+        el.dataset.original = el.textContent.trim();
+    }
+
+    function saveIfNotEmpty(el, field) {
+        const val = el.value.trim();
+        if (!val) {
+            el.style.border = "1.5px solid var(--red-600)";
+            setTimeout(() => el.style.border = "", 1500);
+            el.focus();
+            return;
+        }
+        if (val === (el.dataset.original || "").trim()) return;
+        saveField(el.closest(".item").dataset.itemId, field, val);
+    }
+
+    function saveTitleIfChanged(el) {
+        const val = el.textContent.trim();
+        if (!val) {
+            el.textContent = el.dataset.original || "";
+            return;
+        }
+        if (val === (el.dataset.original || "").trim()) return;
+        saveField(el.closest(".item").dataset.itemId, "title", val);
+    }
+
+    function updateEmailLink(input) {
+        const label = input.previousElementSibling;
+        let link = label.querySelector("a");
+        const val = input.value.trim();
+        if (val) {
+            if (!link) {
+                link = document.createElement("a");
+                link.target = "_blank";
+                link.style.cssText = "font-size:12px;font-weight:400;text-decoration:none;margin-left:6px";
+                link.textContent = "Open ↗";
+                label.appendChild(link);
+            }
+            link.href = val;
+        } else if (link) {
+            link.remove();
+        }
+    }
+
+    // ── save / delete ──────────────────────────────────────────────
+    async function saveField(itemId, field, value) {
+        if (!itemId) return;
+        const body = new FormData();
+        body.append(field, value);
+        body.append("csrf_token", CSRF_TOKEN);
+        try {
+            const res = await fetch(`/followup-tracker/api/${itemId}`, { method: "POST", body });
+            if (!res.ok) throw new Error(res.status);
+            showToast(field === "status" && value === "Resolved" ? "Marked as Resolved ✓" : "Saved ✓");
+        } catch (e) {
+            showToast("Failed to save — try again", true);
+        }
+    }
+
+    async function deleteItem(btn, itemId) {
+        if (!confirm("Delete this item? This cannot be undone.")) return;
+        const body = new FormData();
+        body.append("csrf_token", CSRF_TOKEN);
+        try {
+            const res = await fetch(`/followup-tracker/api/${itemId}/delete`, { method: "POST", body });
+            if (!res.ok) throw new Error(res.status);
+            btn.closest(".item").remove();
+            showToast("Deleted ✓");
+            applyFilters();
+        } catch (e) {
+            showToast("Failed to delete — try again", true);
+        }
+    }
+
+    // ── filtering & summary ────────────────────────────────────────
+    function applyFilters() {
+        const viewResolved = document.getElementById("viewResolved").checked;
+        const search = document.getElementById("searchInput").value.toLowerCase().trim();
+        const catFilter = document.getElementById("filterCategory").value;
+        const priFilter = document.getElementById("filterPriority").value;
+
+        let visibleCount = 0;
+        let newCount = 0, inProgressCount = 0, waitingCount = 0, resolvedCount = 0;
+
+        document.querySelectorAll(".item").forEach(item => {
+            const status   = item.querySelector("select[name='status']").value;
+            const category = item.querySelector("select[name='category']").value;
+            const priority = item.querySelector("select[name='priority']").value;
+            const title    = item.querySelector(".item-title").textContent.toLowerCase();
+            const isResolved = status === "Resolved";
+
+            // Count totals regardless of filters
+            if (status === "New")         newCount++;
+            else if (status === "In Progress") inProgressCount++;
+            else if (status === "Waiting")     waitingCount++;
+            else if (status === "Resolved")    resolvedCount++;
+
+            let show = viewResolved === isResolved;
+            if (show && search && !title.includes(search)) show = false;
+            if (show && catFilter && category !== catFilter) show = false;
+            if (show && priFilter && priority !== priFilter) show = false;
+
+            item.style.display = show ? "block" : "none";
+            if (show) visibleCount++;
+        });
+
+        // Empty state
+        const empty = document.getElementById("emptyState");
+        const title = document.getElementById("emptyTitle");
+        const sub   = document.getElementById("emptySub");
+        if (visibleCount === 0) {
+            if (viewResolved && resolvedCount === 0) {
+                title.textContent = "No resolved items";
+                sub.textContent = "Mark items as Resolved to see them here";
+            } else if (search || catFilter || priFilter) {
+                title.textContent = "No matches";
+                sub.textContent = "Try adjusting your filters";
+            } else {
+                title.textContent = "No items here";
+                sub.textContent = "Add a new item to get started";
+            }
+            empty.style.display = "block";
+        } else {
+            empty.style.display = "none";
+        }
+
+        // Status summary (always reflects active items, not filter state)
+        const parts = [];
+        if (newCount)        parts.push(`${newCount} new`);
+        if (inProgressCount) parts.push(`${inProgressCount} in progress`);
+        if (waitingCount)    parts.push(`${waitingCount} waiting`);
+        if (resolvedCount)   parts.push(`${resolvedCount} resolved`);
+        document.getElementById("statusSummary").textContent = parts.join(" · ") || "";
+    }
+
+    // ── item row handlers ──────────────────────────────────────────
+    function toggleItem(button) {
+        const item = button.closest(".item");
+        const details = item.querySelector(".details");
+        const open = details.style.display === "block";
+        details.style.display = open ? "none" : "block";
+        button.innerText = open ? "⌄" : "⌃";
+    }
+
+    function handleCategoryChange(selectEl) {
+        const colors = selectEl.value !== "Uncategorized" ? CATEGORY_COLORS[selectEl.value] : null;
+        selectEl.style.background = colors ? colors.bg : "";
+        selectEl.style.color = colors ? colors.text : "";
+        saveField(selectEl.closest(".item").dataset.itemId, "category", selectEl.value);
+        applyFilters();
+    }
+
+    function handleStatusChange(selectEl) {
+        const item = selectEl.closest(".item");
+        item.dataset.status = selectEl.value;
+
+        selectEl.className = "";
+        const map = { New: "status-new", "In Progress": "status-progress", Waiting: "status-waiting", Resolved: "status-resolved" };
+        selectEl.classList.add(map[selectEl.value] || "status-new");
+
+        applyFilters();
+        saveField(item.dataset.itemId, "status", selectEl.value);
+    }
+
+    function handlePriorityChange(selectEl) {
+        const item = selectEl.closest(".item");
+        item.dataset.priority = selectEl.value;
+
+        const dot = item.querySelector(".dot");
+        dot.className = "dot";
+        if (selectEl.value === "High")   dot.classList.add("dot-high");
+        else if (selectEl.value === "Medium") dot.classList.add("dot-medium");
+        else if (selectEl.value === "Low")    dot.classList.add("dot-low");
+
+        saveField(item.dataset.itemId, "priority", selectEl.value);
+    }
+
+    // ── add item modal ─────────────────────────────────────────────
+    function checkForm() {
+        const title    = document.getElementById("title").value.trim();
+        const email    = document.getElementById("email_link").value.trim();
+        const notes    = document.getElementById("notes").value.trim();
+        const priority = document.getElementById("priority").value;
+        document.getElementById("addItemBtn").disabled = !(title && email && notes && priority);
+    }
+
+    function openModal() {
+        document.getElementById("modalBg").style.display = "flex";
+        document.body.classList.add("page-modal-open");
+        checkForm();
+    }
+
+    function closeModal() {
+        document.getElementById("modalBg").style.display = "none";
+        document.body.classList.remove("page-modal-open");
+    }
+
+    function closeModalFromBackdrop(e) {
+        if (e.target.id === "modalBg") closeModal();
+    }
+
+    // ── manage categories modal ────────────────────────────────────
+    function openManageCategories() {
+        document.getElementById("manageCatBg").style.display = "flex";
+        document.body.classList.add("page-modal-open");
+    }
+
+    function closeManageCategories() {
+        document.getElementById("manageCatBg").style.display = "none";
+        document.body.classList.remove("page-modal-open");
+    }
+
+    function closeManageCatFromBackdrop(e) {
+        if (e.target.id === "manageCatBg") closeManageCategories();
+    }
+
+    async function addCategory() {
+        const input = document.getElementById("newCatInput");
+        const name = input.value.trim();
+        if (!name) return;
+        const body = new FormData();
+        body.append("name", name);
+        body.append("csrf_token", CSRF_TOKEN);
+        try {
+            const res = await fetch("/categories/", { method: "POST", body });
+            if (!res.ok) throw new Error(res.status);
+            const cat = await res.json();
+            CATEGORY_COLORS[cat.name] = { bg: cat.bg_color, text: cat.text_color };
+            const list = document.getElementById("catList");
+            const entry = document.createElement("div");
+            entry.className = "cat-entry";
+            entry.dataset.uid = cat.uid;
+            entry.dataset.name = cat.name;
+            entry.innerHTML = `<span class="cat-swatch" style="background:${cat.bg_color}"></span><span class="cat-entry-name">${cat.name}</span><button class="cat-delete-btn" type="button" onclick="deleteCategoryFromModal(this,${cat.uid})">×</button>`;
+            list.appendChild(entry);
+            rebuildCategoryDropdowns();
+            input.value = "";
+            document.getElementById("addCatBtn").disabled = true;
+            showToast("Category added ✓");
+        } catch (e) {
+            showToast("Failed to add category", true);
+        }
+    }
+
+    async function deleteCategoryFromModal(btn, uid) {
+        const entry = btn.closest(".cat-entry");
+        const name = entry.dataset.name;
+        const body = new FormData();
+        body.append("csrf_token", CSRF_TOKEN);
+        try {
+            const res = await fetch(`/categories/${uid}/delete`, { method: "POST", body });
+            if (!res.ok) throw new Error(res.status);
+            delete CATEGORY_COLORS[name];
+            entry.remove();
+            rebuildCategoryDropdowns();
+            showToast("Category deleted ✓");
+        } catch (e) {
+            showToast("Failed to delete category", true);
+        }
+    }
+
+    function rebuildCategoryDropdowns() {
+        const cats = Object.keys(CATEGORY_COLORS);
+        const uncatOpt = `<option value="Uncategorized">Uncategorized</option>`;
+        // Item row selects
+        document.querySelectorAll(".item-row select[name='category']").forEach(sel => {
+            const current = sel.value;
+            sel.innerHTML = uncatOpt + cats.map(n => `<option value="${n}" ${n === current ? "selected" : ""}>${n}</option>`).join("");
+            if (current === "Uncategorized") {
+                sel.style.background = "";
+                sel.style.color = "";
+            } else {
+                const colors = CATEGORY_COLORS[current] || CATEGORY_COLORS[cats[0]];
+                if (colors) { sel.style.background = colors.bg; sel.style.color = colors.text; }
+            }
+            sel.value = current;
+        });
+        // Filter dropdown
+        const filterSel = document.getElementById("filterCategory");
+        const filterCurrent = filterSel.value;
+        filterSel.innerHTML = `<option value="">All categories</option>` + uncatOpt + cats.map(n => `<option value="${n}" ${n === filterCurrent ? "selected" : ""}>${n}</option>`).join("");
+        // Add item modal select
+        const modalSel = document.getElementById("category");
+        if (modalSel) {
+            const current = modalSel.value;
+            modalSel.innerHTML = uncatOpt + cats.map(n => `<option value="${n}" ${n === current ? "selected" : ""}>${n}</option>`).join("");
+            modalSel.value = current || "Uncategorized";
+        }
+    }
+
+    // ── init ───────────────────────────────────────────────────────
+    applyFilters();
+    document.getElementById("newFollowupForm")
+        .querySelectorAll("input, select, textarea")
+        .forEach(el => el.addEventListener("input", checkForm));
+</script>
+{% endblock %}
