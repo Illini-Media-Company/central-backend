@@ -80,10 +80,10 @@
         }
 
         .item[data-priority="High"]   { border-left: 3px solid var(--red-500); }
-        .item[data-priority="Medium"] { border-left: 3px solid #ff8a00; }
+        .item[data-priority="Medium"] { border-left: 3px solid var(--imc-orange-600); }
         .item[data-priority="Low"]    { border-left: 3px solid var(--gray-400); }
 
-        .item.stale { background: #fff8f5; }
+        .item.stale { background: var(--imc-orange-50); }
 
         .item-row {
             display: grid;
@@ -134,14 +134,14 @@
             box-sizing: border-box;
         }
 
-        .status-new      { background: #e8f2ff; color: #2563eb; }
-        .status-progress { background: #f8efcb; color: #b07100; }
-        .status-waiting  { background: #fcf0e3; color: #dd5a0a; }
-        .status-resolved { background: #e6f7ea; color: #1d7c43; }
+        .status-new      { background: var(--blue-50);        color: var(--blue-600); }
+        .status-progress { background: var(--yellow-100);     color: var(--imc-orange-700); }
+        .status-waiting  { background: var(--imc-orange-50);  color: var(--illini-orange-500); }
+        .status-resolved { background: var(--wpgu-green-50);  color: var(--wpgu-green-700); }
 
         .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
         .dot-high   { background: var(--red-500); }
-        .dot-medium { background: #ff8a00; }
+        .dot-medium { background: var(--imc-orange-600); }
         .dot-low    { background: var(--gray-400); }
 
         .date-col {
@@ -164,7 +164,7 @@
             padding: 1px 5px;
         }
 
-        .age-warn { color: #b45309; background: #fef3c7; }
+        .age-warn { color: var(--imc-orange-800); background: var(--yellow-100); }
         .age-old  { color: var(--red-700); background: var(--red-100); }
 
         .delete-btn {
@@ -263,28 +263,24 @@
 
         .modal-body { padding: 22px 24px; }
 
-        .modal-body label {
-            display: block;
-            font-size: 14px;
-            font-weight: 600;
-            margin: 0 0 8px 0;
+        .modal-body .form-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.25rem;
+            margin-bottom: 16px;
         }
 
-        .modal-body input,
-        .modal-body select,
-        .modal-body textarea {
-            width: 100%;
-            box-sizing: border-box;
-            border: 1px solid var(--main-md-gray-color);
-            border-radius: var(--main-border-radius);
+        .modal-body .field-label { font-size: 14px; font-weight: 600; }
+
+        .modal-body .text-input,
+        .modal-body .textarea-input,
+        .modal-body .select-input select {
             padding: 12px 14px;
             font-size: 14px;
-            margin-bottom: 16px;
-            background: var(--white);
-            box-shadow: var(--input-box-shadow);
+            margin-bottom: 0;
         }
 
-        .modal-body textarea { min-height: 120px; resize: vertical; }
+        .modal-body .textarea-input { min-height: 120px; resize: vertical; }
 
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
@@ -332,6 +328,8 @@
         }
     </style>
 {% endblock %}
+
+{% import "macros/form.html" as form %}
 
 {% block content %}
 
@@ -417,8 +415,8 @@
                     {% set dot_class = "dot-medium" %}
                 {% endif %}
 
-                {% set cat_bg = "#f0f1f5" %}
-                {% set cat_text = "#4b5563" %}
+                {% set cat_bg = "var(--gray-100)" %}
+                {% set cat_text = "var(--gray-600)" %}
                 {% if category_map and item.category in category_map %}
                     {% set cat_bg = category_map[item.category].bg_color %}
                     {% set cat_text = category_map[item.category].text_color %}
@@ -506,32 +504,28 @@
                 <button class="close-btn" type="button" onclick="closeModal()">×</button>
             </div>
             <div class="modal-body">
-                <label for="newTitle">Title <span style="color: var(--red-600)">*</span></label>
-                <input id="newTitle" name="title" placeholder="e.g. Housing doc issue – Sarah" oninput="checkForm()" required>
+                {{ form.text_input(name="title", label="Title", required=true, placeholder="e.g. Housing doc issue – Sarah") }}
                 <div class="form-grid">
                     <div>
-                        <label for="newCategory">Category</label>
-                        <select id="newCategory" name="category">
-                            <option value="Uncategorized" selected>Uncategorized</option>
-                            {% for cat in categories %}
-                                <option value="{{ cat.name }}">{{ cat.name }}</option>
-                            {% endfor %}
-                        </select>
+                        <div class="form-row" id="formfield-category">
+                            <label for="category" class="field-label">Category</label>
+                            <div class="select-input">
+                                <select id="category" name="category">
+                                    <option value="Uncategorized" selected>Uncategorized</option>
+                                    {% for cat in categories %}
+                                        <option value="{{ cat.name }}">{{ cat.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <i class="bi bi-caret-down-fill select-dropdown-icon"></i>
+                            </div>
+                        </div>
                     </div>
                     <div>
-                        <label for="newPriority">Priority <span style="color: var(--red-600)">*</span></label>
-                        <select id="newPriority" name="priority" oninput="checkForm()">
-                            <option value="" disabled selected>Select priority…</option>
-                            <option value="Low">Low</option>
-                            <option value="Medium">Medium</option>
-                            <option value="High">High</option>
-                        </select>
+                        {{ form.select_input(name="priority", label="Priority", required=true, options=["Low", "Medium", "High"]) }}
                     </div>
                 </div>
-                <label for="newEmail">Email Link <span style="color: var(--red-600)">*</span></label>
-                <input id="newEmail" name="email_link" placeholder="Paste Gmail URL" oninput="checkForm()" required>
-                <label for="newNotes">Notes <span style="color: var(--red-600)">*</span></label>
-                <textarea id="newNotes" name="notes" placeholder="Add any context or details" oninput="checkForm()" required></textarea>
+                {{ form.text_input(name="email_link", label="Email Link", required=true, placeholder="Paste Gmail URL") }}
+                {{ form.textarea_input(name="notes", label="Notes", required=true, placeholder="Add any context or details") }}
             </div>
             <div class="modal-footer">
                 <button class="button-secondary" type="button" onclick="closeModal()">Cancel</button>
@@ -581,7 +575,7 @@
     function showToast(msg, error) {
         const toast = document.getElementById("saveToast");
         toast.textContent = msg || "Saved ✓";
-        toast.style.background = error ? "#c62828" : "#060F23";
+        toast.style.background = error ? "var(--red-800)" : "var(--illini-blue-900)";
         toast.style.display = "block";
         toast.style.opacity = "1";
         clearTimeout(toast._timer);
@@ -603,7 +597,7 @@
     function saveIfNotEmpty(el, field) {
         const val = el.value.trim();
         if (!val) {
-            el.style.border = "1.5px solid #e53935";
+            el.style.border = "1.5px solid var(--red-600)";
             setTimeout(() => el.style.border = "", 1500);
             el.focus();
             return;
@@ -647,7 +641,7 @@
         body.append(field, value);
         body.append("csrf_token", CSRF_TOKEN);
         try {
-            const res = await fetch(`/follow-up/${itemId}`, { method: "POST", body });
+            const res = await fetch(`/followup-tracker/api/${itemId}`, { method: "POST", body });
             if (!res.ok) throw new Error(res.status);
             showToast(field === "status" && value === "Resolved" ? "Marked as Resolved ✓" : "Saved ✓");
         } catch (e) {
@@ -660,7 +654,7 @@
         const body = new FormData();
         body.append("csrf_token", CSRF_TOKEN);
         try {
-            const res = await fetch(`/follow-up/${itemId}/delete`, { method: "POST", body });
+            const res = await fetch(`/followup-tracker/api/${itemId}/delete`, { method: "POST", body });
             if (!res.ok) throw new Error(res.status);
             btn.closest(".item").remove();
             showToast("Deleted ✓");
@@ -775,10 +769,10 @@
 
     // ── add item modal ─────────────────────────────────────────────
     function checkForm() {
-        const title    = document.getElementById("newTitle").value.trim();
-        const email    = document.getElementById("newEmail").value.trim();
-        const notes    = document.getElementById("newNotes").value.trim();
-        const priority = document.getElementById("newPriority").value;
+        const title    = document.getElementById("title").value.trim();
+        const email    = document.getElementById("email_link").value.trim();
+        const notes    = document.getElementById("notes").value.trim();
+        const priority = document.getElementById("priority").value;
         document.getElementById("addItemBtn").disabled = !(title && email && notes && priority);
     }
 
@@ -878,7 +872,7 @@
         const filterCurrent = filterSel.value;
         filterSel.innerHTML = `<option value="">All categories</option>` + uncatOpt + cats.map(n => `<option value="${n}" ${n === filterCurrent ? "selected" : ""}>${n}</option>`).join("");
         // Add item modal select
-        const modalSel = document.getElementById("newCategory");
+        const modalSel = document.getElementById("category");
         if (modalSel) {
             const current = modalSel.value;
             modalSel.innerHTML = uncatOpt + cats.map(n => `<option value="${n}" ${n === current ? "selected" : ""}>${n}</option>`).join("");
@@ -888,5 +882,8 @@
 
     // ── init ───────────────────────────────────────────────────────
     applyFilters();
+    document.getElementById("newFollowupForm")
+        .querySelectorAll("input, select, textarea")
+        .forEach(el => el.addEventListener("input", checkForm));
 </script>
 {% endblock %}

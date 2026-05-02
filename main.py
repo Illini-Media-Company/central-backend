@@ -173,7 +173,6 @@ with InitTimer("Views"):
         public_calendar_api_routes,
     )
     from views.song_request import song_request_routes
-    from views.follow_up import follow_up_routes
     from views.category import category_routes
     from views.copy_schedule_admin import copy_scheduler_routes
     import views.copy_schedule_user
@@ -216,7 +215,6 @@ app.register_blueprint(calendar_routes)
 app.register_blueprint(admin_calendar_routes)
 app.register_blueprint(public_calendar_api_routes)
 app.register_blueprint(song_request_routes)
-app.register_blueprint(follow_up_routes)
 app.register_blueprint(category_routes)
 app.register_blueprint(copy_scheduler_routes)
 # app.register_blueprint(shift_scheduler_routes)
