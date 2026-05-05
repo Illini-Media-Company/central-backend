@@ -172,6 +172,7 @@ with InitTimer("Views"):
         public_calendar_api_routes,
     )
     from views.song_request import song_request_routes
+    from views.new_content_doc import content_doc_routes
 
 ################################################################################
 ############################# IMPORTS COMPLETE #################################

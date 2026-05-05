@@ -1,0 +1,816 @@
+{% extends 'base.html' %} {% block title %}Content Desk — Pulitzer Hub{%
+endblock %} {% block content %}
+
+<div class="cd-app-wrapper">
+  <!-- SIDEBAR (navigation) -->
+  <aside class="cd-sidebar">
+    <div class="cd-nav-group">
+      <div class="cd-nav-item active" data-page="calendar">Calendar</div>
+      <div class="cd-nav-item" data-page="upcoming">Upcoming Editions</div>
+      <div class="cd-nav-item" data-page="ready">Ready for Copy</div>
+      <div class="cd-nav-item" data-page="archive">Archive</div>
+    </div>
+    <div class="cd-nav-group">
+      <div class="cd-nav-item" data-page="all-stories">All Stories</div>
+      <div class="cd-nav-item" data-page="assignments">Assignments</div>
+    </div>
+  </aside>
+
+  <!-- FILTERS BAR (date, dept, hour) -->
+  <aside class="cd-filters">
+    <label class="filter-label">View Date</label>
+    <input type="date" id="calendarDate" class="cd-input" />
+
+    <label class="filter-label">Department</label>
+    <select id="deptFilter" class="cd-input">
+      <option value="all">All Sections</option>
+      <option value="news">News</option>
+      <option value="sports">Sports</option>
+      <option value="opinions">Opinions</option>
+      <option value="ae">Arts & Entertainment</option>
+    </select>
+
+    <label class="filter-label">Jump to Hour</label>
+    <select id="hourJump" class="cd-input">
+      <option value="">-- select hour --</option>
+      <option value="8">8:00 AM</option>
+      <option value="9">9:00 AM</option>
+      <option value="10">10:00 AM</option>
+      <option value="11">11:00 AM</option>
+      <option value="12">12:00 PM</option>
+      <option value="13">1:00 PM</option>
+      <option value="14">2:00 PM</option>
+      <option value="15">3:00 PM</option>
+      <option value="16">4:00 PM</option>
+      <option value="17">5:00 PM</option>
+      <option value="18">6:00 PM</option>
+      <option value="19">7:00 PM</option>
+      <option value="20">8:00 PM</option>
+    </select>
+  </aside>
+
+  <!-- MAIN CONTENT (dynamic pages) -->
+  <main class="cd-main">
+    <!-- CALENDAR PAGE (dynamic schedule) -->
+    <section id="page-calendar" class="page-section active">
+      <div class="calendar-header">
+        <h1>Editorial Calendar</h1>
+        <button id="addStoryBtn" class="button-primary" style="width: auto">
+          + Schedule Story
+        </button>
+      </div>
+      <div id="calendarGrid" class="cd-grid">
+        <!-- JS will render hourly rows here -->
+        <div class="loading-placeholder">Loading schedule...</div>
+      </div>
+    </section>
+
+    <!-- UPCOMING EDITIONS -->
+    <section id="page-upcoming" class="page-section">
+      <h1>Upcoming Editions</h1>
+      <div class="table-container">
+        <table class="cd-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Section</th>
+              <th>Stage</th>
+              <th>Edit Stage</th>
+            </tr>
+          </thead>
+          <tbody id="upcomingTableBody">
+            <!-- dynamic from JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- READY FOR COPY -->
+    <section id="page-ready" class="page-section">
+      <h1>Ready for Copy</h1>
+      <div class="table-container">
+        <table class="cd-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Writer</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="readyTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ARCHIVE -->
+    <section id="page-archive" class="page-section">
+      <h1>Archive</h1>
+      <div class="table-container">
+        <table class="cd-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Release Date</th>
+              <th>Section</th>
+            </tr>
+          </thead>
+          <tbody id="archiveTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ALL STORIES -->
+    <section id="page-all-stories" class="page-section">
+      <h1>All Stories</h1>
+      <div class="table-container">
+        <table class="cd-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Writer</th>
+              <th>Section</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="allStoriesBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ASSIGNMENTS -->
+    <section id="page-assignments" class="page-section">
+      <h1>My Assignments</h1>
+      <div class="assignments-card">
+        <p>
+          You have <strong id="pendingCount">0</strong> pending assignments this
+          week.
+        </p>
+        <ul id="assignmentsList" class="assignments-list"></ul>
+      </div>
+    </section>
+  </main>
+
+  <!-- RIGHT SIDEBAR (quick actions) -->
+  <aside class="cd-right-bar">
+    <h3>Quick Actions</h3>
+    <button
+      id="quickCreateStory"
+      class="button-primary"
+      style="margin-bottom: 1rem"
+    >
+      + Create New Story
+    </button>
+    <h3>Reminders</h3>
+    <div class="reminder-card" id="reminderBox">
+      <b>Photo Needed</b><br />City Council Budget Vote<br />
+      <span class="reminder-due">Due by 5:00 PM</span>
+    </div>
+    <div
+      class="reminder-card"
+      id="dynamicReminder"
+      style="margin-top: 1rem"
+    ></div>
+  </aside>
+</div>
+
+<style>
+  /* Component-specific styles – leverages global.css variables */
+  .cd-app-wrapper {
+    display: flex;
+    height: calc(100vh - 70px);
+    background: var(--gray-50);
+    font-family: var(--bs-font-sans-serif);
+    overflow: hidden;
+  }
+
+  /* SIDEBAR */
+  .cd-sidebar {
+    width: 240px;
+    background: var(--white);
+    border-right: 1px solid var(--gray-200);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .cd-nav-group {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--gray-200);
+  }
+  .cd-nav-item {
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+    color: var(--gray-700);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.95rem;
+  }
+  .cd-nav-item:hover {
+    background: var(--gray-100);
+    color: var(--main-accent-color);
+  }
+  .cd-nav-item.active {
+    color: var(--main-accent-color);
+    background: var(--imc-orange-50);
+    border-left: 4px solid var(--main-accent-color);
+  }
+
+  /* FILTERS */
+  .cd-filters {
+    width: 240px;
+    background: var(--white);
+    border-right: 1px solid var(--gray-200);
+    padding: 1.5rem;
+    flex-shrink: 0;
+  }
+  .filter-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--gray-600);
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+  .cd-input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--main-border-radius);
+    margin-bottom: 1rem;
+    font-family: inherit;
+    background: var(--white);
+  }
+
+  /* MAIN AREA */
+  .cd-main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem;
+  }
+  .page-section {
+    display: none;
+  }
+  .page-section.active {
+    display: block;
+  }
+
+  /* CALENDAR GRID */
+  .calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .cd-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .cd-time-row {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    background: var(--white);
+    border-radius: var(--main-border-radius);
+    border: 1px solid var(--gray-200);
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+  }
+  .cd-time-row:hover {
+    box-shadow: var(--input-box-shadow);
+  }
+  .cd-time-label {
+    padding: 1rem;
+    font-weight: 600;
+    background: var(--gray-50);
+    border-right: 1px solid var(--gray-200);
+    color: var(--gray-800);
+  }
+  .cd-time-content {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .cd-story-card {
+    background: var(--white);
+    border-radius: calc(var(--main-border-radius) - 0.25rem);
+    padding: 0.75rem 1rem;
+    border-left: 4px solid var(--gray-400);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: 0.1s;
+  }
+  .cd-story-card[data-dept="news"] {
+    border-left-color: var(--blue-500);
+  }
+  .cd-story-card[data-dept="sports"] {
+    border-left-color: var(--wpgu-green-500);
+  }
+  .cd-story-card[data-dept="opinions"] {
+    border-left-color: var(--yellow-700);
+  }
+  .cd-story-card[data-dept="ae"] {
+    border-left-color: var(--purple-500);
+  }
+  .story-meta {
+    font-size: 0.7rem;
+    color: var(--gray-600);
+    margin-top: 0.2rem;
+  }
+  .avatar {
+    width: 28px;
+    height: 28px;
+    background: var(--illini-blue-500);
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: bold;
+  }
+  .badge {
+    padding: 0.2rem 0.6rem;
+    border-radius: 2rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+  .badge-first {
+    background: var(--red-100);
+    color: var(--red-800);
+  }
+  .badge-second {
+    background: var(--light-green-100);
+    color: var(--light-green-900);
+  }
+  .badge-ready {
+    background: var(--wpgu-green-500);
+    color: white;
+  }
+  .status-select {
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--main-border-radius);
+    border: 1px solid var(--gray-300);
+    font-size: 0.75rem;
+  }
+
+  /* RIGHT BAR */
+  .cd-right-bar {
+    width: 280px;
+    background: var(--white);
+    border-left: 1px solid var(--gray-200);
+    padding: 1.5rem;
+    flex-shrink: 0;
+  }
+  .reminder-card {
+    background: var(--yellow-50);
+    border-left: 3px solid var(--yellow-600);
+    padding: 0.75rem;
+    border-radius: var(--main-border-radius);
+    font-size: 0.8rem;
+  }
+  .reminder-due {
+    font-size: 0.7rem;
+    color: var(--red-600);
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 1000px) {
+    .cd-app-wrapper {
+      flex-wrap: wrap;
+      height: auto;
+    }
+    .cd-sidebar,
+    .cd-filters,
+    .cd-right-bar {
+      width: 100%;
+      border-right: none;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .cd-main {
+      min-height: 60vh;
+    }
+    .cd-time-row {
+      grid-template-columns: 70px 1fr;
+    }
+  }
+  @media (max-width: 640px) {
+    .cd-main {
+      padding: 1rem;
+    }
+    .calendar-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+</style>
+
+<script>
+  let storiesDB = [
+    {
+      id: 1,
+      title: "Baseball Team Advances to State",
+      section: "sports",
+      writer: "Adithya Raman",
+      status: "slotted",
+      editStage: "First Edited",
+      scheduledDate: "2026-05-13",
+      hour: 9,
+      avatar: "AR",
+    },
+    {
+      id: 2,
+      title: "City Council Budget Vote",
+      section: "news",
+      writer: "Callum Anderson",
+      status: "first",
+      editStage: "First Edited",
+      scheduledDate: "2026-05-13",
+      hour: 11,
+      avatar: "CA",
+    },
+    {
+      id: 3,
+      title: "New Study on Campus Safety",
+      section: "news",
+      writer: "Jordan Lee",
+      status: "inprogress",
+      editStage: "Revisions Made",
+      scheduledDate: null,
+      hour: null,
+    },
+    {
+      id: 4,
+      title: "Campus Construction Updates",
+      section: "news",
+      writer: "Taylor Smith",
+      status: "first",
+      editStage: "First Edited",
+      scheduledDate: "2026-05-14",
+      hour: 10,
+    },
+    {
+      id: 5,
+      title: "Football Season Preview",
+      section: "sports",
+      writer: "Morgan Freeman",
+      status: "archived",
+      editStage: "Ready for Copy",
+      scheduledDate: "2026-05-01",
+      hour: 14,
+      released: true,
+    },
+    {
+      id: 6,
+      title: "Student Art Exhibition",
+      section: "ae",
+      writer: "Riley Wong",
+      status: "ready",
+      editStage: "Ready for Copy",
+      scheduledDate: "2026-05-15",
+      hour: 15,
+    },
+    {
+      id: 7,
+      title: "Opinion: Tuition Freeze",
+      section: "opinions",
+      writer: "Sam Rivera",
+      status: "second",
+      editStage: "Second Edited",
+      scheduledDate: "2026-05-13",
+      hour: 13,
+    },
+  ];
+
+  function getTodayStr() {
+    return new Date().toISOString().split("T")[0];
+  }
+
+  // Render calendar based on selected date + dept filter
+  function renderCalendar() {
+    const dateInput = document.getElementById("calendarDate");
+    let selectedDate = dateInput.value;
+    if (!selectedDate) {
+      selectedDate = getTodayStr();
+      dateInput.value = selectedDate;
+    }
+    const deptFilter = document.getElementById("deptFilter").value;
+    const container = document.getElementById("calendarGrid");
+    if (!container) return;
+
+    // filter stories for that date, ignore null scheduledDate
+    let dayStories = storiesDB.filter(
+      (s) => s.scheduledDate === selectedDate && s.status !== "archived",
+    );
+    if (deptFilter !== "all")
+      dayStories = dayStories.filter((s) => s.section === deptFilter);
+
+    // hours from 8 to 20
+    const hours = Array.from({ length: 13 }, (_, i) => i + 8);
+    let html = "";
+    for (let h of hours) {
+      const hourStories = dayStories.filter((s) => s.hour === h);
+      const timeLabel =
+        h <= 11 ? `${h}:00 AM` : h === 12 ? `12:00 PM` : `${h - 12}:00 PM`;
+      html += `<div class="cd-time-row" data-hour="${h}">
+        <div class="cd-time-label">${timeLabel}</div>
+        <div class="cd-time-content">`;
+      if (hourStories.length === 0) {
+        html += `<div class="empty-slot" style="padding: 0.5rem; color: var(--gray-500); font-style: italic;">No stories scheduled — <button class="button-secondary add-slot-btn" data-hour="${h}" style="font-size:0.7rem; padding:0.2rem 0.5rem;">+ add</button></div>`;
+      } else {
+        hourStories.forEach((s) => {
+          let statusBadge = "";
+          if (s.status === "slotted")
+            statusBadge = '<span class="badge badge-first">SLOTTED</span>';
+          else if (s.status === "first")
+            statusBadge = '<span class="badge badge-first">1ST EDITED</span>';
+          else if (s.status === "second")
+            statusBadge = '<span class="badge badge-second">2ND EDITED</span>';
+          else if (s.status === "ready")
+            statusBadge = '<span class="badge badge-ready">READY</span>';
+          else statusBadge = '<span class="badge">In Progress</span>';
+          html += `<div class="cd-story-card" data-dept="${s.section}" data-id="${s.id}">
+            <div><strong>${escapeHtml(s.title)}</strong><div class="story-meta">${s.section.charAt(0).toUpperCase() + s.section.slice(1)} • ${s.writer}</div></div>
+            <div style="display: flex; gap: 8px; align-items: center;">${statusBadge}<div class="avatar">${s.avatar || s.writer[0]}</div></div>
+          </div>`;
+        });
+      }
+      html += `</div></div>`;
+    }
+    container.innerHTML = html;
+
+    // attach add-slot listeners
+    document.querySelectorAll(".add-slot-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const hour = parseInt(btn.dataset.hour);
+        addStoryToSlot(selectedDate, hour);
+      });
+    });
+  }
+
+  function addStoryToSlot(date, hour) {
+    const title = prompt("Story title:", "Breaking News");
+    if (!title) return;
+    const section = prompt("Section (news/sports/opinions/ae):", "news");
+    const writer = prompt("Writer name:", "Reporter");
+    const newId = Date.now();
+    const newStory = {
+      id: newId,
+      title,
+      section: section.toLowerCase(),
+      writer,
+      status: "slotted",
+      editStage: "Draft",
+      scheduledDate: date,
+      hour,
+      avatar: writer[0] || "X",
+    };
+    storiesDB.push(newStory);
+    renderCalendar();
+    renderAllOtherTables(); // refresh all views
+  }
+
+  // handle hour jump (scroll to row)
+  function setupHourJump() {
+    const jumpSelect = document.getElementById("hourJump");
+    if (!jumpSelect) return;
+    jumpSelect.addEventListener("change", () => {
+      const hour = jumpSelect.value;
+      if (!hour) return;
+      const targetRow = document.querySelector(
+        `.cd-time-row[data-hour="${hour}"]`,
+      );
+      if (targetRow)
+        targetRow.scrollIntoView({ behavior: "smooth", block: "center" });
+      jumpSelect.value = "";
+    });
+  }
+
+  function renderUpcoming() {
+    const today = getTodayStr();
+    const upcoming = storiesDB.filter(
+      (s) =>
+        s.scheduledDate && s.scheduledDate >= today && s.status !== "archived",
+    );
+    const tbody = document.getElementById("upcomingTableBody");
+    if (!tbody) return;
+    tbody.innerHTML = upcoming
+      .map(
+        (s) => `<tr>
+      <td>${escapeHtml(s.title)}</td><td>${s.section}</td>
+      <td>${getStatusBadgeHtml(s.status)}</td>
+      <td><select class="status-select" data-id="${s.id}" data-type="upcoming">
+        <option ${s.editStage === "First Edited" ? "selected" : ""}>First Edited</option>
+        <option ${s.editStage === "Revisions Made" ? "selected" : ""}>Revisions Made</option>
+        <option ${s.editStage === "Second Edited" ? "selected" : ""}>Second Edited</option>
+        <option ${s.editStage === "Ready for Copy" ? "selected" : ""}>Ready for Copy</option>
+      </select></td>
+    </tr>`,
+      )
+      .join("");
+    attachStatusChangeEvents();
+  }
+
+  function renderReady() {
+    const readyStories = storiesDB.filter(
+      (s) => s.status === "ready" && s.scheduledDate,
+    );
+    const tbody = document.getElementById("readyTableBody");
+    if (tbody)
+      tbody.innerHTML = readyStories
+        .map(
+          (s) =>
+            `<tr><td>${escapeHtml(s.title)}</td><td>${s.writer}</td><td><span class="badge badge-ready">✅ Ready for Copy</span></td></tr>`,
+        )
+        .join("");
+  }
+
+  function renderArchive() {
+    const archived = storiesDB.filter(
+      (s) =>
+        s.status === "archived" ||
+        (s.scheduledDate && s.scheduledDate < "2026-05-10"),
+    );
+    const tbody = document.getElementById("archiveTableBody");
+    if (tbody)
+      tbody.innerHTML = archived
+        .map(
+          (s) =>
+            `<tr><td>${escapeHtml(s.title)}</td><td>${s.scheduledDate || "unknown"}</td><td>${s.section}</td></tr>`,
+        )
+        .join("");
+  }
+
+  function renderAllStories() {
+    const all = storiesDB;
+    const tbody = document.getElementById("allStoriesBody");
+    if (tbody)
+      tbody.innerHTML = all
+        .map(
+          (s) => `<tr>
+      <td>${escapeHtml(s.title)}</td><td>${s.writer}</td><td>${s.section}</td>
+      <td>${getStatusBadgeHtml(s.status)}</td>
+    </tr>`,
+        )
+        .join("");
+  }
+
+  function renderAssignments() {
+    const pending = storiesDB.filter(
+      (s) =>
+        s.writer &&
+        (s.status === "slotted" || s.status === "first") &&
+        s.scheduledDate >= getTodayStr(),
+    );
+    const pendingCountSpan = document.getElementById("pendingCount");
+    const assignmentsList = document.getElementById("assignmentsList");
+    if (pendingCountSpan) pendingCountSpan.innerText = pending.length;
+    if (assignmentsList)
+      assignmentsList.innerHTML = pending
+        .map(
+          (s) =>
+            `<li><strong>${escapeHtml(s.title)}</strong> – due ${s.scheduledDate} at ${s.hour}:00</li>`,
+        )
+        .join("");
+  }
+
+  function getStatusBadgeHtml(status) {
+    if (status === "first")
+      return '<span class="badge badge-first">First Edit</span>';
+    if (status === "second")
+      return '<span class="badge badge-second">Second Edit</span>';
+    if (status === "ready")
+      return '<span class="badge badge-ready">Ready</span>';
+    if (status === "slotted")
+      return '<span class="badge badge-first">Slotted</span>';
+    return '<span class="badge">Draft</span>';
+  }
+
+  function attachStatusChangeEvents() {
+    document.querySelectorAll(".status-select").forEach((sel) => {
+      sel.removeEventListener("change", statusChangeHandler);
+      sel.addEventListener("change", statusChangeHandler);
+    });
+  }
+  function statusChangeHandler(e) {
+    const storyId = parseInt(e.target.dataset.id);
+    const newStage = e.target.value;
+    const story = storiesDB.find((s) => s.id === storyId);
+    if (story) {
+      story.editStage = newStage;
+      if (newStage === "Ready for Copy") story.status = "ready";
+      else if (newStage === "First Edited") story.status = "first";
+      else if (newStage === "Second Edited") story.status = "second";
+      renderAllOtherTables();
+      renderCalendar(); // calendar also reflects status
+    }
+  }
+
+  function renderAllOtherTables() {
+    renderUpcoming();
+    renderReady();
+    renderArchive();
+    renderAllStories();
+    renderAssignments();
+  }
+
+  function escapeHtml(str) {
+    if (!str) return "";
+    return str.replace(/[&<>]/g, function (m) {
+      if (m === "&") return "&amp;";
+      if (m === "<") return "&lt;";
+      if (m === ">") return "&gt;";
+      return m;
+    });
+  }
+
+  // page switching
+  function switchPage(pageId, el) {
+    document
+      .querySelectorAll(".page-section")
+      .forEach((s) => s.classList.remove("active"));
+    document.getElementById(`page-${pageId}`).classList.add("active");
+    document
+      .querySelectorAll(".cd-nav-item")
+      .forEach((item) => item.classList.remove("active"));
+    if (el) el.classList.add("active");
+    if (pageId === "calendar") renderCalendar();
+    else if (pageId === "upcoming") renderUpcoming();
+    else if (pageId === "ready") renderReady();
+    else if (pageId === "archive") renderArchive();
+    else if (pageId === "all-stories") renderAllStories();
+    else if (pageId === "assignments") renderAssignments();
+  }
+
+  // init calendar date restriction (no past dates)
+  function initDateRestriction() {
+    const datePicker = document.getElementById("calendarDate");
+    if (datePicker) {
+      datePicker.min = getTodayStr();
+      datePicker.value = getTodayStr();
+      datePicker.addEventListener("change", () => renderCalendar());
+    }
+  }
+
+  // quick add story from right bar
+  function initQuickActions() {
+    document
+      .getElementById("quickCreateStory")
+      ?.addEventListener("click", () => {
+        const storyTitle = prompt("Story title:");
+        if (!storyTitle) return;
+        const section = prompt("Section (news/sports/opinions/ae):", "news");
+        const writer = prompt("Writer:");
+        const newId = Date.now();
+        storiesDB.push({
+          id: newId,
+          title: storyTitle,
+          section: section.toLowerCase(),
+          writer,
+          status: "draft",
+          editStage: "Draft",
+          scheduledDate: null,
+          hour: null,
+          avatar: writer ? writer[0] : "X",
+        });
+        renderAllOtherTables();
+        alert("Story added. Go to 'All Stories' to schedule it on calendar.");
+      });
+    document.getElementById("addStoryBtn")?.addEventListener("click", () => {
+      const selectedDate = document.getElementById("calendarDate").value;
+      const hour = prompt("Enter hour (8-20):", "10");
+      if (hour && hour >= 8 && hour <= 20)
+        addStoryToSlot(selectedDate, parseInt(hour));
+      else alert("Invalid hour, use 8-20");
+    });
+  }
+
+  // department filter change
+  document
+    .getElementById("deptFilter")
+    ?.addEventListener("change", () => renderCalendar());
+
+  // on load
+  window.addEventListener("DOMContentLoaded", () => {
+    initDateRestriction();
+    renderCalendar();
+    renderAllOtherTables();
+    setupHourJump();
+    initQuickActions();
+    // attach nav listeners
+    document.querySelectorAll(".cd-nav-item").forEach((item) => {
+      item.addEventListener("click", (e) => {
+        const page = item.dataset.page;
+        if (page) switchPage(page, item);
+      });
+    });
+    // initial active page calendar
+    switchPage("calendar", document.querySelector(".cd-nav-item.active"));
+  });
+</script>
+
+{% endblock %}
