@@ -27,8 +27,18 @@ RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify"
 
 
 csrf = SeaSurf()
-default_creds, _ = default()
+default_creds = None
+default_project_id = None
 http_request = transport.requests.Request()
+
+
+def _get_default_creds():
+    global default_creds, default_project_id
+
+    if default_creds is None:
+        default_creds, default_project_id = default()
+
+    return default_creds, default_project_id
 
 
 def get_google_provider_cfg():
@@ -36,16 +46,19 @@ def get_google_provider_cfg():
 
 
 def get_creds(scopes):
+    creds, project_id = _get_default_creds()
+
     if ENV == "dev":
+        target_project_id = GOOGLE_PROJECT_ID or project_id
         creds = impersonated_credentials.Credentials(
-            source_credentials=default_creds,
-            target_principal=f"{GOOGLE_PROJECT_ID}@appspot.gserviceaccount.com",
+            source_credentials=creds,
+            target_principal=f"{target_project_id}@appspot.gserviceaccount.com",
             delegates=[],
             target_scopes=scopes,
             lifetime=300,
         )
     else:
-        creds = default_creds.with_scopes(scopes)
+        creds = creds.with_scopes(scopes)
 
     creds.refresh(http_request)
     return creds
