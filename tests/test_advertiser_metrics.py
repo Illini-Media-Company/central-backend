@@ -203,6 +203,62 @@ class AdvertiserMetricsRoutesTest(unittest.TestCase):
 
     @patch.object(advertiser_metrics, "json_store_set")
     @patch.object(advertiser_metrics, "json_store_get", return_value=None)
+    def test_referrers_fetch_every_ga4_page(self, _cache_get, _cache_set):
+        def response(rows):
+            return {
+                "rowCount": 3,
+                "dimensionHeaders": [{"name": "sessionSourceMedium"}],
+                "metricHeaders": [
+                    {"name": "sessions"},
+                    {"name": "activeUsers"},
+                ],
+                "rows": [
+                    {
+                        "dimensionValues": [{"value": source_medium}],
+                        "metricValues": [
+                            {"value": str(sessions)},
+                            {"value": str(active_users)},
+                        ],
+                    }
+                    for source_medium, sessions, active_users in rows
+                ],
+            }
+
+        pages = [
+            response(
+                [
+                    ("google / organic", 70, 60),
+                    ("(direct) / (none)", 30, 25),
+                ]
+            ),
+            response([("newsletter / email", 10, 8)]),
+        ]
+
+        with patch.object(advertiser_metrics, "REFERRER_PAGE_SIZE", 2), patch.object(
+            advertiser_metrics, "run_ga4_report", side_effect=pages
+        ) as run_report:
+            api_response = self.client.get(
+                "/api/advertiser-metrics/referrers?site=daily-illini&range=30d"
+            )
+
+        self.assertEqual(api_response.status_code, 200)
+        self.assertEqual(
+            [row["sourceMedium"] for row in api_response.get_json()["rows"]],
+            [
+                "google / organic",
+                "(direct) / (none)",
+                "newsletter / email",
+            ],
+        )
+        self.assertEqual(
+            [call.kwargs["offset"] for call in run_report.call_args_list], [0, 2]
+        )
+        self.assertTrue(
+            all(call.kwargs["limit"] == 2 for call in run_report.call_args_list)
+        )
+
+    @patch.object(advertiser_metrics, "json_store_set")
+    @patch.object(advertiser_metrics, "json_store_get", return_value=None)
     def test_upstream_failures_return_a_generic_error(self, _cache_get, _cache_set):
         with patch.object(
             advertiser_metrics,
@@ -246,6 +302,29 @@ class GoogleAnalyticsNormalizationTest(unittest.TestCase):
                 }
             ],
         )
+
+    @patch("util.security.get_creds", return_value=object())
+    @patch("googleapiclient.discovery.build")
+    def test_run_report_sends_limit_and_offset(self, build, _get_creds):
+        service = build.return_value
+        service.properties.return_value.runReport.return_value.execute.return_value = {}
+
+        from util.google_analytics import run_ga4_report
+
+        run_ga4_report(
+            property_id="123",
+            date_range={"start_date": "2026-08-01", "end_date": "2026-08-31"},
+            dimensions=["sessionSourceMedium"],
+            metrics=["sessions"],
+            limit=100,
+            offset=200,
+        )
+
+        request_body = service.properties.return_value.runReport.call_args.kwargs[
+            "body"
+        ]
+        self.assertEqual(request_body["limit"], 100)
+        self.assertEqual(request_body["offset"], 200)
 
 
 if __name__ == "__main__":

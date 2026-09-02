@@ -39,6 +39,7 @@ def run_ga4_report(
     metrics: list[str],
     dimensions: list[str] | None = None,
     limit: int | None = None,
+    offset: int | None = None,
     order_bys: list[dict] | None = None,
 ):
     """
@@ -59,8 +60,10 @@ def run_ga4_report(
 
     if dimensions:
         body["dimensions"] = [{"name": dimension} for dimension in dimensions]
-    if limit:
+    if limit is not None:
         body["limit"] = limit
+    if offset is not None:
+        body["offset"] = offset
     if order_bys:
         body["orderBys"] = order_bys
 

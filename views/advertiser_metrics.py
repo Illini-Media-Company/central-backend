@@ -24,6 +24,7 @@ CACHE_TTLS = {
     "top-pages": timedelta(hours=1),
     "referrers": timedelta(hours=1),
 }
+REFERRER_PAGE_SIZE = 10_000
 
 COMING_SOON_MESSAGE = "Analytics will appear once this site starts sending data."
 PUBLIC_ERROR_MESSAGE = "Advertiser metrics are temporarily unavailable."
@@ -195,22 +196,37 @@ def _fetch_top_pages(site_key, site, range_key, date_range):
 
 
 def _fetch_referrers(site_key, site, range_key, date_range):
-    response = run_ga4_report(
-        property_id=site["property_id"],
-        date_range=date_range,
-        dimensions=["sessionSourceMedium"],
-        metrics=["sessions", "activeUsers"],
-        limit=10,
-        order_bys=[{"metric": {"metricName": "sessions"}, "desc": True}],
-    )
-    rows = [
-        {
-            "sourceMedium": row["dimensions"].get("sessionSourceMedium", ""),
-            "sessions": row["metrics"].get("sessions", 0),
-            "activeUsers": row["metrics"].get("activeUsers", 0),
-        }
-        for row in normalize_run_report(response)
-    ]
+    rows = []
+    offset = 0
+
+    while True:
+        response = run_ga4_report(
+            property_id=site["property_id"],
+            date_range=date_range,
+            dimensions=["sessionSourceMedium"],
+            metrics=["sessions", "activeUsers"],
+            limit=REFERRER_PAGE_SIZE,
+            offset=offset,
+            order_bys=[
+                {"metric": {"metricName": "sessions"}, "desc": True},
+                {"dimension": {"dimensionName": "sessionSourceMedium"}},
+            ],
+        )
+        page_rows = normalize_run_report(response)
+        rows.extend(
+            {
+                "sourceMedium": row["dimensions"].get("sessionSourceMedium", ""),
+                "sessions": row["metrics"].get("sessions", 0),
+                "activeUsers": row["metrics"].get("activeUsers", 0),
+            }
+            for row in page_rows
+        )
+
+        row_count = int(response.get("rowCount", len(rows)))
+        if not page_rows or len(rows) >= row_count:
+            break
+        offset += len(page_rows)
+
     return _base_response("referrers", site_key, site, range_key, date_range) | {
         "totals": {},
         "rows": rows,
