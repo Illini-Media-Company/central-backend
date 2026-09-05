@@ -1,0 +1,158 @@
+{% extends 'employee_management/ems_base.html' %} {% block ems_title %} Bulk
+Onboard Employees {% endblock %} {% block ems_extra_head %}
+<link rel="stylesheet" href="/static/macros/form.css" />
+<style>
+  .employee-file-onboard-form {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+  }
+
+  .column-names-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 1rem;
+  }
+
+  .column-name-description {
+    margin-bottom: 0;
+    font-size: 0.75rem;
+  }
+</style>
+{% endblock %} {% import "macros/form.html" as form %} {% include
+"partials/loading.html" %} {% include "partials/text_alert.html" %} {% include
+"partials/info_bar.html" %} {% block ems_content %}
+<div style="display: flex; flex-direction: row; gap: 2rem; align-items: center">
+  <a href="/ems/employee/onboard" style="color: inherit; font-size: 2rem">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h2>Bulk Onboard Employees</h2>
+</div>
+<p>
+  Upload a CSV to send onboarding links to multiple new employees. The entire
+  file is checked before any onboarding process starts.
+</p>
+
+<section class="section-container">
+  <div
+    class="section-header"
+    style="flex-direction: column; align-items: baseline"
+  >
+    <h2 style="margin-bottom: 0">File Upload</h2>
+    <p style="margin-bottom: 0">
+      Required columns: <strong>first_name</strong>, <strong>last_name</strong>,
+      <strong>email</strong>, and <strong>onboarded_brand</strong>. Optional
+      column: <strong>indv_notif</strong>.
+    </p>
+  </div>
+  <hr style="margin-top: 1rem" />
+
+  {% call form.form(id="employeeFileOnboardForm",
+  class="employee-file-onboard-form", enctype="multipart/form-data",
+  on_submit="return submitEmployees(event)") %} {{ form.file_input("file_input",
+  ".csv") }} {{ form.submit_button(text="Send Onboarding Emails",
+  label="submit_button") }} {% endcall %}
+
+  <div class="inner-container" style="padding: 0.75rem">
+    <div class="section-header">
+      <h3 style="margin-bottom: 0">Accepted Columns</h3>
+      <a
+        href="/static/downloadable/BulkEmployeeOnboard.csv"
+        download="BulkEmployeeOnboard.csv"
+      >
+        <button class="button-secondary">
+          <i class="bi bi-download"></i>&nbsp; Download Template
+        </button>
+      </a>
+    </div>
+    <hr />
+    <div class="column-names-container">
+      <div>
+        <h4>
+          first_name
+          <span style="font-weight: 300; color: var(--main-accent-color)"
+            >(required)</span
+          >
+        </h4>
+        <p class="column-name-description">New employee's first name</p>
+      </div>
+      <div>
+        <h4>
+          last_name
+          <span style="font-weight: 300; color: var(--main-accent-color)"
+            >(required)</span
+          >
+        </h4>
+        <p class="column-name-description">New employee's last name</p>
+      </div>
+      <div>
+        <h4>
+          email
+          <span style="font-weight: 300; color: var(--main-accent-color)"
+            >(required)</span
+          >
+        </h4>
+        <p class="column-name-description">Illinois email address</p>
+      </div>
+      <div>
+        <h4>
+          onboarded_brand
+          <span style="font-weight: 300; color: var(--main-accent-color)"
+            >(required)</span
+          >
+        </h4>
+        <p class="column-name-description">Brand's exact configured name</p>
+      </div>
+      <div>
+        <h4>indv_notif <span style="font-weight: 300">(optional)</span></h4>
+        <p class="column-name-description">
+          Use true, yes, 1, or on to notify the uploader directly
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  async function submitEmployees(event) {
+    event.preventDefault();
+    showLoading("Checking onboarding CSV...");
+
+    const formData = new FormData(event.target);
+    formData.append("_csrf_token", "{{ csrf_token() }}");
+
+    const response = await fetch("/ems/api/employee/onboard/bulk", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (response.status === 200) {
+      sessionStorage.setItem(
+        "infoBarMessage",
+        "Bulk onboarding successfully started.",
+      );
+      window.location.assign("/ems/employees");
+      return;
+    }
+
+    try {
+      const data = await response.json();
+      hideLoading();
+      await showTextAlert(
+        (header = "There was an error:"),
+        (body = data.error || "An unknown error occurred."),
+        (buttonText = "Dismiss"),
+      );
+    } catch (error) {
+      hideLoading();
+      await showTextAlert(
+        (header = "Fatal Error:"),
+        (body = await response.text()),
+        (buttonText = "Dismiss"),
+      );
+    }
+  }
+</script>
+{% endblock %}

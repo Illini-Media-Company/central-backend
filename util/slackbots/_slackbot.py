@@ -11,6 +11,7 @@ from constants import (
     SLACK_BOT_TOKEN,
     SLACK_APP_TOKEN,
     SLACK_SIGNING_SECRET,
+    SLACK_WELCOME_MESSAGE_ENABLED,
 )
 from util.security import csrf
 from db.user import add_user, get_user_entity
@@ -360,7 +361,10 @@ def member_joined_channel(event):
     channel_id = event["channel"]
     print("\nUser " + user_id + " joined channel " + channel_id)
     print(channel_id + " Here")
-    if channel_id in [IMC_GENERAL_ID, IMC_GENERAL_TEST_ID]:
+    if (
+        channel_id in [IMC_GENERAL_ID, IMC_GENERAL_TEST_ID]
+        and SLACK_WELCOME_MESSAGE_ENABLED
+    ):
         directMessage = user_id
         print("   User ID: " + user_id)
         app.client.chat_postMessage(
