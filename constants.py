@@ -57,6 +57,9 @@ TWITTER_ACCESS_TOKEN_SECRET = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET", None
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", None)
 SLACK_APP_TOKEN = os.environ.get("SLACK_APP_TOKEN", None)
 SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET", None)
+SLACK_WELCOME_MESSAGE_ENABLED = (
+    os.environ.get("SLACK_WELCOME_MESSAGE_ENABLED", "false").lower() == "true"
+)
 
 RECAPTCHA_SECRET_KEY = os.environ.get("RECAPTCHA_SECRET_KEY", None)
 
