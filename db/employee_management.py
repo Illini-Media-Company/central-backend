@@ -186,6 +186,10 @@ class EmployeeCard(ndb.Model):
     onboarding_update_ts = ndb.StringProperty()
     onboarding_complete = ndb.BooleanProperty(default=False)
 
+    is_paid = ndb.BooleanProperty(default=False)
+    paid_supervisor_approved = ndb.BooleanProperty(default=False)
+    pending_email = ndb.StringProperty()
+
     slack_id = ndb.StringProperty()
 
     created_at = ndb.DateTimeProperty(
@@ -341,7 +345,11 @@ def get_slack_channel_id(brand_name: str) -> str | None:
 
 
 def create_employee_onboarding_card(
-    first_name: str, last_name: str, onboarding_update_channel: str
+    first_name: str,
+    last_name: str,
+    onboarding_update_channel: str,
+    email: str = None,
+    is_paid: bool = False,
 ) -> dict | int:
     """
     Creates a minimal EmployeeCard for the onboarding workflow.
@@ -352,6 +360,8 @@ def create_employee_onboarding_card(
         `first_name` (`str`): The first name of the employee to onboard
         `last_name` (`str`): The last name of the employee to onboard
         `onboarding_update_channel` (`str`): The Slack `channel_id` to send updates to
+        `email` (`str`): The employee's email used for the onboarding invite
+        `is_paid` (`bool`): Whether this is a paid employee onboarding
 
     Returns:
         `dict`: The created EmployeeCard as a dictionary
@@ -367,6 +377,8 @@ def create_employee_onboarding_card(
                 status="Onboarding",
                 onboarding_form_done=False,
                 onboarding_update_channel=onboarding_update_channel,
+                is_paid=bool(is_paid),
+                pending_email=(email or "").strip() or None,
             )
             employee.initial_hire_date = datetime.now(tz=ZoneInfo("America/Chicago"))
             employee.created_at = datetime.now(tz=ZoneInfo("America/Chicago"))

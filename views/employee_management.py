@@ -30,6 +30,7 @@ from util.employee_management import (
     EGROUPDNE,
     ESLACKDNE,
     ESLACK,
+    PAID_ONBOARDING_FORM_URL,
     slack_dm_onboarding_started,
     slack_dm_info_received,
     slack_dm_google_created,
@@ -37,7 +38,7 @@ from util.employee_management import (
     slack_dm_onboarding_complete,
     get_ems_brand_image_url,
 )
-from util.slackbots.general import _lookup_user_id_by_email
+from util.slackbots.general import _lookup_user_id_by_email, dm_channel_by_id
 from util.google_admin import create_google_user
 
 from db.employee_management import (
@@ -87,6 +88,23 @@ from constants import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _coerce_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def has_paid_onboarding_approval_pending(employee: dict | None) -> bool:
+    if not employee:
+        return False
+    return bool(employee.get("is_paid")) and not bool(
+        employee.get("paid_supervisor_approved")
+    )
+
 
 ems_routes = Blueprint("ems_routes", __name__, url_prefix="/ems")
 
@@ -974,6 +992,79 @@ def ems_api_employee_modify(uid):
 
 
 # API
+@ems_routes.route("/api/employee/<int:uid>/approve-paid", methods=["POST"])
+@login_required
+@restrict_to(["ems-super-admin", "ems-onboarding-admins"])
+def ems_api_employee_approve_paid(uid):
+    """Approve a paid employee onboarding request and send the actual onboarding email."""
+    employee = get_employee_card_by_id(uid)
+    if employee == EEMPDNE:
+        return jsonify({"error": "Employee not found."}), 404
+    if not employee.get("is_paid"):
+        return jsonify({"error": "This employee is not marked as paid."}), 400
+    if employee.get("paid_supervisor_approved"):
+        return (
+            jsonify({"ok": True, "message": "Paid onboarding is already approved."}),
+            200,
+        )
+
+    pending_email = (employee.get("pending_email") or "").strip()
+    if not pending_email:
+        return (
+            jsonify({"error": "No pending onboarding email exists for this employee."}),
+            400,
+        )
+
+    updated = modify_employee_card(
+        uid=uid,
+        paid_supervisor_approved=True,
+    )
+    if updated in (EEMPDNE, EUSERDNE, EEXISTS, EEXCEPT):
+        return jsonify({"error": "Failed to approve paid onboarding."}), 500
+
+    onboarding_url = url_for(
+        "ems_routes.ems_employee_onboarding_form",
+        emp_id=uid,
+        _external=True,
+    )
+    rc = send_onboarding_email(
+        to_email=pending_email,
+        first_name=employee["first_name"],
+        onboarding_url=onboarding_url,
+        google_form_url=PAID_ONBOARDING_FORM_URL,
+    )
+    if not isinstance(rc, dict) or not rc.get("ok"):
+        return (
+            jsonify(
+                {
+                    "error": "Failed to send onboarding email after approval.",
+                    "details": rc.get("error") if isinstance(rc, dict) else str(rc),
+                }
+            ),
+            500,
+        )
+
+    slack_res = slack_dm_onboarding_started(
+        channel_id=employee["onboarding_update_channel"],
+        employee_name=updated["full_name"],
+    )
+    if not isinstance(slack_res, dict) or not slack_res.get("ok"):
+        logging.warning(
+            f"Approval email sent for paid onboarding, but Slack start message failed for employee ID {uid}. Error: {slack_res if isinstance(slack_res, dict) else 'unknown error'}"
+        )
+    else:
+        res = update_employee_onboarding_card(uid=uid, ts=slack_res["ts"])
+        if res in (EEMPDNE, EEXCEPT):
+            logging.warning(
+                f"Approval email sent for paid onboarding, but Slack thread timestamp failed to update for employee ID {uid}."
+            )
+
+    return (
+        jsonify({"ok": True, "message": "Paid onboarding approved and email sent."}),
+        200,
+    )
+
+
 @ems_routes.route("/api/employee/get/all", methods=["GET"])
 @login_required
 @restrict_to(["ems-super-admin"])
@@ -1044,17 +1135,142 @@ def ems_api_employee_onboard_send():
         f"{current_user.email if current_user else 'unknown user'} sending an onboarding invite to {data.get('email', 'unknown email')}."
     )
 
-    result, status = start_employee_onboarding(
-        first_name=(data.get("first_name") or "").strip(),
-        last_name=(data.get("last_name") or "").strip(),
-        email=(data.get("email") or "").strip(),
-        onboarded_brand=(data.get("onboarded_brand") or "").strip(),
-        indv_notif=bool(data.get("indv_notif")),
-        onboarded_by=current_user.email
-        if current_user
-        else "onboarding@illinimedia.com",
+    # Get data
+    first_name = (data.get("first_name") or "").strip()
+    last_name = (data.get("last_name") or "").strip()
+    email = (data.get("email") or "").strip()
+    onboarded_brand = (data.get("onboarded_brand") or "").strip()
+    onboarded_by = current_user.email if current_user else "onboarding@illinimedia.com"
+
+    # Validate required fields
+    if not first_name or not last_name or not email or not onboarded_brand:
+        logging.debug(f"Onboarding invite failed validation. Received data: {data}")
+        return (
+            jsonify({"error": "First name, last name, email and brand are required."}),
+            400,
+        )
+    if "@" not in email:
+        logging.debug(
+            f"Onboarding invite failed validation due to invalid email format: {email}"
+        )
+        return jsonify({"error": "Invalid email format."}), 400
+
+    # Bool, whether to notify the user (True) or the brand's channel (False)
+    indv_notif = bool(data.get("indv_notif"))
+
+    # Send Slack messages notifying that step 1 of onboarding is done
+    if indv_notif:
+        logging.debug(
+            f"Individual notification selected for onboarding {first_name} {last_name}. Attempting to look up Slack ID for {onboarded_by} to send DM updates."
+        )
+        # Channel should be the user who onboarded
+        user_id = _lookup_user_id_by_email(onboarded_by)
+        if not user_id:
+            logging.error(
+                f"Failed to look up Slack ID for {onboarded_by}. Cannot send individual onboarding notifications."
+            )
+            return (
+                jsonify({"error": "The logged in user could not be found in Slack."}),
+                500,
+            )
+        onboarding_update_channel = user_id
+    else:
+        logging.debug(
+            f"Brand channel notification selected for onboarding {first_name} {last_name}. Attempting to look up Slack channel ID for brand {onboarded_brand} to send updates."
+        )
+        # Channel should be the brand's EMS channel
+        channel_id = get_slack_channel_id(onboarded_brand)
+        if not channel_id:
+            logging.error(
+                f"Failed to look up Slack channel ID for brand {onboarded_brand}. Cannot send onboarding notifications to brand channel."
+            )
+            return (
+                jsonify(
+                    {"error": "The brand's channel_id is not defined in settings."}
+                ),
+                500,
+            )
+        onboarding_update_channel = channel_id
+
+    # Create the EmployeeCard
+    logging.debug(
+        f"Creating onboarding employee record for {first_name} {last_name} with email {email} and brand {onboarded_brand}."
     )
-    return jsonify(result), status
+    created = create_employee_onboarding_card(
+        first_name=first_name,
+        last_name=last_name,
+        onboarding_update_channel=onboarding_update_channel,
+    )
+    if created in (None, EEXCEPT):
+        logging.error(
+            f"Failed to create onboarding employee record for {first_name} {last_name}. Error: {created if created else 'unknown error'}"
+        )
+        return jsonify({"error": "Failed to create employee."}), 500
+
+    # Get the URL for the employee's onboarding link
+    emp_id = created["uid"]
+    onboarding_url = url_for(
+        "ems_routes.ems_employee_onboarding_form",
+        emp_id=emp_id,
+        _external=True,
+    )
+    logging.debug(f"Onboarding URL for employee ID {emp_id}: {onboarding_url}")
+
+    # Email the employee
+    rc = send_onboarding_email(
+        to_email=email,
+        first_name=first_name,
+        onboarding_url=onboarding_url,
+    )
+    if not isinstance(rc, dict) or not rc.get("ok"):
+        logging.error(
+            f"Failed to send onboarding email to {email} for employee ID {emp_id}. Error: {rc if isinstance(rc, dict) else 'unknown error'}"
+        )
+        return (
+            jsonify(
+                {
+                    "error": "Failed to send onboarding email.",
+                    "details": rc.get("error") if isinstance(rc, dict) else str(rc),
+                }
+            ),
+            500,
+        )
+    logging.debug(
+        f"Onboarding email sent successfully to {email} for employee ID {emp_id}."
+    )
+
+    # Send Slack messages notifying that step 1 of onboarding is done
+    res = slack_dm_onboarding_started(
+        channel_id=onboarding_update_channel, employee_name=created["full_name"]
+    )
+    if not isinstance(res, dict):
+        logging.error(
+            f"Failed to send onboarding started Slack message for employee ID {emp_id} due to an unknown error."
+        )
+        return jsonify({"error": "Slack message failed for an unknown reason."}), 500
+    if not res.get("ok"):
+        logging.error(
+            f"Failed to send onboarding started Slack message for employee ID {emp_id}. Error: {res['error']}"
+        )
+        return jsonify({"error": f"Slack message failed: {res['error']}"}), 500
+
+    # Store the Slack TS
+    res = update_employee_onboarding_card(uid=created["uid"], ts=res["ts"])
+    if res == EEMPDNE:
+        logging.error(
+            f"Failed to update onboarding employee record for employee ID {emp_id} with Slack TS {res['ts']} because the employee was not found."
+        )
+        return jsonify({"error": "Creating the employee failed."}), 400
+    if res == EEXCEPT:
+        logging.error(
+            f"An exception occurred while updating onboarding employee record for employee ID {emp_id} with Slack TS {res['ts']}."
+        )
+        return jsonify({"error": "A fatal error occurred."}), 400
+
+    logging.debug(
+        f"Onboarding process successfully initiated for employee ID {emp_id}."
+    )
+    return jsonify({"ok": True, "message": "Onboarding successfully started."}), 200
 
 
 # API

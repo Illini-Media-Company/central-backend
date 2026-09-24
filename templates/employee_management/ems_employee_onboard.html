@@ -92,29 +92,34 @@ Employee {% endblock %} {% block ems_extra_head %}
             class="onboard-form-row" ) }}
           </div>
 
-          {# Email & Brand #}
-          <div
-            style="
-              display: flex;
-              flex-direction: row;
-              gap: 1rem;
-              flex-wrap: wrap;
-            "
-          >
-            {{ form.text_input( name="email", label="Illinois Email",
-            required=true, placeholder="NetID@illinois.edu",
-            class="onboard-form-row" ) }}
-            <div style="display: flex; flex-direction: row; gap: 1rem">
-              {{ form.select_input( name="onboarded_brand", label="Brand",
-              options=brand_options, required=true, class="onboard-form-row" )
-              }} {{ form.switch_input( name="indv_notif", label="Notify Me
-              Directly", class="onboard-form-row" ) }}
+                        {# Email & Brand #}
+                        <div style="display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
+                            {{ form.text_input( 
+                                name="email",
+                                label="Illinois Email",
+                                required=true,
+                                placeholder="NetID@illinois.edu",
+                                class="onboard-form-row"
+                            ) }}
+                            <div style="display: flex; flex-direction: row; gap: 1rem;">
+                                {{ form.select_input( 
+                                    name="onboarded_brand",
+                                    label="Brand",
+                                    options=brand_options,
+                                    required=true,
+                                    class="onboard-form-row"
+                                ) }}
+                                {{ form.switch_input(
+                                    name="indv_notif",
+                                    label="Notify Me Directly",
+                                    class="onboard-form-row"
+                                ) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
-      </div>
-    </div>
-  </div>
 
   <div style="text-align: center">
     {{ form.submit_button(text="Send Onboarding Email", label="submit_button")
@@ -124,13 +129,14 @@ Employee {% endblock %} {% block ems_extra_head %}
 </section>
 
 <script>
-  document.addEventListener("DOMContentLoaded", () => {
-    const msg = sessionStorage.getItem("infoBarMessage");
-    if (msg) {
-      showInfoBar(msg);
-      sessionStorage.removeItem("infoBarMessage");
-    }
-  });
+    document.addEventListener("DOMContentLoaded", () => {
+        const msg = sessionStorage.getItem("infoBarMessage");
+        if (msg) {
+            showInfoBar(msg);
+            sessionStorage.removeItem("infoBarMessage");
+        }
+
+    });
 
   async function submitEmployeeOnboard(event) {
     event.preventDefault();
