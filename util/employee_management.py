@@ -93,11 +93,15 @@ ONBOARDING_GOOGLE_FAILED_BLOCKS = [
 ]
 ONBOARDING_COMPLETE_TEXT = "Onboarding for {name} complete"
 
+PAID_ONBOARDING_FORM_URL = "https://forms.gle/tznjkGQLLV6YeQVD8"
+
 ONBOARDING_EMAIL_TEXT_BODY = """Hi {first_name},
 
     Welcome to the Illini Media Company team! Please fill out your onboarding form using the link below::
 
     {onboarding_url}
+
+    {paid_form_text}
 
     Note: This form is best viewed on desktop.
 
@@ -108,7 +112,12 @@ ONBOARDING_EMAIL_TEXT_BODY = """Hi {first_name},
     Illini Media Company"""
 
 
-def send_onboarding_email(to_email: str, first_name: str, onboarding_url: str) -> dict:
+def send_onboarding_email(
+    to_email: str,
+    first_name: str,
+    onboarding_url: str,
+    google_form_url: str | None = None,
+) -> dict:
     """
     Sends the onboarding email via Gmail API using admin/service-account credentials.
     Validates required inputs, builds both plain-text and HTML email bodies, and sends
@@ -130,14 +139,21 @@ def send_onboarding_email(to_email: str, first_name: str, onboarding_url: str) -
     service = build("gmail", "v1", credentials=creds)
 
     subject = "[Action Required] Complete Your Illini Media Onboarding"
+    paid_form_text = ""
+    if google_form_url:
+        paid_form_text = f"\n    Paid onboarding form: {google_form_url}\n"
+
     text_body = ONBOARDING_EMAIL_TEXT_BODY.format(
-        first_name=first_name, onboarding_url=onboarding_url
+        first_name=first_name,
+        onboarding_url=onboarding_url,
+        paid_form_text=paid_form_text,
     )
 
     html_body = render_template(
         "employee_management/ems_onboarding_email.html",
         first_name=first_name,
         onboarding_url=onboarding_url,
+        google_form_url=google_form_url,
     )
 
     msg = MIMEMultipart("alternative")

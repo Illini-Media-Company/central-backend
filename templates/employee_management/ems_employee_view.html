@@ -265,6 +265,11 @@
                         Copy "Next Steps" Link
                     </button>
                 {% endif %}
+                {% if employee.is_paid and not employee.paid_supervisor_approved %}
+                    <button class="button-primary" type="button" onclick="approvePaidOnboarding()">
+                        Approve Paid Onboarding
+                    </button>
+                {% endif %}
                 <button class="button-bg-color" type="button" onclick="overrideOnboarding()">
                     Override: Complete Onboarding
                 </button>
@@ -977,6 +982,42 @@
                 hideLoading();
                 await showTextAlert(header="Fatal Error:", body=fallback, buttonText="Dismiss");
             }
+        }
+    }
+
+    async function approvePaidOnboarding() {
+        const result = await showButtonAlert(
+            header="Approve Paid Onboarding?",
+            body="This will send the onboarding link and form to the employee after supervisor approval.",
+            alertButtonText="Approve",
+            cancelButtonText="Cancel"
+        );
+
+        if (!result) {
+            hideLoading();
+            return;
+        }
+
+        showLoading("Approving paid onboarding...");
+
+        const response = await fetch("/ems/api/employee/{{ employee.uid }}/approve-paid", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                _csrf_token: "{{ csrf_token() }}",
+            }),
+        });
+
+        if (response.status === 200) {
+            sessionStorage.setItem("infoBarMessage", `Paid onboarding approved for {{ employee.full_name }}.`);
+            window.location.reload();
+        } else {
+            const data = await response.json().catch(() => ({}));
+            const message = data.error || "An unknown error occurred.";
+            hideLoading();
+            await showTextAlert(header="There was an error:", body=message, buttonText="Dismiss");
         }
     }
 
