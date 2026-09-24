@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.12.0](https://github.com/Illini-Media-Company/central-backend/compare/v2.11.4...v2.12.0) (2026-09-24)
+
+
+### Features
+
+* **advertiser-metrics:** add public GA4 reporting API ([48881bb](https://github.com/Illini-Media-Company/central-backend/commit/48881bb85dae5294506250b8dcfd98ff9db2206c))
+
 ## [2.11.3](https://github.com/Illini-Media-Company/central-backend/compare/v2.11.2...v2.11.3) (2026-04-26)
 
 
