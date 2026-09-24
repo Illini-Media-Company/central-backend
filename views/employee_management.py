@@ -317,20 +317,6 @@ def ems_employee_add_bulk():
     )
 
 
-# TEMPLATE — employee_onboard_bulk
-@ems_routes.route("/employee/onboard/bulk", methods=["GET"])
-@login_required
-@restrict_to(["ems-super-admin", "ems-onboarding-admins"])
-def ems_employee_onboard_bulk():
-    """
-    Renders the file upload page to onboard multiple employees.
-    """
-    return render_template(
-        "employee_management/ems_employee_onboard_bulk.html",
-        brand_options=get_imc_brand_names(),
-    )
-
-
 # TEMPLATE — employee_view
 @ems_routes.route("/employee/view/<int:emp_id>", methods=["GET"])
 @login_required
@@ -811,59 +797,6 @@ def ems_api_employee_create_all():
 
 
 # API
-@ems_routes.route("/api/employee/onboard/bulk", methods=["POST"])
-@login_required
-@restrict_to(["ems-super-admin", "ems-onboarding-admins"])
-def ems_api_employee_onboard_bulk():
-    import pandas as pd
-
-    if "file_input" not in request.files:
-        return jsonify({"error": "No file part in the request."}), 400
-
-    file = request.files["file_input"]
-    if not file.filename:
-        return jsonify({"error": "No selected file."}), 400
-
-    try:
-        file.seek(0)
-        uploaded_df = pd.read_csv(file, encoding="unicode_escape")
-        rows = validate_onboarding_csv(uploaded_df)
-    except Exception as error:
-        logging.error(f"Error validating onboarding CSV: {error}")
-        return jsonify({"error": str(error)}), 400
-
-    failures = []
-    for row_number, row in rows:
-        result, status = start_employee_onboarding(
-            first_name=row["first_name"],
-            last_name=row["last_name"],
-            email=row["email"],
-            onboarded_brand=row["onboarded_brand"],
-            indv_notif=row["indv_notif"],
-            onboarded_by=current_user.email,
-        )
-        if status != 200:
-            failures.append({"row": row_number, "error": result.get("error")})
-
-    if failures:
-        return (
-            jsonify(
-                {
-                    "error": "Some onboarding invites failed.",
-                    "failures": failures,
-                    "processed": len(rows) - len(failures),
-                }
-            ),
-            500,
-        )
-
-    return (
-        jsonify({"ok": True, "message": f"Started {len(rows)} onboarding invites."}),
-        200,
-    )
-
-
-# API
 @ems_routes.route("/api/employee/<int:uid>/modify", methods=["POST"])
 @login_required
 def ems_api_employee_modify(uid):
@@ -1141,6 +1074,7 @@ def ems_api_employee_onboard_send():
     email = (data.get("email") or "").strip()
     onboarded_brand = (data.get("onboarded_brand") or "").strip()
     onboarded_by = current_user.email if current_user else "onboarding@illinimedia.com"
+    is_paid = _coerce_bool(data.get("is_paid"))
 
     # Validate required fields
     if not first_name or not last_name or not email or not onboarded_brand:
@@ -1200,6 +1134,8 @@ def ems_api_employee_onboard_send():
         first_name=first_name,
         last_name=last_name,
         onboarding_update_channel=onboarding_update_channel,
+        email=email,
+        is_paid=is_paid,
     )
     if created in (None, EEXCEPT):
         logging.error(
@@ -1207,8 +1143,49 @@ def ems_api_employee_onboard_send():
         )
         return jsonify({"error": "Failed to create employee."}), 500
 
-    # Get the URL for the employee's onboarding link
     emp_id = created["uid"]
+
+    if is_paid:
+        approval_link = url_for(
+            "ems_routes.ems_employee_view",
+            emp_id=emp_id,
+            _external=True,
+        )
+        logging.info(
+            f"Paid onboarding request created for {first_name} {last_name}. Waiting for supervisor approval before sending email."
+        )
+
+        approver_user_id = _lookup_user_id_by_email(onboarded_by)
+        if approver_user_id:
+            res = dm_channel_by_id(
+                channel_id=approver_user_id,
+                text=f"Paid onboarding approval needed for {first_name} {last_name}. Approve in EMS: {approval_link}",
+                blocks=[
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f"*Paid onboarding approval needed*\n{first_name} {last_name} is being onboarded as a paid employee. Approve in EMS: {approval_link}",
+                        },
+                    }
+                ],
+            )
+            if not isinstance(res, dict) or not res.get("ok"):
+                logging.warning(
+                    f"Paid onboarding approval message could not be sent to {onboarded_by}. Error: {res if isinstance(res, dict) else 'unknown error'}"
+                )
+
+        return (
+            jsonify(
+                {
+                    "ok": True,
+                    "message": "Paid onboarding request created and sent for supervisor approval.",
+                }
+            ),
+            200,
+        )
+
+    # Get the URL for the employee's onboarding link
     onboarding_url = url_for(
         "ems_routes.ems_employee_onboarding_form",
         emp_id=emp_id,
@@ -2491,110 +2468,6 @@ def ems_api_relation_delete(uid):
 ################################################################################
 ### HELPER FUNCTIONS ###########################################################
 ################################################################################
-
-
-def start_employee_onboarding(
-    first_name, last_name, email, onboarded_brand, indv_notif, onboarded_by
-):
-    """Create an onboarding card, send its invite, and notify Slack."""
-    if not first_name or not last_name or not email or not onboarded_brand:
-        return {"error": "First name, last name, email and brand are required."}, 400
-    if "@" not in email:
-        return {"error": "Invalid email format."}, 400
-
-    if indv_notif:
-        onboarding_update_channel = _lookup_user_id_by_email(onboarded_by)
-        if not onboarding_update_channel:
-            return {"error": "The logged in user could not be found in Slack."}, 500
-    else:
-        onboarding_update_channel = get_slack_channel_id(onboarded_brand)
-        if not onboarding_update_channel:
-            return {"error": "The brand's channel_id is not defined in settings."}, 500
-
-    created = create_employee_onboarding_card(
-        first_name=first_name,
-        last_name=last_name,
-        onboarding_update_channel=onboarding_update_channel,
-    )
-    if created in (None, EEXCEPT):
-        return {"error": "Failed to create employee."}, 500
-
-    emp_id = created["uid"]
-    onboarding_url = url_for(
-        "ems_routes.ems_employee_onboarding_form", emp_id=emp_id, _external=True
-    )
-    email_result = send_onboarding_email(
-        to_email=email, first_name=first_name, onboarding_url=onboarding_url
-    )
-    if not isinstance(email_result, dict) or not email_result.get("ok"):
-        return {"error": "Failed to send onboarding email."}, 500
-
-    slack_result = slack_dm_onboarding_started(
-        channel_id=onboarding_update_channel, employee_name=created["full_name"]
-    )
-    if not isinstance(slack_result, dict) or not slack_result.get("ok"):
-        error = (
-            slack_result.get("error", "unknown reason")
-            if isinstance(slack_result, dict)
-            else "unknown reason"
-        )
-        return {"error": f"Slack message failed: {error}"}, 500
-
-    timestamp_result = update_employee_onboarding_card(
-        uid=emp_id, ts=slack_result["ts"]
-    )
-    if timestamp_result in (EEMPDNE, EEXCEPT):
-        return {"error": "A fatal error occurred."}, 500
-    return {"ok": True, "message": "Onboarding successfully started."}, 200
-
-
-def validate_onboarding_csv(csv):
-    """Validate an onboarding CSV without creating records or sending messages."""
-    import pandas as pd
-
-    required_columns = {"first_name", "last_name", "email", "onboarded_brand"}
-    optional_columns = {"indv_notif"}
-    columns = set(csv.columns)
-    missing_columns = sorted(required_columns - columns)
-    invalid_columns = sorted(columns - required_columns - optional_columns)
-    if missing_columns:
-        raise ValueError(f"CSV missing columns: {missing_columns}")
-    if invalid_columns:
-        raise ValueError(f"CSV contains invalid columns: {invalid_columns}")
-    if csv.empty:
-        raise ValueError("CSV contains no employees.")
-
-    brands = set(get_imc_brand_names())
-    rows = []
-    emails = set()
-    for index, row in csv.iterrows():
-        row_number = index + 2
-        values = {
-            key: "" if pd.isna(value) else str(value).strip()
-            for key, value in row.to_dict().items()
-        }
-        if not any(values.values()):
-            raise ValueError(f"Row {row_number} is empty.")
-        if any(not values.get(column, "") for column in required_columns):
-            raise ValueError(f"Row {row_number} is missing a required value.")
-        email = values["email"]
-        if "@" not in email:
-            raise ValueError(f"Row {row_number} has an invalid email format.")
-        if email.casefold() in emails:
-            raise ValueError(f"Row {row_number} duplicates email {email}.")
-        if values["onboarded_brand"] not in brands:
-            raise ValueError(
-                f"Row {row_number} has an invalid brand: {values['onboarded_brand']}."
-            )
-        emails.add(email.casefold())
-        values["indv_notif"] = values.get("indv_notif", "").casefold() in {
-            "1",
-            "true",
-            "yes",
-            "on",
-        }
-        rows.append((row_number, values))
-    return rows
 
 
 def validate_csv(csv):

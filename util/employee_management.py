@@ -93,7 +93,7 @@ ONBOARDING_GOOGLE_FAILED_BLOCKS = [
 ]
 ONBOARDING_COMPLETE_TEXT = "Onboarding for {name} complete"
 
-PAID_ONBOARDING_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSe--1a8CtNdtAD1NSAN9NmtQtY-XaOkSJC645ErzMPhaHCsoA/viewform?usp=dialog"
+PAID_ONBOARDING_FORM_URL = "https://forms.gle/tznjkGQLLV6YeQVD8"
 
 ONBOARDING_EMAIL_TEXT_BODY = """Hi {first_name},
 
