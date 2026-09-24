@@ -24,6 +24,39 @@ IMC_CONSOLE_GOOGLE_ANALYTICS_MEASUREMENT_ID = "G-6V6FSKGBDZ"
 IMC_CONSOLE_GOOGLE_ANALYTICS_KEY = os.environ.get(
     "IMC_CONSOLE_GOOGLE_ANALYTICS_KEY", None
 )
+ADVERTISER_METRICS_SITES = {
+    "imc": {
+        "name": "Illini Media Company",
+        "property_id": "532380361",
+        "has_data": False,
+    },
+    "daily-illini": {
+        "name": "The Daily Illini",
+        "property_id": "335296694",
+        "has_data": True,
+    },
+    "wpgu": {
+        "name": "WPGU",
+        "property_id": "504988194",
+        "has_data": True,
+    },
+    "illio": {
+        "name": "Illio",
+        "property_id": "532372399",
+        "has_data": False,
+    },
+    "chambana-eats": {
+        "name": "Chambana Eats",
+        "property_id": "502422015",
+        "has_data": True,
+    },
+}
+ADVERTISER_METRICS_RANGE_OPTIONS = {
+    "7d": {"label": "Past 7 days", "days": 7},
+    "30d": {"label": "Past 30 days", "days": 30},
+    "90d": {"label": "Past 90 days", "days": 90},
+    "12mo": {"label": "Past 12 months", "days": 365},
+}
 
 # Discovery Engine (Vertex AI Search) configuration
 DISCOVERY_ENGINE_PROJECT_ID = os.environ.get(
