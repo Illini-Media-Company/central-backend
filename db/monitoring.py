@@ -6,7 +6,7 @@ a single precomputed entity the dashboard reads in one call. All database
 calls for monitoring must go through the helper functions in this file.
 
 Created by Gus Nophaket on Oct. 3, 2026
-Last modified Oct. 3, 2026
+Last modified Oct. 4, 2026
 """
 
 from datetime import datetime, timedelta
@@ -106,8 +106,10 @@ class DashboardSnapshot(ndb.Model):
     every run so the dashboard loads with one read.
 
     Each item in `checks` has: check_id, name, status, last_checked_at,
-    response_time_ms, uptime_24h, uptime_7d, error_rate_24h, alert_active.
-    Store last_checked_at as an ISO 8601 string; JsonProperty can't hold datetimes.
+    response_time_ms, uptime_24h, uptime_7d, error_rate_24h, alert_active,
+    hourly_counts. Store last_checked_at as an ISO 8601 string; JsonProperty
+    can't hold datetimes. hourly_counts maps each hour of the last 7 days to
+    critical-tier {up, failed, total} counts so uptime needs no history query.
     """
 
     updated_at = ndb.DateTimeProperty(auto_now=True, tzinfo=ZoneInfo("America/Chicago"))
@@ -198,6 +200,15 @@ def delete_run(run_id):
         )
         ndb.delete_multi(result_keys + [run_key])
         return True
+
+
+def find_stuck_runs(older_than_minutes=30):
+    """Returns Runs still "running" that started more than older_than_minutes ago."""
+    with client.context():
+        cutoff = datetime.now(ZoneInfo("America/Chicago")) - timedelta(
+            minutes=older_than_minutes
+        )
+        return Run.query(Run.run_status == "running", Run.start_time < cutoff).fetch()
 
 
 ################################################################################
@@ -322,3 +333,27 @@ def set_dashboard_snapshot(last_run_id, last_run_finished_at, checks):
         )
         snapshot.put()
         return snapshot
+
+
+def modify_dashboard_snapshot(build_checks, last_run_id, last_run_finished_at):
+    """
+    Read-modify-writes the DashboardSnapshot in a transaction so two runs
+    finishing at the same time can't overwrite each other's counts.
+
+    build_checks(previous_checks) -> new checks list. It may run more than once
+    if the transaction retries, so it must not have side effects.
+    """
+    with client.context():
+
+        def txn():
+            previous = DashboardSnapshot.get_by_id(DASHBOARD_SNAPSHOT_ID)
+            snapshot = DashboardSnapshot(
+                id=DASHBOARD_SNAPSHOT_ID,
+                last_run_id=last_run_id,
+                last_run_finished_at=last_run_finished_at,
+                checks=build_checks((previous.checks or []) if previous else []),
+            )
+            snapshot.put()
+            return snapshot
+
+        return ndb.transaction(txn)
