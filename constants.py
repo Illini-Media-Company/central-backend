@@ -58,6 +58,24 @@ ADVERTISER_METRICS_RANGE_OPTIONS = {
     "12mo": {"label": "Past 12 months", "days": 365},
 }
 
+# Backend console monitoring allowed values
+MONITORING_TRIGGERS = ["scheduled", "pre_peak", "manual", "deploy"]
+MONITORING_TIERS = ["critical", "full"]
+MONITORING_RUN_STATUSES = ["running", "completed"]
+MONITORING_CHECK_STATUSES = ["healthy", "degraded", "failed"]
+MONITORING_SEVERITIES = ["major", "minor"]
+MONITORING_ERROR_TYPES = [
+    "timeout",
+    "connection_error",
+    "auth_failed",
+    "bad_status",
+    "invalid_response",
+    "stale",
+    "not_configured",
+    "unexpected_error",
+]
+MONITORING_ERROR_MESSAGE_MAX_LENGTH = 500
+
 # Discovery Engine (Vertex AI Search) configuration
 DISCOVERY_ENGINE_PROJECT_ID = os.environ.get(
     "DISCOVERY_ENGINE_PROJECT_ID", GOOGLE_PROJECT_ID

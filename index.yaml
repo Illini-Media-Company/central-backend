@@ -84,3 +84,17 @@ indexes:
     - name: start_date
     - name: title
     - name: url
+  - kind: CheckResult
+    properties:
+    - name: check_id
+    - name: checked_at
+      direction: desc
+  - kind: CheckResult
+    properties:
+    - name: status
+    - name: checked_at
+      direction: desc
+  - kind: Run
+    properties:
+    - name: run_status
+    - name: start_time
