@@ -6,7 +6,7 @@ a single precomputed entity the dashboard reads in one call. All database
 calls for monitoring must go through the helper functions in this file.
 
 Created by Gus Nophaket on Oct. 3, 2026
-Last modified Oct. 4, 2026
+Last modified Oct. 5, 2026
 """
 
 from datetime import datetime, timedelta
@@ -277,6 +277,18 @@ def get_results_for_check(check_id, limit=20):
             CheckResult.query(CheckResult.check_id == check_id)
             .order(-CheckResult.checked_at)
             .fetch(limit)
+        )
+
+
+def get_results_for_check_since(check_id, since):
+    """Returns every CheckResult for one check with checked_at >= since, newest first."""
+    with client.context():
+        return (
+            CheckResult.query(
+                CheckResult.check_id == check_id, CheckResult.checked_at >= since
+            )
+            .order(-CheckResult.checked_at)
+            .fetch()
         )
 
 

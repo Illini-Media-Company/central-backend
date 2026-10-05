@@ -173,6 +173,7 @@ with InitTimer("Views"):
     )
     from views.song_request import song_request_routes
     from views.advertiser_metrics import advertiser_metrics_api_routes
+    from views.monitoring import monitoring_routes
 
 ################################################################################
 ############################# IMPORTS COMPLETE #################################
@@ -211,6 +212,7 @@ app.register_blueprint(admin_calendar_routes)
 app.register_blueprint(public_calendar_api_routes)
 app.register_blueprint(song_request_routes)
 app.register_blueprint(advertiser_metrics_api_routes)
+app.register_blueprint(monitoring_routes)
 logging.info("Done registering blueprints.")
 
 logging.info("Initializing login manager...")

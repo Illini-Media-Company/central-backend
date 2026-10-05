@@ -75,6 +75,7 @@ MONITORING_ERROR_TYPES = [
     "unexpected_error",
 ]
 MONITORING_ERROR_MESSAGE_MAX_LENGTH = 500
+MONITORING_ACCESS_GROUPS = ["imc-staff-webdev"]  # Who can use /monitoring routes
 
 # Discovery Engine (Vertex AI Search) configuration
 DISCOVERY_ENGINE_PROJECT_ID = os.environ.get(
