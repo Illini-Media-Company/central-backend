@@ -20,6 +20,10 @@ def result(
         tier=tier,
         checked_at=NOW - timedelta(hours=hours_ago),
         response_time_ms=120,
+        target="datastore",
+        severity="major",
+        error_type=None,
+        error_message=None,
     )
 
 
@@ -44,7 +48,7 @@ class ComputeStatusTest(unittest.TestCase):
 
 
 class SaveResultTest(unittest.TestCase):
-    @patch("util.monitoring.create_check_result")
+    @patch("util.monitoring.snapshot.create_check_result")
     def test_snapshots_definition_fields(self, create):
         definition = {
             "id": "song_requests_api",
@@ -68,15 +72,15 @@ class SaveResultTest(unittest.TestCase):
         self.assertEqual(kwargs["latency_threshold_ms"], 1000)
         self.assertEqual(kwargs["attempts"], 1)
 
-    @patch("util.monitoring.create_check_result")
+    @patch("util.monitoring.snapshot.create_check_result")
     def test_no_target_without_params(self, create):
         monitoring.save_result("run_1", {"id": "datastore"}, {"status": "healthy"})
         self.assertIsNone(create.call_args.kwargs["target"])
 
 
 class FinishRunTest(unittest.TestCase):
-    @patch("util.monitoring.update_run")
-    @patch("util.monitoring.get_results_for_run")
+    @patch("util.monitoring.snapshot.update_run")
+    @patch("util.monitoring.snapshot.get_results_for_run")
     def test_counts_are_correct(self, get_results, update):
         get_results.return_value = [
             result("healthy"),
@@ -96,8 +100,8 @@ class FinishRunTest(unittest.TestCase):
             (4, 2, 1, 1),
         )
 
-    @patch("util.monitoring.update_run")
-    @patch("util.monitoring.get_results_for_run", return_value=[])
+    @patch("util.monitoring.snapshot.update_run")
+    @patch("util.monitoring.snapshot.get_results_for_run", return_value=[])
     def test_empty_run(self, get_results, update):
         monitoring.finish_run("run_1")
         self.assertEqual(update.call_args.kwargs["total"], 0)
@@ -130,7 +134,7 @@ class AlertActiveTest(unittest.TestCase):
             active = monitoring.next_alert_active(latest, active)
         self.assertEqual(alerts, 1)
 
-    @patch("util.monitoring.get_dashboard_snapshot")
+    @patch("util.monitoring.snapshot.get_dashboard_snapshot")
     def test_is_alert_active_reads_snapshot(self, get_snapshot):
         get_snapshot.return_value = SimpleNamespace(
             checks=[{"check_id": "datastore", "alert_active": True}]
@@ -138,7 +142,7 @@ class AlertActiveTest(unittest.TestCase):
         self.assertTrue(monitoring.is_alert_active("datastore"))
         self.assertFalse(monitoring.is_alert_active("slack"))
 
-    @patch("util.monitoring.get_dashboard_snapshot", return_value=None)
+    @patch("util.monitoring.snapshot.get_dashboard_snapshot", return_value=None)
     def test_is_alert_active_no_snapshot(self, get_snapshot):
         self.assertFalse(monitoring.is_alert_active("datastore"))
 
@@ -154,14 +158,14 @@ class HourlyCountsTest(unittest.TestCase):
         counts = self.counts_from(
             [result("healthy"), result("degraded"), result("failed"), result("failed")]
         )
-        self.assertEqual(monitoring.window_rates(counts, NOW, 24), (0.5, 0.5))
+        self.assertEqual(monitoring.window_rates(counts, NOW, 24), (50.0, 50.0))
 
     def test_no_results_is_none(self):
         self.assertEqual(monitoring.window_rates({}, NOW, 24), (None, None))
 
-    def test_full_tier_ignored(self):
+    def test_full_tier_is_included(self):
         counts = self.counts_from([result("failed", tier="full")])
-        self.assertEqual(counts, {})
+        self.assertEqual(monitoring.window_rates(counts, NOW, 24), (0.0, 100.0))
 
     def test_windows(self):
         counts = self.counts_from(
@@ -171,10 +175,8 @@ class HourlyCountsTest(unittest.TestCase):
                 result("failed", hours_ago=48),  # outside 24h, inside 7d
             ]
         )
-        self.assertEqual(monitoring.window_rates(counts, NOW, 24)[0], 0.5)
-        self.assertEqual(
-            monitoring.window_rates(counts, NOW, 24 * 7)[0], round(1 / 3, 4)
-        )
+        self.assertEqual(monitoring.window_rates(counts, NOW, 24)[0], 50.0)
+        self.assertEqual(monitoring.window_rates(counts, NOW, 24 * 7)[0], 33.33)
 
     def test_hours_older_than_7_days_dropped(self):
         counts = self.counts_from([result("failed", hours_ago=24 * 8)])
@@ -189,18 +191,44 @@ class HourlyCountsTest(unittest.TestCase):
 
     def test_snapshot_entry(self):
         entry = monitoring.build_snapshot_entry(result("healthy"), None, NOW)
-        self.assertEqual(entry["uptime_24h"], 1.0)
+        self.assertEqual(entry["uptime_24h"], 100.0)
         self.assertFalse(entry["alert_active"])
         self.assertIsInstance(entry["last_checked_at"], str)
+        self.assertEqual(entry["tier"], "critical")
+        self.assertEqual(entry["severity"], "major")
+        self.assertFalse(entry["stale"])
 
 
 class UpdateSnapshotTest(unittest.TestCase):
-    @patch("util.monitoring.modify_dashboard_snapshot")
-    @patch("util.monitoring.get_results_for_run")
-    @patch("util.monitoring.get_run")
-    def test_keeps_checks_not_in_this_run(self, get_run, get_results, modify):
+    @patch("util.monitoring.snapshot.get_check_definitions")
+    @patch("util.monitoring.snapshot.modify_dashboard_snapshot")
+    @patch("util.monitoring.snapshot.get_results_for_run")
+    @patch("util.monitoring.snapshot.get_run")
+    def test_keeps_checks_not_in_this_run(
+        self, get_run, get_results, modify, get_definitions
+    ):
         get_run.return_value = SimpleNamespace(uid="run_2", end_time=NOW)
         get_results.return_value = [result("healthy")]
+        get_definitions.return_value = [
+            {
+                "id": "datastore",
+                "name": "Datastore",
+                "kind": "function",
+                "tier": "critical",
+                "severity": "major",
+                "enabled": True,
+                "params": {"handler": "datastore"},
+            },
+            {
+                "id": "full_only_check",
+                "name": "Full only",
+                "kind": "http",
+                "tier": "full",
+                "severity": "minor",
+                "enabled": True,
+                "params": {"target": "/full"},
+            },
+        ]
 
         monitoring.update_snapshot("run_2")
 
@@ -211,17 +239,29 @@ class UpdateSnapshotTest(unittest.TestCase):
             for c in build_checks(
                 [
                     {"check_id": "datastore", "status": "failed", "alert_active": True},
-                    {"check_id": "full_only_check", "status": "healthy"},
+                    {
+                        "check_id": "full_only_check",
+                        "status": "healthy",
+                        "last_checked_at": (NOW - timedelta(hours=14)).isoformat(),
+                        "hourly_counts": {
+                            (NOW - timedelta(hours=25))
+                            .replace(minute=0, second=0, microsecond=0)
+                            .isoformat(): {"up": 1, "failed": 0, "total": 1}
+                        },
+                    },
                 ]
             )
         }
         self.assertEqual(checks["datastore"]["status"], "healthy")
         self.assertFalse(checks["datastore"]["alert_active"])
         self.assertEqual(checks["full_only_check"]["status"], "healthy")
+        self.assertTrue(checks["full_only_check"]["stale"])
+        self.assertIsNone(checks["full_only_check"]["uptime_24h"])
+        self.assertEqual(checks["full_only_check"]["uptime_7d"], 100.0)
         self.assertEqual(len(checks), 2)
 
-    @patch("util.monitoring.modify_dashboard_snapshot")
-    @patch("util.monitoring.get_run", return_value=None)
+    @patch("util.monitoring.snapshot.modify_dashboard_snapshot")
+    @patch("util.monitoring.snapshot.get_run", return_value=None)
     def test_missing_run(self, get_run, modify):
         self.assertIsNone(monitoring.update_snapshot("nope"))
         modify.assert_not_called()

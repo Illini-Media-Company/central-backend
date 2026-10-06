@@ -123,6 +123,7 @@ with InitTimer("Utility Functions"):
     from util.all_tools import format_restricted_groups
     from util.cu_calendar import sync_gcal_sources
     from util.employee_management import get_ems_brand_image_url
+    from util.monitoring.cron_health import track_cron_job
     from util.helpers.ap_datetime import (
         ap_datetime,
         ap_date,
@@ -425,6 +426,7 @@ def schedulers():
 @app.route("/cron/delete-expired-events", methods=["GET", "POST"])
 @csrf.exempt
 @talisman(force_https=False)
+@track_cron_job("delete_expired_events", "Expired-event cleanup")
 def cron_delete_expired_events():
     if request.headers.get("X-Appengine-Cron") != "true":
         logging.warning(
@@ -443,6 +445,7 @@ def cron_delete_expired_events():
 @app.route("/cron/socials-rss-listener", methods=["GET", "POST"])
 @csrf.exempt
 @talisman(force_https=False)
+@track_cron_job("socials_rss_listener", "Socials RSS listener")
 def cron_rss_listener():
     """
     Endpoint for Google Cloud Scheduler to trigger RSS feed checking.
@@ -482,6 +485,7 @@ def cron_rss_listener():
 @app.route("/cron/cu-calendar-sync-30d", methods=["GET", "POST"])
 @csrf.exempt
 @talisman(force_https=False)
+@track_cron_job("cu_calendar_sync_30d", "30-day calendar sync")
 def cron_cu_calendar_sync_30d():
     """
     Cron endpoint: sync CU calendar sources for the next 30 days.
@@ -501,6 +505,7 @@ def cron_cu_calendar_sync_30d():
 @app.route("/cron/cu-calendar-sync-year", methods=["GET", "POST"])
 @csrf.exempt
 @talisman(force_https=False)
+@track_cron_job("cu_calendar_sync_year", "Annual calendar sync")
 def cron_cu_calendar_sync_year():
     """
     Cron endpoint: sync CU calendar sources for the next year (365 days).
@@ -520,6 +525,7 @@ def cron_cu_calendar_sync_year():
 @app.route("/cron/wpgu-song-requests-cleanup", methods=["GET", "POST"])
 @csrf.exempt
 @talisman(force_https=False)
+@track_cron_job("wpgu_song_requests_cleanup", "WPGU song-request cleanup")
 def cron_wpgu_song_requests_cleanup():
     """
     Cron endpoint: delete WPGU song requests older than 60 days.

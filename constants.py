@@ -9,6 +9,16 @@ load_dotenv()
 ENV = os.environ.get("ENV", "dev")
 
 BASE_URL = "https://app.dailyillini.com" if ENV == "prod" else "http://127.0.0.1:5001"
+MONITORING_BASE_URL = os.environ.get(
+    "MONITORING_BASE_URL",
+    BASE_URL if ENV == "prod" else "https://127.0.0.1:5001",
+)
+MONITORING_VERIFY_LOCAL_TLS = (
+    os.environ.get(
+        "MONITORING_VERIFY_LOCAL_TLS", "true" if ENV == "prod" else "false"
+    ).lower()
+    == "true"
+)
 
 # Google API keys and secrets
 ADMIN_EMAIL = "imc_admin@illinimedia.com"
@@ -71,11 +81,23 @@ MONITORING_ERROR_TYPES = [
     "bad_status",
     "invalid_response",
     "stale",
+    "stuck",
+    "job_failed",
     "not_configured",
     "unexpected_error",
 ]
 MONITORING_ERROR_MESSAGE_MAX_LENGTH = 500
-MONITORING_ACCESS_GROUPS = ["imc-staff-webdev"]  # Who can use /monitoring routes
+MONITORING_MAX_ATTEMPTS = 2
+MONITORING_RETRY_DELAY_SECONDS = 0.5
+MONITORING_STUCK_RUN_MINUTES = 15
+MONITORING_RETENTION_DAYS = 30
+MONITORING_CRITICAL_STALE_HOURS = 7
+MONITORING_FULL_STALE_HOURS = 13
+MONITORING_WATCHER_STALE_HOURS = 13
+MONITORING_CRON_JOB_STATUSES = ["running", "succeeded", "failed"]
+GOOGLE_OAUTH_DISCOVERY_URL = (
+    "https://accounts.google.com/.well-known/openid-configuration"
+)
 
 # Discovery Engine (Vertex AI Search) configuration
 DISCOVERY_ENGINE_PROJECT_ID = os.environ.get(
@@ -331,6 +353,9 @@ TOOLS_ADMIN_ACCESS_GROUPS = [
 # Slack channels (used by Slack bot)
 IMC_GENERAL_ID = "C13TEC3QE" if ENV == "prod" else "C06GADGT60Z"
 IMC_GENERAL_TEST_ID = "C06LDL7RG3X" if ENV == "prod" else None
+MONITORING_SLACK_CHANNEL_ID = os.environ.get("MONITORING_SLACK_CHANNEL_ID") or (
+    IMC_GENERAL_ID if ENV != "prod" else None
+)
 DI_ANNOUNCEMENTS_ID = "C06BSL71W2Z" if ENV == "prod" else "C06G089F8S0"
 ILLIO_ANNOUNCEMENTS_ID = "C06BVLLQPAP" if ENV == "prod" else "C06FXMB42MR"
 WPGU_ANNOUNCEMENTS_ID = "C06BY7S6F44" if ENV == "prod" else "C06G08KP11S"

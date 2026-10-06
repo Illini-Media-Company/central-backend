@@ -1,12 +1,11 @@
 """
-This file defines the Run, CheckResult and DashboardSnapshot classes used for
-backend console monitoring. A Run is one execution of a tier of checks, a
-CheckResult is the outcome of one check inside a Run, and DashboardSnapshot is
-a single precomputed entity the dashboard reads in one call. All database
+This file defines the models and persistence helpers used for backend console
+monitoring. It stores runs, individual results, the precomputed dashboard
+snapshot, cron heartbeats, and the singleton execution lease. All database
 calls for monitoring must go through the helper functions in this file.
 
 Created by Gus Nophaket on Oct. 3, 2026
-Last modified Oct. 5, 2026
+Last modified Oct. 6, 2026
 """
 
 from datetime import datetime, timedelta
@@ -21,6 +20,7 @@ from constants import (
     MONITORING_SEVERITIES,
     MONITORING_ERROR_TYPES,
     MONITORING_ERROR_MESSAGE_MAX_LENGTH,
+    MONITORING_CRON_JOB_STATUSES,
 )
 
 from . import client
@@ -33,6 +33,30 @@ def _truncate_error_message(prop, value):
     if value is None:
         return None
     return value[:MONITORING_ERROR_MESSAGE_MAX_LENGTH]
+
+
+def _validate_nonnegative(prop, value):
+    if value is not None and value < 0:
+        raise ValueError(f"{prop._name} cannot be negative")
+    return value
+
+
+def _validate_attempts(prop, value):
+    if value is not None and value not in (1, 2):
+        raise ValueError("attempts must be 1 or 2")
+    return value
+
+
+def _validate_limit(limit):
+    if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 100:
+        raise ValueError("limit must be an integer between 1 and 100")
+    return limit
+
+
+def _validate_positive_days(days_old):
+    if isinstance(days_old, bool) or not isinstance(days_old, int) or days_old < 1:
+        raise ValueError("days_old must be a positive integer")
+    return days_old
 
 
 class Run(ndb.Model):
@@ -59,10 +83,10 @@ class Run(ndb.Model):
     end_time = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
 
     # Counts are set when the run finishes
-    total = ndb.IntegerProperty(default=0)
-    healthy = ndb.IntegerProperty(default=0)
-    degraded = ndb.IntegerProperty(default=0)
-    failed = ndb.IntegerProperty(default=0)
+    total = ndb.IntegerProperty(default=0, validator=_validate_nonnegative)
+    healthy = ndb.IntegerProperty(default=0, validator=_validate_nonnegative)
+    degraded = ndb.IntegerProperty(default=0, validator=_validate_nonnegative)
+    failed = ndb.IntegerProperty(default=0, validator=_validate_nonnegative)
 
 
 class CheckResult(ndb.Model):
@@ -82,14 +106,15 @@ class CheckResult(ndb.Model):
     check_id = ndb.StringProperty(required=True)  # Stable id from the definition
     check_name = ndb.StringProperty()  # Display name snapshot
     target = ndb.StringProperty()  # From params.target for http checks, else None
-    # Only critical-tier results count toward uptime
     tier = ndb.StringProperty(choices=MONITORING_TIERS)
 
     # When the check started
     checked_at = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
-    response_time_ms = ndb.IntegerProperty()
-    latency_threshold_ms = ndb.IntegerProperty()  # None = speed never degrades
-    attempts = ndb.IntegerProperty(default=1)  # 1 or 2 (max one retry)
+    response_time_ms = ndb.IntegerProperty(validator=_validate_nonnegative)
+    latency_threshold_ms = ndb.IntegerProperty(
+        validator=_validate_nonnegative
+    )  # None = speed never degrades
+    attempts = ndb.IntegerProperty(default=1, validator=_validate_attempts)
 
     status = ndb.StringProperty(choices=MONITORING_CHECK_STATUSES, required=True)
     http_status_code = ndb.IntegerProperty()  # None for non-http checks
@@ -109,13 +134,43 @@ class DashboardSnapshot(ndb.Model):
     response_time_ms, uptime_24h, uptime_7d, error_rate_24h, alert_active,
     hourly_counts. Store last_checked_at as an ISO 8601 string; JsonProperty
     can't hold datetimes. hourly_counts maps each hour of the last 7 days to
-    critical-tier {up, failed, total} counts so uptime needs no history query.
+    {up, failed, total} counts so uptime needs no history query.
     """
 
     updated_at = ndb.DateTimeProperty(auto_now=True, tzinfo=ZoneInfo("America/Chicago"))
     last_run_id = ndb.StringProperty()
     last_run_finished_at = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
     checks = ndb.JsonProperty()
+
+
+class CronJobHeartbeat(ndb.Model):
+    """Latest observed state for one App Engine cron job."""
+
+    job_id = ndb.ComputedProperty(
+        lambda self: self.key.id() if self.key else None, indexed=False
+    )
+    display_name = ndb.StringProperty(required=True)
+    tracking_started_at = ndb.DateTimeProperty(
+        required=True, tzinfo=ZoneInfo("America/Chicago")
+    )
+    last_started_at = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
+    last_completed_at = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
+    last_succeeded_at = ndb.DateTimeProperty(tzinfo=ZoneInfo("America/Chicago"))
+    last_status = ndb.StringProperty(choices=MONITORING_CRON_JOB_STATUSES)
+    last_duration_ms = ndb.IntegerProperty(validator=_validate_nonnegative)
+    last_http_status = ndb.IntegerProperty()
+    last_error = ndb.TextProperty(validator=_truncate_error_message)
+    execution_id = ndb.StringProperty()
+
+
+class MonitoringLease(ndb.Model):
+    """Singleton lease preventing scheduled and manual runs from overlapping."""
+
+    owner_id = ndb.StringProperty(required=True)
+    acquired_at = ndb.DateTimeProperty(
+        required=True, tzinfo=ZoneInfo("America/Chicago")
+    )
+    expires_at = ndb.DateTimeProperty(required=True, tzinfo=ZoneInfo("America/Chicago"))
 
 
 # Fields that can never be changed through the update helpers
@@ -173,8 +228,20 @@ def get_run(run_id):
 
 def get_recent_runs(limit=20):
     """Returns the most recent Runs, newest first."""
+    _validate_limit(limit)
     with client.context():
         return Run.query().order(-Run.start_time).fetch(limit)
+
+
+def get_stuck_runs(minutes=15, now=None):
+    """Returns runs still marked running after the supplied age threshold."""
+    if isinstance(minutes, bool) or not isinstance(minutes, int) or minutes < 1:
+        raise ValueError("minutes must be a positive integer")
+    now = now or datetime.now(ZoneInfo("America/Chicago"))
+    cutoff = now - timedelta(minutes=minutes)
+    with client.context():
+        runs = Run.query(Run.run_status == "running", Run.start_time < cutoff).fetch()
+    return sorted(runs, key=lambda run: run.start_time)
 
 
 def update_run(run_id, **fields):
@@ -202,15 +269,6 @@ def delete_run(run_id):
         return True
 
 
-def find_stuck_runs(older_than_minutes=30):
-    """Returns Runs still "running" that started more than older_than_minutes ago."""
-    with client.context():
-        cutoff = datetime.now(ZoneInfo("America/Chicago")) - timedelta(
-            minutes=older_than_minutes
-        )
-        return Run.query(Run.run_status == "running", Run.start_time < cutoff).fetch()
-
-
 ################################################################################
 ################################# CHECK RESULT #################################
 ################################################################################
@@ -235,14 +293,17 @@ def create_check_result(
 ):
     """Creates a CheckResult attached to the given Run and returns it."""
     with client.context():
+        run_key = ndb.Key(Run, run_id)
+        if not run_key.get():
+            raise ValueError(f"Run '{run_id}' does not exist")
         result = CheckResult(
-            run=ndb.Key(Run, run_id),
+            run=run_key,
             check_id=check_id,
             status=status,
             check_name=check_name,
             target=target,
             tier=tier,
-            checked_at=checked_at,
+            checked_at=checked_at or datetime.now(ZoneInfo("America/Chicago")),
             response_time_ms=response_time_ms,
             latency_threshold_ms=latency_threshold_ms,
             attempts=attempts,
@@ -272,6 +333,8 @@ def get_results_for_run(run_id):
 
 def get_results_for_check(check_id, limit=20):
     """Returns the most recent CheckResults for one check, newest first."""
+    if limit is not None:
+        _validate_limit(limit)
     with client.context():
         return (
             CheckResult.query(CheckResult.check_id == check_id)
@@ -280,8 +343,35 @@ def get_results_for_check(check_id, limit=20):
         )
 
 
+def get_latest_result_for_check(check_id):
+    """Returns the newest result for a check, or None when it has never run."""
+    results = get_results_for_check(check_id, limit=1)
+    return results[0] if results else None
+
+
+def has_active_alert_for_check(check_id):
+    """Return whether the current consecutive failure streak was alerted.
+
+    Recent results are authoritative when they include a recovery or the
+    original alerted failure. If retention has removed that original result,
+    fall back to the snapshot's durable transition state.
+    """
+    for result in get_results_for_check(check_id, limit=None):
+        if result.status != "failed":
+            return False
+        if result.alert_sent:
+            return True
+    snapshot = get_dashboard_snapshot()
+    for entry in (snapshot.checks or []) if snapshot else []:
+        if entry.get("check_id") == check_id:
+            return bool(entry.get("alert_active"))
+    return False
+
+
 def get_results_for_check_since(check_id, since):
-    """Returns every CheckResult for one check with checked_at >= since, newest first."""
+    """Returns results for one check at or after ``since``, newest first."""
+    if not isinstance(since, datetime):
+        raise ValueError("since must be a datetime")
     with client.context():
         return (
             CheckResult.query(
@@ -315,12 +405,32 @@ def delete_check_result(uid):
 
 def delete_old_check_results(days_old=30):
     """Deletes CheckResults older than days_old. Returns how many were deleted."""
+    _validate_positive_days(days_old)
     with client.context():
         cutoff = datetime.now(ZoneInfo("America/Chicago")) - timedelta(days=days_old)
         keys = CheckResult.query(CheckResult.checked_at < cutoff).fetch(keys_only=True)
         if keys:
             ndb.delete_multi(keys)
         return len(keys)
+
+
+def delete_old_monitoring_data(days_old=30):
+    """Delete expired results and runs, returning deletion counts.
+
+    Old running records are abandoned executions, not active work. Retaining
+    them forever would make the watcher health endpoint permanently report a
+    stuck run after the history-retention window has elapsed.
+    """
+    _validate_positive_days(days_old)
+    cutoff = datetime.now(ZoneInfo("America/Chicago")) - timedelta(days=days_old)
+    with client.context():
+        result_keys = CheckResult.query(CheckResult.checked_at < cutoff).fetch(
+            keys_only=True
+        )
+        run_keys = Run.query(Run.start_time < cutoff).fetch(keys_only=True)
+        if result_keys or run_keys:
+            ndb.delete_multi(result_keys + run_keys)
+    return {"check_results": len(result_keys), "runs": len(run_keys)}
 
 
 ################################################################################
@@ -332,19 +442,6 @@ def get_dashboard_snapshot():
     """Returns the DashboardSnapshot, or None if no run has finished yet."""
     with client.context():
         return DashboardSnapshot.get_by_id(DASHBOARD_SNAPSHOT_ID)
-
-
-def set_dashboard_snapshot(last_run_id, last_run_finished_at, checks):
-    """Creates or overwrites the DashboardSnapshot and returns it."""
-    with client.context():
-        snapshot = DashboardSnapshot(
-            id=DASHBOARD_SNAPSHOT_ID,
-            last_run_id=last_run_id,
-            last_run_finished_at=last_run_finished_at,
-            checks=checks,
-        )
-        snapshot.put()
-        return snapshot
 
 
 def modify_dashboard_snapshot(build_checks, last_run_id, last_run_finished_at):
@@ -369,3 +466,193 @@ def modify_dashboard_snapshot(build_checks, last_run_id, last_run_finished_at):
             return snapshot
 
         return ndb.transaction(txn)
+
+
+def check_datastore_connection(timeout_seconds=3):
+    """Performs a harmless strongly-consistent key lookup to verify Datastore."""
+    if timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be positive")
+    with client.context():
+        ndb.Key(DashboardSnapshot, DASHBOARD_SNAPSHOT_ID).get(timeout=timeout_seconds)
+    return True
+
+
+################################################################################
+############################## MONITORING LEASE ###############################
+################################################################################
+
+
+MONITORING_LEASE_ID = "active"
+
+
+@ndb.transactional()
+def _acquire_monitoring_lease(owner_id, now, expires_at):
+    lease = MonitoringLease.get_by_id(MONITORING_LEASE_ID)
+    if lease and lease.expires_at > now:
+        return False
+    MonitoringLease(
+        id=MONITORING_LEASE_ID,
+        owner_id=owner_id,
+        acquired_at=now,
+        expires_at=expires_at,
+    ).put()
+    return True
+
+
+def acquire_monitoring_lease(owner_id, lease_minutes, now=None):
+    """Atomically acquire the runner lease, replacing it only after expiry."""
+    if not owner_id:
+        raise ValueError("owner_id is required")
+    if (
+        isinstance(lease_minutes, bool)
+        or not isinstance(lease_minutes, int)
+        or lease_minutes < 1
+    ):
+        raise ValueError("lease_minutes must be a positive integer")
+    now = now or datetime.now(ZoneInfo("America/Chicago"))
+    with client.context():
+        return _acquire_monitoring_lease(
+            owner_id, now, now + timedelta(minutes=lease_minutes)
+        )
+
+
+@ndb.transactional()
+def _release_monitoring_lease(owner_id):
+    lease = MonitoringLease.get_by_id(MONITORING_LEASE_ID)
+    if not lease or lease.owner_id != owner_id:
+        return False
+    lease.key.delete()
+    return True
+
+
+def release_monitoring_lease(owner_id):
+    """Release the lease only when it is still owned by this execution."""
+    if not owner_id:
+        raise ValueError("owner_id is required")
+    with client.context():
+        return _release_monitoring_lease(owner_id)
+
+
+################################################################################
+############################ CRON JOB HEARTBEATS ###############################
+################################################################################
+
+
+@ndb.transactional(retries=0)
+def _ensure_cron_job_heartbeat(job_id, display_name, now):
+    heartbeat = CronJobHeartbeat.get_by_id(job_id)
+    if heartbeat:
+        if heartbeat.display_name != display_name:
+            heartbeat.display_name = display_name
+            heartbeat.put()
+        return heartbeat
+    heartbeat = CronJobHeartbeat(
+        id=job_id,
+        display_name=display_name,
+        tracking_started_at=now,
+    )
+    heartbeat.put()
+    return heartbeat
+
+
+def ensure_cron_job_heartbeat(job_id, display_name, now=None):
+    """Create a placeholder used to distinguish rollout grace from staleness."""
+    if not job_id or not display_name:
+        raise ValueError("job_id and display_name are required")
+    now = now or datetime.now(ZoneInfo("America/Chicago"))
+    with client.context():
+        return _ensure_cron_job_heartbeat(job_id, display_name, now)
+
+
+@ndb.transactional(retries=0)
+def _begin_cron_job(job_id, display_name, execution_id, started_at):
+    heartbeat = CronJobHeartbeat.get_by_id(job_id)
+    if not heartbeat:
+        heartbeat = CronJobHeartbeat(
+            id=job_id,
+            display_name=display_name,
+            tracking_started_at=started_at,
+        )
+    heartbeat.display_name = display_name
+    heartbeat.last_started_at = started_at
+    heartbeat.last_status = "running"
+    heartbeat.last_duration_ms = None
+    heartbeat.last_http_status = None
+    heartbeat.last_error = None
+    heartbeat.execution_id = execution_id
+    heartbeat.put()
+    return heartbeat
+
+
+def begin_cron_job(job_id, display_name, execution_id, started_at=None):
+    """Mark a genuine scheduled execution as running."""
+    if not job_id or not display_name or not execution_id:
+        raise ValueError("job_id, display_name, and execution_id are required")
+    started_at = started_at or datetime.now(ZoneInfo("America/Chicago"))
+    with client.context():
+        return _begin_cron_job(job_id, display_name, execution_id, started_at)
+
+
+@ndb.transactional(retries=0)
+def _finish_cron_job(
+    job_id,
+    execution_id,
+    succeeded,
+    completed_at,
+    http_status,
+    error_message,
+):
+    heartbeat = CronJobHeartbeat.get_by_id(job_id)
+    if not heartbeat or heartbeat.execution_id != execution_id:
+        return None
+    heartbeat.last_completed_at = completed_at
+    heartbeat.last_status = "succeeded" if succeeded else "failed"
+    if heartbeat.last_started_at:
+        heartbeat.last_duration_ms = max(
+            0,
+            round((completed_at - heartbeat.last_started_at).total_seconds() * 1000),
+        )
+    heartbeat.last_http_status = http_status
+    heartbeat.last_error = (
+        None if succeeded else str(error_message or "Cron job failed")
+    )
+    if succeeded:
+        heartbeat.last_succeeded_at = completed_at
+    heartbeat.put()
+    return heartbeat
+
+
+def finish_cron_job(
+    job_id,
+    execution_id,
+    succeeded,
+    http_status=None,
+    error_message=None,
+    completed_at=None,
+):
+    """Finish an execution unless a newer overlapping execution replaced it."""
+    if not job_id or not execution_id:
+        raise ValueError("job_id and execution_id are required")
+    completed_at = completed_at or datetime.now(ZoneInfo("America/Chicago"))
+    with client.context():
+        return _finish_cron_job(
+            job_id,
+            execution_id,
+            bool(succeeded),
+            completed_at,
+            http_status,
+            error_message,
+        )
+
+
+def get_cron_job_heartbeat(job_id):
+    with client.context():
+        return CronJobHeartbeat.get_by_id(job_id)
+
+
+def get_cron_job_heartbeats():
+    with client.context():
+        return sorted(
+            CronJobHeartbeat.query().fetch(),
+            key=lambda heartbeat: heartbeat.display_name.lower(),
+        )

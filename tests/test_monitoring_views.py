@@ -79,6 +79,14 @@ class MonitoringViewsTest(unittest.TestCase):
         self.login(groups=["editors"])
         self.assertEqual(self.client.get("/monitoring/status").status_code, 403)
 
+    @patch("views.monitoring.get_dashboard_snapshot", return_value=None)
+    def test_compatibility_routes_use_tools_admin_groups_and_are_deprecated(self, _):
+        self.login(groups=["ceo"])
+        response = self.client.get("/monitoring/status")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Deprecation"], "true")
+        self.assertIn("/api/monitoring/dashboard", response.headers["Link"])
+
     # /status
 
     @patch("views.monitoring.get_dashboard_snapshot", return_value=None)
@@ -104,14 +112,30 @@ class MonitoringViewsTest(unittest.TestCase):
             last_run_id="run_x",
             last_run_finished_at=NOW,
             checks=[
-                {"check_id": "datastore", "status": "healthy", "hourly_counts": {}}
+                {
+                    "check_id": "datastore",
+                    "status": "healthy",
+                    "uptime_24h": 50.0,
+                    "uptime_7d": 75.0,
+                    "error_rate_24h": 50.0,
+                    "hourly_counts": {},
+                }
             ],
         )
         body = self.client.get("/monitoring/status").get_json()
         self.assertEqual(body["last_run_id"], "run_x")
         self.assertEqual(body["updated_at"], NOW.isoformat())
         self.assertEqual(
-            body["checks"], [{"check_id": "datastore", "status": "healthy"}]
+            body["checks"],
+            [
+                {
+                    "check_id": "datastore",
+                    "status": "healthy",
+                    "uptime_24h": 50.0,
+                    "uptime_7d": 75.0,
+                    "error_rate_24h": 50.0,
+                }
+            ],
         )
 
     # /runs
@@ -192,6 +216,11 @@ class MonitoringViewsTest(unittest.TestCase):
                 f"/monitoring/checks/datastore/history?days={bad}"
             )
             self.assertEqual(response.status_code, 400, bad)
+
+    def test_history_rejects_unknown_check(self):
+        self.login()
+        response = self.client.get("/monitoring/checks/not-registered/history")
+        self.assertEqual(response.status_code, 404)
 
 
 if __name__ == "__main__":

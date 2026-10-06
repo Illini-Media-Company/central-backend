@@ -28,3 +28,27 @@ cron:
   schedule: every sunday 03:00
   timezone: America/Chicago
   target: default
+
+- description: "Backend monitoring full suite (morning)"
+  url: /cron/backend-monitoring/full
+  schedule: every day 06:00
+  timezone: America/Chicago
+  target: default
+
+- description: "Backend monitoring critical checks (midday pre-peak)"
+  url: /cron/backend-monitoring/critical
+  schedule: every day 11:00
+  timezone: America/Chicago
+  target: default
+
+- description: "Backend monitoring critical checks (evening pre-peak)"
+  url: /cron/backend-monitoring/critical
+  schedule: every day 16:30
+  timezone: America/Chicago
+  target: default
+
+- description: "Backend monitoring full suite (evening)"
+  url: /cron/backend-monitoring/full
+  schedule: every day 18:00
+  timezone: America/Chicago
+  target: default

@@ -1,30 +1,14 @@
-"""
-This file defines the registry that maps check function names (the "fn" field
-of a check definition in util/monitoring_checks.py) to the functions that run
-them.
+"""Compatibility imports for the original monitoring registry module.
 
-Check function contract:
-    - Signature: fn(**params) -> dict
-    - Return {"ok": True} on success, or
-      {"ok": False, "error_type": str, "error_message": str,
-       "http_status_code": int | None} on failure. error_type must be one of
-      MONITORING_ERROR_TYPES in constants.py.
-    - Raise on unexpected errors; the runner catches and records them.
-
-Created by Gus Nophaket on Oct. 5, 2026
-Last modified Oct. 5, 2026
+The active runner uses :mod:`util.monitoring`. This module intentionally
+aliases that package's compatibility registry so there is only one mutable
+registry object in the application.
 """
 
-CHECK_REGISTRY = {}
+from util.monitoring.checks import (
+    COMPATIBILITY_CHECK_REGISTRY as CHECK_REGISTRY,
+    register_compatibility_check as register,
+)
 
 
-def register(name):
-    """Decorator that adds a check function to CHECK_REGISTRY under `name`."""
-
-    def wrap(fn):
-        if name in CHECK_REGISTRY and CHECK_REGISTRY[name] is not fn:
-            raise ValueError(f"Check function '{name}' is already registered")
-        CHECK_REGISTRY[name] = fn
-        return fn
-
-    return wrap
+__all__ = ["CHECK_REGISTRY", "register"]
