@@ -6,7 +6,7 @@ from threading import Lock
 import time
 from zoneinfo import ZoneInfo
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, render_template, request
 from flask_login import login_required
 
 from constants import (
@@ -214,6 +214,13 @@ def cron_monitoring(tier):
     except Exception:
         logger.exception("Backend monitoring cron run failed")
         return jsonify({"error": "Monitoring run failed"}), 500
+
+
+@monitoring_routes.route("/monitoring", methods=["GET"])
+@login_required
+@restrict_to(TOOLS_ADMIN_ACCESS_GROUPS)
+def monitoring_dashboard_page():
+    return render_template("monitoring/monitoring_dashboard.html")
 
 
 @monitoring_routes.route("/api/monitoring/runs", methods=["POST"])

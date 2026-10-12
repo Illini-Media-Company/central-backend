@@ -79,6 +79,20 @@ class MonitoringViewsTest(unittest.TestCase):
         self.login(groups=["editors"])
         self.assertEqual(self.client.get("/monitoring/status").status_code, 403)
 
+    # Dashboard page
+
+    def test_dashboard_page_requires_login_and_group(self):
+        self.assertEqual(self.client.get("/monitoring").status_code, 401)
+        self.login(groups=["editors"])
+        self.assertEqual(self.client.get("/monitoring").status_code, 403)
+
+    @patch.object(monitoring, "render_template", return_value="dashboard")
+    def test_dashboard_page_renders_template(self, render):
+        self.login()
+        response = self.client.get("/monitoring")
+        self.assertEqual(response.status_code, 200)
+        render.assert_called_once_with("monitoring/monitoring_dashboard.html")
+
     @patch("views.monitoring.get_dashboard_snapshot", return_value=None)
     def test_compatibility_routes_use_tools_admin_groups_and_are_deprecated(self, _):
         self.login(groups=["ceo"])

@@ -114,6 +114,9 @@
                             {% if current_user.is_authenticated %}
                                 {{ nav_dropdown_item('API query', url_for('api_query')) }}
                             {% endif %}
+                            {% if current_user.is_authenticated %}
+                                {{ nav_dropdown_item('Backend monitoring', url_for('monitoring_routes.monitoring_dashboard_page'), '_self', constants.TOOLS_ADMIN_ACCESS_GROUPS) }}
+                            {% endif %}
                             {{ nav_dropdown_item('Changelog', url_for('changelog')) }}
                         {% endcall %}
                     </ul>

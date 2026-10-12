@@ -46,3 +46,9 @@
     -webkit-mask-image: url("/static/icons/wpgu-mark.svg");
     mask-image: url("/static/icons/wpgu-mark.svg");
 }
+
+/* Arrowhead from the IMC brandmark; used as a heading bullet/separator */
+.imc-arrowhead {
+    -webkit-mask-image: url("/static/icons/imc-arrowhead.svg");
+    mask-image: url("/static/icons/imc-arrowhead.svg");
+}

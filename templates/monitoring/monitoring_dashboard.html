@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block title %}Backend Monitoring{% endblock %}
+
+{% block extra_head %}
+        <link rel="stylesheet" href="/static/styles/styles_monitoring.css">
+{% endblock %}
+
+{% block content %}
+<div class="mon" id="monitoring-app"
+     data-csrf="{{ csrf_token() }}"
+     data-dashboard-url="/api/monitoring/dashboard"
+     data-runs-url="/api/monitoring/runs">
+
+    {# ——— Page header ——— #}
+    <header class="mon-header">
+        <div class="mon-header-text">
+            <h1 class="mon-title"><i class="imc imc-arrowhead mon-arrow" aria-hidden="true"></i>backend monitoring</h1>
+            <p class="mon-subtitle" id="hero-sub">Loading the latest snapshot&hellip;</p>
+        </div>
+        <div class="mon-header-actions">
+            <div class="mon-run-buttons">
+                <button type="button" class="mon-btn mon-btn-secondary" data-run-tier="critical">
+                    <i class="bi bi-lightning-charge" aria-hidden="true"></i> Run critical
+                </button>
+                <button type="button" class="mon-btn mon-btn-primary" data-run-tier="full">
+                    <i class="bi bi-play-circle" aria-hidden="true"></i> Run full suite
+                </button>
+            </div>
+            <div class="mon-refresh">
+                <label class="mon-switch">
+                    <input type="checkbox" id="auto-refresh" checked>
+                    <span>Auto-refresh every 60s</span>
+                </label>
+                <button type="button" class="mon-icon-btn" id="refresh-now" aria-label="Refresh now" title="Refresh now">
+                    <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    {# Inline alerts: run results, errors, stuck runs #}
+    <div id="alerts" class="mon-alerts" aria-live="polite"></div>
+
+    {# ——— Summary tiles ——— #}
+    <section class="mon-tiles" id="summary-tiles" aria-label="Summary">
+        <div class="mon-tile mon-tile-skeleton"></div>
+        <div class="mon-tile mon-tile-skeleton"></div>
+        <div class="mon-tile mon-tile-skeleton"></div>
+        <div class="mon-tile mon-tile-skeleton"></div>
+        <div class="mon-tile mon-tile-skeleton"></div>
+    </section>
+
+    {# ——— Checks ——— #}
+    <section class="mon-section">
+        <div class="mon-section-header">
+            <h2 class="mon-heading"><i class="imc imc-arrowhead mon-arrow" aria-hidden="true"></i>checks</h2>
+            <div class="mon-filters">
+                <input type="search" id="check-search" class="mon-input" placeholder="Search checks" aria-label="Search checks">
+                <select id="filter-status" class="mon-input" aria-label="Filter by status">
+                    <option value="">All statuses</option>
+                    <option value="failed">Failed</option>
+                    <option value="degraded">Degraded</option>
+                    <option value="healthy">Healthy</option>
+                    <option value="unknown">Unknown</option>
+                    <option value="stale">Stale</option>
+                </select>
+                <select id="filter-tier" class="mon-input" aria-label="Filter by tier">
+                    <option value="">All tiers</option>
+                    <option value="critical">Critical</option>
+                    <option value="full">Full</option>
+                </select>
+            </div>
+        </div>
+        <div class="mon-card">
+            <div class="mon-table-wrap">
+                <table class="mon-table" id="checks-table">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Check</th>
+                            <th>Tier</th>
+                            <th class="num">Response</th>
+                            <th class="num">Uptime 24h</th>
+                            <th class="num">Uptime 7d</th>
+                            <th class="num">Errors 24h</th>
+                            <th>Last checked</th>
+                        </tr>
+                    </thead>
+                    <tbody><tr><td colspan="8" class="mon-empty">Loading&hellip;</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <div class="mon-split">
+        {# ——— Recent runs ——— #}
+        <section class="mon-section">
+            <div class="mon-section-header">
+                <h2 class="mon-heading"><i class="imc imc-arrowhead mon-arrow" aria-hidden="true"></i>recent runs</h2>
+            </div>
+            <div class="mon-card">
+                <div class="mon-table-wrap">
+                    <table class="mon-table" id="runs-table">
+                        <thead>
+                            <tr>
+                                <th>Started</th>
+                                <th>Tier</th>
+                                <th>Trigger</th>
+                                <th>Results</th>
+                                <th class="num">Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody><tr><td colspan="5" class="mon-empty">Loading&hellip;</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        {# ——— Cron jobs ——— #}
+        <section class="mon-section">
+            <div class="mon-section-header">
+                <h2 class="mon-heading"><i class="imc imc-arrowhead mon-arrow" aria-hidden="true"></i>scheduled jobs</h2>
+            </div>
+            <div class="mon-card">
+                <div class="mon-table-wrap">
+                    <table class="mon-table" id="cron-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Job</th>
+                                <th>Last success</th>
+                                <th class="num">Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody><tr><td colspan="4" class="mon-empty">Loading&hellip;</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+{# ——— Detail modal (shared by check history and run detail) ——— #}
+<div class="modal fade" id="detail-modal" tabindex="-1" aria-labelledby="detail-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content mon-modal">
+            <div class="modal-header">
+                <h3 class="modal-title mon-heading" id="detail-modal-title"></h3>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="detail-modal-body"></div>
+        </div>
+    </div>
+</div>
+
+<div class="mon-tooltip" id="chart-tooltip" role="tooltip" hidden></div>
+
+<script src="/static/scripts/monitoring_dashboard.js"></script>
+{% endblock %}
