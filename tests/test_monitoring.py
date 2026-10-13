@@ -204,9 +204,12 @@ class UpdateSnapshotTest(unittest.TestCase):
     @patch("util.monitoring.snapshot.modify_dashboard_snapshot")
     @patch("util.monitoring.snapshot.get_results_for_run")
     @patch("util.monitoring.snapshot.get_run")
+    @patch("util.monitoring.snapshot.datetime")
     def test_keeps_checks_not_in_this_run(
-        self, get_run, get_results, modify, get_definitions
+        self, snapshot_datetime, get_run, get_results, modify, get_definitions
     ):
+        snapshot_datetime.now.return_value = NOW
+        snapshot_datetime.fromisoformat.side_effect = datetime.fromisoformat
         get_run.return_value = SimpleNamespace(uid="run_2", end_time=NOW)
         get_results.return_value = [result("healthy")]
         get_definitions.return_value = [
