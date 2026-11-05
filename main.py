@@ -139,6 +139,7 @@ with InitTimer("Utility Functions"):
 with InitTimer("Slackbots"):
     import util.slackbots.employee_agreement_slackbot
     import util.slackbots.photo_request
+    import util.slackbots.song_removal_request
     import util.slackbots.song_request
     import util.slackbots.socials_slackbot
     import util.slackbots.knowledge_slackbot
@@ -172,6 +173,7 @@ with InitTimer("Views"):
         public_calendar_api_routes,
     )
     from views.song_request import song_request_routes
+    from views.song_removal_request import song_removal_request_routes
     from views.advertiser_metrics import advertiser_metrics_api_routes
 
 ################################################################################
@@ -210,6 +212,7 @@ app.register_blueprint(calendar_routes)
 app.register_blueprint(admin_calendar_routes)
 app.register_blueprint(public_calendar_api_routes)
 app.register_blueprint(song_request_routes)
+app.register_blueprint(song_removal_request_routes)
 app.register_blueprint(advertiser_metrics_api_routes)
 logging.info("Done registering blueprints.")
 

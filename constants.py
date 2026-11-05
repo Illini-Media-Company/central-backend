@@ -334,6 +334,12 @@ WPGU_ON_AIR_ID = "C06BRUCMUG6" if ENV == "prod" else "C06FR61KDJS"
 WPGU_PRODUCTION_ID = "C09ET1PT762" if ENV == "prod" else "C06FXQXKJAE"
 WPGU_SPORTS_ID = "C09FRSTPVAL" if ENV == "prod" else "C09V8V4K5K8"
 WPGU_SONG_REQUESTS_ID = "C07GG5PBTB6" if ENV == "prod" else "C0AP06FTGA0"
+WPGU_SONG_REMOVAL_REQUESTS_ID = os.environ.get("WPGU_SONG_REMOVAL_REQUESTS_ID")
+WPGU_SONG_REMOVAL_REVIEW_GROUPS = [
+    "wpgu-staff-operations",
+    "wpgu-directors",
+    "imc-staff-webdev",
+]
 
 CU_CALENDAR_ID = "C0ARFFUSW02" if ENV == "prod" else "C0AMKL402HE"
 

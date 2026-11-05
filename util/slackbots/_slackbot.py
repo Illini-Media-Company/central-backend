@@ -347,7 +347,13 @@ IMC_WELCOME_MESSAGE_TEXT = "Welcome to Illini Media Company!"
 
 logger = logging.getLogger(__name__)
 
-app = App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
+# Avoid a live auth.test request in the test environment. Production and
+# development retain Slack Bolt's existing token verification behavior.
+app = App(
+    token=SLACK_BOT_TOKEN,
+    signing_secret=SLACK_SIGNING_SECRET,
+    token_verification_enabled=ENV != "test",
+)
 
 
 @app.event("app_mention")
@@ -669,7 +675,7 @@ def start_slack(flask_app):
 
         logger.info("Slack events listener registered at /slack/events")
 
-    elif SLACK_APP_TOKEN is not None:
+    elif ENV == "dev" and SLACK_APP_TOKEN:
         try:
             handler = SocketModeHandler(app, SLACK_APP_TOKEN)
             handler.connect()
@@ -680,5 +686,6 @@ def start_slack(flask_app):
 
     else:
         logger.warning(
-            "Slack initialization skipped: No App Token found and ENV is not 'prod'."
+            "Slack initialization skipped: Socket Mode only runs in development "
+            "with an App Token."
         )
