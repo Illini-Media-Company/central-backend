@@ -305,6 +305,9 @@ EMPLOYEE_GRAD_YEARS = [
 # available: on the shelf, checked_out: with a borrower,
 # retired: gone for good (lost, broken, sold), hidden from the table but kept
 EQUIPMENT_STATUSES = ["available", "checked_out", "retired"]
+# Generated barcode IDs look like IMC-04821
+EQUIPMENT_BARCODE_PREFIX = "IMC-"
+EQUIPMENT_BARCODE_DIGITS = 5
 
 ################################################################################
 
