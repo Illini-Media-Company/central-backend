@@ -299,6 +299,14 @@ EMPLOYEE_GRAD_YEARS = [
 ]
 
 ################################################################################
+### EQUIPMENT TRACKER ##########################################################
+################################################################################
+
+# available: on the shelf, checked_out: with a borrower,
+# retired: gone for good (lost, broken, sold), hidden from the table but kept
+EQUIPMENT_STATUSES = ["available", "checked_out", "retired"]
+
+################################################################################
 
 # Lists of Google Groups that control access to APIs
 TOOLS_ADMIN_ACCESS_GROUPS = [
