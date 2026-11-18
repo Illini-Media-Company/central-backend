@@ -320,6 +320,10 @@ TOOLS_ADMIN_ACCESS_GROUPS = [
     "professional-staff",
 ]  # Ability to add and modify tools that display on the index page
 
+EQUIPMENT_ACCESS_GROUP = [
+    "spand59@illinimedia.com",  # replace with the actual operations team group later
+]
+
 # Slack channels (used by Slack bot)
 IMC_GENERAL_ID = "C13TEC3QE" if ENV == "prod" else "C06GADGT60Z"
 IMC_GENERAL_TEST_ID = "C06LDL7RG3X" if ENV == "prod" else None
